@@ -1,0 +1,98 @@
+import { NextResponse } from "next/server"
+import { stripe, PRICES } from "@/lib/stripe"
+import { createServerClient } from "@supabase/ssr"
+import { cookies } from "next/headers"
+
+export async function POST(request: Request) {
+  try {
+    const { priceId, interval } = await request.json()
+
+    // Validate price ID
+    const validPriceId = priceId || (interval === "annual" ? PRICES.annual : PRICES.monthly)
+    if (validPriceId !== PRICES.monthly && validPriceId !== PRICES.annual) {
+      return NextResponse.json({ error: "Invalid price" }, { status: 400 })
+    }
+
+    // Get current user
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+          },
+        },
+      },
+    )
+
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    }
+
+    // Check if user already has a Stripe customer ID
+    const { data: userData } = await supabase
+      .from("users")
+      .select("stripe_customer_id, email")
+      .eq("id", user.id)
+      .single()
+
+    let customerId = userData?.stripe_customer_id
+
+    // Create Stripe customer if doesn't exist
+    if (!customerId) {
+      const customer = await stripe.customers.create({
+        email: user.email || userData?.email || undefined,
+        metadata: {
+          supabase_user_id: user.id,
+        },
+      })
+      customerId = customer.id
+
+      // Save customer ID to database
+      await supabase.from("users").update({ stripe_customer_id: customerId }).eq("id", user.id)
+    }
+
+    // Get the origin for redirect URLs
+    const origin = request.headers.get("origin") || "https://vajra-truth-checker.vercel.app"
+
+    // Create checkout session
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: "subscription",
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price: validPriceId,
+          quantity: 1,
+        },
+      ],
+      success_url: `${origin}/?success=true`,
+      cancel_url: `${origin}/pricing?canceled=true`,
+      metadata: {
+        supabase_user_id: user.id,
+      },
+      subscription_data: {
+        metadata: {
+          supabase_user_id: user.id,
+        },
+        trial_period_days: 30,
+      },
+    })
+
+    return NextResponse.json({ url: session.url })
+  } catch (error: any) {
+    console.error("Checkout error:", error)
+    return NextResponse.json({ error: error.message || "Checkout failed" }, { status: 500 })
+  }
+}
