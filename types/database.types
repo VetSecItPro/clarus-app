@@ -1,0 +1,274 @@
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+
+export interface Database {
+  public: {
+    Tables: {
+      comments: {
+        Row: {
+          content_id: string | null
+          created_at: string | null
+          id: string
+          text: string | null
+          user_id: string | null
+        }
+        Insert: {
+          content_id?: string | null
+          created_at?: string | null
+          id?: string
+          text?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          content_id?: string | null
+          created_at?: string | null
+          id?: string
+          text?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "comments_content_id_fkey"
+            columns: ["content_id"]
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "comments_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content: {
+        Row: {
+          date_added: string | null
+          full_text: string | null
+          id: string
+          title: string | null
+          type: string | null
+          url: string
+          user_id: string | null
+        }
+        Insert: {
+          date_added?: string | null
+          full_text?: string | null
+          id?: string
+          title?: string | null
+          type?: string | null
+          url: string
+          user_id?: string | null
+        }
+        Update: {
+          date_added?: string | null
+          full_text?: string | null
+          id?: string
+          title?: string | null
+          type?: string | null
+          url?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      content_ratings: {
+        Row: {
+          content_id: string | null
+          created_at: string | null
+          id: string
+          signal_score: number
+          user_id: string | null
+        }
+        Insert: {
+          content_id?: string | null
+          created_at?: string | null
+          id?: string
+          signal_score: number
+          user_id?: string | null
+        }
+        Update: {
+          content_id?: string | null
+          created_at?: string | null
+          id?: string
+          signal_score?: number
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "content_ratings_content_id_fkey"
+            columns: ["content_id"]
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "content_ratings_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      models: {
+        Row: {
+          config_json: Json | null
+          created_at: string | null
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          config_json?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          config_json?: Json | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      summaries: {
+        Row: {
+          content_id: string | null
+          created_at: string | null
+          full_summary: string
+          id: string
+          model_id: string | null
+          overview: string
+          tags: Json | null
+        }
+        Insert: {
+          content_id?: string | null
+          created_at?: string | null
+          full_summary: string
+          id?: string
+          model_id?: string | null
+          overview: string
+          tags?: Json | null
+        }
+        Update: {
+          content_id?: string | null
+          created_at?: string | null
+          full_summary?: string
+          id?: string
+          model_id?: string | null
+          overview?: string
+          tags?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "summaries_content_id_fkey"
+            columns: ["content_id"]
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "summaries_model_id_fkey"
+            columns: ["model_id"]
+            referencedRelation: "models"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      summary_votes: {
+        Row: {
+          created_at: string | null
+          id: string
+          summary_id: string | null
+          user_id: string | null
+          vote: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          summary_id?: string | null
+          user_id?: string | null
+          vote?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          summary_id?: string | null
+          user_id?: string | null
+          vote?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "summary_votes_summary_id_fkey"
+            columns: ["summary_id"]
+            referencedRelation: "summaries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "summary_votes_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      users: {
+        Row: {
+          created_at: string | null
+          email: string | null
+          id: string
+          is_admin: boolean | null
+          level: number | null
+          name: string | null
+          reputation: number | null
+          xp: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          email?: string | null
+          id: string
+          is_admin?: boolean | null
+          level?: number | null
+          name?: string | null
+          reputation?: number | null
+          xp?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          email?: string | null
+          id?: string
+          is_admin?: boolean | null
+          level?: number | null
+          name?: string | null
+          reputation?: number | null
+          xp?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "users_id_fkey"
+            columns: ["id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: { [_ in never]: never }
+    Functions: { [_ in never]: never }
+    Enums: { [_ in never]: never }
+    CompositeTypes: { [_ in never]: never }
+  }
+}
+
+export type Tables<
+  Public extends boolean = true,
+  TableName extends string & keyof Database["public"]["Tables"] = string
+> = Public extends true
+  ? Database["public"]["Tables"][TableName]["Row"]
+  : Database["public"]["Tables"][TableName]["Insert"]
