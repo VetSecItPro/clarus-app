@@ -101,11 +101,11 @@ function ContentItem({ item }: { item: Tables<"content"> }) {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="truncate" title={item.title}>
-          {item.title}
+        <CardTitle className="truncate" title={item.title ?? undefined}>
+          {item.title ?? "Untitled"}
         </CardTitle>
         <CardDescription>
-          {item.type} - Added {new Date(item.date_added).toLocaleDateString()}
+          {item.type ?? "Content"} - Added {item.date_added ? new Date(item.date_added).toLocaleDateString() : "Unknown"}
         </CardDescription>
       </CardHeader>
       <CardContent>

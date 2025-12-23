@@ -1,370 +1,304 @@
 "use client"
 
-import { useState } from "react"
-import { Loader2, Link2, Upload, MessageSquare, CheckCircle2 } from "lucide-react"
+import { useState, useRef, useEffect, useMemo } from "react"
+import { ArrowRight, Loader2, Link2, Youtube, FileText, Twitter } from "lucide-react"
 import withAuth from "@/components/with-auth"
 import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
-import BottomNavigation from "@/components/bottom-navigation"
+import TopNavigation from "@/components/top-navigation"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { AddUrlModal } from "@/components/add-url-modal"
 import { supabase } from "@/lib/supabase"
-import { getYouTubeVideoId, isXUrl, cn } from "@/lib/utils"
-import { BlueCheckLogo } from "@/components/blue-check-logo"
+import { getYouTubeVideoId, isXUrl } from "@/lib/utils"
+import { validateUrl } from "@/lib/validation"
 import { useRouter } from "next/navigation"
+import { motion } from "framer-motion"
 
 interface HomePageProps {
   session: Session | null
 }
 
-type OptionType = "clipboard" | "upload" | "chat"
-
-type ProcessingStatus = "idle" | "reading" | "creating" | "fetching" | "summarizing" | "complete" | "error"
-
-const processingSteps = [
-  { status: "reading" as ProcessingStatus, label: "Reading clipboard" },
-  { status: "creating" as ProcessingStatus, label: "Creating entry" },
-  { status: "fetching" as ProcessingStatus, label: "Fetching content" },
-  { status: "summarizing" as ProcessingStatus, label: "Generating summary" },
-  { status: "complete" as ProcessingStatus, label: "Complete" },
+const rotatingPrompts = [
+  "What do you want to analyze?",
+  "What should we fact-check today?",
+  "Got something to verify?",
+  "What claims need checking?",
+  "Ready to separate fact from fiction?",
+  "What content should we examine?",
+  "Time to find the truth?",
+  "What needs a reality check?",
+  "Let's validate something together",
+  "What story should we investigate?",
+  "Ready to cut through the noise?",
+  "What deserves a closer look?",
 ]
 
 function HomePageContent({ session }: HomePageProps) {
   const [isAddUrlModalOpen, setIsAddUrlModalOpen] = useState(false)
-  const [selectedOption, setSelectedOption] = useState<OptionType>("clipboard")
-  const [processingStatus, setProcessingStatus] = useState<ProcessingStatus>("idle")
-  const [processingContentId, setProcessingContentId] = useState<string | null>(null)
+  const [isSubmitting, setIsSubmitting] = useState(false)
+  const [inputValue, setInputValue] = useState("")
+  const [isFocused, setIsFocused] = useState(false)
+  const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
-  const handleQuickAddFromClipboard = async () => {
-    setProcessingStatus("reading")
+  // Fetch username from users table
+  const [username, setUsername] = useState<string | null>(null)
 
+  useEffect(() => {
+    const fetchUsername = async () => {
+      if (!session?.user) return
+      const { data } = await supabase
+        .from("users")
+        .select("name")
+        .eq("id", session.user.id)
+        .single()
+      if (data?.name) {
+        setUsername(data.name)
+      }
+    }
+    fetchUsername()
+  }, [session])
+
+  // Pick a random prompt on mount (stable for the session)
+  const randomPrompt = useMemo(() => {
+    return rotatingPrompts[Math.floor(Math.random() * rotatingPrompts.length)]
+  }, [])
+
+  // Auto-focus input on mount
+  useEffect(() => {
+    inputRef.current?.focus()
+  }, [])
+
+  const handleSubmit = async (urlToProcess?: string) => {
+    const url = urlToProcess || inputValue.trim()
+
+    if (!url) {
+      toast.error("Please enter a URL")
+      return
+    }
+
+    if (isSubmitting) return
+    setIsSubmitting(true)
+
+    try {
+      // Validate URL with security checks
+      const urlValidation = validateUrl(url)
+      if (!urlValidation.isValid) {
+        toast.error(urlValidation.error || "Please enter a valid URL")
+        setIsSubmitting(false)
+        return
+      }
+
+      // Detect content type
+      const validUrl = urlValidation.sanitized!
+      let type: "youtube" | "article" | "x_post" = "article"
+      if (getYouTubeVideoId(validUrl)) {
+        type = "youtube"
+      } else if (isXUrl(validUrl)) {
+        type = "x_post"
+      }
+
+      // Verify user is authenticated
+      const {
+        data: { user },
+        error: sessionError,
+      } = await supabase.auth.getUser()
+      if (sessionError || !user) {
+        toast.error("Please sign in to continue")
+        setIsSubmitting(false)
+        return
+      }
+
+      // Insert content record
+      const placeholderTitle = `Analyzing: ${validUrl.substring(0, 50)}${validUrl.length > 50 ? "..." : ""}`
+      const { data: newContent, error: insertError } = await supabase
+        .from("content")
+        .insert([{ url: validUrl, type, user_id: user.id, title: placeholderTitle, full_text: null }])
+        .select("id")
+        .single()
+
+      if (insertError || !newContent) {
+        toast.error("Failed to add URL")
+        setIsSubmitting(false)
+        return
+      }
+
+      // Clear input and redirect
+      setInputValue("")
+      window.dispatchEvent(new CustomEvent("contentAdded"))
+      toast.success("Analyzing content...")
+      router.push(`/item/${newContent.id}`)
+
+      // Fire API in background
+      fetch("/api/process-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content_id: newContent.id }),
+      })
+        .then(async (response) => {
+          if (!response.ok) {
+            const errorData = await response.json().catch(() => ({ error: "Unknown error" }))
+            console.error("Background processing error:", errorData.error)
+          } else {
+            window.dispatchEvent(new CustomEvent("contentAdded"))
+          }
+        })
+        .catch((error) => {
+          console.error("Background processing failed:", error)
+        })
+    } catch (error: any) {
+      toast.error("Something went wrong")
+      setIsSubmitting(false)
+    }
+  }
+
+  const handlePasteFromClipboard = async () => {
     if (!navigator.clipboard || !navigator.clipboard.readText) {
       toast.error("Clipboard not available")
-      setProcessingStatus("idle")
       setIsAddUrlModalOpen(true)
       return
     }
 
     try {
       const clipboardText = await navigator.clipboard.readText()
-      if (!clipboardText.trim()) {
-        toast.error("Clipboard is empty")
-        setProcessingStatus("idle")
-        return
-      }
-
-      let potentialUrl: URL
-      try {
-        potentialUrl = new URL(clipboardText)
-      } catch (_) {
-        toast.error("Not a valid URL")
-        setProcessingStatus("idle")
-        return
-      }
-
-      const url = potentialUrl.href
-      let type: "youtube" | "article" | "x_post" = "article"
-      if (getYouTubeVideoId(url)) {
-        type = "youtube"
-      } else if (isXUrl(url)) {
-        type = "x_post"
-      }
-
-      setProcessingStatus("creating")
-
-      const {
-        data: { user },
-        error: sessionError,
-      } = await supabase.auth.getUser()
-      if (sessionError || !user) {
-        toast.error("Not authenticated")
-        setProcessingStatus("idle")
-        return
-      }
-
-      const placeholderTitle = `Processing: ${url.substring(0, 50)}${url.length > 50 ? "..." : ""}`
-      const { data: newContent, error: insertError } = await supabase
-        .from("content")
-        .insert([{ url, type, user_id: user.id, title: placeholderTitle, full_text: null }])
-        .select("id")
-        .single()
-
-      if (insertError || !newContent) {
-        toast.error("Failed to add URL")
-        setProcessingStatus("idle")
-        return
-      }
-
-      setProcessingContentId(newContent.id)
-      setProcessingStatus("fetching")
-      window.dispatchEvent(new CustomEvent("contentAdded"))
-
-      const apiResponse = await fetch("/api/process-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content_id: newContent.id }),
-      })
-
-      if (!apiResponse.ok) {
-        const errorData = await apiResponse.json().catch(() => ({ error: "Unknown error" }))
-        toast.error(errorData.error || "Processing failed")
-        setProcessingStatus("error")
-        // Still redirect to item page even on error
-        setTimeout(() => {
-          router.push(`/item/${newContent.id}`)
-        }, 1500)
-        return
-      }
-
-      setProcessingStatus("summarizing")
-
-      // Brief delay to show the summarizing step
-      await new Promise((resolve) => setTimeout(resolve, 500))
-
-      setProcessingStatus("complete")
-      window.dispatchEvent(new CustomEvent("contentAdded"))
-
-      // Redirect to item page after showing complete status
-      setTimeout(() => {
-        router.push(`/item/${newContent.id}`)
-      }, 800)
-    } catch (error: any) {
-      if (error instanceof DOMException) {
-        toast.error("Clipboard access blocked")
-        setIsAddUrlModalOpen(true)
+      if (clipboardText.trim()) {
+        setInputValue(clipboardText.trim())
+        // Auto-submit if it's a valid URL
+        const urlCheck = validateUrl(clipboardText.trim())
+        if (urlCheck.isValid) {
+          handleSubmit(clipboardText.trim())
+        }
       } else {
-        toast.error("Failed to add from clipboard")
+        toast.error("Clipboard is empty")
       }
-      setProcessingStatus("idle")
+    } catch (error) {
+      toast.error("Couldn't access clipboard")
+      setIsAddUrlModalOpen(true)
     }
   }
 
-  const handleOptionClick = (option: OptionType) => {
-    setSelectedOption(option)
-
-    if (option === "clipboard") {
-      if (!navigator.clipboard || !navigator.clipboard.readText) {
-        setIsAddUrlModalOpen(true)
-        return
-      }
-      handleQuickAddFromClipboard()
-    } else {
-      toast.info("Coming soon!")
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" && !e.shiftKey) {
+      e.preventDefault()
+      handleSubmit()
     }
   }
 
-  const options = [
-    {
-      id: "clipboard" as OptionType,
-      icon: Link2,
-      label: "Paste URL",
-      subtitle: "YouTube, Articles, X Posts, Links",
-      available: true,
-    },
-    {
-      id: "upload" as OptionType,
-      icon: Upload,
-      label: "Upload File",
-      subtitle: "PDF, Documents, Images",
-      available: false,
-    },
-    {
-      id: "chat" as OptionType,
-      icon: MessageSquare,
-      label: "Start Chat",
-      subtitle: "Ask questions, get insights",
-      available: false,
-    },
+  const exampleChips = [
+    { icon: Youtube, label: "YouTube", color: "text-red-400" },
+    { icon: FileText, label: "Articles", color: "text-blue-400" },
+    { icon: Twitter, label: "X Posts", color: "text-white" },
+    { icon: Link2, label: "Any Link", color: "text-emerald-400" },
   ]
 
-  const isProcessing = processingStatus !== "idle" && processingStatus !== "error"
-
-  if (isProcessing) {
-    const currentStepIndex = processingSteps.findIndex((s) => s.status === processingStatus)
-
-    return (
-      <div className="h-screen bg-black overflow-hidden flex flex-col">
-        <div className="flex justify-end p-4 shrink-0">
-          <GlasmorphicSettingsButton />
-        </div>
-
-        <main className="flex-1 flex flex-col items-center justify-center px-6 pb-24">
-          <div className="flex flex-col items-center mb-8">
-            <BlueCheckLogo size={56} />
-            <h1 className="text-xl font-bold text-white mt-4">Processing</h1>
-            <p className="text-neutral-500 text-xs mt-1">Please wait...</p>
-          </div>
-
-          {/* Progress steps */}
-          <div className="w-full max-w-xs space-y-3">
-            {processingSteps.map((step, index) => {
-              const isComplete = index < currentStepIndex
-              const isCurrent = index === currentStepIndex
-              const isPending = index > currentStepIndex
-
-              return (
-                <div
-                  key={step.status}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 rounded-xl backdrop-blur-xl border transition-all duration-300",
-                    isCurrent
-                      ? "bg-[#1d9bf0]/10 border-[#1d9bf0]/30"
-                      : isComplete
-                        ? "bg-white/[0.04] border-white/[0.08]"
-                        : "bg-white/[0.02] border-white/[0.05] opacity-50",
-                  )}
-                >
-                  <div className="w-6 h-6 flex items-center justify-center">
-                    {isComplete ? (
-                      <CheckCircle2 className="w-5 h-5 text-green-500" />
-                    ) : isCurrent ? (
-                      <Loader2 className="w-5 h-5 text-[#1d9bf0] animate-spin" />
-                    ) : (
-                      <div className="w-2 h-2 rounded-full bg-white/20" />
-                    )}
-                  </div>
-                  <span
-                    className={cn(
-                      "text-sm font-medium",
-                      isCurrent ? "text-white" : isComplete ? "text-white/60" : "text-white/30",
-                    )}
-                  >
-                    {step.label}
-                  </span>
-                </div>
-              )
-            })}
-          </div>
-
-          {/* Progress bar */}
-          <div className="w-full max-w-xs mt-6">
-            <div className="h-1 bg-white/[0.08] rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#1d9bf0] transition-all duration-500 ease-out"
-                style={{ width: `${((currentStepIndex + 1) / processingSteps.length) * 100}%` }}
-              />
-            </div>
-          </div>
-        </main>
-
-        <BottomNavigation />
-      </div>
-    )
-  }
-
   return (
-    <div className="h-screen bg-black overflow-hidden flex flex-col">
-      <div className="flex justify-end p-4 shrink-0">
+    <div className="min-h-screen bg-black flex flex-col">
+      <header className="flex items-center justify-between p-4 shrink-0">
+        <TopNavigation />
         <GlasmorphicSettingsButton />
-      </div>
+      </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-24">
-        <div className="flex flex-col items-center mb-8">
-          <BlueCheckLogo size={56} />
-          <h1 className="text-xl font-bold text-white mt-4">Truth Checker</h1>
-          <p className="text-neutral-500 text-xs mt-1">by Vajra Labs</p>
-        </div>
+      <main className="flex-1 flex flex-col items-center justify-center px-6">
+        {/* Welcome Message */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="text-center mb-8"
+        >
+          {username && (
+            <p className="text-white/40 text-base mb-2">
+              Welcome back, <span className="text-white/70">{username}</span>
+            </p>
+          )}
+          <h1 className="text-3xl sm:text-4xl font-semibold text-white mb-3">
+            {randomPrompt}
+          </h1>
+          <p className="text-white/50 text-base">
+            Paste a URL and get an instant truth check
+          </p>
+        </motion.div>
 
-        <div className="flex flex-col gap-3 w-full max-w-sm">
-          {options.map((option) => {
-            const isSelected = selectedOption === option.id
-            const Icon = option.icon
+        {/* Input Box */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.1 }}
+          className="w-full max-w-2xl"
+        >
+          <div
+            className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all duration-200 ${
+              isFocused
+                ? "border-[#1d9bf0]/50 bg-white/[0.03] shadow-[0_0_30px_rgba(29,155,240,0.15)]"
+                : "border-white/10 bg-white/[0.02] hover:border-white/20"
+            }`}
+          >
+            <Link2 className={`w-5 h-5 shrink-0 transition-colors ${isFocused ? "text-[#1d9bf0]" : "text-white/40"}`} />
 
-            return (
+            <input
+              ref={inputRef}
+              type="text"
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              onKeyDown={handleKeyDown}
+              placeholder="Paste any URL here..."
+              disabled={isSubmitting}
+              className="flex-1 bg-transparent text-white placeholder-white/30 text-base outline-none disabled:opacity-50"
+            />
+
+            {inputValue ? (
               <button
-                key={option.id}
-                onClick={() => handleOptionClick(option.id)}
-                className={cn(
-                  "relative flex items-center gap-4 px-5 py-4 rounded-2xl border-2 transition-all duration-200",
-                  "shadow-lg hover:shadow-xl active:scale-[0.97] active:shadow-md",
-                  isSelected && option.available
-                    ? "bg-gradient-to-r from-[#1d9bf0]/20 to-[#1d9bf0]/10 border-[#1d9bf0]/50 shadow-[0_4px_20px_rgba(29,155,240,0.25)]"
-                    : option.available
-                      ? "bg-white/[0.06] border-white/20 hover:bg-white/[0.1] hover:border-white/30"
-                      : "bg-white/[0.03] border-white/10 cursor-not-allowed",
-                  !option.available && "opacity-50",
-                )}
+                onClick={() => handleSubmit()}
+                disabled={isSubmitting}
+                className="shrink-0 w-10 h-10 rounded-xl bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:opacity-50 flex items-center justify-center transition-all"
               >
-                <div
-                  className={cn(
-                    "w-12 h-12 rounded-xl flex items-center justify-center transition-all shrink-0 shadow-inner",
-                    isSelected && option.available
-                      ? "bg-[#1d9bf0]/30 shadow-[inset_0_2px_4px_rgba(0,0,0,0.2)]"
-                      : option.available
-                        ? "bg-white/[0.1] shadow-[inset_0_2px_4px_rgba(0,0,0,0.1)]"
-                        : "bg-white/[0.05]",
-                  )}
-                >
-                  <Icon
-                    className={cn(
-                      "w-6 h-6",
-                      isSelected && option.available
-                        ? "text-[#1d9bf0]"
-                        : option.available
-                          ? "text-white/80"
-                          : "text-white/40",
-                    )}
-                  />
-                </div>
-
-                <div className="flex flex-col items-start flex-1 min-w-0">
-                  <span
-                    className={cn(
-                      "text-base font-semibold",
-                      isSelected && option.available
-                        ? "text-white"
-                        : option.available
-                          ? "text-white/90"
-                          : "text-white/50",
-                    )}
-                  >
-                    {option.label}
-                  </span>
-                  <span
-                    className={cn(
-                      "text-xs mt-0.5",
-                      isSelected && option.available
-                        ? "text-white/70"
-                        : option.available
-                          ? "text-white/50"
-                          : "text-white/30",
-                    )}
-                  >
-                    {option.subtitle}
-                  </span>
-                </div>
-
-                {!option.available && (
-                  <span className="text-[10px] uppercase tracking-wider text-white/60 font-semibold bg-white/[0.1] px-2.5 py-1.5 rounded-lg border border-white/10">
-                    Soon
-                  </span>
-                )}
-
-                {option.available && (
-                  <div
-                    className={cn(
-                      "w-8 h-8 rounded-lg flex items-center justify-center",
-                      isSelected ? "bg-[#1d9bf0]/20" : "bg-white/[0.06]",
-                    )}
-                  >
-                    <svg
-                      className={cn("w-4 h-4", isSelected ? "text-[#1d9bf0]" : "text-white/50")}
-                      fill="none"
-                      viewBox="0 0 24 24"
-                      stroke="currentColor"
-                    >
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                    </svg>
-                  </div>
+                {isSubmitting ? (
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                ) : (
+                  <ArrowRight className="w-5 h-5 text-white" />
                 )}
               </button>
+            ) : (
+              <button
+                onClick={handlePasteFromClipboard}
+                disabled={isSubmitting}
+                className="shrink-0 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white/70 text-sm font-medium transition-all disabled:opacity-50"
+              >
+                Paste
+              </button>
+            )}
+          </div>
+
+          {/* Keyboard hint */}
+          <p className="text-center text-white/30 text-xs mt-3">
+            Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white/50 font-mono">Enter</kbd> to analyze
+          </p>
+        </motion.div>
+
+        {/* Example Chips */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.2 }}
+          className="flex flex-wrap justify-center gap-2 mt-8"
+        >
+          {exampleChips.map((chip) => {
+            const Icon = chip.icon
+            return (
+              <div
+                key={chip.label}
+                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08]"
+              >
+                <Icon className={`w-3.5 h-3.5 ${chip.color}`} />
+                <span className="text-xs text-white/60">{chip.label}</span>
+              </div>
             )
           })}
-        </div>
+        </motion.div>
       </main>
 
-      <BottomNavigation />
       <AddUrlModal isOpen={isAddUrlModalOpen} onOpenChange={setIsAddUrlModalOpen} />
     </div>
   )
