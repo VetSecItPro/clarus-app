@@ -28,11 +28,47 @@ text-gray-300
 [&_hr]:my-8 [&_hr]:border-gray-700
 `
 
+/**
+ * Preprocesses text to convert inline bullet points to proper markdown lists.
+ * Handles patterns like "• Item 1 • Item 2" or "- Item 1 - Item 2" on same line.
+ */
+function preprocessMarkdown(text: string): string {
+  // Split by lines first
+  const lines = text.split('\n')
+  const processedLines: string[] = []
+
+  for (const line of lines) {
+    // Check if line has multiple inline bullets (• or -)
+    // Pattern: starts with bullet or has " • " or " - " mid-line
+    const inlineBulletPattern = /(?:^[•\-]\s+|\s+[•\-]\s+)/
+
+    if (inlineBulletPattern.test(line) && (line.match(/[•\-]/g) || []).length > 1) {
+      // Split by bullet characters and filter empty strings
+      const items = line
+        .split(/\s*[•\-]\s+/)
+        .map(item => item.trim())
+        .filter(item => item.length > 0)
+
+      // Convert to proper markdown list
+      for (const item of items) {
+        processedLines.push(`- ${item}`)
+      }
+    } else {
+      processedLines.push(line)
+    }
+  }
+
+  return processedLines.join('\n')
+}
+
 export function MarkdownRenderer({ children, className }: MarkdownRendererProps) {
   if (!children) return null
+
+  const processedContent = preprocessMarkdown(children)
+
   return (
     <div className={cn(MARKDOWN_CLASSES, className)}>
-      <ReactMarkdown remarkPlugins={[remarkGfm]}>{children}</ReactMarkdown>
+      <ReactMarkdown remarkPlugins={[remarkGfm]}>{processedContent}</ReactMarkdown>
     </div>
   )
 }
