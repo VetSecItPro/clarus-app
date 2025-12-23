@@ -45,6 +45,11 @@ When asked to commit/push to GitHub:
 4. CI runs automatically on PR → lint, typecheck, build, E2E, Lighthouse
 5. After merge to main → CI runs again → Deploy to Vercel triggers
 
+## Workflow Rules
+- **Always explain what you're doing before doing it** - User wants to understand actions before they're taken
+- Delete dead/unused code when found
+- Run typecheck before committing
+
 ## Notes
 - Vercel MCP broken (403) → use `vercel` CLI
 - Supabase MCP wrong project → use `psql` direct

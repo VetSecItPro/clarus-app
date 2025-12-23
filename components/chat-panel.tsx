@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { toast } from "sonner"
-import { Send, MessageSquare, Loader2, ChevronDown, ChevronUp, Trash2 } from "lucide-react"
+import { Send, MessageSquare, Loader2, ChevronDown, ChevronUp, Trash2, Globe, Bot, User } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MarkdownRenderer } from "./markdown-renderer"
 
@@ -288,25 +288,48 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
                   </div>
                 )}
                 {messages.map((m, i) => (
-                  <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                  <div key={i} className={cn("flex gap-2", m.role === "user" ? "justify-end" : "justify-start")}>
+                    {/* Assistant avatar */}
+                    {m.role === "assistant" && (
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+                        <Bot className="w-4 h-4 text-white" />
+                      </div>
+                    )}
+
                     <div
                       className={cn(
-                        "p-3 rounded-2xl max-w-[85%] backdrop-blur-xl",
+                        "rounded-2xl max-w-[80%] backdrop-blur-xl overflow-hidden",
                         m.role === "user"
-                          ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
-                          : "bg-white/[0.06] text-white border border-white/[0.08]",
+                          ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20 px-4 py-2.5"
+                          : "bg-white/[0.04] border border-white/[0.08]",
                       )}
                     >
-                      <div className="text-sm">
-                        <MarkdownRenderer>{getMessageContent(m)}</MarkdownRenderer>
-                      </div>
+                      {m.role === "user" ? (
+                        <p className="text-sm whitespace-pre-wrap">{getMessageContent(m)}</p>
+                      ) : (
+                        <div className="p-3 chat-assistant-message">
+                          <MarkdownRenderer className="text-sm [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:my-2 [&_ol]:my-2 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mt-3 [&_h2]:mb-1.5 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-white/90 [&_h3]:mt-2 [&_h3]:mb-1 [&_li]:text-sm [&_strong]:text-white [&_code]:bg-white/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_pre]:bg-white/10 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_a]:text-blue-400 [&_a]:underline">
+                            {getMessageContent(m)}
+                          </MarkdownRenderer>
+                        </div>
+                      )}
                     </div>
+
+                    {/* User avatar */}
+                    {m.role === "user" && (
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg">
+                        <User className="w-4 h-4 text-white" />
+                      </div>
+                    )}
                   </div>
                 ))}
                 {isLoading && messages[messages.length - 1]?.role === "user" && (
-                  <div className="flex justify-start">
-                    <div className="inline-flex items-center gap-2 p-3 rounded-2xl bg-white/[0.06] border border-white/[0.08] backdrop-blur-xl">
-                      <Loader2 className="w-4 h-4 animate-spin text-[#1d9bf0]" />
+                  <div className="flex gap-2 justify-start">
+                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+                      <Bot className="w-4 h-4 text-white" />
+                    </div>
+                    <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl">
+                      <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
                       <span className="text-xs text-gray-400">Thinking...</span>
                     </div>
                   </div>
