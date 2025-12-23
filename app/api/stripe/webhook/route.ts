@@ -6,14 +6,14 @@ import type Stripe from "stripe"
 // Use service role for webhook to bypass RLS
 const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
 
-async function findUserByCustomerId(customerId: string): Promise<string | null> {
+async function findUserByCustomerId(customerId: string): Promise<string | undefined> {
   const { data, error } = await supabaseAdmin.from("users").select("id").eq("stripe_customer_id", customerId).single()
 
   if (error) {
     console.log("[v0] findUserByCustomerId error:", error.message)
   }
 
-  return data?.id || null
+  return data?.id ?? undefined
 }
 
 async function updateUserSubscription(
@@ -86,9 +86,11 @@ export async function POST(request: Request) {
 
         if (subscriptionId) {
           // Get subscription details from Stripe
-          const subscription = await stripe.subscriptions.retrieve(subscriptionId)
+          const subscriptionData = await stripe.subscriptions.retrieve(subscriptionId)
+          const subscription = subscriptionData as Stripe.Subscription
+          const currentPeriodEnd = (subscription as unknown as { current_period_end?: number }).current_period_end
           console.log("[v0] - Stripe subscription status:", subscription.status)
-          console.log("[v0] - current_period_end:", subscription.current_period_end)
+          console.log("[v0] - current_period_end:", currentPeriodEnd)
 
           let status: string
           if (subscription.status === "trialing") {
@@ -99,8 +101,8 @@ export async function POST(request: Request) {
             status = "none"
           }
 
-          const endDate = subscription.current_period_end
-            ? new Date(subscription.current_period_end * 1000).toISOString()
+          const endDate = currentPeriodEnd
+            ? new Date(currentPeriodEnd * 1000).toISOString()
             : null
 
           await updateUserSubscription(userId, {
@@ -118,14 +120,15 @@ export async function POST(request: Request) {
         const subscription = event.data.object as Stripe.Subscription
         const customerId = subscription.customer as string
         const metadataUserId = subscription.metadata?.supabase_user_id
+        const currentPeriodEnd = (subscription as { current_period_end?: number }).current_period_end
 
         console.log("[v0]", event.type)
         console.log("[v0] - customerId:", customerId)
         console.log("[v0] - subscription.status:", subscription.status)
         console.log("[v0] - metadataUserId:", metadataUserId)
-        console.log("[v0] - current_period_end:", subscription.current_period_end)
+        console.log("[v0] - current_period_end:", currentPeriodEnd)
 
-        let userId = metadataUserId
+        let userId: string | undefined = metadataUserId
         if (!userId && customerId) {
           userId = await findUserByCustomerId(customerId)
           console.log("[v0] - looked up userId by customerId:", userId)
@@ -153,11 +156,11 @@ export async function POST(request: Request) {
             status = "none"
         }
 
-        const endDate = subscription.current_period_end
-          ? new Date(subscription.current_period_end * 1000).toISOString()
+        const endDate = currentPeriodEnd
+          ? new Date(currentPeriodEnd * 1000).toISOString()
           : null
 
-        await updateUserSubscription(userId, {
+        await updateUserSubscription(userId!, {
           subscription_status: status,
           subscription_id: subscription.id,
           ...(endDate && { subscription_ends_at: endDate }),
@@ -173,7 +176,7 @@ export async function POST(request: Request) {
         console.log("[v0] customer.subscription.deleted")
         console.log("[v0] - customerId:", customerId)
 
-        let userId = metadataUserId
+        let userId: string | undefined = metadataUserId
         if (!userId && customerId) {
           userId = await findUserByCustomerId(customerId)
         }

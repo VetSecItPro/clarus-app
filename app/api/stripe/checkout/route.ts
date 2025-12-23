@@ -2,8 +2,16 @@ import { NextResponse } from "next/server"
 import { stripe, PRICES } from "@/lib/stripe"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { checkRateLimit } from "@/lib/validation"
 
 export async function POST(request: Request) {
+  // Rate limiting - prevent checkout spam
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = checkRateLimit(`checkout:${clientIp}`, 5, 60000) // 5 checkout attempts per minute
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
+  }
+
   try {
     const { priceId, interval } = await request.json()
 
