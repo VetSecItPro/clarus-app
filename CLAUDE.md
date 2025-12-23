@@ -37,14 +37,31 @@ pnpm install && pnpm dev
 ## DB Tables
 users, content, content_ratings, chat_threads, chat_messages, summaries, active_chat_prompt, active_summarizer_prompt
 
-## Deploying to GitHub
+## Git Workflow (Feature Branch + PR)
 
-When asked to commit/push to GitHub:
-1. `git add -A`
-2. `git commit -m "message"` (include Co-Authored-By footer)
-3. `git push origin <branch>`
-4. CI runs automatically on PR → lint, typecheck, build, E2E, Lighthouse
-5. After merge to main → CI runs again → Deploy to Vercel triggers
+**NEVER push directly to main.** Always use feature branches:
+
+1. **Create feature branch**: `git checkout -b feature/short-description`
+2. **Make changes and commit**:
+   ```bash
+   git add -A
+   git commit -m "feat: description
+
+   🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
+   ```
+3. **Push feature branch**: `git push origin feature/short-description`
+4. **Create PR**: `gh pr create --title "..." --body "..."`
+5. **CI runs on PR** → lint, typecheck, build, E2E, Lighthouse
+6. **Review & merge** → After approval, merge to main
+7. **Deploy** → Vercel auto-deploys on merge to main
+
+### Branch Naming
+- `feature/...` - New features
+- `fix/...` - Bug fixes
+- `refactor/...` - Code refactoring
+- `docs/...` - Documentation updates
 
 ## Workflow Rules
 - **Always explain what you're doing before doing it** - User wants to understand actions before they're taken
