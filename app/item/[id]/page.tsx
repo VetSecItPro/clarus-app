@@ -424,7 +424,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </>
               )}
             </span>
-            <span className="px-2 py-1 rounded-lg bg-white/[0.04]">{displaySavedAt}</span>
+            <span className="px-2 py-1 rounded-lg bg-white/[0.04]">Analyzed {displaySavedAt}</span>
           </div>
 
           {activeMainTab === "summary" ? (
