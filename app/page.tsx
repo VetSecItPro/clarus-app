@@ -204,14 +204,14 @@ function HomePageContent({ session }: HomePageProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-8"
+          className="text-center mb-10"
         >
           {username && (
-            <p className="text-white/40 text-base mb-2">
+            <p className="text-white/40 text-base mb-6">
               Welcome back, <span className="text-white/70">{username}</span>
             </p>
           )}
-          <h1 className="text-3xl sm:text-4xl font-semibold text-white mb-3">
+          <h1 className="text-3xl sm:text-4xl font-semibold text-white mb-4">
             {randomPrompt}
           </h1>
           <p className="text-white/50 text-base">

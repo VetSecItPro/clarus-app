@@ -8,6 +8,7 @@
 - **AI**: OpenRouter
 - **Scraping**: Firecrawl, Supadata
 - **Hosting**: Vercel
+- **Production URL**: https://clarusapp.io
 
 ## Quick Commands
 
