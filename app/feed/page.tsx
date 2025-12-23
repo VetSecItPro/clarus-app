@@ -23,7 +23,7 @@ type FeedItemFromDb = Database["public"]["Tables"]["content"]["Row"] & {
 }
 type FeedItem = Database["public"]["Tables"]["content"]["Row"]
 
-type DisplayItem = FeedItem & {
+type DisplayItem = FeedItemFromDb & {
   domain: string
   savedAt: string
   displayDuration: string

@@ -1,11 +1,11 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Play, Trash2, Share2, Loader2, FileText, Sparkles } from "lucide-react"
+import { ArrowLeft, Play, Trash2, Share2, Loader2, FileText, Sparkles, ChevronDown, ChevronUp, Eye, Shield, Lightbulb, BookOpen } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef, use } from "react"
 import { supabase } from "@/lib/supabase"
-import type { Tables } from "@/types/database.types"
+import type { Tables, TriageData, TruthCheckData } from "@/types/database.types"
 import { formatDistanceToNow } from "date-fns"
 import { useRouter } from "next/navigation"
 import withAuth from "@/components/with-auth"
@@ -17,21 +17,25 @@ import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { ChatPanel } from "@/components/chat-panel"
 import { SIGNAL_NOISE_OPTIONS } from "@/constants"
 import { toast } from "sonner"
+import { motion, AnimatePresence } from "framer-motion"
+import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
+import { TriageCard } from "@/components/ui/triage-card"
+import { TruthCheckCard } from "@/components/ui/truth-check-card"
 
 interface ItemDetailPageProps {
-  params: { id: string }
+  params: Promise<{ id: string }>
   session: Session | null
 }
 
-type ContentItem = Tables<true, "content">
-type SummaryItem = Tables<true, "summaries">
+type ContentItem = Tables<"content">
+type SummaryItem = Tables<"summaries">
 
 interface ContentWithSummary extends ContentItem {
   summary?: SummaryItem | null
-  isProcessing?: boolean
 }
 
-function ItemDetailPageContent({ params, session }: ItemDetailPageProps) {
+function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPageProps) {
+  const params = use(paramsPromise)
   const [item, setItem] = useState<ContentWithSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -41,8 +45,25 @@ function ItemDetailPageContent({ params, session }: ItemDetailPageProps) {
   const [isRegenerating, setIsRegenerating] = useState(false)
   const [isPdf, setIsPdf] = useState(false)
   const [currentUserContentRating, setCurrentUserContentRating] = useState<{ signal_score: number } | null>(null)
+  const [isPolling, setIsPolling] = useState(false)
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
+  const [isDetailedExpanded, setIsDetailedExpanded] = useState(false)
 
   const router = useRouter()
+
+  // Helper to check if content is still being processed
+  const isContentProcessing = useCallback((content: ContentWithSummary | null): boolean => {
+    if (!content) return true
+    // Content is processing if ANY of these are true:
+    // 1. Title is a placeholder
+    const hasPlaceholderTitle = content.title?.startsWith("Analyzing:")
+    // 2. No full text yet or it failed
+    const noFullText = !content.full_text || content.full_text.startsWith("PROCESSING_FAILED::")
+    // 3. Summary processing not complete (must have status = "complete")
+    const summaryNotComplete = !content.summary?.processing_status || content.summary.processing_status !== "complete"
+
+    return hasPlaceholderTitle || noFullText || summaryNotComplete
+  }, [])
 
   const handleSignalNoiseVote = useCallback(
     async (score: number) => {
@@ -89,80 +110,74 @@ function ItemDetailPageContent({ params, session }: ItemDetailPageProps) {
     if (!item) return
 
     setIsRegenerating(true)
-    try {
-      const response = await fetch("/api/process-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content_id: item.id, force_regenerate: true }),
+
+    // Clear existing summary to show skeletons
+    setItem(prev => prev ? { ...prev, summary: null } : null)
+
+    // Fire API in background (don't await) and start polling
+    fetch("/api/process-content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content_id: item.id, force_regenerate: true }),
+    })
+      .then(response => {
+        if (!response.ok) throw new Error("Failed to regenerate")
+        toast.success("Analysis complete!")
+      })
+      .catch(err => {
+        console.error("Regenerate error:", err)
+        toast.error("Failed to regenerate content")
+      })
+      .finally(() => {
+        setIsRegenerating(false)
       })
 
-      if (!response.ok) throw new Error("Failed to regenerate")
-
-      toast.success("Content regenerated!")
-
-      // Refetch content
-      const { data: contentData } = await supabase.from("content").select("*").eq("id", item.id).single()
-
-      // Refetch summary
-      const { data: summaryData } = await supabase
-        .from("summaries")
-        .select("*")
-        .eq("content_id", item.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single()
-
-      if (contentData) {
-        setItem({
-          ...contentData,
-          summary: summaryData || null,
-        })
-      }
-    } catch (err) {
-      toast.error("Failed to regenerate content")
-    } finally {
-      setIsRegenerating(false)
-    }
+    // Start polling immediately to pick up progressive updates
+    setIsPolling(true)
   }, [item])
 
-  useEffect(() => {
-    const fetchItem = async () => {
-      const { data: contentData, error: contentError } = await supabase
-        .from("content")
-        .select("*")
-        .eq("id", params.id)
-        .single()
+  // Fetch content and summary data
+  const fetchContentData = useCallback(async (showLoadingState = true) => {
+    if (showLoadingState) setLoading(true)
 
-      if (contentError) {
-        setError(contentError.message)
-        setLoading(false)
-        return
-      }
+    const { data: contentData, error: contentError } = await supabase
+      .from("content")
+      .select("*")
+      .eq("id", params.id)
+      .single()
 
-      const { data: summaryData } = await supabase
-        .from("summaries")
-        .select("*")
-        .eq("content_id", params.id)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single()
-
-      const combinedItem: ContentWithSummary = {
-        ...contentData,
-        summary: summaryData || null,
-      }
-
-      setItem(combinedItem)
-      setIsPdf(contentData.url?.endsWith(".pdf") || false)
-
-      // Check for processing failure
-      if (contentData.full_text?.startsWith("PROCESSING_FAILED::")) {
-        setProcessingError(contentData.full_text)
-      }
-
+    if (contentError) {
+      setError(contentError.message)
       setLoading(false)
+      return null
     }
 
+    const { data: summaryData } = await supabase
+      .from("summaries")
+      .select("*")
+      .eq("content_id", params.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const combinedItem: ContentWithSummary = {
+      ...contentData,
+      summary: summaryData || null,
+    }
+
+    setItem(combinedItem)
+    setIsPdf(contentData.url?.endsWith(".pdf") || false)
+
+    // Check for processing failure
+    if (contentData.full_text?.startsWith("PROCESSING_FAILED::")) {
+      setProcessingError(contentData.full_text)
+    }
+
+    if (showLoadingState) setLoading(false)
+    return combinedItem
+  }, [params.id])
+
+  useEffect(() => {
     // Fetch user's rating for this content
     const fetchRating = async () => {
       if (!session?.user?.id) return
@@ -172,38 +187,112 @@ function ItemDetailPageContent({ params, session }: ItemDetailPageProps) {
         .select("signal_score")
         .eq("content_id", params.id)
         .eq("user_id", session.user.id)
-        .single()
+        .maybeSingle()
 
       if (data) {
         setCurrentUserContentRating({ signal_score: data.signal_score })
       }
     }
 
-    fetchItem()
-    fetchRating()
-  }, [params.id, session])
+    // Initial fetch
+    const initFetch = async () => {
+      const data = await fetchContentData(true)
 
-  const renderSignalNoiseRating = () => (
-    <div className="mt-8 sm:mt-12 pt-6 sm:pt-8 border-t border-white/[0.08]">
-      <h3 className="text-base sm:text-lg font-semibold text-white mb-4 sm:mb-6">Signal/Noise Rating</h3>
-      <div className="grid grid-cols-4 gap-2 sm:gap-3">
-        {SIGNAL_NOISE_OPTIONS.map((rating) => (
-          <button
-            key={rating.label}
-            onClick={() => handleSignalNoiseVote(rating.score)}
-            className={`flex flex-col items-center justify-center gap-1.5 sm:gap-2 p-3 rounded-xl backdrop-blur-xl transition-all border h-20 sm:h-24 ${
-              currentUserContentRating?.signal_score === rating.score
-                ? "bg-[#1d9bf0] border-[#1d9bf0]/50 text-white shadow-lg shadow-blue-500/20"
-                : "bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08] hover:text-white hover:border-white/[0.12]"
-            }`}
-          >
-            <span className="text-xl sm:text-2xl">{rating.emoji}</span>
-            <span className="text-[10px] sm:text-xs font-medium">{rating.label}</span>
-          </button>
-        ))}
+      // If content is still processing, start polling
+      if (isContentProcessing(data)) {
+        setIsPolling(true)
+      }
+    }
+
+    initFetch()
+    fetchRating()
+
+    // Cleanup polling on unmount
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+    }
+  }, [params.id, session, fetchContentData, isContentProcessing])
+
+  // Polling effect - runs when isPolling changes
+  useEffect(() => {
+    if (!isPolling) {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+      return
+    }
+
+    // Poll every 2 seconds for updates
+    pollingIntervalRef.current = setInterval(async () => {
+      const data = await fetchContentData(false)
+
+      // Stop polling when content is ready
+      if (!isContentProcessing(data)) {
+        setIsPolling(false)
+        toast.success("Content ready!")
+      }
+    }, 2000)
+
+    // Stop polling after 2 minutes (safety timeout)
+    const maxPollingTimeout = setTimeout(() => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+        setIsPolling(false)
+      }
+    }, 120000)
+
+    return () => {
+      if (pollingIntervalRef.current) {
+        clearInterval(pollingIntervalRef.current)
+        pollingIntervalRef.current = null
+      }
+      clearTimeout(maxPollingTimeout)
+    }
+  }, [isPolling, fetchContentData, isContentProcessing])
+
+  const renderSignalNoiseRating = () => {
+    const triage = item?.summary?.triage as unknown as TriageData | null
+    const aiSuggestedScore = triage?.signal_noise_score
+    const userHasVoted = currentUserContentRating !== null
+
+    return (
+      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+        <div className="px-4 py-2.5 border-b border-cyan-500/20 bg-cyan-500/15">
+          <span className="text-xs font-medium text-cyan-300 uppercase tracking-wider">Signal/Noise Rating</span>
+        </div>
+        <div className="p-3">
+          <div className="grid grid-cols-4 gap-2">
+            {SIGNAL_NOISE_OPTIONS.map((rating) => {
+              const isUserSelected = currentUserContentRating?.signal_score === rating.score
+              const isAiSuggested = !userHasVoted && aiSuggestedScore === rating.score
+
+              return (
+                <button
+                  key={rating.label}
+                  onClick={() => handleSignalNoiseVote(rating.score)}
+                  className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg transition-all border text-xs ${
+                    isUserSelected
+                      ? "bg-[#1d9bf0] border-[#1d9bf0]/50 text-white shadow-md shadow-blue-500/20"
+                      : isAiSuggested
+                      ? "bg-amber-500/20 border-amber-500/40 text-amber-300 ring-1 ring-amber-500/30"
+                      : "bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08] hover:text-white"
+                  }`}
+                >
+                  <span className="text-base">{rating.emoji}</span>
+                  <span className="font-medium hidden sm:inline">{rating.label}</span>
+                </button>
+              )
+            })}
+          </div>
+        </div>
       </div>
-    </div>
-  )
+    )
+  }
 
   if (loading) {
     return (
@@ -359,53 +448,222 @@ function ItemDetailPageContent({ params, session }: ItemDetailPageProps) {
                     )}
                   </button>
                 </div>
-              ) : item.isProcessing ? (
-                <div className="py-6 flex items-center justify-center text-white/40 text-sm">
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                  Processing content...
-                </div>
               ) : (
                 <>
-                  {summary ? (
-                    <div className="py-4 sm:py-6 border-b border-white/[0.08]">
-                      <div className="flex justify-between items-center mb-4">
-                        <h2 className="text-lg sm:text-xl font-semibold text-white">Summary</h2>
-                        <Button
-                          onClick={handleRegenerate}
-                          disabled={isRegenerating}
-                          size="sm"
-                          className="bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white border border-white/[0.08] rounded-xl backdrop-blur-xl"
-                        >
-                          {isRegenerating ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating...
-                            </>
-                          ) : (
-                            "Regenerate"
-                          )}
-                        </Button>
-                      </div>
-                      <MarkdownRenderer>{summary.mid_length_summary}</MarkdownRenderer>
+                  {/* Regenerate Button */}
+                  <div className="flex justify-end mb-4">
+                    <Button
+                      onClick={handleRegenerate}
+                      disabled={isRegenerating}
+                      size="sm"
+                      className="bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white border border-white/[0.08] rounded-xl backdrop-blur-xl"
+                    >
+                      {isRegenerating ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating...
+                        </>
+                      ) : (
+                        "Regenerate All"
+                      )}
+                    </Button>
+                  </div>
+
+                  {/* VIDEO/THUMBNAIL EMBED */}
+                  {item.type === "youtube" && videoId && (
+                    <div className="aspect-video w-full rounded-2xl overflow-hidden mb-6">
+                      <YouTubeEmbed videoid={videoId} style="width: 100%; height: 100%;" />
                     </div>
-                  ) : (
-                    <div className="py-8 text-center">
+                  )}
+                  {item.type === "article" && item.thumbnail_url && (
+                    <Image
+                      src={item.thumbnail_url}
+                      alt={item.title || "Content image"}
+                      width={600}
+                      height={300}
+                      className="w-full h-auto max-h-64 object-cover rounded-2xl mb-6"
+                      unoptimized
+                      onError={(e) => (e.currentTarget.style.display = "none")}
+                    />
+                  )}
+
+                  {/* 1. BRIEF OVERVIEW */}
+                  <AnimatePresence mode="wait">
+                    {(summary?.brief_overview || isPolling) && (
+                      <SectionCard
+                        title="Overview"
+                        isLoading={isPolling && !summary?.brief_overview}
+                        delay={0}
+                        icon={<Eye className="w-4 h-4" />}
+                        headerColor="blue"
+                      >
+                        {summary?.brief_overview ? (
+                          <motion.p
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="text-white/90 text-base leading-relaxed"
+                          >
+                            {summary.brief_overview}
+                          </motion.p>
+                        ) : (
+                          <SectionSkeleton lines={2} />
+                        )}
+                      </SectionCard>
+                    )}
+                  </AnimatePresence>
+
+                  {/* 2. TRIAGE */}
+                  <AnimatePresence mode="wait">
+                    {(summary?.triage || isPolling) && (
+                      <SectionCard
+                        title="Quick Assessment"
+                        isLoading={isPolling && !summary?.triage}
+                        delay={0.1}
+                        icon={<Sparkles className="w-4 h-4" />}
+                        headerColor="amber"
+                      >
+                        {summary?.triage ? (
+                          <TriageCard triage={summary.triage as unknown as TriageData} />
+                        ) : (
+                          <div className="space-y-3">
+                            <SectionSkeleton lines={1} />
+                            <div className="grid grid-cols-2 gap-3">
+                              <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
+                              <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
+                            </div>
+                          </div>
+                        )}
+                      </SectionCard>
+                    )}
+                  </AnimatePresence>
+
+                  {/* Signal/Noise Rating - right after triage, only when triage is loaded */}
+                  {summary?.triage && renderSignalNoiseRating()}
+
+                  {/* 3. TRUTH CHECK */}
+                  <AnimatePresence mode="wait">
+                    {(summary?.truth_check || isPolling) && (
+                      <SectionCard
+                        title="Truth Check"
+                        isLoading={isPolling && !summary?.truth_check}
+                        delay={0.2}
+                        icon={<Shield className="w-4 h-4" />}
+                        headerColor="emerald"
+                      >
+                        {summary?.truth_check ? (
+                          <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} />
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="h-10 w-32 bg-white/[0.04] rounded-xl animate-pulse" />
+                            <SectionSkeleton lines={2} />
+                          </div>
+                        )}
+                      </SectionCard>
+                    )}
+                  </AnimatePresence>
+
+                  {/* 4. KEY TAKEAWAYS */}
+                  <AnimatePresence mode="wait">
+                    {(summary?.mid_length_summary || isPolling) && (
+                      <SectionCard
+                        title="Key Takeaways"
+                        isLoading={isPolling && !summary?.mid_length_summary}
+                        delay={0.3}
+                        icon={<Lightbulb className="w-4 h-4" />}
+                        headerColor="yellow"
+                      >
+                        {summary?.mid_length_summary ? (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="prose prose-sm prose-invert max-w-none"
+                          >
+                            <MarkdownRenderer>{summary.mid_length_summary}</MarkdownRenderer>
+                          </motion.div>
+                        ) : (
+                          <SectionSkeleton lines={4} />
+                        )}
+                      </SectionCard>
+                    )}
+                  </AnimatePresence>
+
+                  {/* No summary prompt - only show when not polling AND not regenerating */}
+                  {!summary?.mid_length_summary && !isPolling && !isRegenerating && (
+                    <motion.div
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="py-8 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06]"
+                    >
                       <p className="text-white/40 text-sm mb-4">No summary generated yet.</p>
                       <button
                         onClick={handleRegenerate}
                         disabled={isRegenerating}
                         className="px-4 py-2 rounded-xl bg-[#1d9bf0] text-white text-sm hover:bg-[#1a8cd8] transition-all disabled:opacity-50"
                       >
-                        {isRegenerating ? (
-                          <span className="flex items-center gap-2">
-                            <Loader2 className="w-4 h-4 animate-spin" /> Generating...
-                          </span>
-                        ) : (
-                          "Generate Summary"
-                        )}
+                        Generate Summary
                       </button>
-                    </div>
+                    </motion.div>
                   )}
-                  {renderSignalNoiseRating()}
+
+                  {/* 5. DETAILED ANALYSIS (Collapsible) */}
+                  <AnimatePresence mode="wait">
+                    {(summary?.detailed_summary || isPolling) && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 30, scale: 0.98 }}
+                        whileInView={{ opacity: 1, y: 0, scale: 1 }}
+                        viewport={{ once: true, margin: "-50px" }}
+                        transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
+                        className="rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
+                      >
+                        <button
+                          onClick={() => setIsDetailedExpanded(!isDetailedExpanded)}
+                          className="w-full px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-violet-500/20 transition-colors bg-violet-500/15 border-b border-violet-500/20"
+                        >
+                          <h3 className="text-sm font-semibold text-violet-300 uppercase tracking-wider flex items-center gap-2">
+                            <BookOpen className="w-4 h-4" />
+                            Detailed Analysis
+                            {isPolling && !summary?.detailed_summary && (
+                              <Loader2 className="w-4 h-4 text-[#1d9bf0] animate-spin" />
+                            )}
+                          </h3>
+                          {summary?.detailed_summary && (
+                            <motion.div
+                              animate={{ rotate: isDetailedExpanded ? 180 : 0 }}
+                              transition={{ duration: 0.2 }}
+                            >
+                              <ChevronDown className="w-5 h-5 text-white/50" />
+                            </motion.div>
+                          )}
+                        </button>
+
+                        <AnimatePresence>
+                          {summary?.detailed_summary && isDetailedExpanded && (
+                            <motion.div
+                              initial={{ height: 0, opacity: 0 }}
+                              animate={{ height: "auto", opacity: 1 }}
+                              exit={{ height: 0, opacity: 0 }}
+                              transition={{ duration: 0.3 }}
+                              className="overflow-hidden"
+                            >
+                              <div className="px-4 sm:px-5 py-4 sm:py-5 border-t border-white/[0.06] prose prose-sm prose-invert max-w-none">
+                                <MarkdownRenderer>{summary.detailed_summary}</MarkdownRenderer>
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+
+                        {!summary?.detailed_summary && isPolling && (
+                          <div className="px-4 sm:px-5 py-4 sm:py-5 border-t border-white/[0.06]">
+                            <SectionSkeleton lines={5} />
+                            <p className="text-white/40 text-xs mt-4 flex items-center gap-2">
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              Generating detailed analysis...
+                            </p>
+                          </div>
+                        )}
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
                 </>
               )}
             </div>
@@ -417,8 +675,28 @@ function ItemDetailPageContent({ params, session }: ItemDetailPageProps) {
                 </div>
               )}
               {!loading && !item.full_text && (
-                <div className="flex items-center text-white/40 text-sm">
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Full text still processing...
+                <div className="space-y-4">
+                  {isPolling ? (
+                    // Skeleton loader for full text while polling
+                    <div className="space-y-3 animate-pulse p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
+                      <div className="h-4 bg-white/[0.08] rounded-lg w-11/12" />
+                      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
+                      <div className="h-4 bg-white/[0.08] rounded-lg w-4/5" />
+                      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
+                      <div className="h-4 bg-white/[0.08] rounded-lg w-3/4" />
+                      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
+                      <div className="h-4 bg-white/[0.08] rounded-lg w-11/12" />
+                      <p className="text-white/40 text-xs mt-4 flex items-center gap-2">
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Fetching content...
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center text-white/40 text-sm">
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Full text still processing...
+                    </div>
+                  )}
                 </div>
               )}
               {!loading && item.full_text && (
@@ -479,7 +757,7 @@ function ItemDetailPageContent({ params, session }: ItemDetailPageProps) {
       </main>
 
       {session && item && <ChatPanel contentId={item.id} session={session} />}
-      <EditAIPromptsModal isOpen={isEditPromptModalOpen} onClose={() => setIsEditPromptModalOpen(false)} />
+      <EditAIPromptsModal isOpen={isEditPromptModalOpen} onOpenChange={setIsEditPromptModalOpen} />
     </div>
   )
 }

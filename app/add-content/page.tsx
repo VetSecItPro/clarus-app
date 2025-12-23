@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import type { Tables } from "@/types/database.types"
+import type { TablesInsert } from "@/types/database.types"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -43,12 +43,12 @@ export default function AddContentPage() {
       return
     }
 
-    const newContent: Omit<Tables<"content">, "id" | "date_added"> & { user_id: string } = {
+    const newContent: TablesInsert<"content"> = {
       title,
       url,
       type,
       full_text: fullText || null,
-      user_id: user.id, // Explicitly set user_id
+      user_id: user.id,
     }
 
     // RLS: "Users can insert their own content"

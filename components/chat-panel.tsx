@@ -62,15 +62,16 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
       api: "/api/chat",
       body: { contentId },
     }),
-    onFinish: async (message) => {
+    onFinish: async ({ message }) => {
       const currentThreadId = threadIdRef.current
       if (!currentThreadId) {
         console.error("onFinish: Could not find threadId to save assistant message.")
         toast.error("Failed to save assistant's response: Chat session not found.")
         return
       }
+      const parts = (message as { parts?: Array<{ type: string; text?: string }> }).parts
       const content =
-        message.parts
+        parts
           ?.filter((p): p is { type: "text"; text: string } => p.type === "text")
           .map((p) => p.text)
           .join("") || ""
@@ -87,7 +88,7 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
     },
   })
 
-  const isLoading = status === "in_progress"
+  const isLoading = status === "streaming" || status === "submitted"
 
   const handleLocalInputChange = (e: ChangeEvent<HTMLInputElement>) => {
     setLocalInput(e.target.value)
