@@ -35,7 +35,7 @@ export default function withAuth<P extends WithAuthProps>(WrappedComponent: Comp
             .eq("id", initialSession.user.id)
             .single()
 
-          setSubscriptionStatus(userData?.subscription_status || "none")
+          setSubscriptionStatus((userData?.subscription_status as SubscriptionStatus) || "none")
         }
 
         setLoading(false)
@@ -50,7 +50,7 @@ export default function withAuth<P extends WithAuthProps>(WrappedComponent: Comp
               .eq("id", newSession.user.id)
               .single()
 
-            setSubscriptionStatus(userData?.subscription_status || "none")
+            setSubscriptionStatus((userData?.subscription_status as SubscriptionStatus) || "none")
           } else {
             setSubscriptionStatus(null)
           }

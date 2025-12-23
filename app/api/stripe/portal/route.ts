@@ -2,8 +2,16 @@ import { NextResponse } from "next/server"
 import { stripe } from "@/lib/stripe"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
+import { checkRateLimit } from "@/lib/validation"
 
 export async function POST(request: Request) {
+  // Rate limiting
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = checkRateLimit(`portal:${clientIp}`, 10, 60000) // 10 requests per minute
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
+  }
+
   try {
     const cookieStore = await cookies()
     const supabase = createServerClient(

@@ -1,5 +1,38 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
+// Triage assessment for content quality
+export interface TriageData {
+  quality_score: number // 1-10
+  worth_your_time: string // "Yes/No/Maybe - reason"
+  target_audience: string[] // ["Developers", "Founders", etc.]
+  content_density: string // "Low/Medium/High - description"
+  estimated_value?: string // What you'll gain
+  signal_noise_score: number // 0=Noise, 1=Noteworthy, 2=Insightful, 3=Mind-blowing
+}
+
+// Truth check analysis
+export interface TruthCheckData {
+  overall_rating: "Accurate" | "Mostly Accurate" | "Mixed" | "Questionable" | "Unreliable"
+  issues: Array<{
+    type: "misinformation" | "misleading" | "bias" | "unjustified_certainty" | "missing_context"
+    claim_or_issue: string
+    assessment: string
+    severity: "low" | "medium" | "high"
+  }>
+  strengths: string[]
+  sources_quality: string
+}
+
+// Processing status for summaries
+export type ProcessingStatus =
+  | "pending"
+  | "overview_complete"
+  | "triage_complete"
+  | "truth_check_complete"
+  | "short_summary_complete"
+  | "complete"
+  | "error"
+
 export interface Database {
   public: {
     Tables: {
@@ -69,6 +102,54 @@ export interface Database {
           top_p?: number | null
           max_tokens?: number | null
           model_name?: string | null
+        }
+        Relationships: []
+      }
+      analysis_prompts: {
+        Row: {
+          id: string
+          prompt_type: string
+          name: string
+          description: string | null
+          system_content: string
+          user_content_template: string
+          model_name: string
+          temperature: number | null
+          max_tokens: number | null
+          expect_json: boolean | null
+          is_active: boolean | null
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          prompt_type: string
+          name: string
+          description?: string | null
+          system_content: string
+          user_content_template: string
+          model_name?: string
+          temperature?: number | null
+          max_tokens?: number | null
+          expect_json?: boolean | null
+          is_active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          prompt_type?: string
+          name?: string
+          description?: string | null
+          system_content?: string
+          user_content_template?: string
+          model_name?: string
+          temperature?: number | null
+          max_tokens?: number | null
+          expect_json?: boolean | null
+          is_active?: boolean | null
+          created_at?: string | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -280,28 +361,47 @@ export interface Database {
       }
       summaries: {
         Row: {
-          content_id: string | null
-          created_at: string | null
           id: string
-          mid_length_summary: string | null
+          content_id: string
+          user_id: string
           model_name: string | null
-          user_id: string | null
+          created_at: string
+          updated_at: string | null
+          // Summary sections
+          brief_overview: string | null
+          triage: Json | null // TriageData
+          truth_check: Json | null // TruthCheckData
+          mid_length_summary: string | null // Legacy, kept for compatibility
+          detailed_summary: string | null
+          processing_status: string | null // ProcessingStatus
         }
         Insert: {
-          content_id?: string | null
-          created_at?: string | null
           id?: string
-          mid_length_summary?: string | null
+          content_id: string
+          user_id: string
           model_name?: string | null
-          user_id?: string | null
+          created_at?: string
+          updated_at?: string | null
+          brief_overview?: string | null
+          triage?: Json | null
+          truth_check?: Json | null
+          mid_length_summary?: string | null
+          detailed_summary?: string | null
+          processing_status?: string | null
         }
         Update: {
-          content_id?: string | null
-          created_at?: string | null
           id?: string
-          mid_length_summary?: string | null
+          content_id?: string
+          user_id?: string
           model_name?: string | null
-          user_id?: string | null
+          created_at?: string
+          updated_at?: string | null
+          brief_overview?: string | null
+          triage?: Json | null
+          truth_check?: Json | null
+          mid_length_summary?: string | null
+          detailed_summary?: string | null
+          processing_status?: string | null
         }
         Relationships: [
           {
@@ -378,9 +478,11 @@ export interface Database {
   }
 }
 
-export type Tables<
-  Public extends boolean = true,
-  TableName extends string & keyof Database["public"]["Tables"] = string,
-> = Public extends true
-  ? Database["public"]["Tables"][TableName]["Row"]
-  : Database["public"]["Tables"][TableName]["Insert"]
+export type Tables<TableName extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][TableName]["Row"]
+
+export type TablesInsert<TableName extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][TableName]["Insert"]
+
+export type TablesUpdate<TableName extends keyof Database["public"]["Tables"]> =
+  Database["public"]["Tables"][TableName]["Update"]

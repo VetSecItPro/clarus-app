@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
-import type { Database, Json } from "@/types/supabase"
+import type { Database, Json, Tables, TriageData, TruthCheckData } from "@/types/database.types"
+import { validateContentId, checkRateLimit } from "@/lib/validation"
 
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -387,25 +388,227 @@ async function getModelSummary(
   }
 }
 
+// ============================================
+// NEW: Section Generation Functions for Phase 2
+// Updated in Phase 3 to use database prompts
+// ============================================
+
+type AnalysisPrompt = Tables<"analysis_prompts">
+
+// Cache for prompts (refreshed on each request batch)
+let promptsCache: Map<string, AnalysisPrompt> | null = null
+
+async function fetchPromptFromDB(promptType: string): Promise<AnalysisPrompt | null> {
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase not configured for prompt fetch")
+    return null
+  }
+
+  // Check cache first
+  if (promptsCache?.has(promptType)) {
+    return promptsCache.get(promptType) || null
+  }
+
+  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey)
+
+  const { data, error } = await supabaseAdmin
+    .from("analysis_prompts")
+    .select("*")
+    .eq("prompt_type", promptType)
+    .eq("is_active", true)
+    .single()
+
+  if (error || !data) {
+    console.error(`Failed to fetch prompt ${promptType}:`, error?.message)
+    return null
+  }
+
+  // Cache the prompt
+  if (!promptsCache) promptsCache = new Map()
+  promptsCache.set(promptType, data)
+
+  return data
+}
+
+// Clear cache at start of each processing batch
+function clearPromptsCache() {
+  promptsCache = null
+}
+
+async function generateSectionWithAI(
+  textToAnalyze: string,
+  promptType: string,
+  contentType?: string,
+): Promise<{ content: any; error?: string }> {
+  if (!openRouterApiKey) {
+    return { content: null, error: "OpenRouter API key not configured" }
+  }
+
+  // Fetch prompt from database
+  const prompt = await fetchPromptFromDB(promptType)
+  if (!prompt) {
+    return { content: null, error: `Prompt not found for type: ${promptType}` }
+  }
+
+  // Replace template variables
+  let userContent = prompt.user_content_template
+    .replace("{{CONTENT}}", textToAnalyze)
+    .replace("{{TYPE}}", contentType || "article")
+
+  const requestBody: { [key: string]: any } = {
+    model: prompt.model_name,
+    messages: [
+      { role: "system", content: prompt.system_content },
+      { role: "user", content: userContent },
+    ],
+  }
+
+  if (prompt.temperature !== null) requestBody.temperature = prompt.temperature
+  if (prompt.max_tokens !== null) requestBody.max_tokens = prompt.max_tokens
+  if (prompt.expect_json) requestBody.response_format = { type: "json_object" }
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterApiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://vajra.vercel.app",
+        "X-Title": "Vajra Truth Checker",
+      },
+      body: JSON.stringify(requestBody),
+    })
+
+    if (!response.ok) {
+      const errorBody = await response.text()
+      return { content: null, error: `API Error (${response.status}): ${errorBody}` }
+    }
+
+    const result = await response.json()
+    const rawContent = result.choices[0]?.message?.content
+
+    if (!rawContent) {
+      return { content: null, error: "No content in API response" }
+    }
+
+    if (prompt.expect_json) {
+      try {
+        // Try to parse JSON, handling markdown code blocks
+        const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)\s*```/)
+        if (jsonMatch && jsonMatch[1]) {
+          return { content: JSON.parse(jsonMatch[1]) }
+        }
+        return { content: JSON.parse(rawContent) }
+      } catch (parseError) {
+        return { content: null, error: `JSON parse error: ${parseError}` }
+      }
+    }
+
+    return { content: rawContent }
+  } catch (error: any) {
+    return { content: null, error: error.message }
+  }
+}
+
+async function generateBriefOverview(fullText: string): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview")
+  if (result.error) {
+    console.error(`API: Brief overview generation failed: ${result.error}`)
+    return null
+  }
+  return result.content
+}
+
+async function generateTriage(fullText: string): Promise<TriageData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage")
+  if (result.error) {
+    console.error(`API: Triage generation failed: ${result.error}`)
+    return null
+  }
+  return result.content as TriageData
+}
+
+async function generateTruthCheck(fullText: string): Promise<TruthCheckData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check")
+  if (result.error) {
+    console.error(`API: Truth check generation failed: ${result.error}`)
+    return null
+  }
+  return result.content as TruthCheckData
+}
+
+async function generateDetailedSummary(fullText: string, contentType: string): Promise<string | null> {
+  // Now uses database prompt with {{CONTENT}} and {{TYPE}} placeholders
+  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType)
+  if (result.error) {
+    console.error(`API: Detailed summary generation failed: ${result.error}`)
+    return null
+  }
+  return result.content
+}
+
+// Helper to update summary in database
+async function updateSummarySection(
+  supabase: ReturnType<typeof createClient<Database>>,
+  contentId: string,
+  userId: string,
+  updates: Partial<Database["public"]["Tables"]["summaries"]["Update"]>,
+) {
+  const { error } = await supabase
+    .from("summaries")
+    .upsert(
+      {
+        content_id: contentId,
+        user_id: userId,
+        updated_at: new Date().toISOString(),
+        ...updates,
+      },
+      { onConflict: "content_id" },
+    )
+
+  if (error) {
+    console.error(`Failed to update summary section:`, error)
+    return false
+  }
+  return true
+}
+
+// ============================================
+
 interface ProcessContentRequestBody {
   content_id: string
   force_regenerate?: boolean
 }
 
 export async function POST(req: NextRequest) {
-  const supabase = createClient<Database>(supabaseUrl, supabaseKey)
+  // Rate limiting by IP
+  const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "unknown"
+  const rateLimit = checkRateLimit(`process:${clientIp}`, 30, 60000) // 30 requests per minute
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rateLimit.resetIn / 1000)) } }
+    )
+  }
+
+  // Clear prompts cache for fresh prompts each processing batch
+  clearPromptsCache()
+
+  const supabase = createClient<Database>(supabaseUrl!, supabaseKey!)
 
   let content_id: string
   let force_regenerate: boolean
 
   try {
     const body: ProcessContentRequestBody = await req.json()
-    content_id = body.content_id
     force_regenerate = body.force_regenerate || false
 
-    if (!content_id) {
-      return NextResponse.json({ error: "content_id is required." }, { status: 400 })
+    // Validate content_id
+    const contentIdValidation = validateContentId(body.content_id)
+    if (!contentIdValidation.isValid) {
+      return NextResponse.json({ error: contentIdValidation.error || "Invalid content_id" }, { status: 400 })
     }
+    content_id = contentIdValidation.sanitized!
 
     if (!supabaseUrl || !supabaseKey || !supadataApiKey || !openRouterApiKey || !firecrawlApiKey) {
       return NextResponse.json({ error: "Server configuration error: Missing API keys." }, { status: 500 })
@@ -538,70 +741,114 @@ export async function POST(req: NextRequest) {
     success: boolean
     message: string
     content_id: string
+    sections_generated: string[]
     modelErrors?: ModelProcessingError[]
   } = {
     success: true,
     message: "Content processed successfully.",
     content_id: content.id,
+    sections_generated: [],
   }
 
-  let titleNeedsFixing = !content.title || content.title.startsWith("Processing:")
+  if (!content.user_id) {
+    console.error(`API: user_id is missing on content object with id ${content.id}. Cannot save summary.`)
+    return NextResponse.json(
+      { success: false, message: "Internal error: user_id missing from content.", content_id: content.id },
+      { status: 500 },
+    )
+  }
 
-  console.log(`API: Generating summary...`)
+  // Fix title if needed (using existing logic)
+  let titleNeedsFixing = !content.title || content.title.startsWith("Processing:") || content.title.startsWith("Analyzing:")
+
+  // ============================================
+  // SEQUENTIAL SECTION GENERATION
+  // Each section is saved immediately after generation
+  // so the frontend can poll and see progress
+  // ============================================
+
+  console.log(`API: Starting sequential section generation for content_id: ${content.id}`)
+
+  // 1. BRIEF OVERVIEW (fastest, first to appear)
+  console.log(`API: [1/5] Generating brief overview...`)
+  const briefOverview = await generateBriefOverview(content.full_text)
+  if (briefOverview) {
+    await updateSummarySection(supabase, content.id, content.user_id, {
+      brief_overview: briefOverview,
+      processing_status: "overview_complete",
+    })
+    responsePayload.sections_generated.push("brief_overview")
+    console.log(`API: Brief overview saved.`)
+  }
+
+  // 2. TRIAGE (quality score, audience, worth-it)
+  console.log(`API: [2/5] Generating triage...`)
+  const triage = await generateTriage(content.full_text)
+  if (triage) {
+    await updateSummarySection(supabase, content.id, content.user_id, {
+      triage: triage as unknown as Json,
+      processing_status: "triage_complete",
+    })
+    responsePayload.sections_generated.push("triage")
+    console.log(`API: Triage saved.`)
+  }
+
+  // 3. TRUTH CHECK (bias, accuracy analysis)
+  console.log(`API: [3/5] Generating truth check...`)
+  const truthCheck = await generateTruthCheck(content.full_text)
+  if (truthCheck) {
+    await updateSummarySection(supabase, content.id, content.user_id, {
+      truth_check: truthCheck as unknown as Json,
+      processing_status: "truth_check_complete",
+    })
+    responsePayload.sections_generated.push("truth_check")
+    console.log(`API: Truth check saved.`)
+  }
+
+  // 4. MID-LENGTH SUMMARY (existing behavior, kept for compatibility)
+  console.log(`API: [4/5] Generating mid-length summary...`)
   const summaryResult = await getModelSummary(content.full_text, {
     shouldExtractTitle: titleNeedsFixing,
   })
 
-  if (summaryResult && "error" in summaryResult && summaryResult.error === true) {
-    const modelError = summaryResult as ModelProcessingError
-    if (!responsePayload.modelErrors) responsePayload.modelErrors = []
-    responsePayload.modelErrors.push(modelError)
-    responsePayload.success = false
-    responsePayload.message = "Failed to generate summary."
-  } else {
+  if (summaryResult && !("error" in summaryResult)) {
     const validSummary = summaryResult as ModelSummary
 
+    // Update title if extracted
     if (titleNeedsFixing && validSummary.title) {
       await supabase.from("content").update({ title: validSummary.title }).eq("id", content.id)
-      titleNeedsFixing = false
+      console.log(`API: Title updated from summary.`)
     }
 
     if (validSummary.mid_length_summary) {
-      if (!content.user_id) {
-        console.error(`API: user_id is missing on content object with id ${content.id}. Cannot save summary.`)
-        responsePayload.success = false
-        responsePayload.message = "Internal error: user_id missing from content."
-      } else {
-        console.log(`API: Saving summary to DB for content_id ${content.id}`)
-        const { error: upsertError } = await supabase.from("summaries").upsert(
-          {
-            content_id: content.id,
-            user_id: content.user_id,
-            mid_length_summary: validSummary.mid_length_summary,
-          },
-          { onConflict: "content_id" },
-        )
-
-        if (upsertError) {
-          console.error(`API: Failed to upsert summary into DB:`, upsertError)
-          if (!responsePayload.modelErrors) responsePayload.modelErrors = []
-          responsePayload.modelErrors.push({
-            error: true,
-            modelName: "N/A",
-            reason: "DatabaseUpsertFailed",
-            finalErrorMessage: upsertError.message,
-          })
-          responsePayload.success = false
-          responsePayload.message = "Failed to save summary to database."
-        } else {
-          console.log(`API: Successfully saved summary to DB.`)
-        }
-      }
-    } else {
-      console.warn(`API: Generated summary was null or empty. Not saving to DB.`)
+      await updateSummarySection(supabase, content.id, content.user_id, {
+        mid_length_summary: validSummary.mid_length_summary,
+        processing_status: "short_summary_complete",
+      })
+      responsePayload.sections_generated.push("mid_length_summary")
+      console.log(`API: Mid-length summary saved.`)
     }
+  } else {
+    console.warn(`API: Mid-length summary generation failed, continuing...`)
   }
 
-  console.log(`API: Processing complete for content_id: ${content_id}`)
+  // 5. DETAILED SUMMARY (most comprehensive, slowest)
+  console.log(`API: [5/5] Generating detailed summary...`)
+  const detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article")
+  if (detailedSummary) {
+    await updateSummarySection(supabase, content.id, content.user_id, {
+      detailed_summary: detailedSummary,
+      processing_status: "complete",
+    })
+    responsePayload.sections_generated.push("detailed_summary")
+    console.log(`API: Detailed summary saved.`)
+  } else {
+    // Mark as complete even if detailed summary failed
+    await updateSummarySection(supabase, content.id, content.user_id, {
+      processing_status: "complete",
+    })
+  }
+
+  console.log(`API: Processing complete for content_id: ${content_id}. Sections generated: ${responsePayload.sections_generated.join(", ")}`)
   return NextResponse.json(responsePayload, { status: 200 })
 }
