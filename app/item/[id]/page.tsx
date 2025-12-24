@@ -563,7 +563,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                             {summary.brief_overview}
                           </motion.p>
                         ) : (
-                          <SectionSkeleton lines={3} minHeight="72px" />
+                          <SectionSkeleton lines={5} minHeight="180px" />
                         )}
                       </SectionCard>
                     )}
@@ -582,11 +582,33 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         {summary?.triage ? (
                           <TriageCard triage={summary.triage as unknown as TriageData} />
                         ) : (
-                          <div className="space-y-3" style={{ minHeight: "140px" }}>
-                            <SectionSkeleton lines={2} />
-                            <div className="grid grid-cols-2 gap-3">
-                              <div className="h-20 bg-white/[0.04] rounded-xl animate-pulse" />
-                              <div className="h-20 bg-white/[0.04] rounded-xl animate-pulse" />
+                          <div className="space-y-4" style={{ minHeight: "420px" }}>
+                            {/* Quality Score skeleton */}
+                            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                              <div className="h-4 w-24 bg-white/[0.08] rounded mb-2 animate-pulse" />
+                              <div className="flex items-center gap-4">
+                                <div className="h-10 w-16 bg-white/[0.08] rounded-lg animate-pulse" />
+                                <div className="flex-1 h-3 bg-white/[0.06] rounded-full animate-pulse" />
+                              </div>
+                            </div>
+                            {/* Worth Your Time skeleton */}
+                            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                              <div className="h-4 w-32 bg-white/[0.08] rounded mb-2 animate-pulse" />
+                              <div className="h-12 bg-white/[0.06] rounded-lg animate-pulse" />
+                            </div>
+                            {/* Target Audience skeleton */}
+                            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                              <div className="h-4 w-28 bg-white/[0.08] rounded mb-3 animate-pulse" />
+                              <div className="flex flex-wrap gap-2">
+                                <div className="h-7 w-32 bg-white/[0.06] rounded-full animate-pulse" />
+                                <div className="h-7 w-28 bg-white/[0.06] rounded-full animate-pulse" />
+                                <div className="h-7 w-36 bg-white/[0.06] rounded-full animate-pulse" />
+                              </div>
+                            </div>
+                            {/* Content Density skeleton */}
+                            <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                              <div className="h-4 w-32 bg-white/[0.08] rounded mb-2 animate-pulse" />
+                              <div className="h-10 bg-white/[0.06] rounded-lg animate-pulse" />
                             </div>
                           </div>
                         )}
@@ -610,9 +632,24 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         {summary?.truth_check ? (
                           <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} />
                         ) : (
-                          <div className="space-y-4" style={{ minHeight: "160px" }}>
-                            <div className="h-10 w-36 bg-white/[0.04] rounded-xl animate-pulse" />
-                            <SectionSkeleton lines={4} />
+                          <div className="space-y-4" style={{ minHeight: "280px" }}>
+                            {/* Rating badge skeleton */}
+                            <div className="h-10 w-32 bg-white/[0.08] rounded-full animate-pulse" />
+                            {/* Issues list skeleton */}
+                            <div className="space-y-3">
+                              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                                <div className="h-4 w-full bg-white/[0.06] rounded animate-pulse mb-2" />
+                                <div className="h-4 w-3/4 bg-white/[0.06] rounded animate-pulse" />
+                              </div>
+                              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                                <div className="h-4 w-full bg-white/[0.06] rounded animate-pulse mb-2" />
+                                <div className="h-4 w-2/3 bg-white/[0.06] rounded animate-pulse" />
+                              </div>
+                              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
+                                <div className="h-4 w-full bg-white/[0.06] rounded animate-pulse mb-2" />
+                                <div className="h-4 w-4/5 bg-white/[0.06] rounded animate-pulse" />
+                              </div>
+                            </div>
                           </div>
                         )}
                       </SectionCard>
@@ -638,7 +675,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                             <MarkdownRenderer>{summary.mid_length_summary}</MarkdownRenderer>
                           </motion.div>
                         ) : (
-                          <SectionSkeleton lines={6} minHeight="180px" />
+                          <SectionSkeleton lines={10} minHeight="320px" />
                         )}
                       </SectionCard>
                     )}
