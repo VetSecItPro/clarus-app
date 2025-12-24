@@ -13,10 +13,10 @@ const MARKDOWN_CLASSES = `
 prose prose-sm sm:prose-base max-w-none leading-relaxed
 text-gray-300
 [&_h1]:text-xl [&_h1]:font-semibold [&_h1]:mt-8 [&_h1]:mb-4 [&_h1]:text-gray-100
-[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-8 [&_h2]:mb-4 [&_h2]:text-gray-100
-[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-6 [&_h3]:mb-3 [&_h3]:text-gray-100
-[&_p]:text-gray-300 [&_p]:mb-4
-[&_strong]:text-gray-100
+[&_h2]:text-lg [&_h2]:font-semibold [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-gray-100 [&_h2]:pb-2 [&_h2]:border-b [&_h2]:border-white/10
+[&_h3]:text-base [&_h3]:font-semibold [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-gray-100
+[&_p]:text-gray-300 [&_p]:mb-3 [&_p]:leading-relaxed
+[&_strong]:text-gray-100 [&_strong]:font-semibold
 [&_a]:text-blue-400 hover:[&_a]:underline
 [&_ul]:list-disc [&_ul]:pl-5 [&_ul]:mb-4 [&_ul]:space-y-1
 [&_ul_ul]:list-['◦'] [&_ul_ul]:pl-5 [&_ul_ul]:my-2 [&_ul_ul]:space-y-1
@@ -26,6 +26,9 @@ text-gray-300
 [&_li_p]:mb-1
 [&_li::marker]:text-gray-500
 [&_hr]:my-8 [&_hr]:border-gray-700
+[&_blockquote]:border-l-4 [&_blockquote]:border-[#1d9bf0]/50 [&_blockquote]:pl-4 [&_blockquote]:py-2 [&_blockquote]:my-4 [&_blockquote]:bg-white/[0.03] [&_blockquote]:rounded-r-lg [&_blockquote]:italic [&_blockquote]:text-gray-400
+[&_blockquote_p]:mb-0
+[&_code]:bg-white/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:text-[#1d9bf0]
 `
 
 /**

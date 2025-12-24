@@ -1,19 +1,20 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Play, Trash2, Share2, Loader2, FileText, Sparkles, ChevronDown, ChevronUp, Eye, Shield, Lightbulb, BookOpen } from "lucide-react"
+import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback, useRef, use } from "react"
 import { supabase } from "@/lib/supabase"
-import type { Tables, TriageData, TruthCheckData } from "@/types/database.types"
+import type { Tables, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
 import { formatDistanceToNow } from "date-fns"
 import { useRouter } from "next/navigation"
 import withAuth from "@/components/with-auth"
 import { formatDuration, getYouTubeVideoId, getDomainFromUrl } from "@/lib/utils"
-import { YouTubeEmbed } from "@next/third-parties/google"
 import type { Session } from "@supabase/supabase-js"
 import { EditAIPromptsModal } from "@/components/edit-ai-prompts-modal"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
+import { TranscriptViewer } from "@/components/ui/transcript-viewer"
+import { YouTubePlayer, YouTubePlayerRef } from "@/components/ui/youtube-player"
 import { ChatPanel } from "@/components/chat-panel"
 import { SIGNAL_NOISE_OPTIONS } from "@/constants"
 import { toast } from "sonner"
@@ -21,6 +22,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
 import { TriageCard } from "@/components/ui/triage-card"
 import { TruthCheckCard } from "@/components/ui/truth-check-card"
+import { ActionItemsCard } from "@/components/ui/action-items-card"
+import SiteHeader from "@/components/site-header"
+import SiteFooter from "@/components/site-footer"
+import { ShareModal } from "@/components/share-modal"
 
 interface ItemDetailPageProps {
   params: Promise<{ id: string }>
@@ -39,7 +44,21 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   const [item, setItem] = useState<ContentWithSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [activeMainTab, setActiveMainTab] = useState("summary")
+  const [activeMainTab, setActiveMainTab] = useState(() => {
+    // Read from localStorage on initial load
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("vajra-last-tab") || "summary"
+    }
+    return "summary"
+  })
+
+  // Save tab selection to localStorage
+  const handleTabChange = (tab: string) => {
+    setActiveMainTab(tab)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("vajra-last-tab", tab)
+    }
+  }
   const [isEditPromptModalOpen, setIsEditPromptModalOpen] = useState(false)
   const [processingError, setProcessingError] = useState<string | null>(null)
   const [isRegenerating, setIsRegenerating] = useState(false)
@@ -47,7 +66,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   const [currentUserContentRating, setCurrentUserContentRating] = useState<{ signal_score: number } | null>(null)
   const [isPolling, setIsPolling] = useState(false)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
-  const [isDetailedExpanded, setIsDetailedExpanded] = useState(false)
+  const [isDetailedExpanded, setIsDetailedExpanded] = useState(true)
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const youtubePlayerRef = useRef<YouTubePlayerRef>(null)
 
   const router = useRouter()
 
@@ -105,6 +126,13 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
       toast.error("Failed to delete item")
     }
   }, [item, router])
+
+  // Handler for timestamp clicks in transcript
+  const handleTimestampClick = useCallback((seconds: number) => {
+    if (youtubePlayerRef.current) {
+      youtubePlayerRef.current.seekTo(seconds)
+    }
+  }, [])
 
   const handleRegenerate = useCallback(async () => {
     if (!item) return
@@ -329,8 +357,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   const summary = item.summary
 
   return (
-    <div className="min-h-screen bg-black pb-24">
-      <header className="bg-white/[0.03] backdrop-blur-xl border-b border-white/[0.08] sticky top-0 z-10">
+    <div className="min-h-screen bg-black flex flex-col">
+      <SiteHeader />
+
+      {/* Secondary nav bar with back button and tabs */}
+      <div className="bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.08] sticky top-16 z-10">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between gap-3">
             {/* Left side: Back button + Tab switcher */}
@@ -348,7 +379,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
 
               <div className="flex items-center gap-1 bg-white/[0.04] backdrop-blur-xl p-1 rounded-xl border border-white/[0.08]">
                 <button
-                  onClick={() => setActiveMainTab("summary")}
+                  onClick={() => handleTabChange("summary")}
                   className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
                     activeMainTab === "summary"
                       ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
@@ -358,7 +389,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                   Summary
                 </button>
                 <button
-                  onClick={() => setActiveMainTab("fulltext")}
+                  onClick={() => handleTabChange("fulltext")}
                   className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
                     activeMainTab === "fulltext"
                       ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
@@ -369,41 +400,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </button>
               </div>
             </div>
-
-            {/* Right side: Action buttons */}
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setIsEditPromptModalOpen(true)}
-                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08]"
-                aria-label="Edit AI Prompts"
-              >
-                <Sparkles className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08]"
-                aria-label="Share"
-              >
-                <Share2 className="w-4 h-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-red-500/10 text-red-500 hover:text-red-400 border border-white/[0.08] hover:border-red-500/30"
-                onClick={handleDelete}
-                aria-label="Delete item"
-              >
-                <Trash2 className="w-4 h-4" />
-              </Button>
-            </div>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 pb-24">
         <article className="max-w-2xl mx-auto">
           <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-3 sm:mb-4">
             {item.title || "Processing Title..."}
@@ -450,29 +451,42 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </div>
               ) : (
                 <>
-                  {/* Regenerate Button */}
-                  <div className="flex justify-end mb-4">
+                  {/* Action Buttons */}
+                  <div className="flex justify-end gap-3 mb-4">
+                    <Button
+                      onClick={() => setIsShareModalOpen(true)}
+                      size="sm"
+                      className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 rounded-full px-5 transition-all"
+                    >
+                      <Mail className="mr-2 h-4 w-4" />
+                      Share
+                    </Button>
                     <Button
                       onClick={handleRegenerate}
                       disabled={isRegenerating}
                       size="sm"
-                      className="bg-white/[0.04] hover:bg-white/[0.08] text-gray-300 hover:text-white border border-white/[0.08] rounded-xl backdrop-blur-xl"
+                      className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 rounded-full px-5 transition-all disabled:opacity-50"
                     >
                       {isRegenerating ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating...
                         </>
                       ) : (
-                        "Regenerate All"
+                        <>
+                          <RefreshCw className="mr-2 h-4 w-4" />
+                          Regenerate All
+                        </>
                       )}
                     </Button>
                   </div>
 
                   {/* VIDEO/THUMBNAIL EMBED */}
                   {item.type === "youtube" && videoId && (
-                    <div className="aspect-video w-full rounded-2xl overflow-hidden mb-6">
-                      <YouTubeEmbed videoid={videoId} style="width: 100%; height: 100%;" />
-                    </div>
+                    <YouTubePlayer
+                      ref={youtubePlayerRef}
+                      videoId={videoId}
+                      className="aspect-video w-full rounded-2xl overflow-hidden mb-6"
+                    />
                   )}
                   {item.type === "article" && item.thumbnail_url && (
                     <Image
@@ -567,7 +581,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       <SectionCard
                         title="Key Takeaways"
                         isLoading={isPolling && !summary?.mid_length_summary}
-                        delay={0.3}
+                        delay={0.25}
                         icon={<Lightbulb className="w-4 h-4" />}
                         headerColor="yellow"
                       >
@@ -581,6 +595,29 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                           </motion.div>
                         ) : (
                           <SectionSkeleton lines={4} />
+                        )}
+                      </SectionCard>
+                    )}
+                  </AnimatePresence>
+
+                  {/* 5. ACTION ITEMS */}
+                  <AnimatePresence mode="wait">
+                    {(summary?.action_items || isPolling) && (
+                      <SectionCard
+                        title="Action Items"
+                        isLoading={isPolling && !summary?.action_items}
+                        delay={0.3}
+                        icon={<Target className="w-4 h-4" />}
+                        headerColor="orange"
+                      >
+                        {summary?.action_items ? (
+                          <ActionItemsCard actionItems={summary.action_items as unknown as ActionItemsData} />
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
+                            <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
+                            <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
+                          </div>
                         )}
                       </SectionCard>
                     )}
@@ -604,7 +641,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                     </motion.div>
                   )}
 
-                  {/* 5. DETAILED ANALYSIS (Collapsible) */}
+                  {/* 6. DETAILED ANALYSIS (Collapsible, expanded by default) */}
                   <AnimatePresence mode="wait">
                     {(summary?.detailed_summary || isPolling) && (
                       <motion.div
@@ -723,9 +760,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                   ) : (
                     <>
                       {item.type === "youtube" && videoId && (
-                        <div className="aspect-video w-full rounded-2xl overflow-hidden">
-                          <YouTubeEmbed videoid={videoId} style="width: 100%; height: 100%;" />
-                        </div>
+                        <YouTubePlayer
+                          ref={youtubePlayerRef}
+                          videoId={videoId}
+                          className="aspect-video w-full rounded-2xl overflow-hidden"
+                        />
                       )}
                       {item.type === "article" && (
                         <>
@@ -743,9 +782,17 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         </>
                       )}
                       <div className="mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                        <div className="prose prose-sm prose-invert max-w-none text-white/70 leading-relaxed">
-                          <MarkdownRenderer>{item.full_text}</MarkdownRenderer>
-                        </div>
+                        {item.type === "youtube" && videoId ? (
+                          <TranscriptViewer
+                            transcript={item.full_text}
+                            videoId={videoId}
+                            onTimestampClick={handleTimestampClick}
+                          />
+                        ) : (
+                          <div className="prose prose-sm prose-invert max-w-none text-white/70 leading-relaxed">
+                            <MarkdownRenderer>{item.full_text}</MarkdownRenderer>
+                          </div>
+                        )}
                       </div>
                     </>
                   )}
@@ -758,6 +805,15 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
 
       {session && item && <ChatPanel contentId={item.id} session={session} />}
       <EditAIPromptsModal isOpen={isEditPromptModalOpen} onOpenChange={setIsEditPromptModalOpen} />
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onOpenChange={setIsShareModalOpen}
+        contentTitle={item.title || "Content Analysis"}
+        contentUrl={item.url}
+        briefOverview={summary?.brief_overview || undefined}
+      />
+
+      <SiteFooter />
     </div>
   )
 }

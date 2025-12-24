@@ -2,17 +2,17 @@
 
 import { useState, useRef, useEffect, useMemo } from "react"
 import { ArrowRight, Loader2, Link2, Youtube, FileText, Twitter } from "lucide-react"
-import withAuth from "@/components/with-auth"
 import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
-import TopNavigation from "@/components/top-navigation"
-import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
+import SiteHeader from "@/components/site-header"
+import SiteFooter from "@/components/site-footer"
 import { AddUrlModal } from "@/components/add-url-modal"
 import { supabase } from "@/lib/supabase"
 import { getYouTubeVideoId, isXUrl } from "@/lib/utils"
 import { validateUrl } from "@/lib/validation"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { LandingPage } from "@/components/landing/landing-page"
 
 interface HomePageProps {
   session: Session | null
@@ -193,10 +193,7 @@ function HomePageContent({ session }: HomePageProps) {
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      <header className="flex items-center justify-between p-4 shrink-0">
-        <TopNavigation />
-        <GlasmorphicSettingsButton />
-      </header>
+      <SiteHeader />
 
       <main className="flex-1 flex flex-col items-center justify-center px-6">
         {/* Welcome Message */}
@@ -299,9 +296,49 @@ function HomePageContent({ session }: HomePageProps) {
         </motion.div>
       </main>
 
+      <SiteFooter />
+
       <AddUrlModal isOpen={isAddUrlModalOpen} onOpenChange={setIsAddUrlModalOpen} />
     </div>
   )
 }
 
-export default withAuth(HomePageContent)
+// Main page component that shows landing page for unauthenticated users
+export default function HomePage() {
+  const [session, setSession] = useState<Session | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    // Get initial session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session)
+      setLoading(false)
+    })
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // Show loading state briefly
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+      </div>
+    )
+  }
+
+  // Show landing page for unauthenticated users
+  if (!session) {
+    return <LandingPage />
+  }
+
+  // Show authenticated home page
+  return <HomePageContent session={session} />
+}

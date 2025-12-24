@@ -6,8 +6,8 @@ import withAuth from "@/components/with-auth"
 import { useEffect, useState, useCallback } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
-import TopNavigation from "@/components/top-navigation"
-import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
+import SiteHeader from "@/components/site-header"
+import SiteFooter from "@/components/site-footer"
 import { Search, SlidersHorizontal, Loader2, FileText, Play, Trash2, LayoutGrid, LayoutList, Zap, Clock, Twitter, Sparkles, ChevronDown, ChevronUp, ExternalLink, Star, TrendingUp } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -514,13 +514,10 @@ function HistoryPageContent({ session }: LibraryPageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-black pb-8">
-      <header className="flex items-center justify-between p-4">
-        <TopNavigation />
-        <GlasmorphicSettingsButton />
-      </header>
+    <div className="min-h-screen bg-black flex flex-col">
+      <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-4 pt-4">
+      <main className="flex-1 max-w-2xl mx-auto px-4 pt-4 pb-8 w-full">
         {/* Header with view toggle */}
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-semibold text-white">History</h1>
@@ -659,6 +656,8 @@ function HistoryPageContent({ session }: LibraryPageProps) {
           </div>
         )}
       </main>
+
+      <SiteFooter />
     </div>
   )
 }
