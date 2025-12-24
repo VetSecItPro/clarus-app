@@ -97,7 +97,8 @@ function CommunityPageContent({ session }: { session: Session | null }) {
         .not("content_ratings", "is", "null")
 
       if (debouncedSearch) {
-        query = query.ilike("title", `%${debouncedSearch}%`)
+        // Search across title and full_text using OR
+        query = query.or(`title.ilike.%${debouncedSearch}%,full_text.ilike.%${debouncedSearch}%`)
       }
 
       if (activeType !== "all") {
@@ -396,7 +397,7 @@ function CommunityPageContent({ session }: { session: Session | null }) {
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      <main className="flex-1 max-w-2xl mx-auto px-4 pt-4 pb-8 w-full">
+      <main className="flex-1 max-w-4xl mx-auto px-4 pt-4 pb-8 w-full">
         {/* Header with view toggle */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -432,7 +433,7 @@ function CommunityPageContent({ session }: { session: Session | null }) {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input
               type="text"
-              placeholder="Search community content..."
+              placeholder="Search titles and content..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-white/[0.06] border border-white/[0.08] rounded-2xl text-white placeholder-white/40 focus:outline-none focus:border-white/20 transition-colors"
@@ -528,7 +529,7 @@ function CommunityPageContent({ session }: { session: Session | null }) {
         ) : (
           <div className={cn(
             viewMode === "grid"
-              ? "grid grid-cols-2 gap-3"
+              ? "grid grid-cols-2 lg:grid-cols-3 gap-4"
               : "space-y-4"
           )}>
             {items.map(renderItem)}

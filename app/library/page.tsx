@@ -8,7 +8,7 @@ import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
-import { Search, SlidersHorizontal, Loader2, FileText, Play, Trash2, LayoutGrid, LayoutList, Zap, Clock, Twitter, Sparkles, ChevronDown, ChevronUp, ExternalLink, Star, TrendingUp } from "lucide-react"
+import { Search, SlidersHorizontal, Loader2, FileText, Play, Trash2, LayoutGrid, LayoutList, Zap, Clock, Twitter, Sparkles, ChevronDown, ChevronUp, ExternalLink, Star, TrendingUp, Bookmark, Tag, X } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns"
@@ -31,6 +31,8 @@ type SummaryData = {
 type HistoryItem = ContentItem & {
   content_ratings: { signal_score: number | null }[]
   summaries: SummaryData | SummaryData[]
+  is_bookmarked?: boolean
+  tags?: string[]
 }
 
 interface LibraryPageProps {
@@ -97,11 +99,33 @@ function HistoryPageContent({ session }: LibraryPageProps) {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [bookmarkOnly, setBookmarkOnly] = useState(false)
+  const [togglingBookmark, setTogglingBookmark] = useState<string | null>(null)
+  const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
+  const [selectedTags, setSelectedTags] = useState<string[]>([])
+  const [showTagDropdown, setShowTagDropdown] = useState(false)
 
   useEffect(() => {
     const handler = setTimeout(() => setDebouncedSearch(searchQuery), 400)
     return () => clearTimeout(handler)
   }, [searchQuery])
+
+  // Fetch all tags
+  const fetchAllTags = useCallback(async () => {
+    try {
+      const response = await fetch("/api/tags")
+      const data = await response.json()
+      if (data.success) {
+        setAllTags(data.tags)
+      }
+    } catch (error) {
+      console.error("Error fetching tags:", error)
+    }
+  }, [])
+
+  useEffect(() => {
+    fetchAllTags()
+  }, [fetchAllTags])
 
   const fetchContent = useCallback(async () => {
     if (!session?.user) {
@@ -113,15 +137,20 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     try {
       let query = supabase
         .from("content")
-        .select(`*, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, triage)`)
+        .select(`*, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, triage), tags`)
         .eq("user_id", session.user.id)
 
       if (debouncedSearch) {
-        query = query.ilike("title", `%${debouncedSearch}%`)
+        // Search across title and full_text using OR
+        query = query.or(`title.ilike.%${debouncedSearch}%,full_text.ilike.%${debouncedSearch}%`)
       }
 
       if (filterType !== "all") {
         query = query.eq("type", filterType)
+      }
+
+      if (bookmarkOnly) {
+        query = query.eq("is_bookmarked", true)
       }
 
       // Handle sorting
@@ -154,6 +183,14 @@ function HistoryPageContent({ session }: LibraryPageProps) {
         })
       }
 
+      // Client-side filter for tags
+      if (selectedTags.length > 0) {
+        sortedData = sortedData.filter((item) => {
+          const itemTags = item.tags || []
+          return selectedTags.some((tag) => itemTags.includes(tag))
+        })
+      }
+
       setItems(sortedData)
     } catch (error: unknown) {
       console.error("Error fetching content:", error)
@@ -161,7 +198,7 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     } finally {
       setIsLoading(false)
     }
-  }, [session, debouncedSearch, filterType, sortBy])
+  }, [session, debouncedSearch, filterType, sortBy, bookmarkOnly, selectedTags])
 
   useEffect(() => {
     if (session?.user) fetchContent()
@@ -201,6 +238,34 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     e.preventDefault()
     e.stopPropagation()
     setExpandedId(expandedId === itemId ? null : itemId)
+  }
+
+  const handleToggleBookmark = async (e: React.MouseEvent, item: HistoryItem) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    setTogglingBookmark(item.id)
+    const newValue = !item.is_bookmarked
+
+    try {
+      const response = await fetch(`/api/content/${item.id}/bookmark`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_bookmarked: newValue }),
+      })
+
+      if (!response.ok) throw new Error("Failed to update bookmark")
+
+      setItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, is_bookmarked: newValue } : i))
+      )
+      toast.success(newValue ? "Added to bookmarks" : "Removed from bookmarks")
+    } catch (error) {
+      console.error("Error toggling bookmark:", error)
+      toast.error("Failed to update bookmark")
+    } finally {
+      setTogglingBookmark(null)
+    }
   }
 
   const getSummaryData = (item: HistoryItem): SummaryData | null => {
@@ -304,22 +369,62 @@ function HistoryPageContent({ session }: LibraryPageProps) {
               <h3 className="text-white font-medium text-sm line-clamp-2 mb-1">
                 {item.title || "Processing..."}
               </h3>
-              <p className="text-white/40 text-xs">{getDomain(item.url)}</p>
+              <p className="text-white/40 text-xs mb-1.5">{getDomain(item.url)}</p>
+              {/* Tags */}
+              {item.tags && item.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {item.tags.slice(0, 2).map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[9px] text-purple-400 capitalize"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  {item.tags.length > 2 && (
+                    <span className="text-[9px] text-white/40">+{item.tags.length - 2}</span>
+                  )}
+                </div>
+              )}
             </div>
           </Link>
 
-          {/* Delete button */}
-          <button
-            onClick={(e) => handleDelete(e, item.id)}
-            disabled={deletingId === item.id}
-            className="absolute top-2 right-2 p-1.5 bg-black/60 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/80 transition-all z-10"
-          >
-            {deletingId === item.id ? (
-              <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
-            ) : (
-              <Trash2 className="w-3.5 h-3.5 text-white" />
-            )}
-          </button>
+          {/* Action buttons */}
+          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+            <button
+              onClick={(e) => handleToggleBookmark(e, item)}
+              disabled={togglingBookmark === item.id}
+              className={cn(
+                "p-1.5 rounded-lg transition-all",
+                item.is_bookmarked
+                  ? "bg-amber-500/80 text-white"
+                  : "bg-black/60 hover:bg-amber-500/80"
+              )}
+            >
+              {togglingBookmark === item.id ? (
+                <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+              ) : (
+                <Bookmark className={cn("w-3.5 h-3.5 text-white", item.is_bookmarked && "fill-current")} />
+              )}
+            </button>
+            <button
+              onClick={(e) => handleDelete(e, item.id)}
+              disabled={deletingId === item.id}
+              className="p-1.5 bg-black/60 rounded-lg hover:bg-red-500/80 transition-all"
+            >
+              {deletingId === item.id ? (
+                <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5 text-white" />
+              )}
+            </button>
+          </div>
+          {/* Bookmark indicator when bookmarked */}
+          {item.is_bookmarked && (
+            <div className="absolute top-2 left-2 p-1 bg-amber-500/80 rounded-md z-10">
+              <Bookmark className="w-3 h-3 text-white fill-current" />
+            </div>
+          )}
         </div>
       )
     }
@@ -390,7 +495,7 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                 <p className="text-white/50 text-xs line-clamp-1 mb-1">{summaryPreview}</p>
               )}
 
-              <div className="flex items-center gap-2 text-xs text-white/40">
+              <div className="flex items-center gap-2 text-xs text-white/40 mb-1">
                 <span>{getDomain(item.url)}</span>
                 {item.date_added && (
                   <>
@@ -399,6 +504,22 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                   </>
                 )}
               </div>
+              {/* Tags */}
+              {item.tags && item.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1">
+                  {item.tags.slice(0, 3).map((tag) => (
+                    <span
+                      key={tag}
+                      className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[10px] text-purple-400 capitalize"
+                    >
+                      {tag}
+                    </span>
+                  ))}
+                  {item.tags.length > 3 && (
+                    <span className="text-[10px] text-white/40">+{item.tags.length - 3}</span>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Expand/collapse button */}
@@ -480,6 +601,23 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                 View Full Analysis
               </Link>
               <button
+                onClick={(e) => handleToggleBookmark(e, item)}
+                disabled={togglingBookmark === item.id}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm",
+                  item.is_bookmarked
+                    ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
+                    : "bg-white/[0.06] text-white/60 hover:bg-amber-500/20 hover:text-amber-400"
+                )}
+              >
+                {togglingBookmark === item.id ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Bookmark className={cn("w-3.5 h-3.5", item.is_bookmarked && "fill-current")} />
+                )}
+                {item.is_bookmarked ? "Bookmarked" : "Bookmark"}
+              </button>
+              <button
                 onClick={(e) => handleDelete(e, item.id)}
                 disabled={deletingId === item.id}
                 className="flex items-center gap-2 px-4 py-2 bg-white/[0.06] hover:bg-red-500/20 text-white/60 hover:text-red-400 rounded-xl transition-all text-sm"
@@ -495,19 +633,43 @@ function HistoryPageContent({ session }: LibraryPageProps) {
           </div>
         )}
 
-        {/* Delete button - only show when collapsed */}
+        {/* Action buttons - only show when collapsed */}
         {!isExpanded && (
-          <button
-            onClick={(e) => handleDelete(e, item.id)}
-            disabled={deletingId === item.id}
-            className="absolute top-3 right-3 p-2 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-red-500/20 transition-all"
-          >
-            {deletingId === item.id ? (
-              <Loader2 className="w-4 h-4 text-white/60 animate-spin" />
-            ) : (
-              <Trash2 className="w-4 h-4 text-white/40 hover:text-red-400" />
-            )}
-          </button>
+          <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+            <button
+              onClick={(e) => handleToggleBookmark(e, item)}
+              disabled={togglingBookmark === item.id}
+              className={cn(
+                "p-2 rounded-lg transition-all",
+                item.is_bookmarked
+                  ? "bg-amber-500/20 text-amber-400"
+                  : "hover:bg-amber-500/20 text-white/40 hover:text-amber-400"
+              )}
+            >
+              {togglingBookmark === item.id ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Bookmark className={cn("w-4 h-4", item.is_bookmarked && "fill-current")} />
+              )}
+            </button>
+            <button
+              onClick={(e) => handleDelete(e, item.id)}
+              disabled={deletingId === item.id}
+              className="p-2 rounded-lg hover:bg-red-500/20 transition-all"
+            >
+              {deletingId === item.id ? (
+                <Loader2 className="w-4 h-4 text-white/60 animate-spin" />
+              ) : (
+                <Trash2 className="w-4 h-4 text-white/40 hover:text-red-400" />
+              )}
+            </button>
+          </div>
+        )}
+        {/* Bookmark indicator - always visible when bookmarked */}
+        {item.is_bookmarked && !isExpanded && (
+          <div className="absolute top-3 left-3">
+            <Bookmark className="w-4 h-4 text-amber-400 fill-current" />
+          </div>
         )}
       </div>
     )
@@ -517,10 +679,13 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      <main className="flex-1 max-w-2xl mx-auto px-4 pt-4 pb-8 w-full">
+      <main className="flex-1 max-w-4xl mx-auto px-4 pt-4 pb-8 w-full">
         {/* Header with view toggle */}
         <div className="flex items-center justify-between mb-6">
-          <h1 className="text-2xl font-semibold text-white">History</h1>
+          <div>
+            <h1 className="text-2xl font-semibold text-white mb-1">Library</h1>
+            <p className="text-white/50 text-sm">Your analyzed content</p>
+          </div>
           <div className="flex items-center gap-1 p-1 bg-white/[0.06] rounded-lg">
             <button
               onClick={() => setViewMode("list")}
@@ -550,21 +715,116 @@ function HistoryPageContent({ session }: LibraryPageProps) {
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
             <input
               type="text"
-              placeholder="Search your history..."
+              placeholder="Search titles and content..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-11 pr-4 py-3 bg-white/[0.06] border border-white/[0.08] rounded-2xl text-white placeholder-white/40 focus:outline-none focus:border-white/20 transition-colors"
             />
           </div>
 
-          {/* Filter Toggle */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-white/[0.06] border border-white/[0.08] rounded-xl text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-sm"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filters
-          </button>
+          {/* Filter Toggle & Bookmark Filter & Tags */}
+          <div className="flex items-center gap-2 flex-wrap">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="flex items-center gap-2 px-4 py-2 bg-white/[0.06] border border-white/[0.08] rounded-xl text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-sm"
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+              Filters
+            </button>
+            <button
+              onClick={() => setBookmarkOnly(!bookmarkOnly)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all",
+                bookmarkOnly
+                  ? "bg-amber-500/20 border border-amber-500/30 text-amber-400"
+                  : "bg-white/[0.06] border border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
+              )}
+            >
+              <Bookmark className={cn("w-4 h-4", bookmarkOnly && "fill-current")} />
+              Bookmarked
+            </button>
+
+            {/* Tags dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setShowTagDropdown(!showTagDropdown)}
+                className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all",
+                  selectedTags.length > 0
+                    ? "bg-purple-500/20 border border-purple-500/30 text-purple-400"
+                    : "bg-white/[0.06] border border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
+                )}
+              >
+                <Tag className="w-4 h-4" />
+                Tags {selectedTags.length > 0 && `(${selectedTags.length})`}
+                <ChevronDown className={cn("w-3 h-3 transition-transform", showTagDropdown && "rotate-180")} />
+              </button>
+
+              {showTagDropdown && (
+                <div className="absolute top-full left-0 mt-2 w-56 max-h-64 overflow-y-auto bg-black/95 border border-white/[0.1] rounded-xl shadow-xl z-50">
+                  {allTags.length === 0 ? (
+                    <div className="p-3 text-white/50 text-sm text-center">
+                      No tags yet
+                    </div>
+                  ) : (
+                    <div className="p-2 space-y-1">
+                      {allTags.map(({ tag, count }) => (
+                        <button
+                          key={tag}
+                          onClick={() => {
+                            if (selectedTags.includes(tag)) {
+                              setSelectedTags(selectedTags.filter((t) => t !== tag))
+                            } else {
+                              setSelectedTags([...selectedTags, tag])
+                            }
+                          }}
+                          className={cn(
+                            "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all",
+                            selectedTags.includes(tag)
+                              ? "bg-purple-500/20 text-purple-400"
+                              : "hover:bg-white/[0.06] text-white/60"
+                          )}
+                        >
+                          <span className="capitalize">{tag}</span>
+                          <span className="text-xs text-white/40">{count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {selectedTags.length > 0 && (
+                    <div className="border-t border-white/[0.08] p-2">
+                      <button
+                        onClick={() => setSelectedTags([])}
+                        className="w-full text-center py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
+                      >
+                        Clear all
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Selected tags display */}
+            {selectedTags.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {selectedTags.map((tag) => (
+                  <span
+                    key={tag}
+                    className="flex items-center gap-1 px-2 py-1 bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-400"
+                  >
+                    <span className="capitalize">{tag}</span>
+                    <button
+                      onClick={() => setSelectedTags(selectedTags.filter((t) => t !== tag))}
+                      className="hover:text-white transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+          </div>
 
           {/* Filter Options */}
           {showFilters && (
@@ -618,7 +878,7 @@ function HistoryPageContent({ session }: LibraryPageProps) {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin mb-4" />
-            <p className="text-white/40 text-sm">Loading your history...</p>
+            <p className="text-white/40 text-sm">Loading your library...</p>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">
@@ -646,7 +906,7 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                 </h2>
                 <div className={cn(
                   viewMode === "grid"
-                    ? "grid grid-cols-2 gap-3"
+                    ? "grid grid-cols-2 lg:grid-cols-3 gap-4"
                     : "space-y-3"
                 )}>
                   {group.items.map(renderItem)}

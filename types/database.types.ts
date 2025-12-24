@@ -211,6 +211,7 @@ export interface Database {
           duration: number | null
           full_text: string | null
           id: string
+          is_bookmarked: boolean | null
           like_count: number | null
           raw_youtube_metadata: Json | null
           thumbnail_url: string | null
@@ -221,6 +222,7 @@ export interface Database {
           url: string
           user_id: string | null
           view_count: number | null
+          tags: string[] | null
         }
         Insert: {
           author?: string | null
@@ -230,6 +232,7 @@ export interface Database {
           duration?: number | null
           full_text?: string | null
           id?: string
+          is_bookmarked?: boolean | null
           like_count?: number | null
           raw_youtube_metadata?: Json | null
           thumbnail_url?: string | null
@@ -240,6 +243,7 @@ export interface Database {
           url: string
           user_id?: string | null
           view_count?: number | null
+          tags?: string[] | null
         }
         Update: {
           author?: string | null
@@ -249,6 +253,7 @@ export interface Database {
           duration?: number | null
           full_text?: string | null
           id?: string
+          is_bookmarked?: boolean | null
           like_count?: number | null
           raw_youtube_metadata?: Json | null
           thumbnail_url?: string | null
@@ -259,6 +264,7 @@ export interface Database {
           url?: string
           user_id?: string | null
           view_count?: number | null
+          tags?: string[] | null
         }
         Relationships: [
           {
@@ -268,6 +274,46 @@ export interface Database {
             referencedColumns: ["id"]
           },
         ]
+      }
+      domains: {
+        Row: {
+          domain: string
+          total_analyses: number
+          total_quality_score: number
+          avg_quality_score: number | null
+          accurate_count: number
+          mostly_accurate_count: number
+          mixed_count: number
+          questionable_count: number
+          unreliable_count: number
+          first_seen: string
+          last_seen: string
+        }
+        Insert: {
+          domain: string
+          total_analyses?: number
+          total_quality_score?: number
+          accurate_count?: number
+          mostly_accurate_count?: number
+          mixed_count?: number
+          questionable_count?: number
+          unreliable_count?: number
+          first_seen?: string
+          last_seen?: string
+        }
+        Update: {
+          domain?: string
+          total_analyses?: number
+          total_quality_score?: number
+          accurate_count?: number
+          mostly_accurate_count?: number
+          mixed_count?: number
+          questionable_count?: number
+          unreliable_count?: number
+          first_seen?: string
+          last_seen?: string
+        }
+        Relationships: []
       }
       content_ratings: {
         Row: {
@@ -487,7 +533,20 @@ export interface Database {
       }
     }
     Views: { [_ in never]: never }
-    Functions: { [_ in never]: never }
+    Functions: {
+      upsert_domain_stats: {
+        Args: {
+          p_domain: string
+          p_quality_score: number
+          p_accurate?: number
+          p_mostly_accurate?: number
+          p_mixed?: number
+          p_questionable?: number
+          p_unreliable?: number
+        }
+        Returns: undefined
+      }
+    }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }
   }

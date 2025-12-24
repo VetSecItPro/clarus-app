@@ -615,6 +615,66 @@ async function updateSummarySection(
   return true
 }
 
+// Helper to extract domain from URL
+function extractDomain(url: string): string | null {
+  try {
+    const urlObj = new URL(url)
+    return urlObj.hostname.replace("www.", "")
+  } catch {
+    return null
+  }
+}
+
+// Helper to update domain credibility stats
+async function updateDomainStats(
+  supabase: ReturnType<typeof createClient<Database>>,
+  url: string,
+  triage: TriageData | null,
+  truthCheck: TruthCheckData | null
+) {
+  const domain = extractDomain(url)
+  if (!domain) return
+
+  const qualityScore = triage?.quality_score || 0
+  const rating = truthCheck?.overall_rating
+
+  // Build the update object
+  const ratingColumn = rating ? {
+    accurate_count: rating === "Accurate" ? 1 : 0,
+    mostly_accurate_count: rating === "Mostly Accurate" ? 1 : 0,
+    mixed_count: rating === "Mixed" ? 1 : 0,
+    questionable_count: rating === "Questionable" ? 1 : 0,
+    unreliable_count: rating === "Unreliable" ? 1 : 0,
+  } : {}
+
+  // Try to upsert domain stats
+  const { error } = await supabase.rpc("upsert_domain_stats", {
+    p_domain: domain,
+    p_quality_score: qualityScore,
+    p_accurate: rating === "Accurate" ? 1 : 0,
+    p_mostly_accurate: rating === "Mostly Accurate" ? 1 : 0,
+    p_mixed: rating === "Mixed" ? 1 : 0,
+    p_questionable: rating === "Questionable" ? 1 : 0,
+    p_unreliable: rating === "Unreliable" ? 1 : 0,
+  })
+
+  if (error) {
+    // Fallback: try simple upsert
+    console.warn(`Domain stats RPC failed, using fallback:`, error)
+    await supabase.from("domains").upsert({
+      domain,
+      total_analyses: 1,
+      total_quality_score: qualityScore,
+      ...(rating === "Accurate" && { accurate_count: 1 }),
+      ...(rating === "Mostly Accurate" && { mostly_accurate_count: 1 }),
+      ...(rating === "Mixed" && { mixed_count: 1 }),
+      ...(rating === "Questionable" && { questionable_count: 1 }),
+      ...(rating === "Unreliable" && { unreliable_count: 1 }),
+      last_seen: new Date().toISOString(),
+    }, { onConflict: "domain" })
+  }
+}
+
 // ============================================
 
 interface ProcessContentRequestBody {
@@ -845,6 +905,12 @@ export async function POST(req: NextRequest) {
     })
     responsePayload.sections_generated.push("truth_check")
     console.log(`API: Truth check saved.`)
+  }
+
+  // Update domain credibility stats
+  if (content.url) {
+    await updateDomainStats(supabase, content.url, triage, truthCheck)
+    console.log(`API: Domain stats updated for ${content.url}`)
   }
 
   // 4. ACTION ITEMS (actionable takeaways)
