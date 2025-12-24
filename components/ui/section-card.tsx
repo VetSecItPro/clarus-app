@@ -4,7 +4,7 @@ import { motion } from "framer-motion"
 import { Loader2 } from "lucide-react"
 import { ReactNode } from "react"
 
-type HeaderColor = "blue" | "amber" | "emerald" | "yellow" | "violet" | "default"
+type HeaderColor = "blue" | "amber" | "emerald" | "yellow" | "violet" | "orange" | "default"
 
 interface SectionCardProps {
   title: string
@@ -40,6 +40,11 @@ const headerColorStyles: Record<HeaderColor, { bg: string; border: string; text:
     bg: "bg-violet-500/15",
     border: "border-violet-500/20",
     text: "text-violet-300",
+  },
+  orange: {
+    bg: "bg-orange-500/15",
+    border: "border-orange-500/20",
+    text: "text-orange-300",
   },
   default: {
     bg: "",
