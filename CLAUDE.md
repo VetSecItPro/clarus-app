@@ -65,6 +65,7 @@ users, content, content_ratings, chat_threads, chat_messages, summaries, active_
 
 ## Workflow Rules
 - **Always explain what you're doing before doing it** - User wants to understand actions before they're taken
+- **Always create a todo list for any task** - Turn every request into a todo list and implement items one by one so progress can be tracked
 - Delete dead/unused code when found
 - Run typecheck before committing
 

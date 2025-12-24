@@ -6,8 +6,8 @@ import withAuth from "@/components/with-auth"
 import { useEffect, useState, useCallback } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
-import TopNavigation from "@/components/top-navigation"
-import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
+import SiteHeader from "@/components/site-header"
+import SiteFooter from "@/components/site-footer"
 import { formatDistanceToNow } from "date-fns"
 import { Search, Loader2, User, Play, FileText, Users, SlidersHorizontal, LayoutGrid, LayoutList, Zap, ChevronDown, ChevronUp, ExternalLink, Star, Twitter, Sparkles } from "lucide-react"
 import Link from "next/link"
@@ -393,13 +393,10 @@ function CommunityPageContent({ session }: { session: Session | null }) {
   }
 
   return (
-    <div className="min-h-screen bg-black pb-8">
-      <header className="flex items-center justify-between p-4">
-        <TopNavigation />
-        <GlasmorphicSettingsButton />
-      </header>
+    <div className="min-h-screen bg-black flex flex-col">
+      <SiteHeader />
 
-      <main className="max-w-2xl mx-auto px-4 pt-4">
+      <main className="flex-1 max-w-2xl mx-auto px-4 pt-4 pb-8 w-full">
         {/* Header with view toggle */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -538,6 +535,8 @@ function CommunityPageContent({ session }: { session: Session | null }) {
           </div>
         )}
       </main>
+
+      <SiteFooter />
     </div>
   )
 }

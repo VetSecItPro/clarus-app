@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Shield, AlertTriangle, CheckCircle2, XCircle, AlertCircle, HelpCircle } from "lucide-react"
+import { Shield, AlertTriangle, CheckCircle2, XCircle, AlertCircle, HelpCircle, Clock } from "lucide-react"
 import type { TruthCheckData } from "@/types/database.types"
 
 interface TruthCheckCardProps {
@@ -110,7 +110,13 @@ export function TruthCheckCard({ truthCheck }: TruthCheckCardProps) {
                     <div className="text-xs text-white/60 mb-2">
                       {issue.assessment}
                     </div>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      {issue.timestamp && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                          <Clock className="w-2.5 h-2.5" />
+                          {issue.timestamp}
+                        </span>
+                      )}
                       <span className={`px-2 py-0.5 text-[10px] font-medium rounded-md border ${getSeverityStyle(issue.severity)}`}>
                         {issue.severity}
                       </span>
