@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw } from "lucide-react"
+import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback, useRef, use } from "react"
 import { supabase } from "@/lib/supabase"
@@ -69,6 +69,20 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   const [isDetailedExpanded, setIsDetailedExpanded] = useState(true)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
   const youtubePlayerRef = useRef<YouTubePlayerRef>(null)
+  const [domainStats, setDomainStats] = useState<{
+    total_analyses: number
+    avg_quality_score: number | null
+    accurate_count: number
+    mostly_accurate_count: number
+    mixed_count: number
+    questionable_count: number
+    unreliable_count: number
+  } | null>(null)
+  const [tags, setTags] = useState<string[]>([])
+  const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
+  const [newTagInput, setNewTagInput] = useState("")
+  const [showTagInput, setShowTagInput] = useState(false)
+  const [isAddingTag, setIsAddingTag] = useState(false)
 
   const router = useRouter()
 
@@ -283,6 +297,110 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
     }
   }, [isPolling, fetchContentData, isContentProcessing])
 
+  // Fetch domain credibility stats
+  useEffect(() => {
+    const fetchDomainStats = async () => {
+      if (!item?.url) return
+
+      const domain = getDomainFromUrl(item.url)
+      if (!domain) return
+
+      const { data } = await supabase
+        .from("domains")
+        .select("total_analyses, avg_quality_score, accurate_count, mostly_accurate_count, mixed_count, questionable_count, unreliable_count")
+        .eq("domain", domain)
+        .maybeSingle()
+
+      if (data) {
+        setDomainStats(data)
+      }
+    }
+
+    fetchDomainStats()
+  }, [item?.url])
+
+  // Fetch tags when item loads
+  useEffect(() => {
+    if (item?.tags) {
+      setTags(item.tags as string[] || [])
+    }
+  }, [item?.tags])
+
+  // Fetch all available tags for autocomplete
+  useEffect(() => {
+    const fetchAllTags = async () => {
+      try {
+        const response = await fetch("/api/tags")
+        const data = await response.json()
+        if (data.success) {
+          setAllTags(data.tags)
+        }
+      } catch (error) {
+        console.error("Error fetching tags:", error)
+      }
+    }
+    fetchAllTags()
+  }, [])
+
+  // Handle adding a tag
+  const handleAddTag = async (tagToAdd: string) => {
+    if (!item || !tagToAdd.trim()) return
+    const sanitizedTag = tagToAdd.trim().toLowerCase()
+    if (tags.includes(sanitizedTag)) {
+      setNewTagInput("")
+      setShowTagInput(false)
+      return
+    }
+
+    setIsAddingTag(true)
+    try {
+      const response = await fetch(`/api/content/${item.id}/tags`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "add", tag: sanitizedTag }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setTags(data.data.tags)
+        setNewTagInput("")
+        setShowTagInput(false)
+        toast.success(`Tag "${sanitizedTag}" added`)
+      } else {
+        toast.error(data.error || "Failed to add tag")
+      }
+    } catch {
+      toast.error("Failed to add tag")
+    } finally {
+      setIsAddingTag(false)
+    }
+  }
+
+  // Handle removing a tag
+  const handleRemoveTag = async (tagToRemove: string) => {
+    if (!item) return
+    try {
+      const response = await fetch(`/api/content/${item.id}/tags`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "remove", tag: tagToRemove }),
+      })
+      const data = await response.json()
+      if (data.success) {
+        setTags(data.data.tags)
+        toast.success(`Tag "${tagToRemove}" removed`)
+      } else {
+        toast.error(data.error || "Failed to remove tag")
+      }
+    } catch {
+      toast.error("Failed to remove tag")
+    }
+  }
+
+  // Filter suggestions for autocomplete
+  const tagSuggestions = allTags
+    .filter(({ tag }) => !tags.includes(tag) && tag.includes(newTagInput.toLowerCase()))
+    .slice(0, 5)
+
   const renderSignalNoiseRating = () => {
     const triage = item?.summary?.triage as unknown as TriageData | null
     const aiSuggestedScore = triage?.signal_noise_score
@@ -486,6 +604,161 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                     <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{displaySavedAt}</span>
                   </div>
                 </div>
+
+                {/* Tags Management */}
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Tag className="w-4 h-4 text-purple-400" />
+                      <h3 className="text-sm font-semibold text-white">Tags</h3>
+                    </div>
+                    {!showTagInput && (
+                      <button
+                        onClick={() => setShowTagInput(true)}
+                        className="flex items-center gap-1 px-2 py-1 text-xs text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 rounded-lg transition-all"
+                      >
+                        <Plus className="w-3 h-3" />
+                        Add
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Tag input with autocomplete */}
+                  {showTagInput && (
+                    <div className="relative mb-3">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          value={newTagInput}
+                          onChange={(e) => setNewTagInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && newTagInput.trim()) {
+                              handleAddTag(newTagInput)
+                            } else if (e.key === "Escape") {
+                              setShowTagInput(false)
+                              setNewTagInput("")
+                            }
+                          }}
+                          placeholder="Type a tag..."
+                          className="flex-1 px-3 py-2 bg-white/[0.06] border border-white/[0.12] rounded-lg text-sm text-white placeholder-white/40 focus:outline-none focus:border-purple-500/50"
+                          autoFocus
+                        />
+                        <button
+                          onClick={() => handleAddTag(newTagInput)}
+                          disabled={!newTagInput.trim() || isAddingTag}
+                          className="px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg text-sm transition-all disabled:opacity-50"
+                        >
+                          {isAddingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowTagInput(false)
+                            setNewTagInput("")
+                          }}
+                          className="p-2 text-white/40 hover:text-white/60 transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Autocomplete suggestions */}
+                      {newTagInput && tagSuggestions.length > 0 && (
+                        <div className="absolute top-full left-0 right-12 mt-1 bg-black/95 border border-white/[0.1] rounded-lg shadow-xl z-10 overflow-hidden">
+                          {tagSuggestions.map(({ tag, count }) => (
+                            <button
+                              key={tag}
+                              onClick={() => handleAddTag(tag)}
+                              className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-white/[0.06] transition-colors"
+                            >
+                              <span className="text-white/80 capitalize">{tag}</span>
+                              <span className="text-xs text-white/40">{count}</span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Current tags */}
+                  {tags.length > 0 ? (
+                    <div className="flex flex-wrap gap-2">
+                      {tags.map((tag) => (
+                        <span
+                          key={tag}
+                          className="group flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300"
+                        >
+                          <span className="capitalize">{tag}</span>
+                          <button
+                            onClick={() => handleRemoveTag(tag)}
+                            className="opacity-50 hover:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-white/40">No tags yet. Add tags to organize your content.</p>
+                  )}
+                </div>
+
+                {/* Domain Credibility */}
+                {domainStats && domainStats.total_analyses > 0 && (
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Shield className="w-4 h-4 text-blue-400" />
+                      <h3 className="text-sm font-semibold text-white">Source Credibility</h3>
+                    </div>
+                    <div className="space-y-2">
+                      <p className="text-xs text-gray-400">
+                        <span className="text-white font-medium">{displayDomain}</span> has been analyzed{" "}
+                        <span className="text-white font-medium">{domainStats.total_analyses}</span> time{domainStats.total_analyses !== 1 ? "s" : ""}
+                      </p>
+                      {domainStats.avg_quality_score !== null && (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-gray-400">Avg Quality:</span>
+                          <div className="flex-1 h-1.5 bg-white/[0.1] rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full"
+                              style={{ width: `${(domainStats.avg_quality_score / 10) * 100}%` }}
+                            />
+                          </div>
+                          <span className="text-xs font-medium text-white">{domainStats.avg_quality_score.toFixed(1)}/10</span>
+                        </div>
+                      )}
+                      {/* Accuracy breakdown */}
+                      {(domainStats.accurate_count + domainStats.mostly_accurate_count + domainStats.mixed_count + domainStats.questionable_count + domainStats.unreliable_count) > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {domainStats.accurate_count > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                              {domainStats.accurate_count} Accurate
+                            </span>
+                          )}
+                          {domainStats.mostly_accurate_count > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                              {domainStats.mostly_accurate_count} Mostly Accurate
+                            </span>
+                          )}
+                          {domainStats.mixed_count > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                              {domainStats.mixed_count} Mixed
+                            </span>
+                          )}
+                          {domainStats.questionable_count > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                              {domainStats.questionable_count} Questionable
+                            </span>
+                          )}
+                          {domainStats.unreliable_count > 0 && (
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                              {domainStats.unreliable_count} Unreliable
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {/* Action buttons */}
                 <div className="flex gap-3">

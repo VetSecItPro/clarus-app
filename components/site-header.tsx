@@ -8,7 +8,7 @@ import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
-  { href: "/library", label: "History", icon: Clock },
+  { href: "/library", label: "Library", icon: Clock },
   { href: "/feed", label: "Community", icon: Users },
 ]
 

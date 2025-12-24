@@ -8,7 +8,7 @@ import BlueCheckLogo from "@/components/blue-check-logo"
 
 const navItems = [
   { href: "/", label: "Home", icon: null, isLogo: true },
-  { href: "/library", label: "History", icon: Clock, isLogo: false },
+  { href: "/library", label: "Library", icon: Clock, isLogo: false },
   { href: "/feed", label: "Community", icon: Users, isLogo: false },
 ]
 
