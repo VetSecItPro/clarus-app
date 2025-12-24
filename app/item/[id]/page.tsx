@@ -431,7 +431,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
           /* Split-screen layout for YouTube and Articles */
           <div className="lg:flex lg:gap-8">
             {/* LEFT PANEL: Sticky media + metadata */}
-            <aside className="lg:w-[420px] lg:flex-shrink-0 mb-6 lg:mb-0">
+            <aside className="lg:w-[480px] lg:flex-shrink-0 mb-6 lg:mb-0">
               <div className="lg:sticky lg:top-28 space-y-4">
                 {/* Video or Thumbnail */}
                 <div className="rounded-2xl overflow-hidden border border-white/[0.08]">
@@ -563,7 +563,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                             {summary.brief_overview}
                           </motion.p>
                         ) : (
-                          <SectionSkeleton lines={2} />
+                          <SectionSkeleton lines={3} minHeight="72px" />
                         )}
                       </SectionCard>
                     )}
@@ -582,11 +582,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         {summary?.triage ? (
                           <TriageCard triage={summary.triage as unknown as TriageData} />
                         ) : (
-                          <div className="space-y-3">
-                            <SectionSkeleton lines={1} />
+                          <div className="space-y-3" style={{ minHeight: "140px" }}>
+                            <SectionSkeleton lines={2} />
                             <div className="grid grid-cols-2 gap-3">
-                              <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
-                              <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
+                              <div className="h-20 bg-white/[0.04] rounded-xl animate-pulse" />
+                              <div className="h-20 bg-white/[0.04] rounded-xl animate-pulse" />
                             </div>
                           </div>
                         )}
@@ -610,9 +610,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         {summary?.truth_check ? (
                           <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} />
                         ) : (
-                          <div className="space-y-3">
-                            <div className="h-10 w-32 bg-white/[0.04] rounded-xl animate-pulse" />
-                            <SectionSkeleton lines={2} />
+                          <div className="space-y-4" style={{ minHeight: "160px" }}>
+                            <div className="h-10 w-36 bg-white/[0.04] rounded-xl animate-pulse" />
+                            <SectionSkeleton lines={4} />
                           </div>
                         )}
                       </SectionCard>
@@ -638,7 +638,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                             <MarkdownRenderer>{summary.mid_length_summary}</MarkdownRenderer>
                           </motion.div>
                         ) : (
-                          <SectionSkeleton lines={4} />
+                          <SectionSkeleton lines={6} minHeight="180px" />
                         )}
                       </SectionCard>
                     )}
@@ -657,10 +657,10 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         {summary?.action_items ? (
                           <ActionItemsCard actionItems={summary.action_items as unknown as ActionItemsData} />
                         ) : (
-                          <div className="space-y-3">
-                            <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
-                            <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
-                            <div className="h-16 bg-white/[0.04] rounded-xl animate-pulse" />
+                          <div className="space-y-3" style={{ minHeight: "220px" }}>
+                            <div className="h-[68px] bg-white/[0.04] rounded-xl animate-pulse" />
+                            <div className="h-[68px] bg-white/[0.04] rounded-xl animate-pulse" />
+                            <div className="h-[68px] bg-white/[0.04] rounded-xl animate-pulse" />
                           </div>
                         )}
                       </SectionCard>
@@ -733,8 +733,8 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         </AnimatePresence>
 
                         {!summary?.detailed_summary && isPolling && (
-                          <div className="px-4 sm:px-5 py-4 sm:py-5 border-t border-white/[0.06]">
-                            <SectionSkeleton lines={5} />
+                          <div className="px-4 sm:px-5 py-4 sm:py-5 border-t border-white/[0.06]" style={{ minHeight: "280px" }}>
+                            <SectionSkeleton lines={8} minHeight="220px" />
                             <p className="text-white/40 text-xs mt-4 flex items-center gap-2">
                               <Loader2 className="w-3 h-3 animate-spin" />
                               Generating detailed analysis...
