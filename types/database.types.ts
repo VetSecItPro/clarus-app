@@ -18,10 +18,21 @@ export interface TruthCheckData {
     claim_or_issue: string
     assessment: string
     severity: "low" | "medium" | "high"
+    timestamp?: string // e.g., "2:34" for YouTube videos
   }>
   strengths: string[]
   sources_quality: string
 }
+
+// Action items extracted from content
+export interface ActionItemData {
+  title: string // Short actionable title
+  description: string // How to implement this
+  priority: "high" | "medium" | "low" // Implementation priority
+  category?: string // e.g., "Strategy", "Technical", "Mindset"
+}
+
+export type ActionItemsData = ActionItemData[]
 
 // Processing status for summaries
 export type ProcessingStatus =
@@ -29,6 +40,7 @@ export type ProcessingStatus =
   | "overview_complete"
   | "triage_complete"
   | "truth_check_complete"
+  | "action_items_complete"
   | "short_summary_complete"
   | "complete"
   | "error"
@@ -371,6 +383,7 @@ export interface Database {
           brief_overview: string | null
           triage: Json | null // TriageData
           truth_check: Json | null // TruthCheckData
+          action_items: Json | null // ActionItemsData
           mid_length_summary: string | null // Legacy, kept for compatibility
           detailed_summary: string | null
           processing_status: string | null // ProcessingStatus
@@ -385,6 +398,7 @@ export interface Database {
           brief_overview?: string | null
           triage?: Json | null
           truth_check?: Json | null
+          action_items?: Json | null
           mid_length_summary?: string | null
           detailed_summary?: string | null
           processing_status?: string | null
@@ -399,6 +413,7 @@ export interface Database {
           brief_overview?: string | null
           triage?: Json | null
           truth_check?: Json | null
+          action_items?: Json | null
           mid_length_summary?: string | null
           detailed_summary?: string | null
           processing_status?: string | null

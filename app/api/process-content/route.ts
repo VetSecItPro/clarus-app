@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
-import type { Database, Json, Tables, TriageData, TruthCheckData } from "@/types/database.types"
+import type { Database, Json, Tables, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
 import { validateContentId, checkRateLimit } from "@/lib/validation"
 
 const supabaseUrl = process.env.SUPABASE_URL
@@ -119,9 +119,23 @@ async function getYouTubeMetadata(url: string, apiKey: string): Promise<Processe
   throw new Error(finalErrorMessage)
 }
 
+// Helper to format milliseconds to MM:SS or H:MM:SS
+function formatTimestamp(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
 async function getYouTubeTranscript(url: string, apiKey: string): Promise<{ full_text: string | null }> {
   console.log(`API: Fetching YouTube transcript for ${url} using supadata.ai`)
-  const endpoint = `https://api.supadata.ai/v1/youtube/transcript?url=${encodeURIComponent(url)}&text=true`
+  // Remove text=true to get timestamped chunks
+  const endpoint = `https://api.supadata.ai/v1/youtube/transcript?url=${encodeURIComponent(url)}`
   const retries = 3
   const delay = 1000
 
@@ -139,6 +153,21 @@ async function getYouTubeTranscript(url: string, apiKey: string): Promise<{ full
           throw new Error(`Supadata Transcript API Error: Expected JSON, got ${contentType}.`)
         }
         const data = await response.json()
+
+        // Handle timestamped transcript format
+        if (Array.isArray(data.content)) {
+          // Format transcript with timestamps: [0:30] Text here\n[1:45] More text...
+          const formattedText = data.content
+            .map((chunk: { text: string; offset: number }) => {
+              const timestamp = formatTimestamp(chunk.offset)
+              return `[${timestamp}] ${chunk.text}`
+            })
+            .join('\n')
+          console.log(`API: Formatted ${data.content.length} transcript chunks with timestamps`)
+          return { full_text: formattedText }
+        }
+
+        // Fallback if content is already a string
         return { full_text: data.content }
       }
 
@@ -537,6 +566,19 @@ async function generateTruthCheck(fullText: string): Promise<TruthCheckData | nu
   return result.content as TruthCheckData
 }
 
+async function generateActionItems(fullText: string, contentType: string): Promise<ActionItemsData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType)
+  if (result.error) {
+    console.error(`API: Action items generation failed: ${result.error}`)
+    return null
+  }
+  // The response has action_items array wrapped in an object
+  if (result.content?.action_items) {
+    return result.content.action_items as ActionItemsData
+  }
+  return result.content as ActionItemsData
+}
+
 async function generateDetailedSummary(fullText: string, contentType: string): Promise<string | null> {
   // Now uses database prompt with {{CONTENT}} and {{TYPE}} placeholders
   const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType)
@@ -770,7 +812,7 @@ export async function POST(req: NextRequest) {
   console.log(`API: Starting sequential section generation for content_id: ${content.id}`)
 
   // 1. BRIEF OVERVIEW (fastest, first to appear)
-  console.log(`API: [1/5] Generating brief overview...`)
+  console.log(`API: [1/6] Generating brief overview...`)
   const briefOverview = await generateBriefOverview(content.full_text)
   if (briefOverview) {
     await updateSummarySection(supabase, content.id, content.user_id, {
@@ -782,7 +824,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 2. TRIAGE (quality score, audience, worth-it)
-  console.log(`API: [2/5] Generating triage...`)
+  console.log(`API: [2/6] Generating triage...`)
   const triage = await generateTriage(content.full_text)
   if (triage) {
     await updateSummarySection(supabase, content.id, content.user_id, {
@@ -794,7 +836,7 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. TRUTH CHECK (bias, accuracy analysis)
-  console.log(`API: [3/5] Generating truth check...`)
+  console.log(`API: [3/6] Generating truth check...`)
   const truthCheck = await generateTruthCheck(content.full_text)
   if (truthCheck) {
     await updateSummarySection(supabase, content.id, content.user_id, {
@@ -805,8 +847,20 @@ export async function POST(req: NextRequest) {
     console.log(`API: Truth check saved.`)
   }
 
-  // 4. MID-LENGTH SUMMARY (existing behavior, kept for compatibility)
-  console.log(`API: [4/5] Generating mid-length summary...`)
+  // 4. ACTION ITEMS (actionable takeaways)
+  console.log(`API: [4/6] Generating action items...`)
+  const actionItems = await generateActionItems(content.full_text, content.type || "article")
+  if (actionItems) {
+    await updateSummarySection(supabase, content.id, content.user_id, {
+      action_items: actionItems as unknown as Json,
+      processing_status: "action_items_complete",
+    })
+    responsePayload.sections_generated.push("action_items")
+    console.log(`API: Action items saved.`)
+  }
+
+  // 5. MID-LENGTH SUMMARY (existing behavior, kept for compatibility)
+  console.log(`API: [5/6] Generating mid-length summary...`)
   const summaryResult = await getModelSummary(content.full_text, {
     shouldExtractTitle: titleNeedsFixing,
   })
@@ -832,8 +886,8 @@ export async function POST(req: NextRequest) {
     console.warn(`API: Mid-length summary generation failed, continuing...`)
   }
 
-  // 5. DETAILED SUMMARY (most comprehensive, slowest)
-  console.log(`API: [5/5] Generating detailed summary...`)
+  // 6. DETAILED SUMMARY (most comprehensive, slowest)
+  console.log(`API: [6/6] Generating detailed summary...`)
   const detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article")
   if (detailedSummary) {
     await updateSummarySection(supabase, content.id, content.user_id, {
