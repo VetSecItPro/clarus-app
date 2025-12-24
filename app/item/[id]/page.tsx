@@ -362,7 +362,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
 
       {/* Secondary nav bar with back button and tabs */}
       <div className="bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.08] sticky top-16 z-10">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 py-3">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
           <div className="flex items-center justify-between gap-3">
             {/* Left side: Back button + Tab switcher */}
             <div className="flex items-center gap-2 sm:gap-3">
@@ -404,103 +404,147 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
         </div>
       </div>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 pb-24">
-        <article className="max-w-2xl mx-auto">
-          <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-3 sm:mb-4">
-            {item.title || "Processing Title..."}
-          </h1>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-6 sm:mb-8">
-            <span className="px-2 py-1 rounded-lg bg-white/[0.04]">{displayDomain}</span>
-            {item.author && <span className="px-2 py-1 rounded-lg bg-white/[0.04]">{item.author}</span>}
-            <span className="px-2 py-1 rounded-lg bg-white/[0.04] flex items-center gap-1">
-              {item.type === "youtube" ? (
-                <>
-                  <Play className="w-3 h-3" />
-                  {displayDuration}
-                </>
-              ) : (
-                <>
-                  <FileText className="w-3 h-3" />
-                  Article
-                </>
-              )}
-            </span>
-            <span className="px-2 py-1 rounded-lg bg-white/[0.04]">Analyzed {displaySavedAt}</span>
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 pb-24">
+        {/* PDF: Full-width layout (no split) */}
+        {isPdf ? (
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-2xl sm:text-3xl font-bold text-white leading-tight mb-3 sm:mb-4">
+              {item.title || "Processing Title..."}
+            </h1>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 mb-6">
+              <span className="px-2 py-1 rounded-lg bg-white/[0.04]">{displayDomain}</span>
+              <span className="px-2 py-1 rounded-lg bg-white/[0.04] flex items-center gap-1">
+                <FileText className="w-3 h-3" />
+                PDF
+              </span>
+              <span className="px-2 py-1 rounded-lg bg-white/[0.04]">Analyzed {displaySavedAt}</span>
+            </div>
+            {item.full_text && (
+              <iframe
+                src={item.url}
+                title={item.title || "PDF Document"}
+                className="w-full h-[70vh] border-none rounded-2xl bg-white"
+              />
+            )}
           </div>
-
-          {activeMainTab === "summary" ? (
-            <div className="space-y-6 sm:space-y-8">
-              {processingError ? (
-                <div className="p-4 text-center rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
-                  <h3 className="text-base font-medium text-yellow-300 mb-2">Processing Failed</h3>
-                  <p className="text-sm text-yellow-300/70 mb-3">We couldn't retrieve the content from the source.</p>
-                  <p className="text-xs text-yellow-300/50 mb-4">{processingError}</p>
-                  <button
-                    onClick={handleRegenerate}
-                    disabled={isRegenerating}
-                    className="px-4 py-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30 transition-all disabled:opacity-50 text-sm"
-                  >
-                    {isRegenerating ? (
-                      <span className="flex items-center gap-2">
-                        <Loader2 className="w-4 h-4 animate-spin" /> Regenerating...
-                      </span>
-                    ) : (
-                      "Try Regenerating"
-                    )}
-                  </button>
-                </div>
-              ) : (
-                <>
-                  {/* Action Buttons */}
-                  <div className="flex justify-end gap-3 mb-4">
-                    <Button
-                      onClick={() => setIsShareModalOpen(true)}
-                      size="sm"
-                      className="bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 rounded-full px-5 transition-all"
-                    >
-                      <Mail className="mr-2 h-4 w-4" />
-                      Share
-                    </Button>
-                    <Button
-                      onClick={handleRegenerate}
-                      disabled={isRegenerating}
-                      size="sm"
-                      className="bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 rounded-full px-5 transition-all disabled:opacity-50"
-                    >
-                      {isRegenerating ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Regenerating...
-                        </>
-                      ) : (
-                        <>
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                          Regenerate All
-                        </>
-                      )}
-                    </Button>
-                  </div>
-
-                  {/* VIDEO/THUMBNAIL EMBED */}
-                  {item.type === "youtube" && videoId && (
+        ) : (
+          /* Split-screen layout for YouTube and Articles */
+          <div className="lg:flex lg:gap-8">
+            {/* LEFT PANEL: Sticky media + metadata */}
+            <aside className="lg:w-[420px] lg:flex-shrink-0 mb-6 lg:mb-0">
+              <div className="lg:sticky lg:top-28 space-y-4">
+                {/* Video or Thumbnail */}
+                <div className="rounded-2xl overflow-hidden border border-white/[0.08]">
+                  {item.type === "youtube" && videoId ? (
                     <YouTubePlayer
                       ref={youtubePlayerRef}
                       videoId={videoId}
-                      className="aspect-video w-full rounded-2xl overflow-hidden mb-6"
+                      className="aspect-video w-full"
                     />
-                  )}
-                  {item.type === "article" && item.thumbnail_url && (
+                  ) : item.thumbnail_url ? (
                     <Image
                       src={item.thumbnail_url}
                       alt={item.title || "Content image"}
-                      width={600}
-                      height={300}
-                      className="w-full h-auto max-h-64 object-cover rounded-2xl mb-6"
+                      width={420}
+                      height={236}
+                      className="w-full h-auto aspect-video object-cover"
                       unoptimized
                       onError={(e) => (e.currentTarget.style.display = "none")}
                     />
+                  ) : (
+                    /* Placeholder for articles without thumbnail */
+                    <div className="aspect-video w-full bg-white/[0.03] flex items-center justify-center">
+                      <div className="text-center">
+                        <FileText className="w-12 h-12 text-white/20 mx-auto mb-2" />
+                        <p className="text-white/30 text-sm">{displayDomain}</p>
+                      </div>
+                    </div>
                   )}
+                </div>
 
-                  {/* 1. BRIEF OVERVIEW */}
+                {/* Content info card */}
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                  <h1 className="text-lg font-bold text-white leading-tight mb-3">
+                    {item.title || "Processing Title..."}
+                  </h1>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                    <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{displayDomain}</span>
+                    {item.author && <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{item.author}</span>}
+                    <span className="px-2 py-1 rounded-lg bg-white/[0.06] flex items-center gap-1">
+                      {item.type === "youtube" ? (
+                        <>
+                          <Play className="w-3 h-3" />
+                          {displayDuration}
+                        </>
+                      ) : (
+                        <>
+                          <FileText className="w-3 h-3" />
+                          Article
+                        </>
+                      )}
+                    </span>
+                    <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{displaySavedAt}</span>
+                  </div>
+                </div>
+
+                {/* Action buttons */}
+                <div className="flex gap-3">
+                  <Button
+                    onClick={() => setIsShareModalOpen(true)}
+                    size="sm"
+                    className="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl transition-all"
+                  >
+                    <Mail className="mr-2 h-4 w-4" />
+                    Share
+                  </Button>
+                  <Button
+                    onClick={handleRegenerate}
+                    disabled={isRegenerating}
+                    size="sm"
+                    className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 rounded-xl transition-all disabled:opacity-50"
+                  >
+                    {isRegenerating ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <span className="hidden sm:inline">Regenerating...</span>
+                      </>
+                    ) : (
+                      <>
+                        <RefreshCw className="mr-2 h-4 w-4" />
+                        <span className="hidden sm:inline">Regenerate</span>
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </aside>
+
+            {/* RIGHT PANEL: Scrollable content */}
+            <div className="flex-1 min-w-0">
+              {activeMainTab === "summary" ? (
+                <div className="space-y-6 sm:space-y-8">
+                  {processingError ? (
+                    <div className="p-4 text-center rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
+                      <h3 className="text-base font-medium text-yellow-300 mb-2">Processing Failed</h3>
+                      <p className="text-sm text-yellow-300/70 mb-3">We couldn't retrieve the content from the source.</p>
+                      <p className="text-xs text-yellow-300/50 mb-4">{processingError}</p>
+                      <button
+                        onClick={handleRegenerate}
+                        disabled={isRegenerating}
+                        className="px-4 py-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30 transition-all disabled:opacity-50 text-sm"
+                      >
+                        {isRegenerating ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="w-4 h-4 animate-spin" /> Regenerating...
+                          </span>
+                        ) : (
+                          "Try Regenerating"
+                        )}
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      {/* 1. BRIEF OVERVIEW */}
                   <AnimatePresence mode="wait">
                     {(summary?.brief_overview || isPolling) && (
                       <SectionCard
@@ -701,106 +745,59 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                     )}
                   </AnimatePresence>
 
-                </>
-              )}
-            </div>
-          ) : (
-            <div>
-              {loading && (
-                <div className="flex items-center text-white/40 text-sm">
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading full text...
-                </div>
-              )}
-              {!loading && !item.full_text && (
-                <div className="space-y-4">
-                  {isPolling ? (
-                    // Skeleton loader for full text while polling
-                    <div className="space-y-3 animate-pulse p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
-                      <div className="h-4 bg-white/[0.08] rounded-lg w-11/12" />
-                      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
-                      <div className="h-4 bg-white/[0.08] rounded-lg w-4/5" />
-                      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
-                      <div className="h-4 bg-white/[0.08] rounded-lg w-3/4" />
-                      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
-                      <div className="h-4 bg-white/[0.08] rounded-lg w-11/12" />
-                      <p className="text-white/40 text-xs mt-4 flex items-center gap-2">
-                        <Loader2 className="w-3 h-3 animate-spin" />
-                        Fetching content...
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex items-center text-white/40 text-sm">
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Full text still processing...
-                    </div>
-                  )}
-                </div>
-              )}
-              {!loading && item.full_text && (
-                <>
-                  {isPdf ? (
-                    <div className="mt-4">
-                      <iframe
-                        src={item.url}
-                        title={item.title || "PDF Document"}
-                        className="w-full h-[70vh] border-none rounded-2xl bg-white"
-                      />
-                      <p className="text-xs text-center text-white/30 mt-2">
-                        PDF not loading?{" "}
-                        <a
-                          href={item.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="underline hover:text-[#1d9bf0]"
-                        >
-                          Open in new tab
-                        </a>
-                      </p>
-                    </div>
-                  ) : (
-                    <>
-                      {item.type === "youtube" && videoId && (
-                        <YouTubePlayer
-                          ref={youtubePlayerRef}
-                          videoId={videoId}
-                          className="aspect-video w-full rounded-2xl overflow-hidden"
-                        />
-                      )}
-                      {item.type === "article" && (
-                        <>
-                          {item.thumbnail_url && (
-                            <Image
-                              src={item.thumbnail_url || "/placeholder.svg"}
-                              alt={item.title || "Content image"}
-                              width={600}
-                              height={300}
-                              className="w-full h-auto max-h-64 object-cover rounded-2xl mb-6"
-                              unoptimized
-                              onError={(e) => (e.currentTarget.style.display = "none")}
-                            />
-                          )}
-                        </>
-                      )}
-                      <div className="mt-6 p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                        {item.type === "youtube" && videoId ? (
-                          <TranscriptViewer
-                            transcript={item.full_text}
-                            videoId={videoId}
-                            onTimestampClick={handleTimestampClick}
-                          />
-                        ) : (
-                          <div className="prose prose-sm prose-invert max-w-none text-white/70 leading-relaxed">
-                            <MarkdownRenderer>{item.full_text}</MarkdownRenderer>
-                          </div>
-                        )}
-                      </div>
                     </>
                   )}
-                </>
+                </div>
+              ) : (
+                /* FULL TEXT TAB */
+                <div>
+                  {loading && (
+                    <div className="flex items-center text-white/40 text-sm">
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Loading full text...
+                    </div>
+                  )}
+                  {!loading && !item.full_text && (
+                    <div className="space-y-4">
+                      {isPolling ? (
+                        <div className="space-y-3 animate-pulse p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                          <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
+                          <div className="h-4 bg-white/[0.08] rounded-lg w-11/12" />
+                          <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
+                          <div className="h-4 bg-white/[0.08] rounded-lg w-4/5" />
+                          <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
+                          <div className="h-4 bg-white/[0.08] rounded-lg w-3/4" />
+                          <p className="text-white/40 text-xs mt-4 flex items-center gap-2">
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Fetching content...
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="flex items-center text-white/40 text-sm">
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Full text still processing...
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  {!loading && item.full_text && (
+                    <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+                      {item.type === "youtube" && videoId ? (
+                        <TranscriptViewer
+                          transcript={item.full_text}
+                          videoId={videoId}
+                          onTimestampClick={handleTimestampClick}
+                        />
+                      ) : (
+                        <div className="prose prose-sm prose-invert max-w-none text-white/70 leading-relaxed">
+                          <MarkdownRenderer>{item.full_text}</MarkdownRenderer>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
               )}
             </div>
-          )}
-        </article>
+          </div>
+        )}
       </main>
 
       {session && item && <ChatPanel contentId={item.id} session={session} />}
