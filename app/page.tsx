@@ -269,23 +269,23 @@ function HomePageContent({ session }: HomePageProps) {
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      <main className="flex-1 flex flex-col items-center justify-center px-6">
+      <main className="flex-1 flex flex-col items-center justify-center px-3 sm:px-6">
         {/* Welcome Message */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-10"
+          className="text-center mb-6 sm:mb-10"
         >
           {username && (
-            <p className="text-white/40 text-base mb-6">
+            <p className="text-white/40 text-sm sm:text-base mb-4 sm:mb-6">
               Welcome back, <span className="text-white/70">{username}</span>
             </p>
           )}
-          <h1 className="text-3xl sm:text-4xl font-semibold text-white mb-4">
+          <h1 className="text-2xl sm:text-4xl font-semibold text-white mb-2 sm:mb-4">
             {randomPrompt}
           </h1>
-          <p className="text-white/50 text-base">
+          <p className="text-white/50 text-sm sm:text-base hidden sm:block">
             Paste a URL and get an instant truth check
           </p>
         </motion.div>
@@ -422,8 +422,8 @@ function HomePageContent({ session }: HomePageProps) {
             )}
           </AnimatePresence>
 
-          {/* Keyboard hint */}
-          <p className="text-center text-white/30 text-xs mt-3">
+          {/* Keyboard hint - hidden on mobile */}
+          <p className="hidden sm:block text-center text-white/30 text-xs mt-3">
             {urlPreview ? (
               <>Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white/50 font-mono">Enter</kbd> or click Analyze</>
             ) : (
@@ -432,22 +432,22 @@ function HomePageContent({ session }: HomePageProps) {
           </p>
         </motion.div>
 
-        {/* Example Chips */}
+        {/* Example Chips - smaller on mobile */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="flex flex-wrap justify-center gap-2 mt-8"
+          className="flex flex-wrap justify-center gap-1.5 sm:gap-2 mt-4 sm:mt-8"
         >
           {exampleChips.map((chip) => {
             const Icon = chip.icon
             return (
               <div
                 key={chip.label}
-                className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08]"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08]"
               >
-                <Icon className={`w-3.5 h-3.5 ${chip.color}`} />
-                <span className="text-xs text-white/60">{chip.label}</span>
+                <Icon className={`w-3 h-3 sm:w-3.5 sm:h-3.5 ${chip.color}`} />
+                <span className="text-[10px] sm:text-xs text-white/60">{chip.label}</span>
               </div>
             )
           })}

@@ -252,8 +252,19 @@ ${contentContext}`
     // Create OpenRouter provider instance
     const openrouter = createOpenRouter({ apiKey: openRouterApiKey! })
 
-    // Define tools (only if Tavily API key is available)
-    const tools = tavilyApiKey ? {
+    // Models that support tool use via OpenRouter
+    const toolSupportedModels = [
+      "anthropic/claude",
+      "openai/gpt-4",
+      "openai/gpt-4o",
+      "google/gemini",
+    ]
+
+    // Check if the model likely supports tools
+    const modelSupportsTools = toolSupportedModels.some(prefix => modelName.toLowerCase().includes(prefix.split("/")[1]))
+
+    // Define tools (only if Tavily API key is available AND model supports tools)
+    const tools = (tavilyApiKey && modelSupportsTools) ? {
       webSearch: tool({
         description: "Search the web for current information, recent events, or additional context. Use this when the user asks about something not covered in the content or needs up-to-date information.",
         inputSchema: z.object({
