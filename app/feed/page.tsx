@@ -8,6 +8,7 @@ import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
+import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { formatDistanceToNow } from "date-fns"
 import { Search, Loader2, User, Play, FileText, Users, SlidersHorizontal, LayoutGrid, LayoutList, Zap, ChevronDown, ChevronUp, ExternalLink, Star, Twitter, Sparkles } from "lucide-react"
 import Link from "next/link"
@@ -538,6 +539,7 @@ function CommunityPageContent({ session }: { session: Session | null }) {
       </main>
 
       <SiteFooter />
+      <MobileBottomNav />
     </div>
   )
 }

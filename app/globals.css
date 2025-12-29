@@ -289,3 +289,8 @@ body {
 .auth-input:focus {
   box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.1);
 }
+
+/* Mobile bottom navigation safe area */
+.safe-area-pb {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
