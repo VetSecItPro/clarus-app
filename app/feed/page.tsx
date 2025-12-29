@@ -37,6 +37,7 @@ type DisplayItem = FeedItemFromDb & {
   displayDuration: string
   raterUsername: string
   ratingScore: number
+  ratingSource: "ai" | "user"  // Track if rating is from AI or user override
   ratingGivenAt: string | null
 }
 
@@ -95,7 +96,7 @@ function CommunityPageContent({ session }: { session: Session | null }) {
           `*, users:user_id(name, email), content_ratings(signal_score, user_id, created_at), summaries(brief_overview, triage)`,
         )
         .not("user_id", "eq", session.user.id)
-        .not("content_ratings", "is", "null")
+        .not("summaries", "is", "null") // Must have AI analysis
 
       if (debouncedSearch) {
         // Search across title and full_text using OR
@@ -123,10 +124,20 @@ function CommunityPageContent({ session }: { session: Session | null }) {
         .map((item) => {
           const rater = item.users
           const raterUsername = rater?.name || rater?.email?.split("@")[0] || "Anonymous"
-          const rating = item.content_ratings?.find((r) => r.user_id === item.user_id)
-          const ratingScore = rating?.signal_score ?? null
-          const ratingGivenAt = rating?.created_at
-            ? formatDistanceToNow(new Date(rating.created_at), { addSuffix: true })
+
+          // Get user rating if exists (owner rated their own content)
+          const userRating = item.content_ratings?.find((r) => r.user_id === item.user_id)
+          const userScore = userRating?.signal_score ?? null
+
+          // Get AI rating from triage
+          const summaryData = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
+          const aiScore = summaryData?.triage?.signal_noise_score ?? null
+
+          // Use user rating if available, otherwise fall back to AI rating
+          const ratingScore = userScore ?? aiScore
+          const ratingSource: "ai" | "user" = userScore !== null ? "user" : "ai"
+          const ratingGivenAt = userRating?.created_at
+            ? formatDistanceToNow(new Date(userRating.created_at), { addSuffix: true })
             : null
 
           return {
@@ -136,10 +147,11 @@ function CommunityPageContent({ session }: { session: Session | null }) {
             displayDuration: formatDuration(item.duration),
             raterUsername,
             ratingScore: ratingScore!,
+            ratingSource,
             ratingGivenAt,
           }
         })
-        .filter((item): item is DisplayItem => item.ratingScore !== null && item.ratingScore !== 0)
+        .filter((item): item is DisplayItem => item.ratingScore !== null && item.ratingScore > 0)
 
       // Client-side sort for ratings
       if (activeSort === "rating_desc") {
@@ -212,11 +224,15 @@ function CommunityPageContent({ session }: { session: Session | null }) {
               <div className="w-5 h-5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center">
                 <User className="w-2.5 h-2.5 text-white" />
               </div>
-              <span className="text-white/50 text-[10px]">by</span>
               <span className="text-white/70 text-xs font-medium truncate">{item.raterUsername}</span>
-              <div className="flex items-center gap-1 ml-auto text-amber-400 text-xs">
-                <span>Signal</span>
-                <span>{"⚡".repeat(item.ratingScore)}</span>
+              <div className={cn(
+                "flex items-center gap-1 ml-auto text-[10px] px-1.5 py-0.5 rounded-full",
+                item.ratingSource === "ai"
+                  ? "bg-cyan-500/20 text-cyan-400"
+                  : "bg-amber-500/20 text-amber-400"
+              )}>
+                {item.ratingSource === "ai" ? <Sparkles className="w-2.5 h-2.5" /> : <Zap className="w-2.5 h-2.5" />}
+                <span>{item.ratingScore}/4</span>
               </div>
             </div>
 
@@ -265,19 +281,24 @@ function CommunityPageContent({ session }: { session: Session | null }) {
         isExpanded ? "bg-white/[0.06] border-white/[0.15]" : "hover:bg-white/[0.06] hover:border-white/[0.12]"
       )}>
         {/* Analyzer info bar */}
-        <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2">
+        <div className="px-4 py-3 border-b border-white/[0.06] flex items-center gap-2 flex-wrap">
           <div className="w-7 h-7 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center shadow-lg">
             <User className="w-3.5 h-3.5 text-white" />
           </div>
-          <span className="text-white/50 text-sm">Analyzed by</span>
+          <span className="text-white/50 text-sm">Shared by</span>
           <span className="text-white/80 text-sm font-medium">{item.raterUsername}</span>
           <span className="text-white/30 mx-1">•</span>
-          <span className="text-white/40 text-xs">Signal</span>
-          <div className="flex items-center gap-1 text-amber-400">
-            <Zap className="w-3.5 h-3.5 fill-current" />
-            <span className="font-semibold">{item.ratingScore}/5</span>
+          <div className={cn(
+            "flex items-center gap-1 text-xs px-2 py-0.5 rounded-full",
+            item.ratingSource === "ai"
+              ? "bg-cyan-500/20 text-cyan-400 border border-cyan-500/30"
+              : "bg-amber-500/20 text-amber-400 border border-amber-500/30"
+          )}>
+            {item.ratingSource === "ai" ? <Sparkles className="w-3 h-3" /> : <Zap className="w-3 h-3 fill-current" />}
+            <span className="font-medium">{item.ratingScore}/4</span>
+            <span className="text-[10px] opacity-70">{item.ratingSource === "ai" ? "AI" : "User"}</span>
           </div>
-          {item.ratingGivenAt && (
+          {item.ratingGivenAt && item.ratingSource === "user" && (
             <>
               <span className="text-white/20 mx-1">·</span>
               <span className="text-white/30 text-xs">{item.ratingGivenAt}</span>
