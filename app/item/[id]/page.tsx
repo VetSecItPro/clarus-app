@@ -481,11 +481,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
       <SiteHeader />
 
       {/* Secondary nav bar with back button and tabs */}
-      <div className="bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.08] sticky top-16 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-3">
-          <div className="flex items-center justify-between gap-3">
+      <div className="bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.08] sticky top-12 sm:top-16 z-10">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
             {/* Left side: Back button + Tab switcher */}
-            <div className="flex items-center gap-2 sm:gap-3">
+            <div className="flex items-center gap-1.5 sm:gap-3">
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -493,10 +493,10 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       <Button
                         variant="ghost"
                         size="icon"
-                        className="h-10 w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08]"
+                        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08]"
                         aria-label="Back to home"
                       >
-                        <ArrowLeft className="w-5 h-5" />
+                        <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                       </Button>
                     </Link>
                   </TooltipTrigger>
@@ -543,7 +543,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6 sm:py-8 flex-1 pb-24">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 flex-1 pb-20 sm:pb-24">
         {/* PDF: Full-width layout (no split) */}
         {isPdf ? (
           <div className="max-w-4xl mx-auto">
@@ -602,8 +602,8 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </div>
 
                 {/* Content info card */}
-                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
-                  <h1 className="text-lg font-bold text-white leading-tight mb-3">
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                  <h1 className="text-base font-semibold text-white leading-tight mb-2">
                     {item.title || "Processing Title..."}
                   </h1>
                   <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
