@@ -35,9 +35,9 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
             </span>
           </Link>
 
-          {/* Navigation */}
+          {/* Navigation - hidden on mobile (bottom nav used instead) */}
           {showNav && (
-            <nav className="flex items-center gap-1">
+            <nav className="hidden sm:flex items-center gap-1">
               <TooltipProvider delayDuration={300}>
                 {navItems.map((item) => {
                   const isActive = pathname === item.href
@@ -55,7 +55,7 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
                             )}
                           >
                             <Icon className={cn("w-4 h-4", isActive && "text-[#1d9bf0]")} />
-                            <span className="text-sm font-medium hidden sm:block">{item.label}</span>
+                            <span className="text-sm font-medium">{item.label}</span>
                           </div>
                         </Link>
                       </TooltipTrigger>
