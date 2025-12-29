@@ -8,6 +8,7 @@ import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
+import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { Search, SlidersHorizontal, Loader2, FileText, Play, Trash2, LayoutGrid, LayoutList, Zap, Clock, Twitter, Sparkles, ChevronDown, ChevronUp, ExternalLink, Star, TrendingUp, Bookmark, Tag, X } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
@@ -955,6 +956,7 @@ function HistoryPageContent({ session }: LibraryPageProps) {
       </main>
 
       <SiteFooter />
+      <MobileBottomNav />
     </div>
   )
 }

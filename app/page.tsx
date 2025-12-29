@@ -6,6 +6,7 @@ import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
+import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { AddUrlModal } from "@/components/add-url-modal"
 import { supabase } from "@/lib/supabase"
 import { getYouTubeVideoId, isXUrl, getDomainFromUrl } from "@/lib/utils"
@@ -339,7 +340,7 @@ function HomePageContent({ session }: HomePageProps) {
               <button
                 onClick={() => handleSubmit()}
                 disabled={isSubmitting || !urlPreview}
-                className={`shrink-0 px-4 py-2 rounded-xl flex items-center gap-2 text-sm font-medium transition-all disabled:opacity-50 ${
+                className={`shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium transition-all disabled:opacity-50 ${
                   urlPreview
                     ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
                     : "bg-white/[0.06] text-white/40 cursor-not-allowed"
@@ -347,13 +348,15 @@ function HomePageContent({ session }: HomePageProps) {
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Analyzing...
+                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                    <span className="hidden sm:inline">Analyzing...</span>
+                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
                   <>
-                    Analyze
-                    <ArrowRight className="w-4 h-4" />
+                    <span className="hidden sm:inline">Analyze</span>
+                    <span className="sm:hidden">Go</span>
+                    <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                   </>
                 )}
               </button>
@@ -361,7 +364,7 @@ function HomePageContent({ session }: HomePageProps) {
               <button
                 onClick={handlePasteFromClipboard}
                 disabled={isSubmitting}
-                className="shrink-0 px-4 py-2 rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white/70 text-sm font-medium transition-all disabled:opacity-50"
+                className="shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white/70 text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
               >
                 Paste
               </button>
@@ -452,6 +455,7 @@ function HomePageContent({ session }: HomePageProps) {
       </main>
 
       <SiteFooter />
+      <MobileBottomNav />
 
       <AddUrlModal isOpen={isAddUrlModalOpen} onOpenChange={setIsAddUrlModalOpen} />
     </div>

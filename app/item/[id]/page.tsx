@@ -25,6 +25,7 @@ import { TruthCheckCard } from "@/components/ui/truth-check-card"
 import { ActionItemsCard } from "@/components/ui/action-items-card"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
+import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { ShareModal } from "@/components/share-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
@@ -1167,6 +1168,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
       />
 
       <SiteFooter />
+      <MobileBottomNav />
     </div>
   )
 }
