@@ -29,10 +29,17 @@ import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { ShareModal } from "@/components/share-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
-interface ItemDetailPageProps {
-  params: Promise<{ id: string }>
+// Props injected by withAuth HOC
+interface WithAuthInjectedProps {
   session: Session | null
 }
+
+// Next.js page props
+interface PageParams {
+  params: Promise<{ id: string }>
+}
+
+type ItemDetailPageProps = PageParams & WithAuthInjectedProps
 
 type ContentItem = Tables<"content">
 type SummaryItem = Tables<"summaries">
