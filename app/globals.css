@@ -294,3 +294,85 @@ body {
 .safe-area-pb {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
+
+/* ========================================
+   Mobile Performance & UX Optimizations
+   ======================================== */
+
+/* Prevent horizontal overflow on mobile */
+html, body {
+  overflow-x: hidden;
+  max-width: 100vw;
+}
+
+/* Force word breaking for all text content */
+* {
+  word-break: break-word;
+  overflow-wrap: break-word;
+}
+
+/* Prose/Markdown content - ensure long URLs and text wrap */
+.prose,
+.prose-sm,
+.prose-invert,
+[class*="prose"] {
+  word-break: break-word;
+  overflow-wrap: break-word;
+  max-width: 100%;
+}
+
+.prose pre,
+.prose code,
+[class*="prose"] pre,
+[class*="prose"] code {
+  word-break: break-all;
+  white-space: pre-wrap;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+/* Ensure all containers respect boundaries */
+main, aside, article, section, div {
+  max-width: 100%;
+}
+
+/* YouTube player mobile optimization */
+iframe[src*="youtube"] {
+  max-width: 100%;
+  width: 100%;
+}
+
+/* Touch-friendly tap targets */
+@media (max-width: 640px) {
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Increase touch targets for controls */
+  .touch-target {
+    padding: 12px;
+  }
+}
+
+/* Smooth scrolling on iOS */
+.smooth-scroll {
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Prevent text size adjustment on orientation change */
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+/* GPU acceleration for animations */
+.gpu-accelerated {
+  transform: translateZ(0);
+  will-change: transform;
+}
+
+/* Optimize for mobile rendering */
+* {
+  -webkit-tap-highlight-color: transparent;
+}

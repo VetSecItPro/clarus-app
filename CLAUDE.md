@@ -12,21 +12,30 @@
 
 ## Quick Commands
 
-### Vercel (use CLI, not MCP)
+### Vercel (MCP connected)
+Use MCP tools for Vercel operations:
+- `mcp__vercel__list_projects` - List projects
+- `mcp__vercel__list_deployments` - View deployments
+- `mcp__vercel__deploy_to_vercel` - Deploy project
+- Team ID: `team_HFUTBVxI8jKYi334LvgVsVNh` (VetSecItPro)
+
+Fallback CLI (if MCP unavailable):
 ```bash
 vercel env pull .env.vercel --yes   # Pull env vars
 vercel --prod                        # Deploy production
-vercel list                          # View deployments
 ```
 
-### Database (use psql, not Supabase CLI)
+### Database (MCP connected)
+Use MCP tools for Supabase operations:
+- `mcp__supabase__list_tables` - List all tables
+- `mcp__supabase__execute_sql` - Run queries
+- `mcp__supabase__apply_migration` - Apply DDL migrations
+- `mcp__supabase__get_logs` - Debug issues
+- Project ref: `dxyfpehucygiughjmiek`
+
+Fallback psql (if MCP unavailable):
 ```bash
 PGPASSWORD="UI5MeSG65Igmcuh7" psql "postgres://postgres.dxyfpehucygiughjmiek:UI5MeSG65Igmcuh7@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require" -c "YOUR_SQL_HERE"
-```
-
-### Migrations (via psql)
-```bash
-PGPASSWORD="UI5MeSG65Igmcuh7" psql "$POSTGRES_URL" -f migrations/filename.sql
 ```
 
 ### Run Locally
@@ -35,7 +44,7 @@ pnpm install && pnpm dev
 ```
 
 ## DB Tables
-users, content, content_ratings, chat_threads, chat_messages, summaries, active_chat_prompt, active_summarizer_prompt
+users, content, content_ratings, chat_threads, chat_messages, summaries, active_chat_prompt, active_summarizer_prompt, analysis_prompts, domains
 
 ## Git Workflow (Feature Branch + PR)
 
@@ -70,6 +79,6 @@ users, content, content_ratings, chat_threads, chat_messages, summaries, active_
 - Run typecheck before committing
 
 ## Notes
-- Vercel MCP broken (403) → use `vercel` CLI
-- Supabase MCP wrong project → use `psql` direct
+- Vercel MCP: ✅ Connected (team_HFUTBVxI8jKYi334LvgVsVNh)
+- Supabase MCP: ✅ Connected (dxyfpehucygiughjmiek)
 - GitHub CLI works: `gh`

@@ -1,0 +1,20 @@
+{
+  "name": "Vajra Truth Checker",
+  "short_name": "Vajra",
+  "description": "AI-powered content analysis and truth checking",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0e1a",
+  "theme_color": "#1d9bf0",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["productivity", "utilities"],
+  "prefer_related_applications": false
+}
