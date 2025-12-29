@@ -484,7 +484,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   const summary = item.summary
 
   return (
-    <div className="min-h-screen bg-black flex flex-col">
+    <div className="min-h-screen bg-black flex flex-col overflow-x-hidden">
       <SiteHeader />
 
       {/* Secondary nav bar with back button and tabs */}
@@ -550,7 +550,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 flex-1 pb-20 sm:pb-24">
+      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 flex-1 pb-20 sm:pb-24 overflow-x-hidden">
         {/* PDF: Full-width layout (no split) */}
         {isPdf ? (
           <div className="max-w-4xl mx-auto">
@@ -575,17 +575,16 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
           </div>
         ) : (
           /* Split-screen layout for YouTube and Articles */
-          <div className="lg:flex lg:gap-8">
+          <div className="lg:flex lg:gap-8 min-w-0 overflow-hidden">
             {/* LEFT PANEL: Sticky media + metadata */}
-            <aside className="lg:w-[480px] lg:flex-shrink-0 mb-6 lg:mb-0">
-              <div className="lg:sticky lg:top-28 space-y-4">
+            <aside className="w-full lg:w-[480px] lg:flex-shrink-0 mb-6 lg:mb-0 min-w-0">
+              <div className="lg:sticky lg:top-28 space-y-4 overflow-hidden">
                 {/* Video or Thumbnail */}
-                <div className="rounded-2xl overflow-hidden border border-white/[0.08]">
+                <div className="rounded-2xl overflow-hidden border border-white/[0.08] bg-black w-full">
                   {item.type === "youtube" && videoId ? (
                     <YouTubePlayer
                       ref={youtubePlayerRef}
                       videoId={videoId}
-                      className="aspect-video w-full"
                     />
                   ) : item.thumbnail_url ? (
                     <Image
@@ -609,11 +608,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </div>
 
                 {/* Content info card */}
-                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
-                  <h1 className="text-base font-semibold text-white leading-tight mb-2">
+                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+                  <h1 className="text-base font-semibold text-white leading-tight mb-2 break-words">
                     {item.title || "Processing Title..."}
                   </h1>
-                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400">
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 overflow-hidden">
                     <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{displayDomain}</span>
                     {item.author && <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{item.author}</span>}
                     <span className="px-2 py-1 rounded-lg bg-white/[0.06] flex items-center gap-1">
@@ -634,11 +633,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </div>
 
                 {/* Tags Management */}
-                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
-                  <div className="flex items-center justify-between mb-3">
-                    <div className="flex items-center gap-2">
-                      <Tag className="w-4 h-4 text-purple-400" />
-                      <h3 className="text-sm font-semibold text-white">Tags</h3>
+                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+                  <div className="flex items-center justify-between mb-3 gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Tag className="w-4 h-4 text-purple-400 shrink-0" />
+                      <h3 className="text-sm font-semibold text-white truncate">Tags</h3>
                     </div>
                     {!showTagInput && (
                       <TooltipProvider delayDuration={300}>
@@ -746,9 +745,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
 
                 {/* Domain Credibility */}
                 {domainStats && domainStats.total_analyses > 0 && (
-                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
                     <div className="flex items-center gap-2 mb-3">
-                      <Shield className="w-4 h-4 text-blue-400" />
+                      <Shield className="w-4 h-4 text-blue-400 shrink-0" />
                       <h3 className="text-sm font-semibold text-white">Source Credibility</h3>
                     </div>
                     <div className="space-y-2">
@@ -758,14 +757,14 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       </p>
                       {domainStats.avg_quality_score !== null && (
                         <div className="flex items-center gap-2">
-                          <span className="text-xs text-gray-400">Avg Quality:</span>
-                          <div className="flex-1 h-1.5 bg-white/[0.1] rounded-full overflow-hidden">
+                          <span className="text-xs text-gray-400 shrink-0">Avg Quality:</span>
+                          <div className="flex-1 min-w-0 h-1.5 bg-white/[0.1] rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full"
                               style={{ width: `${(domainStats.avg_quality_score / 10) * 100}%` }}
                             />
                           </div>
-                          <span className="text-xs font-medium text-white">{domainStats.avg_quality_score.toFixed(1)}/10</span>
+                          <span className="text-xs font-medium text-white shrink-0">{domainStats.avg_quality_score.toFixed(1)}/10</span>
                         </div>
                       )}
                       {/* Accuracy breakdown */}
@@ -804,16 +803,16 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
 
                 {/* Action buttons */}
                 <TooltipProvider delayDuration={300}>
-                  <div className="flex gap-3">
+                  <div className="grid grid-cols-2 gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
                           onClick={() => setIsShareModalOpen(true)}
                           size="sm"
-                          className="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl transition-all"
+                          className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl transition-all"
                         >
-                          <Mail className="mr-2 h-4 w-4" />
-                          Share
+                          <Mail className="mr-2 h-4 w-4 shrink-0" />
+                          <span className="truncate">Share</span>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>Share analysis via email</TooltipContent>
@@ -824,17 +823,17 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                           onClick={handleRegenerate}
                           disabled={isRegenerating}
                           size="sm"
-                          className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 rounded-xl transition-all disabled:opacity-50"
+                          className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 rounded-xl transition-all disabled:opacity-50"
                         >
                           {isRegenerating ? (
                             <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              <span className="hidden sm:inline">Regenerating...</span>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin shrink-0" />
+                              <span className="truncate">Regenerating</span>
                             </>
                           ) : (
                             <>
-                              <RefreshCw className="mr-2 h-4 w-4" />
-                              <span className="hidden sm:inline">Regenerate</span>
+                              <RefreshCw className="mr-2 h-4 w-4 shrink-0" />
+                              <span className="truncate">Regenerate</span>
                             </>
                           )}
                         </Button>
@@ -847,7 +846,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
             </aside>
 
             {/* RIGHT PANEL: Scrollable content */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 overflow-hidden">
               {activeMainTab === "summary" ? (
                 <div className="space-y-6 sm:space-y-8">
                   {processingError ? (
