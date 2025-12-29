@@ -7,9 +7,21 @@ export default function SiteFooter() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="border-t border-white/[0.08] bg-black">
-      <div className="max-w-6xl mx-auto px-4 py-8">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+    <footer className="border-t border-white/[0.08] bg-black mb-14 sm:mb-0">
+      {/* Mobile: Ultra-minimal footer */}
+      <div className="sm:hidden px-4 py-3">
+        <div className="flex items-center justify-center gap-4 text-[10px] text-white/30">
+          <Link href="/terms" className="hover:text-white/50">Terms</Link>
+          <span>&middot;</span>
+          <Link href="/privacy" className="hover:text-white/50">Privacy</Link>
+          <span>&middot;</span>
+          <span>&copy; {currentYear}</span>
+        </div>
+      </div>
+
+      {/* Desktop: Full footer */}
+      <div className="hidden sm:block max-w-6xl mx-auto px-4 py-8">
+        <div className="flex flex-row items-center justify-between gap-6">
           {/* Logo/Brand */}
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 bg-[#1d9bf0]/10 rounded-lg flex items-center justify-center group-hover:bg-[#1d9bf0]/20 transition-colors">
