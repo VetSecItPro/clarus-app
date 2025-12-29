@@ -14,6 +14,7 @@ import Image from "next/image"
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns"
 import { cn } from "@/lib/utils"
 import { formatDuration } from "@/lib/utils"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 type ContentItem = Database["public"]["Tables"]["content"]["Row"]
 
@@ -390,35 +391,47 @@ function HistoryPageContent({ session }: LibraryPageProps) {
           </Link>
 
           {/* Action buttons */}
-          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
-            <button
-              onClick={(e) => handleToggleBookmark(e, item)}
-              disabled={togglingBookmark === item.id}
-              className={cn(
-                "p-1.5 rounded-lg transition-all",
-                item.is_bookmarked
-                  ? "bg-amber-500/80 text-white"
-                  : "bg-black/60 hover:bg-amber-500/80"
-              )}
-            >
-              {togglingBookmark === item.id ? (
-                <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
-              ) : (
-                <Bookmark className={cn("w-3.5 h-3.5 text-white", item.is_bookmarked && "fill-current")} />
-              )}
-            </button>
-            <button
-              onClick={(e) => handleDelete(e, item.id)}
-              disabled={deletingId === item.id}
-              className="p-1.5 bg-black/60 rounded-lg hover:bg-red-500/80 transition-all"
-            >
-              {deletingId === item.id ? (
-                <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
-              ) : (
-                <Trash2 className="w-3.5 h-3.5 text-white" />
-              )}
-            </button>
-          </div>
+          <TooltipProvider delayDuration={300}>
+            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={(e) => handleToggleBookmark(e, item)}
+                    disabled={togglingBookmark === item.id}
+                    className={cn(
+                      "p-1.5 rounded-lg transition-all",
+                      item.is_bookmarked
+                        ? "bg-amber-500/80 text-white"
+                        : "bg-black/60 hover:bg-amber-500/80"
+                    )}
+                  >
+                    {togglingBookmark === item.id ? (
+                      <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                    ) : (
+                      <Bookmark className={cn("w-3.5 h-3.5 text-white", item.is_bookmarked && "fill-current")} />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{item.is_bookmarked ? "Remove bookmark" : "Add bookmark"}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={(e) => handleDelete(e, item.id)}
+                    disabled={deletingId === item.id}
+                    className="p-1.5 bg-black/60 rounded-lg hover:bg-red-500/80 transition-all"
+                  >
+                    {deletingId === item.id ? (
+                      <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
+                    ) : (
+                      <Trash2 className="w-3.5 h-3.5 text-white" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Delete</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
           {/* Bookmark indicator when bookmarked */}
           {item.is_bookmarked && (
             <div className="absolute top-2 left-2 p-1 bg-amber-500/80 rounded-md z-10">
@@ -635,35 +648,47 @@ function HistoryPageContent({ session }: LibraryPageProps) {
 
         {/* Action buttons - only show when collapsed */}
         {!isExpanded && (
-          <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-            <button
-              onClick={(e) => handleToggleBookmark(e, item)}
-              disabled={togglingBookmark === item.id}
-              className={cn(
-                "p-2 rounded-lg transition-all",
-                item.is_bookmarked
-                  ? "bg-amber-500/20 text-amber-400"
-                  : "hover:bg-amber-500/20 text-white/40 hover:text-amber-400"
-              )}
-            >
-              {togglingBookmark === item.id ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Bookmark className={cn("w-4 h-4", item.is_bookmarked && "fill-current")} />
-              )}
-            </button>
-            <button
-              onClick={(e) => handleDelete(e, item.id)}
-              disabled={deletingId === item.id}
-              className="p-2 rounded-lg hover:bg-red-500/20 transition-all"
-            >
-              {deletingId === item.id ? (
-                <Loader2 className="w-4 h-4 text-white/60 animate-spin" />
-              ) : (
-                <Trash2 className="w-4 h-4 text-white/40 hover:text-red-400" />
-              )}
-            </button>
-          </div>
+          <TooltipProvider delayDuration={300}>
+            <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={(e) => handleToggleBookmark(e, item)}
+                    disabled={togglingBookmark === item.id}
+                    className={cn(
+                      "p-2 rounded-lg transition-all",
+                      item.is_bookmarked
+                        ? "bg-amber-500/20 text-amber-400"
+                        : "hover:bg-amber-500/20 text-white/40 hover:text-amber-400"
+                    )}
+                  >
+                    {togglingBookmark === item.id ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Bookmark className={cn("w-4 h-4", item.is_bookmarked && "fill-current")} />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>{item.is_bookmarked ? "Remove bookmark" : "Add bookmark"}</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={(e) => handleDelete(e, item.id)}
+                    disabled={deletingId === item.id}
+                    className="p-2 rounded-lg hover:bg-red-500/20 transition-all"
+                  >
+                    {deletingId === item.id ? (
+                      <Loader2 className="w-4 h-4 text-white/60 animate-spin" />
+                    ) : (
+                      <Trash2 className="w-4 h-4 text-white/40 hover:text-red-400" />
+                    )}
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Delete</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         )}
         {/* Bookmark indicator - always visible when bookmarked */}
         {item.is_bookmarked && !isExpanded && (
@@ -686,26 +711,38 @@ function HistoryPageContent({ session }: LibraryPageProps) {
             <h1 className="text-2xl font-semibold text-white mb-1">Library</h1>
             <p className="text-white/50 text-sm">Your analyzed content</p>
           </div>
-          <div className="flex items-center gap-1 p-1 bg-white/[0.06] rounded-lg">
-            <button
-              onClick={() => setViewMode("list")}
-              className={cn(
-                "p-2 rounded-md transition-all",
-                viewMode === "list" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
-              )}
-            >
-              <LayoutList className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("grid")}
-              className={cn(
-                "p-2 rounded-md transition-all",
-                viewMode === "grid" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
-              )}
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-          </div>
+          <TooltipProvider delayDuration={300}>
+            <div className="flex items-center gap-1 p-1 bg-white/[0.06] rounded-lg">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={cn(
+                      "p-2 rounded-md transition-all",
+                      viewMode === "list" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
+                    )}
+                  >
+                    <LayoutList className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>List view</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={() => setViewMode("grid")}
+                    className={cn(
+                      "p-2 rounded-md transition-all",
+                      viewMode === "grid" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
+                    )}
+                  >
+                    <LayoutGrid className="w-4 h-4" />
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Grid view</TooltipContent>
+              </Tooltip>
+            </div>
+          </TooltipProvider>
         </div>
 
         {/* Search & Filter Bar */}
