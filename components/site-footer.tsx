@@ -9,14 +9,14 @@ export default function SiteFooter() {
   return (
     <footer className="border-t border-white/[0.08] bg-black mb-14 sm:mb-0">
       {/* Mobile: Ultra-minimal footer */}
-      <div className="sm:hidden px-4 py-3">
-        <div className="flex items-center justify-center gap-4 text-[10px] text-white/30">
-          <Link href="/terms" className="hover:text-white/50">Terms</Link>
-          <span>&middot;</span>
-          <Link href="/privacy" className="hover:text-white/50">Privacy</Link>
-          <span>&middot;</span>
+      <div className="sm:hidden px-4 py-2">
+        <p className="text-center text-[9px] text-white/25 leading-none">
+          <Link href="/terms" className="hover:text-white/40 transition-colors">Terms</Link>
+          <span className="text-white/15 mx-1.5">·</span>
+          <Link href="/privacy" className="hover:text-white/40 transition-colors">Privacy</Link>
+          <span className="text-white/15 mx-1.5">·</span>
           <span>&copy; {currentYear}</span>
-        </div>
+        </p>
       </div>
 
       {/* Desktop: Full footer */}

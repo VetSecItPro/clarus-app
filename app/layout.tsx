@@ -4,6 +4,7 @@ import { Inter } from "next/font/google"
 import { Toaster } from "sonner"
 import CookieConsent from "@/components/cookie-consent"
 import { ServiceWorkerRegister } from "@/components/service-worker-register"
+import { SWRProvider } from "@/components/swr-provider"
 import "./globals.css"
 
 const inter = Inter({
@@ -43,7 +44,9 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${inter.variable} dark bg-[#0a0e1a]`}>
       <body className="font-sans antialiased">
-        {children}
+        <SWRProvider>
+          {children}
+        </SWRProvider>
         <Toaster position="top-center" />
         <CookieConsent />
         <ServiceWorkerRegister />
