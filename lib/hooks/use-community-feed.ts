@@ -34,7 +34,8 @@ interface UseCommunityFeedOptions {
 const fetcher = async (options: UseCommunityFeedOptions): Promise<FeedItem[]> => {
   if (!options.userId) return []
 
-  let query = supabase
+  // Build content query
+  let contentQuery = supabase
     .from("content")
     .select(
       `*, users:user_id(name, email), content_ratings(signal_score, user_id, created_at), summaries(brief_overview, triage)`,
@@ -43,45 +44,59 @@ const fetcher = async (options: UseCommunityFeedOptions): Promise<FeedItem[]> =>
     .not("summaries", "is", "null")
 
   if (options.searchQuery) {
-    query = query.or(`title.ilike.%${options.searchQuery}%,full_text.ilike.%${options.searchQuery}%`)
+    contentQuery = contentQuery.or(`title.ilike.%${options.searchQuery}%,full_text.ilike.%${options.searchQuery}%`)
   }
 
   if (options.filterType && options.filterType !== "all") {
-    query = query.eq("type", options.filterType)
+    contentQuery = contentQuery.eq("type", options.filterType)
   }
 
   // Handle sorting
   if (options.sortBy === "date_added_asc") {
-    query = query.order("date_added", { ascending: true })
+    contentQuery = contentQuery.order("date_added", { ascending: true })
   } else {
-    query = query.order("date_added", { ascending: false })
+    contentQuery = contentQuery.order("date_added", { ascending: false })
   }
 
-  const { data, error } = await query.returns<FeedItemFromDb[]>()
+  // Run both queries in parallel for better performance
+  const [hiddenResult, contentResult] = await Promise.all([
+    supabase
+      .from("hidden_content")
+      .select("content_id")
+      .eq("user_id", options.userId),
+    contentQuery.returns<FeedItemFromDb[]>()
+  ])
 
-  if (error) throw error
+  const hiddenIds = new Set((hiddenResult.data || []).map((h) => h.content_id))
 
-  let processed = (data || [])
+  if (contentResult.error) throw contentResult.error
+  const data = contentResult.data
+
+  // Filter out hidden content
+  const visibleData = (data || []).filter((item) => !hiddenIds.has(item.id))
+
+  let processed = visibleData
     .map((item) => {
       // Get user rating if exists
       const userRating = item.content_ratings?.find((r) => r.user_id === item.user_id)
       const userScore = userRating?.signal_score ?? null
 
-      // Get AI rating from triage
+      // Get AI rating from triage - use quality_score as primary (1-10 scale)
       const summaryData = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
-      const aiScore = summaryData?.triage?.signal_noise_score ?? null
+      const qualityScore = summaryData?.triage?.quality_score ?? null
+      const signalScore = summaryData?.triage?.signal_noise_score ?? null
 
-      // Use user rating if available, otherwise fall back to AI rating
+      // Use user rating first, then quality_score, then signal_noise_score
+      const aiScore = qualityScore ?? signalScore
       const ratingScore = userScore ?? aiScore
       const ratingSource: "ai" | "user" = userScore !== null ? "user" : "ai"
 
       return {
         ...item,
-        ratingScore: ratingScore!,
+        ratingScore: ratingScore ?? 0,
         ratingSource,
-      }
+      } as FeedItem
     })
-    .filter((item): item is FeedItem => item.ratingScore !== null && item.ratingScore > 0)
 
   // Client-side sort for ratings
   if (options.sortBy === "rating_desc") {
@@ -110,8 +125,10 @@ export function useCommunityFeed(options: UseCommunityFeedOptions) {
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
-      dedupingInterval: 10000, // Dedupe requests within 10 seconds
+      dedupingInterval: 30000, // Dedupe requests within 30 seconds
       keepPreviousData: true,
+      revalidateIfStale: false, // Don't revalidate on mount if data exists
+      refreshInterval: 60000, // Background refresh every 60 seconds
     }
   )
 

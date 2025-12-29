@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { Settings, LogOut, Loader2, Sparkles, UserIcon, Check, X, Pencil, CreditCard } from "lucide-react"
+import { Settings, LogOut, Loader2, Sparkles, UserIcon, Check, X, Pencil, CreditCard, Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { EditAIPromptsModal } from "@/components/edit-ai-prompts-modal"
@@ -16,7 +16,11 @@ import {
 import { supabase } from "@/lib/supabase"
 import type { User } from "@supabase/supabase-js"
 
-export default function GlasmorphicSettingsButton() {
+interface GlasmorphicSettingsButtonProps {
+  variant?: "default" | "mobile"
+}
+
+export default function GlasmorphicSettingsButton({ variant = "default" }: GlasmorphicSettingsButtonProps) {
   const [isEditPromptModalOpen, setIsEditPromptModalOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -196,17 +200,29 @@ export default function GlasmorphicSettingsButton() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-14 w-14 rounded-full bg-white/[0.04] backdrop-blur-2xl border border-white/[0.06] hover:bg-white/[0.08] transition-all"
-            aria-label="Settings and Profile"
-          >
-            <Settings className="h-6 w-6 text-neutral-400" />
-          </Button>
+          {variant === "mobile" ? (
+            <button
+              className="flex flex-col items-center justify-center text-white/50 hover:text-white/70 transition-colors"
+              aria-label="Settings and Profile"
+            >
+              <Settings className="w-5 h-5" />
+              <span className="text-[10px] mt-0.5 font-medium">Settings</span>
+            </button>
+          ) : (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-14 w-14 rounded-full bg-white/[0.04] backdrop-blur-2xl border border-white/[0.06] hover:bg-white/[0.08] transition-all"
+              aria-label="Settings and Profile"
+            >
+              <Settings className="h-6 w-6 text-neutral-400" />
+            </Button>
+          )}
         </DropdownMenuTrigger>
         <DropdownMenuContent
-          align="end"
+          align={variant === "mobile" ? "end" : "end"}
+          side={variant === "mobile" ? "top" : "bottom"}
+          sideOffset={variant === "mobile" ? 12 : 8}
           className="w-72 bg-neutral-900/95 backdrop-blur-xl border border-neutral-700/50 rounded-2xl p-2 shadow-2xl"
         >
           {/* User section */}
@@ -298,6 +314,17 @@ export default function GlasmorphicSettingsButton() {
           )}
 
           <DropdownMenuSeparator className="bg-neutral-700/50 my-1" />
+
+          {/* Bookmarks */}
+          {user && (
+            <DropdownMenuItem
+              onClick={() => router.push("/library?bookmarks=true")}
+              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-200"
+            >
+              <Bookmark className="h-4 w-4 text-amber-400" />
+              <span>My Bookmarks</span>
+            </DropdownMenuItem>
+          )}
 
           {/* Edit AI Prompts */}
           <DropdownMenuItem

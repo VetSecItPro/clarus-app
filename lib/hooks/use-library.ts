@@ -109,10 +109,11 @@ export function useLibrary(options: UseLibraryOptions) {
     cacheKey,
     () => fetcher(options),
     {
-      revalidateOnFocus: false,
+      revalidateOnFocus: true, // Revalidate when user returns to tab
       revalidateOnReconnect: true,
       dedupingInterval: 5000, // Dedupe requests within 5 seconds
       keepPreviousData: true, // Keep showing old data while loading new
+      revalidateOnMount: true, // Always revalidate on mount
     }
   )
 
