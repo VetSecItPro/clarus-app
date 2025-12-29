@@ -1,4 +1,4 @@
-import { streamText, convertToModelMessages, consumeStream, type UIMessage, tool } from "ai"
+import { streamText, convertToModelMessages, consumeStream, type UIMessage, tool, stepCountIs } from "ai"
 import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database.types"
@@ -65,13 +65,40 @@ async function searchWeb(query: string): Promise<string> {
   }
 }
 
+// Cost protection limits
+const LIMITS = {
+  MAX_MESSAGES_PER_MINUTE: 15,        // Rate limit per minute
+  MAX_MESSAGES_PER_HOUR: 100,         // Hourly limit
+  MAX_MESSAGES_PER_DAY: 500,          // Daily limit
+  MAX_CONVERSATION_MESSAGES: 20,      // Max messages sent to API (keeps context smaller)
+  MAX_MESSAGE_LENGTH: 2000,           // Max chars per user message
+  MAX_OUTPUT_TOKENS: 1024,            // Max tokens in response
+  MAX_WEB_SEARCHES_PER_CONVERSATION: 3, // Limit expensive web searches
+}
+
 export async function POST(req: NextRequest) {
-  // Rate limiting
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "unknown"
-  const rateLimit = checkRateLimit(`chat:${clientIp}`, 30, 60000) // 30 messages per minute
-  if (!rateLimit.allowed) {
+
+  // Multi-tier rate limiting
+  const minuteLimit = checkRateLimit(`chat:minute:${clientIp}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000)
+  const hourLimit = checkRateLimit(`chat:hour:${clientIp}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000)
+  const dayLimit = checkRateLimit(`chat:day:${clientIp}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000)
+
+  if (!minuteLimit.allowed) {
     return NextResponse.json(
-      { error: "Too many requests. Please slow down." },
+      { error: "Too many requests. Please wait a moment." },
+      { status: 429 }
+    )
+  }
+  if (!hourLimit.allowed) {
+    return NextResponse.json(
+      { error: "Hourly limit reached. Please try again later." },
+      { status: 429 }
+    )
+  }
+  if (!dayLimit.allowed) {
+    return NextResponse.json(
+      { error: "Daily limit reached. Please try again tomorrow." },
       { status: 429 }
     )
   }
@@ -100,6 +127,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Messages are required." }, { status: 400 })
     }
 
+    // Limit conversation history to control context size
+    const limitedMessages = messages.slice(-LIMITS.MAX_CONVERSATION_MESSAGES)
+
     // Helper to extract text content from UIMessage parts
     const getMessageText = (msg: UIMessage): string => {
       if (!msg.parts) return ""
@@ -109,8 +139,20 @@ export async function POST(req: NextRequest) {
         .join("")
     }
 
+    // Validate message length for the latest user message
+    const latestUserMsg = limitedMessages.filter(m => m.role === "user").pop()
+    if (latestUserMsg) {
+      const latestText = getMessageText(latestUserMsg)
+      if (latestText.length > LIMITS.MAX_MESSAGE_LENGTH) {
+        return NextResponse.json(
+          { error: `Message too long. Maximum ${LIMITS.MAX_MESSAGE_LENGTH} characters allowed.` },
+          { status: 400 }
+        )
+      }
+    }
+
     // Sanitize user messages to prevent prompt injection
-    const sanitizedMessages = messages.map((msg) => {
+    const sanitizedMessages = limitedMessages.map((msg) => {
       if (msg.role === "user") {
         const text = getMessageText(msg)
         if (text) {
@@ -119,7 +161,7 @@ export async function POST(req: NextRequest) {
             ...msg,
             parts: msg.parts.map((part) =>
               part.type === "text"
-                ? { ...part, text: validation.sanitized || part.text }
+                ? { ...part, text: (validation.sanitized || part.text).slice(0, LIMITS.MAX_MESSAGE_LENGTH) }
                 : part
             ),
           }
@@ -221,8 +263,18 @@ export async function POST(req: NextRequest) {
     const contentContext = contextParts.join("\n")
 
     // Enhanced system prompt
-    const webSearchNote = tavilyApiKey
-      ? "You have access to a web search tool. Use it when the user asks about current events, needs up-to-date information, or when the content references topics you need more context on."
+    const webSearchCapability = tavilyApiKey
+      ? `
+## Web Search Tool
+You have access to a webSearch tool. USE IT ACTIVELY when:
+- The user asks about people, companies, or entities mentioned in the content
+- The user wants background info on topics discussed
+- The user asks "who is", "what is", or similar questions
+- You need current/updated information
+- The content references topics you don't have full context on
+- The user explicitly asks you to search
+
+IMPORTANT: When the user asks about something not fully covered in the content (like who created a video, background on a speaker, etc.), USE the webSearch tool immediately. Don't say you can't find it - search for it!`
       : ""
 
     const systemPrompt = `You are an intelligent AI assistant helping users understand and discuss content they've saved. You have access to the full content, summaries, and analysis.
@@ -232,7 +284,8 @@ export async function POST(req: NextRequest) {
 - Explain complex concepts mentioned in the content
 - Compare points made in the content with broader knowledge
 - Provide additional context and background information
-${webSearchNote}
+- Search the web for information not in the content
+${webSearchCapability}
 
 ## Response Guidelines:
 - Use **bold** for emphasis on key terms and important points
@@ -240,14 +293,14 @@ ${webSearchNote}
 - Use headers (##) to organize longer responses
 - Include relevant quotes from the content when appropriate
 - Be conversational but informative
-- If you're unsure about something, say so
+- If information isn't in the content, search for it rather than saying you don't know
 
 ## Content Context:
 ${contentContext}`
 
     const modelMessages = convertToModelMessages(sanitizedMessages as UIMessage[])
 
-    const modelName = promptData.model_name || "anthropic/claude-sonnet-4-20250514"
+    const modelName = promptData.model_name || "anthropic/claude-sonnet-4"
 
     // Create OpenRouter provider instance
     const openrouter = createOpenRouter({ apiKey: openRouterApiKey! })
@@ -263,6 +316,9 @@ ${contentContext}`
     // Check if the model likely supports tools
     const modelSupportsTools = toolSupportedModels.some(prefix => modelName.toLowerCase().includes(prefix.split("/")[1]))
 
+    // Track web searches per conversation to limit costs
+    const searchKey = `websearch:${contentIdValidation.sanitized}:${clientIp}`
+
     // Define tools (only if Tavily API key is available AND model supports tools)
     const tools = (tavilyApiKey && modelSupportsTools) ? {
       webSearch: tool({
@@ -271,6 +327,11 @@ ${contentContext}`
           query: z.string().describe("The search query to find relevant information"),
         }),
         execute: async ({ query }) => {
+          // Rate limit web searches per conversation
+          const searchLimit = checkRateLimit(searchKey, LIMITS.MAX_WEB_SEARCHES_PER_CONVERSATION, 3600000) // 1 hour window
+          if (!searchLimit.allowed) {
+            return "Search limit reached for this conversation. Please ask questions based on the content provided."
+          }
           return await searchWeb(query)
         },
       }),
@@ -281,9 +342,10 @@ ${contentContext}`
       system: systemPrompt,
       messages: modelMessages,
       tools,
+      stopWhen: stepCountIs(tools ? 3 : 1), // Limited steps for tool execution (cost control)
       temperature: promptData.temperature ?? 0.7,
       topP: promptData.top_p ?? undefined,
-      maxOutputTokens: promptData.max_tokens ?? 2048,
+      maxOutputTokens: Math.min(promptData.max_tokens ?? LIMITS.MAX_OUTPUT_TOKENS, LIMITS.MAX_OUTPUT_TOKENS),
       abortSignal: req.signal,
     })
 
