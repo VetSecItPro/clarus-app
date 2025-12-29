@@ -1,7 +1,6 @@
 "use client"
 
 import { supabase } from "@/lib/supabase"
-import type { Database } from "@/types/database.types"
 import withAuth from "@/components/with-auth"
 import { useEffect, useState, useCallback } from "react"
 import type { Session } from "@supabase/supabase-js"
@@ -9,15 +8,15 @@ import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
-import { Search, SlidersHorizontal, Loader2, FileText, Play, Trash2, LayoutGrid, LayoutList, Zap, Clock, Twitter, Sparkles, ChevronDown, ChevronUp, ExternalLink, Star, TrendingUp, Bookmark, Tag, X } from "lucide-react"
+import { Search, SlidersHorizontal, Loader2, FileText, Play, Trash2, LayoutGrid, LayoutList, Zap, Clock, Twitter, Sparkles, ChevronDown, ChevronUp, ArrowRight, Star, TrendingUp, Bookmark, Tag, X } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns"
 import { cn } from "@/lib/utils"
 import { formatDuration } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
-
-type ContentItem = Database["public"]["Tables"]["content"]["Row"]
+import { useLibrary, type LibraryItem } from "@/lib/hooks/use-library"
+import { ContentListSkeleton } from "@/components/ui/content-skeleton"
 
 type SummaryData = {
   brief_overview: string | null
@@ -30,12 +29,7 @@ type SummaryData = {
   } | null
 }
 
-type HistoryItem = ContentItem & {
-  content_ratings: { signal_score: number | null }[]
-  summaries: SummaryData | SummaryData[]
-  is_bookmarked?: boolean
-  tags?: string[]
-}
+type HistoryItem = LibraryItem
 
 interface LibraryPageProps {
   session: Session | null
@@ -91,8 +85,6 @@ function groupByDate(items: HistoryItem[]): { label: string; items: HistoryItem[
 }
 
 function HistoryPageContent({ session }: LibraryPageProps) {
-  const [items, setItems] = useState<HistoryItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [sortBy, setSortBy] = useState("date_desc")
@@ -106,11 +98,30 @@ function HistoryPageContent({ session }: LibraryPageProps) {
   const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showTagDropdown, setShowTagDropdown] = useState(false)
+  const [localItems, setLocalItems] = useState<HistoryItem[]>([])
 
+  // Debounce search input
   useEffect(() => {
-    const handler = setTimeout(() => setDebouncedSearch(searchQuery), 400)
+    const handler = setTimeout(() => setDebouncedSearch(searchQuery), 300)
     return () => clearTimeout(handler)
   }, [searchQuery])
+
+  // Use SWR for cached data fetching
+  const { items: swrItems, isLoading, refresh } = useLibrary({
+    userId: session?.user?.id,
+    searchQuery: debouncedSearch,
+    filterType,
+    sortBy,
+    bookmarkOnly,
+    selectedTags,
+  })
+
+  // Sync SWR data to local state for optimistic updates
+  useEffect(() => {
+    setLocalItems(swrItems)
+  }, [swrItems])
+
+  const items = localItems
 
   // Fetch all tags
   const fetchAllTags = useCallback(async () => {
@@ -129,92 +140,16 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     fetchAllTags()
   }, [fetchAllTags])
 
-  const fetchContent = useCallback(async () => {
-    if (!session?.user) {
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-
-    try {
-      let query = supabase
-        .from("content")
-        .select(`*, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, triage), tags`)
-        .eq("user_id", session.user.id)
-
-      if (debouncedSearch) {
-        // Search across title and full_text using OR
-        query = query.or(`title.ilike.%${debouncedSearch}%,full_text.ilike.%${debouncedSearch}%`)
-      }
-
-      if (filterType !== "all") {
-        query = query.eq("type", filterType)
-      }
-
-      if (bookmarkOnly) {
-        query = query.eq("is_bookmarked", true)
-      }
-
-      // Handle sorting
-      if (sortBy === "date_desc") {
-        query = query.order("date_added", { ascending: false })
-      } else if (sortBy === "date_asc") {
-        query = query.order("date_added", { ascending: true })
-      } else if (sortBy === "rating_desc" || sortBy === "rating_asc") {
-        query = query.order("date_added", { ascending: false })
-      }
-
-      const { data, error } = await query
-
-      if (error) throw error
-
-      let sortedData = data as HistoryItem[]
-
-      // Client-side sort for ratings
-      if (sortBy === "rating_desc") {
-        sortedData = sortedData.sort((a, b) => {
-          const ratingA = a.content_ratings?.[0]?.signal_score ?? -1
-          const ratingB = b.content_ratings?.[0]?.signal_score ?? -1
-          return ratingB - ratingA
-        })
-      } else if (sortBy === "rating_asc") {
-        sortedData = sortedData.sort((a, b) => {
-          const ratingA = a.content_ratings?.[0]?.signal_score ?? 999
-          const ratingB = b.content_ratings?.[0]?.signal_score ?? 999
-          return ratingA - ratingB
-        })
-      }
-
-      // Client-side filter for tags
-      if (selectedTags.length > 0) {
-        sortedData = sortedData.filter((item) => {
-          const itemTags = item.tags || []
-          return selectedTags.some((tag) => itemTags.includes(tag))
-        })
-      }
-
-      setItems(sortedData)
-    } catch (error: unknown) {
-      console.error("Error fetching content:", error)
-      toast.error("Failed to load content")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [session, debouncedSearch, filterType, sortBy, bookmarkOnly, selectedTags])
-
+  // Refresh on content changes
   useEffect(() => {
-    if (session?.user) fetchContent()
-  }, [session, fetchContent])
-
-  useEffect(() => {
-    const handleChange = () => fetchContent()
+    const handleChange = () => refresh()
     window.addEventListener("contentAdded", handleChange)
     window.addEventListener("contentRated", handleChange)
     return () => {
       window.removeEventListener("contentAdded", handleChange)
       window.removeEventListener("contentRated", handleChange)
     }
-  }, [fetchContent])
+  }, [refresh])
 
   const handleDelete = async (e: React.MouseEvent, itemId: string) => {
     e.preventDefault()
@@ -222,15 +157,19 @@ function HistoryPageContent({ session }: LibraryPageProps) {
 
     if (!window.confirm("Delete this item? This cannot be undone.")) return
 
+    // Optimistic update - remove immediately
+    setLocalItems((prev) => prev.filter((item) => item.id !== itemId))
     setDeletingId(itemId)
+
     try {
       const { error } = await supabase.from("content").delete().eq("id", itemId)
       if (error) throw error
-      setItems((prev) => prev.filter((item) => item.id !== itemId))
       toast.success("Item deleted")
+      refresh() // Refresh cache
     } catch (error) {
       console.error("Error deleting:", error)
       toast.error("Failed to delete item")
+      refresh() // Revert by refreshing
     } finally {
       setDeletingId(null)
     }
@@ -246,8 +185,13 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     e.preventDefault()
     e.stopPropagation()
 
-    setTogglingBookmark(item.id)
     const newValue = !item.is_bookmarked
+
+    // Optimistic update - toggle immediately
+    setLocalItems((prev) =>
+      prev.map((i) => (i.id === item.id ? { ...i, is_bookmarked: newValue } : i))
+    )
+    setTogglingBookmark(item.id)
 
     try {
       const response = await fetch(`/api/content/${item.id}/bookmark`, {
@@ -257,14 +201,14 @@ function HistoryPageContent({ session }: LibraryPageProps) {
       })
 
       if (!response.ok) throw new Error("Failed to update bookmark")
-
-      setItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, is_bookmarked: newValue } : i))
-      )
       toast.success(newValue ? "Added to bookmarks" : "Removed from bookmarks")
     } catch (error) {
       console.error("Error toggling bookmark:", error)
       toast.error("Failed to update bookmark")
+      // Revert on error
+      setLocalItems((prev) =>
+        prev.map((i) => (i.id === item.id ? { ...i, is_bookmarked: !newValue } : i))
+      )
     } finally {
       setTogglingBookmark(null)
     }
@@ -609,10 +553,11 @@ function HistoryPageContent({ session }: LibraryPageProps) {
               <Link
                 href={`/item/${item.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="flex items-center gap-2 px-4 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white rounded-xl transition-colors text-sm font-medium"
+                prefetch={true}
+                className="group/btn flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1d9bf0] to-[#0d8bdf] hover:from-[#1a8cd8] hover:to-[#0a7bc8] text-white rounded-xl transition-all text-sm font-semibold shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40 hover:scale-[1.02] active:scale-[0.98]"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
                 View Full Analysis
+                <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5" />
               </Link>
               <button
                 onClick={(e) => handleToggleBookmark(e, item)}
@@ -913,10 +858,12 @@ function HistoryPageContent({ session }: LibraryPageProps) {
         </div>
 
         {/* Content */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin mb-4" />
-            <p className="text-white/40 text-sm">Loading your library...</p>
+        {isLoading && items.length === 0 ? (
+          <div className="space-y-8">
+            <div>
+              <div className="h-4 w-20 bg-white/[0.08] rounded mb-3 animate-pulse" />
+              <ContentListSkeleton count={4} viewMode={viewMode} />
+            </div>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">

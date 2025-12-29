@@ -103,11 +103,11 @@ export function TruthCheckCard({ truthCheck }: TruthCheckCardProps) {
               >
                 <div className="flex items-start gap-3">
                   <span className="text-lg">{getIssueIcon(issue.type)}</span>
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm text-white/90 font-medium mb-1">
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="text-sm text-white/90 font-medium mb-1 break-words">
                       {issue.claim_or_issue}
                     </div>
-                    <div className="text-xs text-white/60 mb-2">
+                    <div className="text-xs text-white/60 mb-2 break-words">
                       {issue.assessment}
                     </div>
                     <div className="flex items-center gap-2 flex-wrap">
@@ -166,10 +166,10 @@ export function TruthCheckCard({ truthCheck }: TruthCheckCardProps) {
           initial={{ y: 10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.3 }}
-          className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08]"
+          className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
         >
           <div className="text-xs text-white/50 mb-1">Sources Quality</div>
-          <div className="text-sm text-white/80">{truthCheck.sources_quality}</div>
+          <div className="text-sm text-white/80 break-words">{truthCheck.sources_quality}</div>
         </motion.div>
       )}
     </div>

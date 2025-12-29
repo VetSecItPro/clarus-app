@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react"
+import { cn } from "@/lib/utils"
 
 interface YouTubePlayerProps {
   videoId: string
@@ -9,6 +10,8 @@ interface YouTubePlayerProps {
 
 export interface YouTubePlayerRef {
   seekTo: (seconds: number) => void
+  play: () => void
+  pause: () => void
 }
 
 declare global {
@@ -33,6 +36,16 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
           autoplay: 0,
           modestbranding: 1,
           rel: 0,
+          playsinline: 1, // Important for iOS - plays inline instead of fullscreen
+          fs: 1, // Allow fullscreen
+          cc_load_policy: 0, // Don't force captions
+          iv_load_policy: 3, // Hide video annotations
+          origin: typeof window !== "undefined" ? window.location.origin : "",
+        },
+        events: {
+          onReady: () => {
+            // Player is ready
+          },
         },
       })
     }, [videoId])
@@ -64,12 +77,30 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
           playerRef.current.playVideo()
         }
       },
+      play: () => {
+        if (playerRef.current?.playVideo) {
+          playerRef.current.playVideo()
+        }
+      },
+      pause: () => {
+        if (playerRef.current?.pauseVideo) {
+          playerRef.current.pauseVideo()
+        }
+      },
     }))
 
     return (
-      <div className={className}>
-        <div ref={containerRef}>
-          <div id={playerIdRef.current} className="w-full aspect-video" />
+      <div className={cn("relative w-full", className)}>
+        {/* Container with proper aspect ratio for mobile */}
+        <div
+          ref={containerRef}
+          className="relative w-full overflow-hidden bg-black"
+          style={{ paddingBottom: "56.25%" }} // 16:9 aspect ratio
+        >
+          <div
+            id={playerIdRef.current}
+            className="absolute inset-0 w-full h-full"
+          />
         </div>
       </div>
     )

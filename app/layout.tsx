@@ -3,6 +3,7 @@ import type { Metadata } from "next"
 import { Inter } from "next/font/google"
 import { Toaster } from "sonner"
 import CookieConsent from "@/components/cookie-consent"
+import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import "./globals.css"
 
 const inter = Inter({
@@ -15,8 +16,15 @@ export const metadata: Metadata = {
   title: "Truth Checker",
   description: "Check and verify content truth",
   generator: "v0.dev",
+  manifest: "/manifest.json",
   icons: {
     icon: "/favicon.svg",
+    apple: "/favicon.svg",
+  },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Vajra",
   },
 }
 
@@ -38,6 +46,7 @@ export default function RootLayout({
         {children}
         <Toaster position="top-center" />
         <CookieConsent />
+        <ServiceWorkerRegister />
       </body>
     </html>
   )

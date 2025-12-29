@@ -1,20 +1,19 @@
 "use client"
 
-import { supabase } from "@/lib/supabase"
-import type { Database } from "@/types/database.types"
 import withAuth from "@/components/with-auth"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState } from "react"
 import type { Session } from "@supabase/supabase-js"
-import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { formatDistanceToNow } from "date-fns"
-import { Search, Loader2, User, Play, FileText, Users, SlidersHorizontal, LayoutGrid, LayoutList, Zap, ChevronDown, ChevronUp, ExternalLink, Star, Twitter, Sparkles } from "lucide-react"
+import { Search, User, Play, FileText, Users, SlidersHorizontal, LayoutGrid, LayoutList, Zap, ChevronDown, ChevronUp, ArrowRight, Star, Twitter, Sparkles } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
 import { formatDuration } from "@/lib/utils"
+import { useCommunityFeed, type FeedItem } from "@/lib/hooks/use-community-feed"
+import { FeedListSkeleton } from "@/components/ui/content-skeleton"
 
 type SummaryData = {
   brief_overview: string | null
@@ -25,19 +24,11 @@ type SummaryData = {
   } | null
 }
 
-type FeedItemFromDb = Database["public"]["Tables"]["content"]["Row"] & {
-  users: { name: string | null; email: string | null } | null
-  content_ratings: { signal_score: number | null; user_id: string; created_at: string }[]
-  summaries: SummaryData | SummaryData[]
-}
-
-type DisplayItem = FeedItemFromDb & {
+type DisplayItem = FeedItem & {
   domain: string
   savedAt: string
   displayDuration: string
   raterUsername: string
-  ratingScore: number
-  ratingSource: "ai" | "user"  // Track if rating is from AI or user override
   ratingGivenAt: string | null
 }
 
@@ -56,9 +47,6 @@ const TYPE_FILTERS = [
 ]
 
 function CommunityPageContent({ session }: { session: Session | null }) {
-  const [items, setItems] = useState<DisplayItem[]>([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [activeType, setActiveType] = useState("all")
@@ -67,10 +55,38 @@ function CommunityPageContent({ session }: { session: Session | null }) {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [expandedId, setExpandedId] = useState<string | null>(null)
 
+  // Debounce search
   useEffect(() => {
-    const handler = setTimeout(() => setDebouncedSearch(searchQuery), 400)
+    const handler = setTimeout(() => setDebouncedSearch(searchQuery), 300)
     return () => clearTimeout(handler)
   }, [searchQuery])
+
+  // Use SWR for cached data fetching
+  const { items: rawItems, isLoading, error } = useCommunityFeed({
+    userId: session?.user?.id,
+    searchQuery: debouncedSearch,
+    filterType: activeType,
+    sortBy: activeSort,
+  })
+
+  // Transform items for display
+  const items: DisplayItem[] = rawItems.map((item) => {
+    const rater = item.users
+    const raterUsername = rater?.name || rater?.email?.split("@")[0] || "Anonymous"
+    const userRating = item.content_ratings?.find((r) => r.user_id === item.user_id)
+    const ratingGivenAt = userRating?.created_at
+      ? formatDistanceToNow(new Date(userRating.created_at), { addSuffix: true })
+      : null
+
+    return {
+      ...item,
+      domain: getDomain(item.url),
+      savedAt: item.date_added ? formatDistanceToNow(new Date(item.date_added), { addSuffix: true }) : "unknown",
+      displayDuration: formatDuration(item.duration),
+      raterUsername,
+      ratingGivenAt,
+    }
+  })
 
   const getDomain = (url: string | null): string => {
     if (!url) return "unknown"
@@ -80,99 +96,6 @@ function CommunityPageContent({ session }: { session: Session | null }) {
       return "unknown"
     }
   }
-
-  const fetchContent = useCallback(async () => {
-    if (!session?.user) {
-      setIsLoading(false)
-      return
-    }
-    setIsLoading(true)
-    setError(null)
-
-    try {
-      let query = supabase
-        .from("content")
-        .select(
-          `*, users:user_id(name, email), content_ratings(signal_score, user_id, created_at), summaries(brief_overview, triage)`,
-        )
-        .not("user_id", "eq", session.user.id)
-        .not("summaries", "is", "null") // Must have AI analysis
-
-      if (debouncedSearch) {
-        // Search across title and full_text using OR
-        query = query.or(`title.ilike.%${debouncedSearch}%,full_text.ilike.%${debouncedSearch}%`)
-      }
-
-      if (activeType !== "all") {
-        query = query.eq("type", activeType)
-      }
-
-      // Handle sorting - for rating sorts, we'll do client-side
-      if (activeSort === "date_added_desc") {
-        query = query.order("date_added", { ascending: false })
-      } else if (activeSort === "date_added_asc") {
-        query = query.order("date_added", { ascending: true })
-      } else {
-        query = query.order("date_added", { ascending: false })
-      }
-
-      const { data, error: fetchError } = await query.returns<FeedItemFromDb[]>()
-
-      if (fetchError) throw fetchError
-
-      let processed = (data || [])
-        .map((item) => {
-          const rater = item.users
-          const raterUsername = rater?.name || rater?.email?.split("@")[0] || "Anonymous"
-
-          // Get user rating if exists (owner rated their own content)
-          const userRating = item.content_ratings?.find((r) => r.user_id === item.user_id)
-          const userScore = userRating?.signal_score ?? null
-
-          // Get AI rating from triage
-          const summaryData = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
-          const aiScore = summaryData?.triage?.signal_noise_score ?? null
-
-          // Use user rating if available, otherwise fall back to AI rating
-          const ratingScore = userScore ?? aiScore
-          const ratingSource: "ai" | "user" = userScore !== null ? "user" : "ai"
-          const ratingGivenAt = userRating?.created_at
-            ? formatDistanceToNow(new Date(userRating.created_at), { addSuffix: true })
-            : null
-
-          return {
-            ...item,
-            domain: getDomain(item.url),
-            savedAt: item.date_added ? formatDistanceToNow(new Date(item.date_added), { addSuffix: true }) : "unknown",
-            displayDuration: formatDuration(item.duration),
-            raterUsername,
-            ratingScore: ratingScore!,
-            ratingSource,
-            ratingGivenAt,
-          }
-        })
-        .filter((item): item is DisplayItem => item.ratingScore !== null && item.ratingScore > 0)
-
-      // Client-side sort for ratings
-      if (activeSort === "rating_desc") {
-        processed = processed.sort((a, b) => b.ratingScore - a.ratingScore)
-      } else if (activeSort === "rating_asc") {
-        processed = processed.sort((a, b) => a.ratingScore - b.ratingScore)
-      }
-
-      setItems(processed)
-    } catch (err: unknown) {
-      console.error("Error fetching community content:", err)
-      setError(err instanceof Error ? err.message : "Unknown error")
-      toast.error("Failed to load community content")
-    } finally {
-      setIsLoading(false)
-    }
-  }, [session, debouncedSearch, activeType, activeSort])
-
-  useEffect(() => {
-    if (session?.user) fetchContent()
-  }, [session, fetchContent])
 
   const toggleExpand = (e: React.MouseEvent, itemId: string) => {
     e.preventDefault()
@@ -403,10 +326,11 @@ function CommunityPageContent({ session }: { session: Session | null }) {
               <Link
                 href={`/item/${item.id}`}
                 onClick={(e) => e.stopPropagation()}
-                className="inline-flex items-center gap-2 px-4 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white rounded-xl transition-colors text-sm font-medium"
+                prefetch={true}
+                className="group/btn inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1d9bf0] to-[#0d8bdf] hover:from-[#1a8cd8] hover:to-[#0a7bc8] text-white rounded-xl transition-all text-sm font-semibold shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40 hover:scale-[1.02] active:scale-[0.98]"
               >
-                <ExternalLink className="w-3.5 h-3.5" />
                 View Full Analysis
+                <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5" />
               </Link>
             </div>
           </div>
@@ -520,23 +444,14 @@ function CommunityPageContent({ session }: { session: Session | null }) {
         </div>
 
         {/* Content */}
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin mb-4" />
-            <p className="text-white/40 text-sm">Loading community content...</p>
-          </div>
+        {isLoading && items.length === 0 ? (
+          <FeedListSkeleton count={5} viewMode={viewMode} />
         ) : error ? (
           <div className="text-center py-20">
             <div className="w-16 h-16 bg-red-500/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Users className="w-8 h-8 text-red-400" />
             </div>
-            <p className="text-red-400 text-sm mb-4">{error}</p>
-            <button
-              onClick={fetchContent}
-              className="px-4 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white rounded-xl transition-colors text-sm font-medium"
-            >
-              Try again
-            </button>
+            <p className="text-red-400 text-sm mb-4">{error instanceof Error ? error.message : "Failed to load"}</p>
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">

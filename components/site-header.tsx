@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation"
 import { Shield, Home, Clock, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 const navItems = [
   { href: "/", label: "Home", icon: Home, tooltip: "Submit content for analysis" },
@@ -38,32 +37,25 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
           {/* Navigation - hidden on mobile (bottom nav used instead) */}
           {showNav && (
             <nav className="hidden sm:flex items-center gap-1">
-              <TooltipProvider delayDuration={300}>
-                {navItems.map((item) => {
-                  const isActive = pathname === item.href
-                  const Icon = item.icon
-                  return (
-                    <Tooltip key={item.label}>
-                      <TooltipTrigger asChild>
-                        <Link href={item.href}>
-                          <div
-                            className={cn(
-                              "flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200",
-                              isActive
-                                ? "bg-white/[0.1] text-white"
-                                : "text-white/50 hover:bg-white/[0.05] hover:text-white/80"
-                            )}
-                          >
-                            <Icon className={cn("w-4 h-4", isActive && "text-[#1d9bf0]")} />
-                            <span className="text-sm font-medium">{item.label}</span>
-                          </div>
-                        </Link>
-                      </TooltipTrigger>
-                      <TooltipContent>{item.tooltip}</TooltipContent>
-                    </Tooltip>
-                  )
-                })}
-              </TooltipProvider>
+              {navItems.map((item) => {
+                const isActive = pathname === item.href
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className={cn(
+                      "flex items-center gap-2 px-3 py-2 rounded-xl transition-all duration-200",
+                      isActive
+                        ? "bg-white/[0.1] text-white"
+                        : "text-white/50 hover:bg-white/[0.05] hover:text-white/80"
+                    )}
+                  >
+                    <Icon className={cn("w-4 h-4", isActive && "text-[#1d9bf0]")} />
+                    <span className="text-sm font-medium">{item.label}</span>
+                  </Link>
+                )
+              })}
             </nav>
           )}
 

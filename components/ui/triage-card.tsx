@@ -73,15 +73,15 @@ export function TriageCard({ triage }: TriageCardProps) {
         initial={{ x: -20, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.1 }}
-        className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08]"
+        className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
       >
         <div className="flex items-start gap-3">
-          <div className="p-2 rounded-lg bg-white/[0.06]">
+          <div className="p-2 rounded-lg bg-white/[0.06] shrink-0">
             <Clock className="w-4 h-4 text-white/60" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <div className="text-xs text-white/50 mb-1.5">Worth Your Time?</div>
-            <span className={`inline-block px-2.5 py-1 text-sm font-medium rounded-lg border ${getWorthItStyle(triage.worth_your_time)}`}>
+            <span className={`inline-block px-2.5 py-1 text-sm font-medium rounded-lg border break-words ${getWorthItStyle(triage.worth_your_time)}`}>
               {triage.worth_your_time}
             </span>
           </div>
@@ -94,13 +94,13 @@ export function TriageCard({ triage }: TriageCardProps) {
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.2 }}
-          className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08]"
+          className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-white/[0.06]">
+            <div className="p-2 rounded-lg bg-white/[0.06] shrink-0">
               <Users className="w-4 h-4 text-white/60" />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="text-xs text-white/50 mb-2">Target Audience</div>
               <div className="flex flex-wrap gap-2">
                 {triage.target_audience.map((audience, i) => (
@@ -109,7 +109,7 @@ export function TriageCard({ triage }: TriageCardProps) {
                     initial={{ scale: 0 }}
                     animate={{ scale: 1 }}
                     transition={{ duration: 0.2, delay: 0.3 + i * 0.05 }}
-                    className="px-2.5 py-1 text-xs font-medium rounded-lg bg-[#1d9bf0]/15 text-[#1d9bf0] border border-[#1d9bf0]/25"
+                    className="px-2.5 py-1 text-xs font-medium rounded-lg bg-[#1d9bf0]/15 text-[#1d9bf0] border border-[#1d9bf0]/25 break-words"
                   >
                     {audience}
                   </motion.span>
@@ -126,15 +126,15 @@ export function TriageCard({ triage }: TriageCardProps) {
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.3 }}
-          className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08]"
+          className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
         >
           <div className="flex items-start gap-3">
-            <div className="p-2 rounded-lg bg-white/[0.06]">
+            <div className="p-2 rounded-lg bg-white/[0.06] shrink-0">
               <Sparkles className="w-4 h-4 text-white/60" />
             </div>
-            <div className="flex-1">
+            <div className="flex-1 min-w-0">
               <div className="text-xs text-white/50 mb-1">Content Density</div>
-              <div className="text-sm text-white/80">{triage.content_density}</div>
+              <div className="text-sm text-white/80 break-words">{triage.content_density}</div>
             </div>
           </div>
         </motion.div>
