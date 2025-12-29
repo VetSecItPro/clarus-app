@@ -2,8 +2,9 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Clock, Users, Settings } from "lucide-react"
+import { Home, Clock, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
+import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
@@ -11,11 +12,7 @@ const navItems = [
   { href: "/feed", label: "Community", icon: Users },
 ]
 
-interface MobileBottomNavProps {
-  onSettingsClick?: () => void
-}
-
-export default function MobileBottomNav({ onSettingsClick }: MobileBottomNavProps) {
+export default function MobileBottomNav() {
   const pathname = usePathname()
 
   // Hide on auth pages
@@ -43,15 +40,10 @@ export default function MobileBottomNav({ onSettingsClick }: MobileBottomNavProp
             </Link>
           )
         })}
-        {onSettingsClick && (
-          <button
-            onClick={onSettingsClick}
-            className="flex flex-col items-center justify-center flex-1 h-full text-white/50"
-          >
-            <Settings className="w-5 h-5" />
-            <span className="text-[10px] mt-0.5 font-medium">Settings</span>
-          </button>
-        )}
+        {/* Settings - embedded dropdown */}
+        <div className="flex flex-col items-center justify-center flex-1 h-full">
+          <GlasmorphicSettingsButton variant="mobile" />
+        </div>
       </div>
     </nav>
   )

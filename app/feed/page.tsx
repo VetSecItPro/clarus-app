@@ -1,13 +1,15 @@
 "use client"
 
 import withAuth from "@/components/with-auth"
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback, memo } from "react"
 import type { Session } from "@supabase/supabase-js"
+import { supabase } from "@/lib/supabase"
+import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { formatDistanceToNow } from "date-fns"
-import { Search, User, Play, FileText, Users, SlidersHorizontal, LayoutGrid, LayoutList, Zap, ChevronDown, ChevronUp, ArrowRight, Star, Twitter, Sparkles } from "lucide-react"
+import { Search, User, Play, FileText, Users, SlidersHorizontal, LayoutGrid, LayoutList, Zap, ChevronDown, ChevronUp, ArrowRight, Star, Twitter, Sparkles, Bookmark, EyeOff, Loader2 } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
 import { cn } from "@/lib/utils"
@@ -54,6 +56,9 @@ function CommunityPageContent({ session }: { session: Session | null }) {
   const [showFilters, setShowFilters] = useState(false)
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [togglingBookmark, setTogglingBookmark] = useState<string | null>(null)
+  const [hidingId, setHidingId] = useState<string | null>(null)
+  const [localBookmarks, setLocalBookmarks] = useState<Record<string, boolean>>({})
 
   // Debounce search
   useEffect(() => {
@@ -62,12 +67,21 @@ function CommunityPageContent({ session }: { session: Session | null }) {
   }, [searchQuery])
 
   // Use SWR for cached data fetching
-  const { items: rawItems, isLoading, error } = useCommunityFeed({
+  const { items: rawItems, isLoading, error, refresh } = useCommunityFeed({
     userId: session?.user?.id,
     searchQuery: debouncedSearch,
     filterType: activeType,
     sortBy: activeSort,
   })
+
+  const getDomain = (url: string | null): string => {
+    if (!url) return "unknown"
+    try {
+      return new URL(url).hostname.replace("www.", "")
+    } catch {
+      return "unknown"
+    }
+  }
 
   // Transform items for display
   const items: DisplayItem[] = rawItems.map((item) => {
@@ -87,15 +101,6 @@ function CommunityPageContent({ session }: { session: Session | null }) {
       ratingGivenAt,
     }
   })
-
-  const getDomain = (url: string | null): string => {
-    if (!url) return "unknown"
-    try {
-      return new URL(url).hostname.replace("www.", "")
-    } catch {
-      return "unknown"
-    }
-  }
 
   const toggleExpand = (e: React.MouseEvent, itemId: string) => {
     e.preventDefault()
@@ -127,6 +132,60 @@ function CommunityPageContent({ session }: { session: Session | null }) {
       case "article":
       default:
         return { icon: FileText, label: "Article", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" }
+    }
+  }
+
+  const isBookmarked = (itemId: string) => {
+    return localBookmarks[itemId] ?? false
+  }
+
+  const handleToggleBookmark = async (e: React.MouseEvent, item: DisplayItem) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const newValue = !isBookmarked(item.id)
+    setLocalBookmarks((prev) => ({ ...prev, [item.id]: newValue }))
+    setTogglingBookmark(item.id)
+
+    try {
+      const response = await fetch(`/api/content/${item.id}/bookmark`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_bookmarked: newValue }),
+      })
+
+      if (!response.ok) throw new Error("Failed to update bookmark")
+      toast.success(newValue ? "Added to bookmarks" : "Removed from bookmarks")
+    } catch (error) {
+      console.error("Error toggling bookmark:", error)
+      toast.error("Failed to update bookmark")
+      setLocalBookmarks((prev) => ({ ...prev, [item.id]: !newValue }))
+    } finally {
+      setTogglingBookmark(null)
+    }
+  }
+
+  const handleHide = async (e: React.MouseEvent, itemId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    if (!session?.user?.id) return
+
+    setHidingId(itemId)
+
+    try {
+      const { error } = await supabase.from("hidden_content").insert({
+        user_id: session.user.id,
+        content_id: itemId,
+      })
+      if (error) throw error
+      toast.success("Hidden from your feed")
+      refresh()
+    } catch (error) {
+      console.error("Error hiding:", error)
+      toast.error("Failed to hide item")
+    } finally {
+      setHidingId(null)
     }
   }
 
@@ -167,7 +226,8 @@ function CommunityPageContent({ session }: { session: Session | null }) {
                   alt=""
                   fill
                   className="object-cover"
-                  unoptimized
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -200,7 +260,7 @@ function CommunityPageContent({ session }: { session: Session | null }) {
     // List view with expandable cards
     return (
       <div key={item.id} className={cn(
-        "group relative bg-white/[0.04] border border-white/[0.08] rounded-2xl overflow-hidden transition-all duration-200",
+        "group relative bg-white/[0.04] border border-white/[0.08] rounded-2xl overflow-hidden transition-all duration-200 feed-item",
         isExpanded ? "bg-white/[0.06] border-white/[0.15]" : "hover:bg-white/[0.06] hover:border-white/[0.12]"
       )}>
         {/* Analyzer info bar */}
@@ -243,7 +303,8 @@ function CommunityPageContent({ session }: { session: Session | null }) {
                   alt=""
                   fill
                   className="object-cover"
-                  unoptimized
+                  sizes="112px"
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -321,17 +382,48 @@ function CommunityPageContent({ session }: { session: Session | null }) {
               </div>
             )}
 
-            {/* Action button */}
-            <div className="pt-2">
+            {/* Action buttons */}
+            <div className="flex items-center justify-between pt-3">
               <Link
                 href={`/item/${item.id}`}
                 onClick={(e) => e.stopPropagation()}
                 prefetch={true}
-                className="group/btn inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1d9bf0] to-[#0d8bdf] hover:from-[#1a8cd8] hover:to-[#0a7bc8] text-white rounded-xl transition-all text-sm font-semibold shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40 hover:scale-[1.02] active:scale-[0.98]"
+                className="group/btn inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1d9bf0] to-[#0d8bdf] hover:from-[#1a8cd8] hover:to-[#0a7bc8] text-white rounded-full transition-all text-sm font-semibold shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40 hover:scale-[1.02] active:scale-[0.98]"
               >
                 View Full Analysis
                 <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5" />
               </Link>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => handleToggleBookmark(e, item)}
+                  disabled={togglingBookmark === item.id}
+                  className={cn(
+                    "w-10 h-10 flex items-center justify-center rounded-full transition-all border",
+                    isBookmarked(item.id)
+                      ? "bg-amber-500/20 border-amber-500/30 text-amber-400 hover:bg-amber-500/30"
+                      : "bg-white/[0.06] border-white/[0.08] text-white/50 hover:bg-amber-500/20 hover:border-amber-500/30 hover:text-amber-400"
+                  )}
+                  title={isBookmarked(item.id) ? "Remove bookmark" : "Add bookmark"}
+                >
+                  {togglingBookmark === item.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Bookmark className={cn("w-4 h-4", isBookmarked(item.id) && "fill-current")} />
+                  )}
+                </button>
+                <button
+                  onClick={(e) => handleHide(e, item.id)}
+                  disabled={hidingId === item.id}
+                  className="w-10 h-10 flex items-center justify-center bg-white/[0.06] border border-white/[0.08] hover:bg-purple-500/20 hover:border-purple-500/30 text-white/50 hover:text-purple-400 rounded-full transition-all"
+                  title="Hide from my feed"
+                >
+                  {hidingId === item.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <EyeOff className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -343,18 +435,18 @@ function CommunityPageContent({ session }: { session: Session | null }) {
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      <main className="flex-1 max-w-4xl mx-auto px-4 pt-4 pb-8 w-full">
+      <main className="flex-1 max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
         {/* Header with view toggle */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-3 sm:mb-6">
           <div>
-            <h1 className="text-2xl font-semibold text-white mb-1">Community</h1>
-            <p className="text-white/50 text-sm">Discover what others are finding valuable</p>
+            <h1 className="text-xl sm:text-2xl font-semibold text-white">Community</h1>
+            <p className="text-white/50 text-xs sm:text-sm">Discover what others are finding valuable</p>
           </div>
           <div className="flex items-center gap-1 p-1 bg-white/[0.06] rounded-lg">
             <button
               onClick={() => setViewMode("list")}
               className={cn(
-                "p-2 rounded-md transition-all",
+                "w-8 h-8 flex items-center justify-center rounded-md transition-all",
                 viewMode === "list" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
               )}
             >
@@ -363,7 +455,7 @@ function CommunityPageContent({ session }: { session: Session | null }) {
             <button
               onClick={() => setViewMode("grid")}
               className={cn(
-                "p-2 rounded-md transition-all",
+                "w-8 h-8 flex items-center justify-center rounded-md transition-all",
                 viewMode === "grid" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
               )}
             >
@@ -373,41 +465,48 @@ function CommunityPageContent({ session }: { session: Session | null }) {
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="mb-6 space-y-3">
-          {/* Search */}
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
-            <input
-              type="text"
-              placeholder="Search titles and content..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-11 pr-4 py-3 bg-white/[0.06] border border-white/[0.08] rounded-2xl text-white placeholder-white/40 focus:outline-none focus:border-white/20 transition-colors"
-            />
+        <div className="mb-3 sm:mb-6 space-y-2 sm:space-y-3">
+          {/* Search + Filter on same line */}
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+              <input
+                type="text"
+                placeholder="Search..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-white/[0.06] border border-white/[0.08] rounded-xl sm:rounded-2xl text-sm sm:text-base text-white placeholder-white/40 focus:outline-none focus:border-white/20 transition-colors"
+              />
+            </div>
+
+            {/* Filter Toggle */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={cn(
+                "flex items-center justify-center h-[42px] sm:h-[46px] w-[42px] sm:w-[46px] bg-white/[0.06] border border-white/[0.08] rounded-full text-white/60 hover:text-white hover:bg-white/[0.08] transition-all",
+                showFilters && "bg-white/[0.1] border-white/[0.15] text-white"
+              )}
+            >
+              <SlidersHorizontal className="w-4 h-4" />
+            </button>
           </div>
 
-          {/* Filter Toggle */}
-          <button
-            onClick={() => setShowFilters(!showFilters)}
-            className="flex items-center gap-2 px-4 py-2 bg-white/[0.06] border border-white/[0.08] rounded-xl text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-sm"
-          >
-            <SlidersHorizontal className="w-4 h-4" />
-            Filters
-          </button>
-
-          {/* Filter Options */}
-          {showFilters && (
-            <div className="p-4 bg-white/[0.04] border border-white/[0.08] rounded-2xl space-y-4">
+          {/* Filter Options - CSS transition for CLS prevention */}
+          <div className={cn(
+            "overflow-hidden transition-all duration-300 ease-out",
+            showFilters ? "max-h-48 opacity-100" : "max-h-0 opacity-0"
+          )}>
+            <div className="p-3 sm:p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl sm:rounded-2xl space-y-3 sm:space-y-4">
               {/* Sort */}
               <div>
-                <p className="text-white/50 text-xs mb-2 uppercase tracking-wide">Sort by</p>
-                <div className="flex flex-wrap gap-2">
+                <p className="text-white/50 text-[10px] sm:text-xs mb-1.5 sm:mb-2 uppercase tracking-wide">Sort by</p>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {SORT_OPTIONS.map((opt) => (
                     <button
                       key={opt.value}
                       onClick={() => setActiveSort(opt.value)}
                       className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm transition-all",
+                        "px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm transition-all",
                         activeSort === opt.value
                           ? "bg-[#1d9bf0] text-white"
                           : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"
@@ -421,14 +520,14 @@ function CommunityPageContent({ session }: { session: Session | null }) {
 
               {/* Type */}
               <div>
-                <p className="text-white/50 text-xs mb-2 uppercase tracking-wide">Type</p>
-                <div className="flex flex-wrap gap-2">
+                <p className="text-white/50 text-[10px] sm:text-xs mb-1.5 sm:mb-2 uppercase tracking-wide">Type</p>
+                <div className="flex flex-wrap gap-1.5 sm:gap-2">
                   {TYPE_FILTERS.map((opt) => (
                     <button
                       key={opt.value}
                       onClick={() => setActiveType(opt.value)}
                       className={cn(
-                        "px-3 py-1.5 rounded-lg text-sm transition-all",
+                        "px-2.5 sm:px-3 py-1 sm:py-1.5 rounded-lg text-xs sm:text-sm transition-all",
                         activeType === opt.value
                           ? "bg-[#1d9bf0] text-white"
                           : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"
@@ -440,7 +539,7 @@ function CommunityPageContent({ session }: { session: Session | null }) {
                 </div>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Content */}

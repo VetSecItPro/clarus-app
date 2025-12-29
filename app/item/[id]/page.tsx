@@ -16,7 +16,6 @@ import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { TranscriptViewer } from "@/components/ui/transcript-viewer"
 import { YouTubePlayer, YouTubePlayerRef } from "@/components/ui/youtube-player"
 import { ChatPanel } from "@/components/chat-panel"
-import { SIGNAL_NOISE_OPTIONS } from "@/constants"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
@@ -28,6 +27,7 @@ import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { ShareModal } from "@/components/share-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import { useIsDesktop } from "@/lib/hooks/use-media-query"
 
 // Props injected by withAuth HOC
 interface WithAuthInjectedProps {
@@ -94,6 +94,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   const [isAddingTag, setIsAddingTag] = useState(false)
 
   const router = useRouter()
+  const isDesktop = useIsDesktop()
 
   // Helper to check if content is still being processed
   const isContentProcessing = useCallback((content: ContentWithSummary | null): boolean => {
@@ -410,45 +411,6 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
     .filter(({ tag }) => !tags.includes(tag) && tag.includes(newTagInput.toLowerCase()))
     .slice(0, 5)
 
-  const renderSignalNoiseRating = () => {
-    const triage = item?.summary?.triage as unknown as TriageData | null
-    const aiSuggestedScore = triage?.signal_noise_score
-    const userHasVoted = currentUserContentRating !== null
-
-    return (
-      <div className="rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
-        <div className="px-4 py-2.5 border-b border-cyan-500/20 bg-cyan-500/15">
-          <span className="text-xs font-medium text-cyan-300 uppercase tracking-wider">Signal/Noise Rating</span>
-        </div>
-        <div className="p-3">
-          <div className="grid grid-cols-4 gap-2">
-            {SIGNAL_NOISE_OPTIONS.map((rating) => {
-              const isUserSelected = currentUserContentRating?.signal_score === rating.score
-              const isAiSuggested = !userHasVoted && aiSuggestedScore === rating.score
-
-              return (
-                <button
-                  key={rating.label}
-                  onClick={() => handleSignalNoiseVote(rating.score)}
-                  className={`flex items-center justify-center gap-1.5 px-2 py-2 rounded-lg transition-all border text-xs ${
-                    isUserSelected
-                      ? "bg-[#1d9bf0] border-[#1d9bf0]/50 text-white shadow-md shadow-blue-500/20"
-                      : isAiSuggested
-                      ? "bg-amber-500/20 border-amber-500/40 text-amber-300 ring-1 ring-amber-500/30"
-                      : "bg-white/[0.04] border-white/[0.08] text-gray-400 hover:bg-white/[0.08] hover:text-white"
-                  }`}
-                >
-                  <span className="text-base">{rating.emoji}</span>
-                  <span className="font-medium hidden sm:inline">{rating.label}</span>
-                </button>
-              )
-            })}
-          </div>
-        </div>
-      </div>
-    )
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
@@ -484,12 +446,12 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   const summary = item.summary
 
   return (
-    <div className="min-h-screen bg-black flex flex-col overflow-x-hidden">
+    <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      {/* Secondary nav bar with back button and tabs */}
-      <div className="bg-white/[0.02] backdrop-blur-xl border-b border-white/[0.08] sticky top-12 sm:top-16 z-10">
-        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-2 sm:py-3">
+      {/* Secondary nav bar with back button and tabs - fixed at top on mobile, sticky below header on desktop */}
+      <div className="bg-black/90 backdrop-blur-xl border-b border-white/[0.08] fixed sm:sticky top-0 sm:top-16 left-0 right-0 sm:left-auto sm:right-auto z-20">
+        <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-1 sm:py-3">
           <div className="flex items-center justify-between gap-2 sm:gap-3">
             {/* Left side: Back button + Tab switcher */}
             <div className="flex items-center gap-1.5 sm:gap-3">
@@ -546,11 +508,37 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </div>
               </TooltipProvider>
             </div>
+
+            {/* Right side: Share + Regenerate buttons (mobile only) */}
+            <div className="flex sm:hidden items-center gap-1.5">
+              <button
+                onClick={() => setIsShareModalOpen(true)}
+                className="h-8 w-8 flex items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 active:bg-emerald-500/30 transition-all"
+                aria-label="Share"
+              >
+                <Mail className="w-4 h-4" />
+              </button>
+              <button
+                onClick={handleRegenerate}
+                disabled={isRegenerating}
+                className="h-8 w-8 flex items-center justify-center rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 active:bg-blue-500/30 transition-all disabled:opacity-50"
+                aria-label="Regenerate"
+              >
+                {isRegenerating ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="w-4 h-4" />
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      <main className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4 sm:py-6 lg:py-8 flex-1 pb-20 sm:pb-24 overflow-x-hidden">
+      {/* Spacer for fixed nav bar on mobile */}
+      <div className="h-[42px] sm:hidden" />
+
+      <main className="max-w-7xl mx-auto lg:px-6 py-2 sm:py-6 lg:py-8 flex-1 pb-20 sm:pb-24">
         {/* PDF: Full-width layout (no split) */}
         {isPdf ? (
           <div className="max-w-4xl mx-auto">
@@ -574,41 +562,76 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
             )}
           </div>
         ) : (
-          /* Split-screen layout for YouTube and Articles */
-          <div className="lg:flex lg:gap-8 min-w-0 overflow-hidden">
-            {/* LEFT PANEL: Sticky media + metadata */}
-            <aside className="w-full lg:w-[480px] lg:flex-shrink-0 mb-6 lg:mb-0 min-w-0">
-              <div className="lg:sticky lg:top-28 space-y-4 overflow-hidden">
-                {/* Video or Thumbnail */}
-                <div className="rounded-2xl overflow-hidden border border-white/[0.08] bg-black w-full">
-                  {item.type === "youtube" && videoId ? (
-                    <YouTubePlayer
-                      ref={youtubePlayerRef}
-                      videoId={videoId}
-                    />
-                  ) : item.thumbnail_url ? (
-                    <Image
-                      src={item.thumbnail_url}
-                      alt={item.title || "Content image"}
-                      width={420}
-                      height={236}
-                      className="w-full h-auto aspect-video object-cover"
-                      unoptimized
-                      onError={(e) => (e.currentTarget.style.display = "none")}
-                    />
-                  ) : (
-                    /* Placeholder for articles without thumbnail */
-                    <div className="aspect-video w-full bg-white/[0.03] flex items-center justify-center">
-                      <div className="text-center">
-                        <FileText className="w-12 h-12 text-white/20 mx-auto mb-2" />
-                        <p className="text-white/30 text-sm">{displayDomain}</p>
-                      </div>
+          <>
+          {/* MOBILE ONLY: Fixed video player below nav bar (~40px nav height) */}
+          {!isDesktop && (
+            <div className="fixed top-[42px] left-0 right-0 z-10 bg-black">
+              <div className="bg-black w-full">
+                {item.type === "youtube" && videoId ? (
+                  <YouTubePlayer
+                    ref={youtubePlayerRef}
+                    videoId={videoId}
+                  />
+                ) : item.thumbnail_url ? (
+                  <Image
+                    src={item.thumbnail_url}
+                    alt={item.title || "Content image"}
+                    width={420}
+                    height={236}
+                    className="w-full h-auto aspect-video object-cover"
+                    unoptimized
+                    onError={(e) => (e.currentTarget.style.display = "none")}
+                  />
+                ) : (
+                  <div className="aspect-video w-full bg-white/[0.03] flex items-center justify-center">
+                    <div className="text-center">
+                      <FileText className="w-12 h-12 text-white/20 mx-auto mb-2" />
+                      <p className="text-white/30 text-sm">{displayDomain}</p>
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+          {/* Spacer for fixed video on mobile - accounts for video height + small gap */}
+          {!isDesktop && <div className="w-full mt-2" style={{ paddingBottom: "56.25%" }} />}
 
-                {/* Content info card */}
-                <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+          {/* Split-screen layout for YouTube and Articles */}
+          <div className="lg:flex lg:gap-8 min-w-0">
+            {/* LEFT PANEL: Sticky media + metadata */}
+            <aside className="w-full lg:w-[480px] lg:flex-shrink-0 mb-4 lg:mb-0 min-w-0">
+              <div className="lg:sticky lg:top-28 space-y-2 sm:space-y-4">
+                {/* Video or Thumbnail - DESKTOP ONLY */}
+                {isDesktop && (
+                  <div className="rounded-2xl overflow-hidden border border-white/[0.08] bg-black w-full">
+                    {item.type === "youtube" && videoId ? (
+                      <YouTubePlayer
+                        ref={youtubePlayerRef}
+                        videoId={videoId}
+                      />
+                    ) : item.thumbnail_url ? (
+                      <Image
+                        src={item.thumbnail_url}
+                        alt={item.title || "Content image"}
+                        width={420}
+                        height={236}
+                        className="w-full h-auto aspect-video object-cover"
+                        unoptimized
+                        onError={(e) => (e.currentTarget.style.display = "none")}
+                      />
+                    ) : (
+                      <div className="aspect-video w-full bg-white/[0.03] flex items-center justify-center">
+                        <div className="text-center">
+                          <FileText className="w-12 h-12 text-white/20 mx-auto mb-2" />
+                          <p className="text-white/30 text-sm">{displayDomain}</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Content info card - scrolls on mobile */}
+                <div className="mx-3 sm:mx-4 lg:mx-0 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
                   <h1 className="text-base font-semibold text-white leading-tight mb-2 break-words">
                     {item.title || "Processing Title..."}
                   </h1>
@@ -628,12 +651,24 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         </>
                       )}
                     </span>
-                    <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{displaySavedAt}</span>
+                    <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
+                    {/* Worth Watching rating */}
+                    {(() => {
+                      const triage = summary?.triage as unknown as TriageData | null
+                      const score = triage?.signal_noise_score
+                      if (score === undefined || score === null) return null
+                      return (
+                        <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/15 text-[#1d9bf0] flex items-center gap-1">
+                          <span>Worth Watching</span>
+                          <span className="font-medium">{score + 1}/4</span>
+                        </span>
+                      )
+                    })()}
                   </div>
                 </div>
 
-                {/* Tags Management */}
-                <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+                {/* Tags Management - hidden on mobile, shown at bottom */}
+                <div className="hidden sm:block sm:mx-4 lg:mx-0 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
                   <div className="flex items-center justify-between mb-3 gap-2">
                     <div className="flex items-center gap-2 min-w-0">
                       <Tag className="w-4 h-4 text-purple-400 shrink-0" />
@@ -743,9 +778,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                   )}
                 </div>
 
-                {/* Domain Credibility */}
+                {/* Domain Credibility - hidden on mobile, shown at bottom */}
                 {domainStats && domainStats.total_analyses > 0 && (
-                  <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+                  <div className="hidden sm:block p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
                     <div className="flex items-center gap-2 mb-3">
                       <Shield className="w-4 h-4 text-blue-400 shrink-0" />
                       <h3 className="text-sm font-semibold text-white">Source Credibility</h3>
@@ -801,9 +836,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                   </div>
                 )}
 
-                {/* Action buttons */}
+                {/* Action buttons - hidden on mobile (in header) */}
                 <TooltipProvider delayDuration={300}>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="hidden sm:grid grid-cols-2 gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -846,7 +881,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
             </aside>
 
             {/* RIGHT PANEL: Scrollable content */}
-            <div className="flex-1 min-w-0 overflow-hidden">
+            <div className="flex-1 min-w-0 overflow-hidden px-3 sm:px-4 lg:px-0">
               {activeMainTab === "summary" ? (
                 <div className="space-y-6 sm:space-y-8">
                   {processingError ? (
@@ -870,7 +905,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                     </div>
                   ) : (
                     <>
-                      {/* 1. BRIEF OVERVIEW */}
+                      {/* 1. OVERVIEW */}
                   <AnimatePresence mode="wait">
                     {(summary?.brief_overview || isPolling) && (
                       <SectionCard
@@ -895,7 +930,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                     )}
                   </AnimatePresence>
 
-                  {/* 2. TRIAGE */}
+                  {/* 2. QUICK ASSESSMENT */}
                   <AnimatePresence mode="wait">
                     {(summary?.triage || isPolling) && (
                       <SectionCard
@@ -942,10 +977,36 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                     )}
                   </AnimatePresence>
 
-                  {/* Signal/Noise Rating - right after triage, only when triage is loaded */}
-                  {summary?.triage && renderSignalNoiseRating()}
+                  {/* 3. KEY TAKEAWAYS */}
+                  <AnimatePresence mode="wait">
+                    {(summary?.mid_length_summary || isPolling) && (
+                      <SectionCard
+                        title="Key Takeaways"
+                        isLoading={isPolling && !summary?.mid_length_summary}
+                        delay={0.15}
+                        icon={<Lightbulb className="w-4 h-4" />}
+                        headerColor="cyan"
+                      >
+                        {summary?.mid_length_summary ? (
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            className="prose prose-sm prose-invert max-w-none"
+                          >
+                            <MarkdownRenderer
+                                onTimestampClick={(seconds) => {
+                                  youtubePlayerRef.current?.seekTo(seconds)
+                                }}
+                              >{summary.mid_length_summary}</MarkdownRenderer>
+                          </motion.div>
+                        ) : (
+                          <SectionSkeleton lines={10} minHeight="320px" />
+                        )}
+                      </SectionCard>
+                    )}
+                  </AnimatePresence>
 
-                  {/* 3. TRUTH CHECK */}
+                  {/* 4. TRUTH CHECK */}
                   <AnimatePresence mode="wait">
                     {(summary?.truth_check || isPolling) && (
                       <SectionCard
@@ -977,31 +1038,6 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                               </div>
                             </div>
                           </div>
-                        )}
-                      </SectionCard>
-                    )}
-                  </AnimatePresence>
-
-                  {/* 4. KEY TAKEAWAYS */}
-                  <AnimatePresence mode="wait">
-                    {(summary?.mid_length_summary || isPolling) && (
-                      <SectionCard
-                        title="Key Takeaways"
-                        isLoading={isPolling && !summary?.mid_length_summary}
-                        delay={0.25}
-                        icon={<Lightbulb className="w-4 h-4" />}
-                        headerColor="yellow"
-                      >
-                        {summary?.mid_length_summary ? (
-                          <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            className="prose prose-sm prose-invert max-w-none"
-                          >
-                            <MarkdownRenderer>{summary.mid_length_summary}</MarkdownRenderer>
-                          </motion.div>
-                        ) : (
-                          <SectionSkeleton lines={10} minHeight="320px" />
                         )}
                       </SectionCard>
                     )}
@@ -1058,9 +1094,12 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         transition={{ duration: 0.5, delay: 0.1, ease: [0.25, 0.1, 0.25, 1] }}
                         className="rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden"
                       >
-                        <button
+                        <div
                           onClick={() => setIsDetailedExpanded(!isDetailedExpanded)}
-                          className="w-full px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-violet-500/20 transition-colors bg-violet-500/15 border-b border-violet-500/20"
+                          role="button"
+                          tabIndex={0}
+                          onKeyDown={(e) => e.key === 'Enter' && setIsDetailedExpanded(!isDetailedExpanded)}
+                          className="w-full px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-violet-500/20 transition-colors bg-violet-500/15 border-b border-violet-500/20 cursor-pointer"
                         >
                           <h3 className="text-sm font-semibold text-violet-300 uppercase tracking-wider flex items-center gap-2">
                             <BookOpen className="w-4 h-4" />
@@ -1077,7 +1116,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                               <ChevronDown className="w-5 h-5 text-white/50" />
                             </motion.div>
                           )}
-                        </button>
+                        </div>
 
                         <AnimatePresence>
                           {summary?.detailed_summary && isDetailedExpanded && (
@@ -1089,7 +1128,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                               className="overflow-hidden"
                             >
                               <div className="px-4 sm:px-5 py-4 sm:py-5 border-t border-white/[0.06] prose prose-sm prose-invert max-w-none">
-                                <MarkdownRenderer>{summary.detailed_summary}</MarkdownRenderer>
+                                <MarkdownRenderer
+                                  onTimestampClick={(seconds) => {
+                                    youtubePlayerRef.current?.seekTo(seconds)
+                                  }}
+                                >{summary.detailed_summary}</MarkdownRenderer>
                               </div>
                             </motion.div>
                           )}
@@ -1151,7 +1194,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         />
                       ) : (
                         <div className="prose prose-sm prose-invert max-w-none text-white/70 leading-relaxed">
-                          <MarkdownRenderer>{item.full_text}</MarkdownRenderer>
+                          <MarkdownRenderer
+                            onTimestampClick={(seconds) => {
+                              youtubePlayerRef.current?.seekTo(seconds)
+                            }}
+                          >{item.full_text}</MarkdownRenderer>
                         </div>
                       )}
                     </div>
@@ -1159,6 +1206,166 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </div>
               )}
             </div>
+          </div>
+          </>
+        )}
+
+        {/* Mobile-only: Tags and Source Credibility at bottom */}
+        {!isPdf && (
+          <div className="sm:hidden space-y-4 mt-6">
+            {/* Tags Management - Mobile */}
+            <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+              <div className="flex items-center justify-between mb-3 gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <Tag className="w-4 h-4 text-purple-400 shrink-0" />
+                  <h3 className="text-sm font-semibold text-white truncate">Tags</h3>
+                </div>
+                {!showTagInput && (
+                  <button
+                    onClick={() => setShowTagInput(true)}
+                    className="flex items-center gap-1 px-2 py-1 text-xs text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 rounded-lg transition-all"
+                  >
+                    <Plus className="w-3 h-3" />
+                    Add
+                  </button>
+                )}
+              </div>
+
+              {/* Tag input with autocomplete */}
+              {showTagInput && (
+                <div className="relative mb-3">
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newTagInput}
+                      onChange={(e) => setNewTagInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && newTagInput.trim()) {
+                          handleAddTag(newTagInput)
+                        } else if (e.key === "Escape") {
+                          setShowTagInput(false)
+                          setNewTagInput("")
+                        }
+                      }}
+                      placeholder="Type a tag..."
+                      className="flex-1 px-3 py-2 bg-white/[0.06] border border-white/[0.12] rounded-lg text-sm text-white placeholder-white/40 focus:outline-none focus:border-purple-500/50"
+                    />
+                    <button
+                      onClick={() => handleAddTag(newTagInput)}
+                      disabled={!newTagInput.trim() || isAddingTag}
+                      className="px-3 py-2 bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 rounded-lg text-sm transition-all disabled:opacity-50"
+                    >
+                      {isAddingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : "Add"}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowTagInput(false)
+                        setNewTagInput("")
+                      }}
+                      className="p-2 text-white/40 hover:text-white/60 transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  {/* Autocomplete suggestions */}
+                  {newTagInput && tagSuggestions.length > 0 && (
+                    <div className="absolute top-full left-0 right-12 mt-1 bg-black/95 border border-white/[0.1] rounded-lg shadow-xl z-10 overflow-hidden">
+                      {tagSuggestions.map(({ tag, count }) => (
+                        <button
+                          key={tag}
+                          onClick={() => handleAddTag(tag)}
+                          className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-white/[0.06] transition-colors"
+                        >
+                          <span className="text-white/80 capitalize">{tag}</span>
+                          <span className="text-xs text-white/40">{count}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Current tags */}
+              {tags.length > 0 ? (
+                <div className="flex flex-wrap gap-2">
+                  {tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="group flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300"
+                    >
+                      <span className="capitalize">{tag}</span>
+                      <button
+                        onClick={() => handleRemoveTag(tag)}
+                        className="opacity-50 hover:opacity-100 transition-opacity"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-xs text-white/40">No tags yet. Add tags to organize your content.</p>
+              )}
+            </div>
+
+            {/* Domain Credibility - Mobile */}
+            {domainStats && domainStats.total_analyses > 0 && (
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
+                <div className="flex items-center gap-2 mb-3">
+                  <Shield className="w-4 h-4 text-blue-400 shrink-0" />
+                  <h3 className="text-sm font-semibold text-white">Source Credibility</h3>
+                </div>
+                <div className="space-y-2">
+                  <p className="text-xs text-gray-400">
+                    <span className="text-white font-medium">{displayDomain}</span> has been analyzed{" "}
+                    <span className="text-white font-medium">{domainStats.total_analyses}</span> time{domainStats.total_analyses !== 1 ? "s" : ""}
+                  </p>
+                  {domainStats.avg_quality_score !== null && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-gray-400 shrink-0">Avg Quality:</span>
+                      <div className="flex-1 min-w-0 h-1.5 bg-white/[0.1] rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full"
+                          style={{ width: `${(domainStats.avg_quality_score / 10) * 100}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-medium text-white shrink-0">{domainStats.avg_quality_score.toFixed(1)}/10</span>
+                    </div>
+                  )}
+                  {/* Accuracy breakdown */}
+                  {(domainStats.accurate_count + domainStats.mostly_accurate_count + domainStats.mixed_count + domainStats.questionable_count + domainStats.unreliable_count) > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {domainStats.accurate_count > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                          {domainStats.accurate_count} Accurate
+                        </span>
+                      )}
+                      {domainStats.mostly_accurate_count > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                          {domainStats.mostly_accurate_count} Mostly Accurate
+                        </span>
+                      )}
+                      {domainStats.mixed_count > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                          {domainStats.mixed_count} Mixed
+                        </span>
+                      )}
+                      {domainStats.questionable_count > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                          {domainStats.questionable_count} Questionable
+                        </span>
+                      )}
+                      {domainStats.unreliable_count > 0 && (
+                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                          {domainStats.unreliable_count} Unreliable
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         )}
       </main>
