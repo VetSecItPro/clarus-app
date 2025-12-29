@@ -36,7 +36,14 @@ export async function GET() {
       .map(([tag, count]) => ({ tag, count }))
       .sort((a, b) => b.count - a.count)
 
-    return NextResponse.json({ success: true, tags })
+    return NextResponse.json(
+      { success: true, tags },
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600',
+        },
+      }
+    )
   } catch {
     return NextResponse.json({ success: false, error: "Invalid request" }, { status: 400 })
   }

@@ -1,8 +1,12 @@
-export const SIGNAL_NOISE_OPTIONS = [
-  { emoji: "🗑️", label: "Noise", score: 0 },
-  { emoji: "⚡", label: "Noteworthy", score: 1 },
-  { emoji: "⚡⚡", label: "Insightful", score: 2 },
-  { emoji: "⚡⚡⚡", label: "Mind-blowing", score: 3 },
+export const WORTH_WATCHING_OPTIONS = [
+  { label: "Skip", score: 0 },
+  { label: "Maybe", score: 1 },
+  { label: "Yes", score: 2 },
+  { label: "Must Watch", score: 3 },
 ] as const
 
-export type SignalScore = (typeof SIGNAL_NOISE_OPTIONS)[number]["score"]
+export type WorthWatchingScore = (typeof WORTH_WATCHING_OPTIONS)[number]["score"]
+
+// Legacy alias for backwards compatibility
+export const SIGNAL_NOISE_OPTIONS = WORTH_WATCHING_OPTIONS
+export type SignalScore = WorthWatchingScore

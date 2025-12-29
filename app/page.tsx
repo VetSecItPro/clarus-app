@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import { ArrowRight, Loader2, Link2, Youtube, FileText, Twitter, CheckCircle2, X } from "lucide-react"
+import { Loader2, Link2, Youtube, FileText, Twitter, CheckCircle2, X, Shield } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
@@ -270,6 +270,19 @@ function HomePageContent({ session }: HomePageProps) {
       <SiteHeader />
 
       <main className="flex-1 flex flex-col items-center justify-center px-3 sm:px-6">
+        {/* Mobile Logo - only visible on mobile */}
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4 }}
+          className="sm:hidden flex items-center gap-2 mb-6"
+        >
+          <div className="w-10 h-10 bg-[#1d9bf0]/10 rounded-xl flex items-center justify-center">
+            <Shield className="w-5 h-5 text-[#1d9bf0]" />
+          </div>
+          <span className="text-white font-semibold text-lg">Truth Checker</span>
+        </motion.div>
+
         {/* Welcome Message */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -295,7 +308,8 @@ function HomePageContent({ session }: HomePageProps) {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, delay: 0.1 }}
-          className="w-full max-w-2xl"
+          className="mx-auto"
+          style={{ maxWidth: '34rem', width: '100%' }}
         >
           <div
             className={`relative flex items-center gap-3 px-4 py-3 rounded-2xl border-2 transition-all duration-200 ${
@@ -340,24 +354,19 @@ function HomePageContent({ session }: HomePageProps) {
               <button
                 onClick={() => handleSubmit()}
                 disabled={isSubmitting || !urlPreview}
-                className={`shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl flex items-center gap-1.5 sm:gap-2 text-xs sm:text-sm font-medium transition-all disabled:opacity-50 ${
+                className={`shrink-0 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all disabled:opacity-50 ${
                   urlPreview
-                    ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
+                    ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] active:bg-[#0d7bc5] active:scale-95 text-white shadow-lg shadow-[#1d9bf0]/25"
                     : "bg-white/[0.06] text-white/40 cursor-not-allowed"
                 }`}
               >
                 {isSubmitting ? (
                   <>
-                    <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                    <Loader2 className="w-4 h-4 animate-spin" />
                     <span className="hidden sm:inline">Analyzing...</span>
-                    <span className="sm:hidden">...</span>
                   </>
                 ) : (
-                  <>
-                    <span className="hidden sm:inline">Analyze</span>
-                    <span className="sm:hidden">Go</span>
-                    <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                  </>
+                  <span>Go</span>
                 )}
               </button>
             ) : (

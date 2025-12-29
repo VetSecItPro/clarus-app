@@ -3,6 +3,7 @@
 import { supabase } from "@/lib/supabase"
 import withAuth from "@/components/with-auth"
 import { useEffect, useState, useCallback } from "react"
+import { useSearchParams } from "next/navigation"
 import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
@@ -11,7 +12,7 @@ import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { Search, SlidersHorizontal, Loader2, FileText, Play, Trash2, LayoutGrid, LayoutList, Zap, Clock, Twitter, Sparkles, ChevronDown, ChevronUp, ArrowRight, Star, TrendingUp, Bookmark, Tag, X } from "lucide-react"
 import Link from "next/link"
 import Image from "next/image"
-import { formatDistanceToNow, isToday, isYesterday, isThisWeek } from "date-fns"
+import { formatDistanceToNow, isToday, isYesterday, differenceInDays, differenceInWeeks, differenceInMonths } from "date-fns"
 import { cn } from "@/lib/utils"
 import { formatDuration } from "@/lib/utils"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
@@ -49,42 +50,87 @@ const TYPE_OPTIONS = [
   { value: "x_post", label: "X Posts" },
 ]
 
-// Group items by date
+// Group items by date with granular time blocks
 function groupByDate(items: HistoryItem[]): { label: string; items: HistoryItem[] }[] {
-  const groups: { [key: string]: HistoryItem[] } = {
-    today: [],
-    yesterday: [],
-    thisWeek: [],
-    earlier: [],
-  }
+  const groups: { [key: string]: HistoryItem[] } = {}
+  const now = new Date()
 
   items.forEach((item) => {
     if (!item.date_added) {
-      groups.earlier.push(item)
+      if (!groups["older"]) groups["older"] = []
+      groups["older"].push(item)
       return
     }
+
     const date = new Date(item.date_added)
+    const daysAgo = differenceInDays(now, date)
+    const weeksAgo = differenceInWeeks(now, date)
+    const monthsAgo = differenceInMonths(now, date)
+
+    let key: string
+
     if (isToday(date)) {
-      groups.today.push(item)
+      key = "today"
     } else if (isYesterday(date)) {
-      groups.yesterday.push(item)
-    } else if (isThisWeek(date)) {
-      groups.thisWeek.push(item)
+      key = "yesterday"
+    } else if (daysAgo === 2) {
+      key = "2_days_ago"
+    } else if (daysAgo === 3) {
+      key = "3_days_ago"
+    } else if (daysAgo >= 4 && daysAgo <= 6) {
+      key = "this_week"
+    } else if (weeksAgo === 1) {
+      key = "last_week"
+    } else if (weeksAgo === 2) {
+      key = "2_weeks_ago"
+    } else if (weeksAgo === 3) {
+      key = "3_weeks_ago"
+    } else if (weeksAgo === 4 || monthsAgo === 1) {
+      key = "1_month_ago"
+    } else if (monthsAgo === 2) {
+      key = "2_months_ago"
+    } else if (monthsAgo === 3) {
+      key = "3_months_ago"
+    } else if (monthsAgo >= 4 && monthsAgo <= 6) {
+      key = "4_6_months_ago"
     } else {
-      groups.earlier.push(item)
+      key = "older"
     }
+
+    if (!groups[key]) groups[key] = []
+    groups[key].push(item)
   })
 
+  // Define the order and labels for groups
+  const groupOrder: { key: string; label: string }[] = [
+    { key: "today", label: "Today" },
+    { key: "yesterday", label: "Yesterday" },
+    { key: "2_days_ago", label: "2 Days Ago" },
+    { key: "3_days_ago", label: "3 Days Ago" },
+    { key: "this_week", label: "This Week" },
+    { key: "last_week", label: "Last Week" },
+    { key: "2_weeks_ago", label: "2 Weeks Ago" },
+    { key: "3_weeks_ago", label: "3 Weeks Ago" },
+    { key: "1_month_ago", label: "1 Month Ago" },
+    { key: "2_months_ago", label: "2 Months Ago" },
+    { key: "3_months_ago", label: "3 Months Ago" },
+    { key: "4_6_months_ago", label: "4-6 Months Ago" },
+    { key: "older", label: "Older" },
+  ]
+
   const result: { label: string; items: HistoryItem[] }[] = []
-  if (groups.today.length > 0) result.push({ label: "Today", items: groups.today })
-  if (groups.yesterday.length > 0) result.push({ label: "Yesterday", items: groups.yesterday })
-  if (groups.thisWeek.length > 0) result.push({ label: "This Week", items: groups.thisWeek })
-  if (groups.earlier.length > 0) result.push({ label: "Earlier", items: groups.earlier })
+
+  for (const { key, label } of groupOrder) {
+    if (groups[key] && groups[key].length > 0) {
+      result.push({ label, items: groups[key] })
+    }
+  }
 
   return result
 }
 
 function HistoryPageContent({ session }: LibraryPageProps) {
+  const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [sortBy, setSortBy] = useState("date_desc")
@@ -93,12 +139,20 @@ function HistoryPageContent({ session }: LibraryPageProps) {
   const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [bookmarkOnly, setBookmarkOnly] = useState(false)
+  const [bookmarkOnly, setBookmarkOnly] = useState(() => searchParams.get("bookmarks") === "true")
   const [togglingBookmark, setTogglingBookmark] = useState<string | null>(null)
   const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const [localItems, setLocalItems] = useState<HistoryItem[]>([])
+
+  // Sync bookmarkOnly with URL params
+  useEffect(() => {
+    const bookmarksParam = searchParams.get("bookmarks")
+    if (bookmarksParam === "true") {
+      setBookmarkOnly(true)
+    }
+  }, [searchParams])
 
   // Debounce search input
   useEffect(() => {
@@ -281,7 +335,8 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                   alt=""
                   fill
                   className="object-cover"
-                  unoptimized
+                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -390,7 +445,7 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     // List view with expandable cards
     return (
       <div key={item.id} className={cn(
-        "group relative bg-white/[0.04] border border-white/[0.08] rounded-2xl overflow-hidden transition-all duration-200",
+        "group relative bg-white/[0.04] border border-white/[0.08] rounded-2xl overflow-hidden transition-all duration-200 feed-item",
         isExpanded ? "bg-white/[0.06] border-white/[0.15]" : "hover:bg-white/[0.06] hover:border-white/[0.12]"
       )}>
         {/* Main card content */}
@@ -407,7 +462,8 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                   alt=""
                   fill
                   className="object-cover"
-                  unoptimized
+                  sizes="112px"
+                  loading="lazy"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -549,45 +605,47 @@ function HistoryPageContent({ session }: LibraryPageProps) {
             )}
 
             {/* Action buttons */}
-            <div className="flex items-center gap-3 pt-2">
+            <div className="flex items-center justify-between pt-3">
               <Link
                 href={`/item/${item.id}`}
                 onClick={(e) => e.stopPropagation()}
                 prefetch={true}
-                className="group/btn flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1d9bf0] to-[#0d8bdf] hover:from-[#1a8cd8] hover:to-[#0a7bc8] text-white rounded-xl transition-all text-sm font-semibold shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40 hover:scale-[1.02] active:scale-[0.98]"
+                className="group/btn inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1d9bf0] to-[#0d8bdf] hover:from-[#1a8cd8] hover:to-[#0a7bc8] text-white rounded-full transition-all text-sm font-semibold shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40 hover:scale-[1.02] active:scale-[0.98]"
               >
                 View Full Analysis
                 <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5" />
               </Link>
-              <button
-                onClick={(e) => handleToggleBookmark(e, item)}
-                disabled={togglingBookmark === item.id}
-                className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl transition-all text-sm",
-                  item.is_bookmarked
-                    ? "bg-amber-500/20 text-amber-400 hover:bg-amber-500/30"
-                    : "bg-white/[0.06] text-white/60 hover:bg-amber-500/20 hover:text-amber-400"
-                )}
-              >
-                {togglingBookmark === item.id ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Bookmark className={cn("w-3.5 h-3.5", item.is_bookmarked && "fill-current")} />
-                )}
-                {item.is_bookmarked ? "Bookmarked" : "Bookmark"}
-              </button>
-              <button
-                onClick={(e) => handleDelete(e, item.id)}
-                disabled={deletingId === item.id}
-                className="flex items-center gap-2 px-4 py-2 bg-white/[0.06] hover:bg-red-500/20 text-white/60 hover:text-red-400 rounded-xl transition-all text-sm"
-              >
-                {deletingId === item.id ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Trash2 className="w-3.5 h-3.5" />
-                )}
-                Delete
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={(e) => handleToggleBookmark(e, item)}
+                  disabled={togglingBookmark === item.id}
+                  className={cn(
+                    "w-10 h-10 flex items-center justify-center rounded-full transition-all border",
+                    item.is_bookmarked
+                      ? "bg-amber-500/20 border-amber-500/30 text-amber-400 hover:bg-amber-500/30"
+                      : "bg-white/[0.06] border-white/[0.08] text-white/50 hover:bg-amber-500/20 hover:border-amber-500/30 hover:text-amber-400"
+                  )}
+                  title={item.is_bookmarked ? "Remove bookmark" : "Add bookmark"}
+                >
+                  {togglingBookmark === item.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Bookmark className={cn("w-4 h-4", item.is_bookmarked && "fill-current")} />
+                  )}
+                </button>
+                <button
+                  onClick={(e) => handleDelete(e, item.id)}
+                  disabled={deletingId === item.id}
+                  className="w-10 h-10 flex items-center justify-center bg-white/[0.06] border border-white/[0.08] hover:bg-red-500/20 hover:border-red-500/30 text-white/50 hover:text-red-400 rounded-full transition-all"
+                  title="Delete"
+                >
+                  {deletingId === item.id ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="w-4 h-4" />
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         )}
@@ -655,40 +713,30 @@ function HistoryPageContent({ session }: LibraryPageProps) {
         <div className="flex items-center justify-between mb-3 sm:mb-6">
           <div>
             <h1 className="text-xl sm:text-2xl font-semibold text-white">Library</h1>
-            <p className="text-white/50 text-xs sm:text-sm hidden sm:block">Your analyzed content</p>
+            <p className="text-white/50 text-xs sm:text-sm">Your analyzed content</p>
           </div>
-          <TooltipProvider delayDuration={300}>
-            <div className="flex items-center gap-1 p-1 bg-white/[0.06] rounded-lg">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setViewMode("list")}
-                    className={cn(
-                      "p-2 rounded-md transition-all",
-                      viewMode === "list" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
-                    )}
-                  >
-                    <LayoutList className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>List view</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => setViewMode("grid")}
-                    className={cn(
-                      "p-2 rounded-md transition-all",
-                      viewMode === "grid" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
-                    )}
-                  >
-                    <LayoutGrid className="w-4 h-4" />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Grid view</TooltipContent>
-              </Tooltip>
-            </div>
-          </TooltipProvider>
+          <div className="flex items-center gap-1 p-1 bg-white/[0.06] rounded-lg">
+            <button
+              onClick={() => setViewMode("list")}
+              className={cn(
+                "w-8 h-8 flex items-center justify-center rounded-md transition-all",
+                viewMode === "list" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
+              )}
+              title="List view"
+            >
+              <LayoutList className="w-4 h-4" />
+            </button>
+            <button
+              onClick={() => setViewMode("grid")}
+              className={cn(
+                "w-8 h-8 flex items-center justify-center rounded-md transition-all",
+                viewMode === "grid" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
+              )}
+              title="Grid view"
+            >
+              <LayoutGrid className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Search & Filter Bar */}
@@ -706,18 +754,20 @@ function HistoryPageContent({ session }: LibraryPageProps) {
           </div>
 
           {/* Filter Toggle & Bookmark Filter & Tags */}
-          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap">
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 bg-white/[0.06] border border-white/[0.08] rounded-lg sm:rounded-xl text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-xs sm:text-sm"
+              className={cn(
+                "flex items-center justify-center gap-2 h-10 px-4 bg-white/[0.06] border border-white/[0.08] rounded-full text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-sm",
+                showFilters && "bg-white/[0.1] border-white/[0.15] text-white"
+              )}
             >
-              <SlidersHorizontal className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-              <span className="hidden sm:inline">Filters</span>
+              <SlidersHorizontal className="w-4 h-4" />
             </button>
             <button
               onClick={() => setBookmarkOnly(!bookmarkOnly)}
               className={cn(
-                "flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl text-xs sm:text-sm transition-all",
+                "flex items-center gap-2 h-10 px-5 rounded-full text-sm transition-all",
                 bookmarkOnly
                   ? "bg-amber-500/20 border border-amber-500/30 text-amber-400"
                   : "bg-white/[0.06] border border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
@@ -732,7 +782,7 @@ function HistoryPageContent({ session }: LibraryPageProps) {
               <button
                 onClick={() => setShowTagDropdown(!showTagDropdown)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2 rounded-xl text-sm transition-all",
+                  "flex items-center gap-2 h-10 px-5 rounded-full text-sm transition-all",
                   selectedTags.length > 0
                     ? "bg-purple-500/20 border border-purple-500/30 text-purple-400"
                     : "bg-white/[0.06] border border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
