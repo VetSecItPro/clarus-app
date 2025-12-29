@@ -23,12 +23,12 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
 
   return (
     <header className="sticky top-0 z-50 bg-black/60 backdrop-blur-xl border-b border-white/[0.08]">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="flex items-center justify-between h-16">
+      <div className="max-w-6xl mx-auto px-2 sm:px-4">
+        <div className="flex items-center justify-between h-12 sm:h-16">
           {/* Logo/Brand */}
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-9 h-9 bg-gradient-to-br from-[#1d9bf0] to-[#1a8cd8] rounded-xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/20 group-hover:shadow-[#1d9bf0]/30 transition-shadow">
-              <Shield className="w-5 h-5 text-white" />
+          <Link href="/" className="flex items-center gap-2 sm:gap-3 group">
+            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-[#1d9bf0] to-[#1a8cd8] rounded-lg sm:rounded-xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/20 group-hover:shadow-[#1d9bf0]/30 transition-shadow">
+              <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
             </div>
             <span className="text-white font-semibold text-lg hidden sm:block">
               Truth Checker
