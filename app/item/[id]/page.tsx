@@ -26,6 +26,7 @@ import { ActionItemsCard } from "@/components/ui/action-items-card"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
 import { ShareModal } from "@/components/share-modal"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 
 interface ItemDetailPageProps {
   params: Promise<{ id: string }>
@@ -484,39 +485,58 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
           <div className="flex items-center justify-between gap-3">
             {/* Left side: Back button + Tab switcher */}
             <div className="flex items-center gap-2 sm:gap-3">
-              <Link href="/">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-10 w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08]"
-                  aria-label="Back to home"
-                >
-                  <ArrowLeft className="w-5 h-5" />
-                </Button>
-              </Link>
+              <TooltipProvider delayDuration={300}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link href="/">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-10 w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08]"
+                        aria-label="Back to home"
+                      >
+                        <ArrowLeft className="w-5 h-5" />
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>Back to Library</TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
 
-              <div className="flex items-center gap-1 bg-white/[0.04] backdrop-blur-xl p-1 rounded-xl border border-white/[0.08]">
-                <button
-                  onClick={() => handleTabChange("summary")}
-                  className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
-                    activeMainTab === "summary"
-                      ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
-                      : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
-                  }`}
-                >
-                  Summary
-                </button>
-                <button
-                  onClick={() => handleTabChange("fulltext")}
-                  className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
-                    activeMainTab === "fulltext"
-                      ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
-                      : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
-                  }`}
-                >
-                  Full Text
-                </button>
-              </div>
+              <TooltipProvider delayDuration={300}>
+                <div className="flex items-center gap-1 bg-white/[0.04] backdrop-blur-xl p-1 rounded-xl border border-white/[0.08]">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleTabChange("summary")}
+                        className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+                          activeMainTab === "summary"
+                            ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
+                            : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
+                        }`}
+                      >
+                        Summary
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>View AI-generated analysis</TooltipContent>
+                  </Tooltip>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => handleTabChange("fulltext")}
+                        className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
+                          activeMainTab === "fulltext"
+                            ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
+                            : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
+                        }`}
+                      >
+                        Full Text
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>View original transcript or article</TooltipContent>
+                  </Tooltip>
+                </div>
+              </TooltipProvider>
             </div>
           </div>
         </div>
@@ -613,13 +633,20 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       <h3 className="text-sm font-semibold text-white">Tags</h3>
                     </div>
                     {!showTagInput && (
-                      <button
-                        onClick={() => setShowTagInput(true)}
-                        className="flex items-center gap-1 px-2 py-1 text-xs text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 rounded-lg transition-all"
-                      >
-                        <Plus className="w-3 h-3" />
-                        Add
-                      </button>
+                      <TooltipProvider delayDuration={300}>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={() => setShowTagInput(true)}
+                              className="flex items-center gap-1 px-2 py-1 text-xs text-purple-400 hover:text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 rounded-lg transition-all"
+                            >
+                              <Plus className="w-3 h-3" />
+                              Add
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent>Add a tag to organize this content</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     )}
                   </div>
 
@@ -682,20 +709,27 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                   {/* Current tags */}
                   {tags.length > 0 ? (
                     <div className="flex flex-wrap gap-2">
-                      {tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="group flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300"
-                        >
-                          <span className="capitalize">{tag}</span>
-                          <button
-                            onClick={() => handleRemoveTag(tag)}
-                            className="opacity-50 hover:opacity-100 transition-opacity"
+                      <TooltipProvider delayDuration={300}>
+                        {tags.map((tag) => (
+                          <span
+                            key={tag}
+                            className="group flex items-center gap-1.5 px-2.5 py-1 bg-purple-500/20 border border-purple-500/30 rounded-lg text-xs text-purple-300"
                           >
-                            <X className="w-3 h-3" />
-                          </button>
-                        </span>
-                      ))}
+                            <span className="capitalize">{tag}</span>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <button
+                                  onClick={() => handleRemoveTag(tag)}
+                                  className="opacity-50 hover:opacity-100 transition-opacity"
+                                >
+                                  <X className="w-3 h-3" />
+                                </button>
+                              </TooltipTrigger>
+                              <TooltipContent>Remove tag</TooltipContent>
+                            </Tooltip>
+                          </span>
+                        ))}
+                      </TooltipProvider>
                     </div>
                   ) : (
                     <p className="text-xs text-white/40">No tags yet. Add tags to organize your content.</p>
@@ -761,34 +795,46 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 )}
 
                 {/* Action buttons */}
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setIsShareModalOpen(true)}
-                    size="sm"
-                    className="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl transition-all"
-                  >
-                    <Mail className="mr-2 h-4 w-4" />
-                    Share
-                  </Button>
-                  <Button
-                    onClick={handleRegenerate}
-                    disabled={isRegenerating}
-                    size="sm"
-                    className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 rounded-xl transition-all disabled:opacity-50"
-                  >
-                    {isRegenerating ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        <span className="hidden sm:inline">Regenerating...</span>
-                      </>
-                    ) : (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4" />
-                        <span className="hidden sm:inline">Regenerate</span>
-                      </>
-                    )}
-                  </Button>
-                </div>
+                <TooltipProvider delayDuration={300}>
+                  <div className="flex gap-3">
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={() => setIsShareModalOpen(true)}
+                          size="sm"
+                          className="flex-1 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl transition-all"
+                        >
+                          <Mail className="mr-2 h-4 w-4" />
+                          Share
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Share analysis via email</TooltipContent>
+                    </Tooltip>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          onClick={handleRegenerate}
+                          disabled={isRegenerating}
+                          size="sm"
+                          className="flex-1 bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 rounded-xl transition-all disabled:opacity-50"
+                        >
+                          {isRegenerating ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              <span className="hidden sm:inline">Regenerating...</span>
+                            </>
+                          ) : (
+                            <>
+                              <RefreshCw className="mr-2 h-4 w-4" />
+                              <span className="hidden sm:inline">Regenerate</span>
+                            </>
+                          )}
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Re-analyze this content</TooltipContent>
+                    </Tooltip>
+                  </div>
+                </TooltipProvider>
               </div>
             </aside>
 
