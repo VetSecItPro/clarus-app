@@ -109,6 +109,21 @@ html {
 body {
   background-color: var(--background);
   color: var(--foreground);
+  /* Font stack with Arabic and international character support */
+  font-family: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI",
+    "Arabic UI Text", "Geeza Pro", "Simplified Arabic", "Tahoma",
+    sans-serif;
+}
+
+/* RTL text direction for Arabic content */
+[dir="rtl"],
+:lang(ar) {
+  text-align: right;
+}
+
+/* Auto direction detection - let browser handle RTL */
+[dir="auto"] {
+  unicode-bidi: plaintext;
 }
 
 /* Custom override for prose list items in dark mode */

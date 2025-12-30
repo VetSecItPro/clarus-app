@@ -314,9 +314,9 @@ interface ModelProcessingError {
 
 async function getModelSummary(
   textToSummarize: string,
-  options: { shouldExtractTitle?: boolean } = {},
+  options: { shouldExtractTitle?: boolean; langInstruction?: string } = {},
 ): Promise<ModelSummary | ModelProcessingError> {
-  const { shouldExtractTitle = false } = options
+  const { shouldExtractTitle = false, langInstruction } = options
 
   if (!openRouterApiKey) {
     const msg = "OpenRouter API key is not configured."
@@ -345,10 +345,15 @@ async function getModelSummary(
   const { system_content, user_content_template, temperature, top_p, max_tokens, model_name } = promptData
 
   const openRouterModelId = model_name || "anthropic/claude-3.5-sonnet"
-  const finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}").replace(
+  let finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}").replace(
     "{{TEXT_TO_SUMMARIZE}}",
     textToSummarize,
   )
+
+  // Append language instruction if specified
+  if (langInstruction) {
+    finalUserPrompt += langInstruction
+  }
 
   const requestBody: { [key: string]: any } = {
     model: openRouterModelId,
@@ -487,6 +492,7 @@ async function generateSectionWithAI(
   textToAnalyze: string,
   promptType: string,
   contentType?: string,
+  langInstruction?: string,
 ): Promise<{ content: any; error?: string }> {
   if (!openRouterApiKey) {
     return { content: null, error: "OpenRouter API key not configured" }
@@ -502,6 +508,11 @@ async function generateSectionWithAI(
   let userContent = prompt.user_content_template
     .replace("{{CONTENT}}", textToAnalyze)
     .replace("{{TYPE}}", contentType || "article")
+
+  // Append language instruction if specified (for non-English output)
+  if (langInstruction) {
+    userContent += langInstruction
+  }
 
   const requestBody: { [key: string]: any } = {
     model: prompt.model_name,
@@ -558,8 +569,8 @@ async function generateSectionWithAI(
   }
 }
 
-async function generateBriefOverview(fullText: string): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview")
+async function generateBriefOverview(fullText: string, langInstruction?: string): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", undefined, langInstruction)
   if (result.error) {
     console.error(`API: Brief overview generation failed: ${result.error}`)
     return null
@@ -567,8 +578,8 @@ async function generateBriefOverview(fullText: string): Promise<string | null> {
   return result.content
 }
 
-async function generateTriage(fullText: string): Promise<TriageData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage")
+async function generateTriage(fullText: string, langInstruction?: string): Promise<TriageData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", undefined, langInstruction)
   if (result.error) {
     console.error(`API: Triage generation failed: ${result.error}`)
     return null
@@ -576,8 +587,8 @@ async function generateTriage(fullText: string): Promise<TriageData | null> {
   return result.content as TriageData
 }
 
-async function generateTruthCheck(fullText: string): Promise<TruthCheckData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check")
+async function generateTruthCheck(fullText: string, langInstruction?: string): Promise<TruthCheckData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", undefined, langInstruction)
   if (result.error) {
     console.error(`API: Truth check generation failed: ${result.error}`)
     return null
@@ -585,8 +596,8 @@ async function generateTruthCheck(fullText: string): Promise<TruthCheckData | nu
   return result.content as TruthCheckData
 }
 
-async function generateActionItems(fullText: string, contentType: string): Promise<ActionItemsData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType)
+async function generateActionItems(fullText: string, contentType: string, langInstruction?: string): Promise<ActionItemsData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, langInstruction)
   if (result.error) {
     console.error(`API: Action items generation failed: ${result.error}`)
     return null
@@ -598,9 +609,9 @@ async function generateActionItems(fullText: string, contentType: string): Promi
   return result.content as ActionItemsData
 }
 
-async function generateDetailedSummary(fullText: string, contentType: string): Promise<string | null> {
+async function generateDetailedSummary(fullText: string, contentType: string, langInstruction?: string): Promise<string | null> {
   // Now uses database prompt with {{CONTENT}} and {{TYPE}} placeholders
-  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType)
+  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, langInstruction)
   if (result.error) {
     console.error(`API: Detailed summary generation failed: ${result.error}`)
     return null
@@ -699,6 +710,15 @@ async function updateDomainStats(
 interface ProcessContentRequestBody {
   content_id: string
   force_regenerate?: boolean
+  language?: string // Language code for analysis output (e.g., "fr", "es", "ar", "de")
+}
+
+// Language instruction to inject into prompts
+const LANGUAGE_INSTRUCTIONS: Record<string, string> = {
+  fr: "\n\nIMPORTANT: Respond entirely in French (Français). All analysis, summaries, and explanations must be in French.",
+  es: "\n\nIMPORTANT: Respond entirely in Spanish (Español). All analysis, summaries, and explanations must be in Spanish.",
+  ar: "\n\nIMPORTANT: Respond entirely in Arabic (العربية). All analysis, summaries, and explanations must be in Arabic.",
+  de: "\n\nIMPORTANT: Respond entirely in German (Deutsch). All analysis, summaries, and explanations must be in German.",
 }
 
 export async function POST(req: NextRequest) {
@@ -719,10 +739,12 @@ export async function POST(req: NextRequest) {
 
   let content_id: string
   let force_regenerate: boolean
+  let language: string | undefined
 
   try {
     const body: ProcessContentRequestBody = await req.json()
     force_regenerate = body.force_regenerate || false
+    language = body.language // Optional language code
 
     // Validate content_id
     const contentIdValidation = validateContentId(body.content_id)
@@ -738,7 +760,10 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 })
   }
 
-  console.log(`API: Processing request for content_id: ${content_id}, force_regenerate: ${force_regenerate}`)
+  // Get language instruction if non-English language specified
+  const langInstruction = language && LANGUAGE_INSTRUCTIONS[language] ? LANGUAGE_INSTRUCTIONS[language] : ""
+
+  console.log(`API: Processing request for content_id: ${content_id}, force_regenerate: ${force_regenerate}, language: ${language || "en"}`)
 
   const { data: content, error: fetchError } = await supabase.from("content").select("*").eq("id", content_id).single()
 
@@ -892,7 +917,7 @@ export async function POST(req: NextRequest) {
 
   // 1. BRIEF OVERVIEW (fastest, first to appear)
   console.log(`API: [1/6] Generating brief overview...`)
-  const briefOverview = await generateBriefOverview(content.full_text)
+  const briefOverview = await generateBriefOverview(content.full_text, langInstruction)
   if (briefOverview) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       brief_overview: briefOverview,
@@ -904,7 +929,7 @@ export async function POST(req: NextRequest) {
 
   // 2. TRIAGE (quality score, audience, worth-it)
   console.log(`API: [2/6] Generating triage...`)
-  const triage = await generateTriage(content.full_text)
+  const triage = await generateTriage(content.full_text, langInstruction)
   if (triage) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       triage: triage as unknown as Json,
@@ -916,7 +941,7 @@ export async function POST(req: NextRequest) {
 
   // 3. TRUTH CHECK (bias, accuracy analysis)
   console.log(`API: [3/6] Generating truth check...`)
-  const truthCheck = await generateTruthCheck(content.full_text)
+  const truthCheck = await generateTruthCheck(content.full_text, langInstruction)
   if (truthCheck) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       truth_check: truthCheck as unknown as Json,
@@ -934,7 +959,7 @@ export async function POST(req: NextRequest) {
 
   // 4. ACTION ITEMS (actionable takeaways)
   console.log(`API: [4/6] Generating action items...`)
-  const actionItems = await generateActionItems(content.full_text, content.type || "article")
+  const actionItems = await generateActionItems(content.full_text, content.type || "article", langInstruction)
   if (actionItems) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       action_items: actionItems as unknown as Json,
@@ -948,6 +973,7 @@ export async function POST(req: NextRequest) {
   console.log(`API: [5/6] Generating mid-length summary...`)
   const summaryResult = await getModelSummary(content.full_text, {
     shouldExtractTitle: titleNeedsFixing,
+    langInstruction,
   })
 
   if (summaryResult && !("error" in summaryResult)) {
@@ -973,7 +999,7 @@ export async function POST(req: NextRequest) {
 
   // 6. DETAILED SUMMARY (most comprehensive, slowest)
   console.log(`API: [6/6] Generating detailed summary...`)
-  const detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article")
+  const detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article", langInstruction)
   if (detailedSummary) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       detailed_summary: detailedSummary,

@@ -166,7 +166,7 @@ export function MarkdownRenderer({ children, className, onTimestampClick }: Mark
   }
 
   return (
-    <div className={cn(MARKDOWN_CLASSES, className)}>
+    <div dir="auto" className={cn(MARKDOWN_CLASSES, className)}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
