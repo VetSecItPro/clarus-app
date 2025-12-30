@@ -212,14 +212,14 @@ export default function GlasmorphicSettingsButton({ variant = "default" }: Glasm
               <span className="text-[10px] mt-0.5 font-medium">Settings</span>
             </button>
           ) : (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-14 w-14 rounded-full bg-white/[0.04] backdrop-blur-2xl border border-white/[0.06] hover:bg-white/[0.08] transition-all"
+            <button
+              className="relative p-2 rounded-lg text-white/50 hover:text-white/90 transition-all duration-200 group"
               aria-label="Settings and Profile"
             >
-              <Settings className="h-6 w-6 text-neutral-400" />
-            </Button>
+              <Settings className="h-5 w-5 transition-transform duration-200 group-hover:rotate-45" />
+              {/* Subtle hover background */}
+              <div className="absolute inset-0 rounded-lg bg-white/[0.06] opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+            </button>
           )}
         </DropdownMenuTrigger>
         <DropdownMenuContent
