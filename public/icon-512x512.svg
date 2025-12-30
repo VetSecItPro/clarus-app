@@ -1,5 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <rect width="512" height="512" rx="100" fill="#000000"/>
-  <circle cx="256" cy="256" r="170" fill="#1d9bf0"/>
-  <path d="M256 141l99 49.5v74c0 65-43.5 121-99 137-55.5-16-99-72-99-137v-74l99-49.5z" stroke="white" stroke-width="24" fill="none" stroke-linejoin="round"/>
+  <defs>
+    <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1d9bf0"/>
+      <stop offset="50%" stop-color="#0ea5e9"/>
+      <stop offset="100%" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="shieldGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="100%" stop-color="#e0f2fe"/>
+    </linearGradient>
+  </defs>
+  <!-- Full gradient background with rounded corners -->
+  <rect width="512" height="512" rx="108" fill="url(#bgGradient)"/>
+  <!-- Centered shield icon - filled with gradient -->
+  <path d="M256 120l115 57.5v86c0 75-50.5 140-115 159-64.5-19-115-84-115-159v-86L256 120z"
+        fill="url(#shieldGradient)"
+        opacity="0.95"/>
+  <!-- Inner shield detail for depth -->
+  <path d="M256 155l85 42.5v63.5c0 55.5-37.5 103.5-85 117.5-47.5-14-85-62-85-117.5v-63.5L256 155z"
+        fill="url(#bgGradient)"
+        opacity="0.3"/>
 </svg>
