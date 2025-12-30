@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, type ComponentType } from "react"
+import { useEffect, useState, useRef, type ComponentType } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { Session } from "@supabase/supabase-js"
@@ -12,35 +12,103 @@ interface WithAuthProps {
 
 type SubscriptionStatus = "active" | "trialing" | "grandfathered" | "canceled" | "none" | null
 
+// Cache auth state globally to prevent re-checking on every navigation
+let cachedSession: Session | null = null
+let cachedSubscriptionStatus: SubscriptionStatus = null
+let authInitialized = false
+
 export default function withAuth<P extends WithAuthProps>(WrappedComponent: ComponentType<P>) {
   const AuthComponent = (props: P) => {
     const router = useRouter()
     const pathname = usePathname()
-    const [session, setSession] = useState<Session | null>(null)
-    const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>(null)
-    const [loading, setLoading] = useState(true)
+    // Use cached values as initial state to prevent flash
+    const [session, setSession] = useState<Session | null>(cachedSession)
+    const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>(cachedSubscriptionStatus)
+    const [loading, setLoading] = useState(!authInitialized)
+    const listenerSetupRef = useRef(false)
 
     useEffect(() => {
+      // Only set up listener once globally
+      if (listenerSetupRef.current) return
+      listenerSetupRef.current = true
+
       const checkInitialSessionAndSetupListener = async () => {
-        const {
-          data: { session: initialSession },
-        } = await supabase.auth.getSession()
-
-        setSession(initialSession)
-
-        if (initialSession?.user) {
-          const { data: userData } = await supabase
-            .from("users")
-            .select("subscription_status")
-            .eq("id", initialSession.user.id)
-            .single()
-
-          setSubscriptionStatus((userData?.subscription_status as SubscriptionStatus) || "none")
+        // If already initialized, use cached values
+        if (authInitialized) {
+          setSession(cachedSession)
+          setSubscriptionStatus(cachedSubscriptionStatus)
+          setLoading(false)
+          return
         }
 
-        setLoading(false)
+        try {
+          const {
+            data: { session: initialSession },
+            error,
+          } = await supabase.auth.getSession()
 
+          // Handle refresh token errors by clearing session
+          if (error) {
+            console.warn("Auth session error:", error.message)
+            cachedSession = null
+            cachedSubscriptionStatus = null
+            setSession(null)
+            setSubscriptionStatus(null)
+            authInitialized = true
+            setLoading(false)
+            return
+          }
+
+          cachedSession = initialSession
+          setSession(initialSession)
+
+          if (initialSession?.user) {
+            const { data: userData } = await supabase
+              .from("users")
+              .select("subscription_status")
+              .eq("id", initialSession.user.id)
+              .single()
+
+            const status = (userData?.subscription_status as SubscriptionStatus) || "none"
+            cachedSubscriptionStatus = status
+            setSubscriptionStatus(status)
+          }
+
+          authInitialized = true
+          setLoading(false)
+        } catch (err) {
+          // Handle any auth errors (including refresh token issues)
+          console.warn("Auth initialization error:", err)
+          cachedSession = null
+          cachedSubscriptionStatus = null
+          setSession(null)
+          setSubscriptionStatus(null)
+          authInitialized = true
+          setLoading(false)
+
+          // Clear invalid tokens from storage
+          if (typeof window !== "undefined") {
+            // Supabase stores tokens in localStorage with a specific key pattern
+            const keys = Object.keys(localStorage).filter(key =>
+              key.includes("supabase") && key.includes("auth")
+            )
+            keys.forEach(key => localStorage.removeItem(key))
+          }
+        }
+
+        // Set up auth state listener (outside try-catch so it always runs)
         const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+          // Handle token refresh errors
+          if (_event === "TOKEN_REFRESHED" && !newSession) {
+            // Token refresh failed, clear cache
+            cachedSession = null
+            cachedSubscriptionStatus = null
+            setSession(null)
+            setSubscriptionStatus(null)
+            return
+          }
+
+          cachedSession = newSession
           setSession(newSession)
 
           if (newSession?.user) {
@@ -50,13 +118,24 @@ export default function withAuth<P extends WithAuthProps>(WrappedComponent: Comp
               .eq("id", newSession.user.id)
               .single()
 
-            setSubscriptionStatus((userData?.subscription_status as SubscriptionStatus) || "none")
+            const status = (userData?.subscription_status as SubscriptionStatus) || "none"
+            cachedSubscriptionStatus = status
+            setSubscriptionStatus(status)
           } else {
+            cachedSubscriptionStatus = null
             setSubscriptionStatus(null)
           }
 
-          if (_event === "PASSWORD_RECOVERY" && pathname !== "/update-password") {
+          // Handle password recovery redirect
+          if (_event === "PASSWORD_RECOVERY") {
             router.replace("/update-password")
+          }
+
+          // Handle sign out - clear cache
+          if (_event === "SIGNED_OUT") {
+            cachedSession = null
+            cachedSubscriptionStatus = null
+            authInitialized = false
           }
         })
         return () => {
@@ -65,7 +144,7 @@ export default function withAuth<P extends WithAuthProps>(WrappedComponent: Comp
       }
 
       checkInitialSessionAndSetupListener()
-    }, [pathname, router])
+    }, [router]) // Removed pathname from dependencies
 
     if (loading) {
       return <LoadingSpinner message="Checking authentication..." />
