@@ -473,40 +473,31 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </Tooltip>
               </TooltipProvider>
 
-              <TooltipProvider delayDuration={300}>
+              {/* Tab switcher - simplified for better iOS Safari support */}
                 <div className="flex items-center gap-1 bg-white/[0.04] backdrop-blur-xl p-1 rounded-xl border border-white/[0.08]">
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => handleTabChange("summary")}
-                        className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
-                          activeMainTab === "summary"
-                            ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
-                            : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
-                        }`}
-                      >
-                        Summary
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>View AI-generated analysis</TooltipContent>
-                  </Tooltip>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <button
-                        onClick={() => handleTabChange("fulltext")}
-                        className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg transition-all ${
-                          activeMainTab === "fulltext"
-                            ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
-                            : "text-gray-400 hover:text-white hover:bg-white/[0.04]"
-                        }`}
-                      >
-                        Full Text
-                      </button>
-                    </TooltipTrigger>
-                    <TooltipContent>View original transcript or article</TooltipContent>
-                  </Tooltip>
+                  <button
+                    onClick={() => handleTabChange("summary")}
+                    style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                    className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-colors duration-150 ${
+                      activeMainTab === "summary"
+                        ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
+                        : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
+                    }`}
+                  >
+                    Summary
+                  </button>
+                  <button
+                    onClick={() => handleTabChange("fulltext")}
+                    style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                    className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-colors duration-150 ${
+                      activeMainTab === "fulltext"
+                        ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
+                        : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
+                    }`}
+                  >
+                    Full Text
+                  </button>
                 </div>
-              </TooltipProvider>
             </div>
 
             {/* Right side: Share + Regenerate buttons (mobile only) */}
@@ -536,7 +527,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
       </div>
 
       {/* Spacer for fixed nav bar on mobile */}
-      <div className="h-[42px] sm:hidden" />
+      <div className="h-[48px] sm:hidden" />
 
       <main className="max-w-7xl mx-auto lg:px-6 py-2 sm:py-6 lg:py-8 flex-1 pb-20 sm:pb-24">
         {/* PDF: Full-width layout (no split) */}
@@ -563,9 +554,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
           </div>
         ) : (
           <>
-          {/* MOBILE ONLY: Fixed video player below nav bar (~40px nav height) */}
+          {/* MOBILE ONLY: Fixed video player below nav bar (~44px nav height + safe area) */}
           {!isDesktop && (
-            <div className="fixed top-[42px] left-0 right-0 z-10 bg-black">
+            <div className="fixed top-[48px] left-0 right-0 z-10 bg-black">
               <div className="bg-black w-full">
                 {item.type === "youtube" && videoId ? (
                   <YouTubePlayer
