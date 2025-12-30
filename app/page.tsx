@@ -343,7 +343,7 @@ function HomePageContent({ session }: HomePageProps) {
               <button
                 onClick={clearInput}
                 disabled={isSubmitting}
-                className="shrink-0 p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all disabled:opacity-50"
+                className="hidden sm:block shrink-0 p-1.5 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/[0.06] transition-all disabled:opacity-50"
                 aria-label="Clear input"
               >
                 <X className="w-4 h-4" />
