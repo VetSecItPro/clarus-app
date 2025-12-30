@@ -123,17 +123,30 @@ body {
 }
 
 /* Updated glassmorphism utilities for clean black theme */
+/* Reduced blur on mobile for better performance */
 .glass-panel {
-  background-color: hsl(0 0% 5% / 0.6);
-  backdrop-filter: blur(24px);
+  background-color: hsl(0 0% 5% / 0.8);
+  backdrop-filter: blur(8px);
   border: 1px solid hsl(0 0% 100% / 0.1);
 }
 
 .glass-button {
-  background-color: hsl(0 0% 5% / 0.6);
-  backdrop-filter: blur(24px);
+  background-color: hsl(0 0% 5% / 0.8);
+  backdrop-filter: blur(8px);
   border: 1px solid hsl(0 0% 100% / 0.1);
   transition: all 0.2s;
+}
+
+/* Enhanced blur on desktop where GPU can handle it */
+@media (min-width: 640px) {
+  .glass-panel {
+    background-color: hsl(0 0% 5% / 0.6);
+    backdrop-filter: blur(24px);
+  }
+  .glass-button {
+    background-color: hsl(0 0% 5% / 0.6);
+    backdrop-filter: blur(24px);
+  }
 }
 
 .glass-button:hover {

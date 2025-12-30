@@ -578,8 +578,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                     alt={item.title || "Content image"}
                     width={420}
                     height={236}
+                    sizes="100vw"
+                    priority
                     className="w-full h-auto aspect-video object-cover"
-                    unoptimized
                     onError={(e) => (e.currentTarget.style.display = "none")}
                   />
                 ) : (
@@ -615,8 +616,8 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         alt={item.title || "Content image"}
                         width={420}
                         height={236}
+                        sizes="480px"
                         className="w-full h-auto aspect-video object-cover"
-                        unoptimized
                         onError={(e) => (e.currentTarget.style.display = "none")}
                       />
                     ) : (
