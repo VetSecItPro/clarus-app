@@ -10,9 +10,20 @@ export interface TriageData {
   signal_noise_score: number // 0=Noise, 1=Noteworthy, 2=Insightful, 3=Mind-blowing
 }
 
+// Claim for inline highlighting in transcript
+export interface ClaimHighlight {
+  exact_text: string // Exact phrase from content for text matching
+  status: "verified" | "false" | "disputed" | "unverified" | "opinion"
+  explanation: string // Brief explanation of the assessment
+  sources?: string[] // URLs supporting the assessment
+  timestamp?: string // e.g., "2:34" for YouTube videos
+  severity?: "low" | "medium" | "high"
+}
+
 // Truth check analysis
 export interface TruthCheckData {
   overall_rating: "Accurate" | "Mostly Accurate" | "Mixed" | "Questionable" | "Unreliable"
+  claims?: ClaimHighlight[] // Claims for inline highlighting (optional for backward compat)
   issues: Array<{
     type: "misinformation" | "misleading" | "bias" | "unjustified_certainty" | "missing_context"
     claim_or_issue: string

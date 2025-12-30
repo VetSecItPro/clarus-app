@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import { Loader2, Link2, Youtube, FileText, Twitter, CheckCircle2, X, Shield } from "lucide-react"
+import { Loader2, Link2, Youtube, FileText, Twitter, CheckCircle2, X, Shield, ChevronDown } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
@@ -15,6 +15,27 @@ import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "framer-motion"
 import { LandingPage } from "@/components/landing/landing-page"
 import Image from "next/image"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+
+// Language options for analysis output
+const ANALYSIS_LANGUAGES = [
+  { code: "en", label: "English", flag: "🇺🇸" },
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪" },
+] as const
 
 interface UrlPreview {
   url: string
@@ -48,8 +69,22 @@ function HomePageContent({ session }: HomePageProps) {
   const [inputValue, setInputValue] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const [urlPreview, setUrlPreview] = useState<UrlPreview | null>(null)
+  const [analysisLanguage, setAnalysisLanguage] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("vajra-analysis-language") || "en"
+    }
+    return "en"
+  })
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
+
+  // Handle language change
+  const handleLanguageChange = useCallback((newLanguage: string) => {
+    setAnalysisLanguage(newLanguage)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("vajra-analysis-language", newLanguage)
+    }
+  }, [])
 
   // Detect and validate URL as user types
   const detectUrl = useCallback((value: string) => {
@@ -178,11 +213,14 @@ function HomePageContent({ session }: HomePageProps) {
       toast.success("Analyzing content...")
       router.push(`/item/${newContent.id}`)
 
-      // Fire API in background
+      // Fire API in background with language preference
       fetch("/api/process-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content_id: newContent.id }),
+        body: JSON.stringify({
+          content_id: newContent.id,
+          language: analysisLanguage !== "en" ? analysisLanguage : undefined,
+        }),
       })
         .then(async (response) => {
           if (!response.ok) {
@@ -269,20 +307,20 @@ function HomePageContent({ session }: HomePageProps) {
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      <main className="flex-1 flex flex-col items-center justify-center px-3 sm:px-6 pb-20 sm:pb-24">
-        {/* App Name - visible on all screen sizes */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.4 }}
-          className="flex items-center gap-2.5 mb-8 sm:mb-10"
-        >
-          <div className="w-10 h-10 bg-gradient-to-br from-[#1d9bf0] via-[#0ea5e9] to-[#06b6d4] rounded-xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/25">
-            <Shield className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-white font-semibold text-lg sm:text-xl tracking-tight">Truth Checker</span>
-        </motion.div>
+      {/* App Name - mobile only (desktop has it in SiteHeader) */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.3 }}
+        className="lg:hidden flex items-center justify-center gap-2.5 py-4 sm:py-5 border-b border-white/[0.04]"
+      >
+        <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-[#1d9bf0] via-[#0ea5e9] to-[#06b6d4] rounded-xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/25">
+          <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+        </div>
+        <span className="text-white font-semibold text-base sm:text-lg tracking-tight">Truth Checker</span>
+      </motion.div>
 
+      <main className="flex-1 flex flex-col items-center justify-center px-3 sm:px-6 pb-20 sm:pb-24">
         {/* Welcome Message - centered */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -291,15 +329,15 @@ function HomePageContent({ session }: HomePageProps) {
           className="text-center mb-6 sm:mb-8"
         >
           {username ? (
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-medium text-white mb-1.5 sm:mb-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-medium text-white mb-2 sm:mb-3">
               Welcome back, <span className="text-[#1d9bf0]">{username}</span>
             </h1>
           ) : (
-            <h1 className="text-xl sm:text-2xl lg:text-3xl font-medium text-white mb-1.5 sm:mb-2">
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-medium text-white mb-2 sm:mb-3">
               Welcome back
             </h1>
           )}
-          <p className="text-white/50 text-sm sm:text-base">
+          <p className="text-white/70 text-base sm:text-lg font-medium">
             {randomPrompt}
           </p>
         </motion.div>
@@ -366,7 +404,7 @@ function HomePageContent({ session }: HomePageProps) {
               <button
                 onClick={() => handleSubmit()}
                 disabled={isSubmitting || !urlPreview}
-                className={`shrink-0 px-4 sm:px-5 py-2 sm:py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm font-semibold transition-all disabled:opacity-50 ${
+                className={`shrink-0 px-4 sm:px-5 py-2 sm:py-2.5 rounded-full flex items-center justify-center gap-2 text-sm font-semibold transition-all disabled:opacity-50 ${
                   urlPreview
                     ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] active:bg-[#0d7bc5] active:scale-95 text-white shadow-lg shadow-[#1d9bf0]/25"
                     : "bg-white/[0.06] text-white/40 cursor-not-allowed"
@@ -385,7 +423,7 @@ function HomePageContent({ session }: HomePageProps) {
               <button
                 onClick={handlePasteFromClipboard}
                 disabled={isSubmitting}
-                className="shrink-0 px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg sm:rounded-xl bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white/70 text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
+                className="shrink-0 px-4 sm:px-5 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white/70 text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
               >
                 Paste
               </button>
@@ -453,25 +491,56 @@ function HomePageContent({ session }: HomePageProps) {
           </p>
         </motion.div>
 
-        {/* Example Chips - compact */}
+        {/* Example Chips + Language Selector */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
-          className="flex flex-wrap justify-center gap-1.5 sm:gap-2 mt-4 sm:mt-6"
+          className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 mt-4 sm:mt-6 px-2"
         >
-          {exampleChips.map((chip) => {
-            const Icon = chip.icon
-            return (
-              <div
-                key={chip.label}
-                className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.06]"
-              >
-                <Icon className={`w-3 h-3 ${chip.color} opacity-70`} />
-                <span className="text-[10px] text-white/50">{chip.label}</span>
-              </div>
-            )
-          })}
+            {/* Content type chips */}
+            {exampleChips.map((chip) => {
+              const Icon = chip.icon
+              return (
+                <div
+                  key={chip.label}
+                  className="flex items-center gap-1.5"
+                >
+                  <Icon className={`w-3 h-3 ${chip.color} opacity-50`} />
+                  <span className="text-[10px] text-white/40">{chip.label}</span>
+                </div>
+              )
+            })}
+
+            {/* Language selector */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-1.5 hover:opacity-70 transition-opacity cursor-pointer">
+                  <span className="text-[10px] leading-none opacity-50">{ANALYSIS_LANGUAGES.find(l => l.code === analysisLanguage)?.flag || "🇺🇸"}</span>
+                  <span className="text-[10px] text-white/40 uppercase">{analysisLanguage}</span>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10 min-w-[160px]">
+                <div className="px-2 py-1.5 text-[10px] text-white/40 uppercase tracking-wider border-b border-white/10">
+                  AI Output Language
+                </div>
+                {ANALYSIS_LANGUAGES.map((lang) => (
+                  <DropdownMenuItem
+                    key={lang.code}
+                    onClick={() => handleLanguageChange(lang.code)}
+                    className={`cursor-pointer hover:bg-white/10 flex items-center gap-2 ${
+                      analysisLanguage === lang.code ? "text-[#1d9bf0]" : "text-white/80"
+                    }`}
+                  >
+                    <span className="text-base">{lang.flag}</span>
+                    <span>{lang.label}</span>
+                    {analysisLanguage === lang.code && (
+                      <span className="ml-auto text-[#1d9bf0]">✓</span>
+                    )}
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
         </motion.div>
       </main>
 
