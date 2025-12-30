@@ -663,11 +663,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
 
           {/* Split-screen layout for YouTube and Articles */}
           <div className="lg:flex lg:gap-8 min-w-0">
-            {/* LEFT PANEL: Sticky media + metadata */}
+            {/* LEFT PANEL: Sticky video + scrollable metadata */}
             <aside className="w-full lg:w-[480px] lg:flex-shrink-0 mb-4 lg:mb-0 min-w-0">
-              <div className="lg:sticky lg:top-28 space-y-2 sm:space-y-4">
-                {/* Video or Thumbnail - DESKTOP ONLY */}
-                {isDesktop && (
+              {/* Video or Thumbnail - DESKTOP ONLY - STICKY */}
+              {isDesktop && (
+                <div className="lg:sticky lg:top-20 z-10 mb-3">
                   <div className="rounded-2xl overflow-hidden border border-white/[0.08] bg-black w-full">
                     {item.type === "youtube" && videoId ? (
                       <YouTubePlayer
@@ -693,8 +693,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       </div>
                     )}
                   </div>
-                )}
+                </div>
+              )}
 
+              {/* Non-sticky content below video */}
+              <div className="space-y-2 sm:space-y-4">
                 {/* Content info card - scrolls on mobile */}
                 <div className="mx-3 sm:mx-4 lg:mx-0 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
                   <h1 className="text-base font-semibold text-white leading-tight mb-2 break-words">
@@ -717,15 +720,16 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       )}
                     </span>
                     <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
-                    {/* Worth Watching + Language selector grouped together */}
+                    {/* Worth Watching (mobile only) + Language selector grouped together */}
                     <div className="flex items-center gap-3">
-                      {(() => {
+                      {/* Mobile-only inline badge - desktop has the full card below */}
+                      {!isDesktop && (() => {
                         const triage = summary?.triage as unknown as TriageData | null
                         const score = triage?.signal_noise_score
                         if (score === undefined || score === null) return null
                         return (
-                          <span className="px-2 py-1 rounded-l-lg bg-[#1d9bf0]/15 text-[#1d9bf0] flex items-center gap-1 text-xs">
-                            <span>Worth Watching</span>
+                          <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/15 text-[#1d9bf0] flex items-center gap-1 text-xs">
+                            <span>Worth</span>
                             <span className="font-medium">{score + 1}/4</span>
                           </span>
                         )
@@ -759,6 +763,58 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                     </div>
                   </div>
                 </div>
+
+                {/* Worth Watching Card - Desktop only */}
+                {isDesktop && summary?.triage && (() => {
+                  const triage = summary.triage as unknown as TriageData
+                  // Convert signal_noise_score (0-3) to 1-5 scale
+                  const scoreLabels = [
+                    { score: 1, label: "Skip", color: "text-red-400", bg: "bg-red-500/20", border: "border-red-500/30" },
+                    { score: 2, label: "Skim", color: "text-orange-400", bg: "bg-orange-500/20", border: "border-orange-500/30" },
+                    { score: 4, label: "Watch", color: "text-emerald-400", bg: "bg-emerald-500/20", border: "border-emerald-500/30" },
+                    { score: 5, label: "Must Watch", color: "text-green-400", bg: "bg-green-500/20", border: "border-green-500/30" },
+                  ]
+                  const scoreData = scoreLabels[triage.signal_noise_score] || scoreLabels[0]
+
+                  return (
+                    <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08]">
+                      {/* Worth Watching Score */}
+                      <div className="flex items-center gap-3 mb-3">
+                        <Eye className="w-4 h-4 text-[#1d9bf0]" />
+                        <span className="text-sm font-medium text-white">Worth Watching</span>
+                        <div className={`ml-auto px-3 py-1 rounded-full ${scoreData.bg} ${scoreData.border} border`}>
+                          <span className={`text-sm font-semibold ${scoreData.color}`}>
+                            {scoreData.score}/5 · {scoreData.label}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Brief Explanation */}
+                      {triage.worth_your_time && (
+                        <p className="text-sm text-white/70 leading-relaxed mb-3">
+                          {triage.worth_your_time.replace(/^(Yes|No|Maybe)\s*[-–—:]\s*/i, "")}
+                        </p>
+                      )}
+
+                      {/* Target Audience */}
+                      {triage.target_audience && triage.target_audience.length > 0 && (
+                        <div>
+                          <div className="text-xs text-white/40 uppercase tracking-wider mb-2">Best For</div>
+                          <div className="flex flex-wrap gap-2">
+                            {triage.target_audience.map((audience, idx) => (
+                              <span
+                                key={idx}
+                                className="px-2.5 py-1 text-xs rounded-lg bg-[#1d9bf0]/15 text-[#1d9bf0] border border-[#1d9bf0]/20"
+                              >
+                                {audience}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 {/* Tags Management - hidden on mobile, shown at bottom */}
                 <div className="hidden sm:block sm:mx-4 lg:mx-0 p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
