@@ -372,3 +372,33 @@ html {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* ========================================
+   iOS Safari Specific Fixes
+   ======================================== */
+
+/* Remove iOS Safari default input styling (gray bar, rounded corners) */
+input,
+textarea,
+select {
+  -webkit-appearance: none;
+  appearance: none;
+  border-radius: 0;
+}
+
+/* Ensure inputs don't have iOS inner shadow */
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="url"],
+input[type="search"] {
+  -webkit-appearance: none;
+  appearance: none;
+  background-clip: padding-box;
+}
+
+/* Fix iOS Safari iframe rendering in fixed containers */
+iframe {
+  -webkit-transform: translate3d(0, 0, 0);
+  transform: translate3d(0, 0, 0);
+}
