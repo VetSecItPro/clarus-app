@@ -92,10 +92,18 @@ export function AddUrlModal({ isOpen, onOpenChange }: AddUrlModalProps) {
       // Dispatch a custom event to notify other components that content was added.
       window.dispatchEvent(new CustomEvent("contentAdded"))
 
+      // Read saved language preference from localStorage
+      const savedLanguage = typeof window !== "undefined"
+        ? localStorage.getItem("vajra-analysis-language")
+        : null
+
       fetch("/api/process-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content_id: newContent.id }),
+        body: JSON.stringify({
+          content_id: newContent.id,
+          language: savedLanguage && savedLanguage !== "en" ? savedLanguage : undefined,
+        }),
       })
         .then(async (apiResponse) => {
           if (!apiResponse.ok) {

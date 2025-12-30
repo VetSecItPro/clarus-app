@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X } from "lucide-react"
+import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback, useRef, use } from "react"
 import { supabase } from "@/lib/supabase"
@@ -14,6 +14,7 @@ import type { Session } from "@supabase/supabase-js"
 import { EditAIPromptsModal } from "@/components/edit-ai-prompts-modal"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { TranscriptViewer } from "@/components/ui/transcript-viewer"
+import { HighlightedTranscript } from "@/components/ui/highlighted-transcript"
 import { YouTubePlayer, YouTubePlayerRef } from "@/components/ui/youtube-player"
 import { ChatPanel } from "@/components/chat-panel"
 import { toast } from "sonner"
@@ -27,6 +28,12 @@ import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { ShareModal } from "@/components/share-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import { useIsDesktop } from "@/lib/hooks/use-media-query"
 
 // Props injected by withAuth HOC
@@ -47,6 +54,15 @@ type SummaryItem = Tables<"summaries">
 interface ContentWithSummary extends ContentItem {
   summary?: SummaryItem | null
 }
+
+// Language options for analysis output
+const ANALYSIS_LANGUAGES = [
+  { code: "en", label: "English", flag: "🇺🇸" },
+  { code: "ar", label: "العربية", flag: "🇸🇦" },
+  { code: "fr", label: "Français", flag: "🇫🇷" },
+  { code: "es", label: "Español", flag: "🇪🇸" },
+  { code: "de", label: "Deutsch", flag: "🇩🇪" },
+] as const
 
 function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPageProps) {
   const params = use(paramsPromise)
@@ -77,6 +93,12 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isDetailedExpanded, setIsDetailedExpanded] = useState(true)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
+  const [analysisLanguage, setAnalysisLanguage] = useState(() => {
+    if (typeof window !== "undefined") {
+      return localStorage.getItem("vajra-analysis-language") || "en"
+    }
+    return "en"
+  })
   const youtubePlayerRef = useRef<YouTubePlayerRef>(null)
   const [domainStats, setDomainStats] = useState<{
     total_analyses: number
@@ -158,8 +180,10 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
     }
   }, [])
 
-  const handleRegenerate = useCallback(async () => {
+  const handleRegenerate = useCallback(async (languageOverride?: string) => {
     if (!item) return
+
+    const targetLanguage = languageOverride || analysisLanguage
 
     setIsRegenerating(true)
 
@@ -170,7 +194,11 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
     fetch("/api/process-content", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content_id: item.id, force_regenerate: true }),
+      body: JSON.stringify({
+        content_id: item.id,
+        force_regenerate: true,
+        language: targetLanguage !== "en" ? targetLanguage : undefined,
+      }),
     })
       .then(response => {
         if (!response.ok) throw new Error("Failed to regenerate")
@@ -186,7 +214,23 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
 
     // Start polling immediately to pick up progressive updates
     setIsPolling(true)
-  }, [item])
+  }, [item, analysisLanguage])
+
+  // Handle language change - saves preference and optionally regenerates
+  const handleLanguageChange = useCallback((newLanguage: string) => {
+    setAnalysisLanguage(newLanguage)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("vajra-analysis-language", newLanguage)
+    }
+
+    // Ask if user wants to regenerate in new language
+    if (item?.summary && newLanguage !== analysisLanguage) {
+      const langLabel = ANALYSIS_LANGUAGES.find(l => l.code === newLanguage)?.label || newLanguage
+      if (confirm(`Regenerate analysis in ${langLabel}?`)) {
+        handleRegenerate(newLanguage)
+      }
+    }
+  }, [item, analysisLanguage, handleRegenerate])
 
   // Fetch content and summary data
   const fetchContentData = useCallback(async (showLoadingState = true) => {
@@ -473,14 +517,14 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Tab switcher - simplified for better iOS Safari support */}
-                <div className="flex items-center gap-1 bg-white/[0.04] backdrop-blur-xl p-1 rounded-xl border border-white/[0.08]">
+              {/* Tab switcher - pill-shaped for elegant UX */}
+                <div className="flex items-center gap-0.5 sm:gap-1 bg-white/[0.06] backdrop-blur-xl p-0.5 sm:p-1 rounded-full border border-white/[0.08]">
                   <button
                     onClick={() => handleTabChange("summary")}
                     style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                    className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-colors duration-150 ${
+                    className={`px-4 sm:px-5 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 ${
                       activeMainTab === "summary"
-                        ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
+                        ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
                         : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
                     }`}
                   >
@@ -489,9 +533,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                   <button
                     onClick={() => handleTabChange("fulltext")}
                     style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                    className={`px-3 sm:px-4 py-1.5 text-xs sm:text-sm font-medium rounded-lg cursor-pointer transition-colors duration-150 ${
+                    className={`px-4 sm:px-5 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
                       activeMainTab === "fulltext"
-                        ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20"
+                        ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
                         : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
                     }`}
                   >
@@ -500,7 +544,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                 </div>
             </div>
 
-            {/* Right side: Share + Regenerate buttons (mobile only) */}
+            {/* Right side: Share + Export + Regenerate buttons (mobile only) */}
             <div className="flex sm:hidden items-center gap-1.5">
               <button
                 onClick={() => setIsShareModalOpen(true)}
@@ -509,8 +553,37 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
               >
                 <Mail className="w-4 h-4" />
               </button>
+
+              {/* Export dropdown - mobile */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 active:bg-purple-500/30 transition-all"
+                    aria-label="Export"
+                  >
+                    <Download className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10">
+                  <DropdownMenuItem
+                    onClick={() => window.open(`/api/export/pdf?id=${item?.id}`, "_blank")}
+                    className="cursor-pointer hover:bg-white/10 text-white/80"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    PDF Report
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => window.open(`/api/export/markdown?id=${item?.id}`, "_blank")}
+                    className="cursor-pointer hover:bg-white/10 text-white/80"
+                  >
+                    <FileText className="mr-2 h-4 w-4" />
+                    Markdown
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
               <button
-                onClick={handleRegenerate}
+                onClick={() => handleRegenerate()}
                 disabled={isRegenerating}
                 className="h-8 w-8 flex items-center justify-center rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 active:bg-blue-500/30 transition-all disabled:opacity-50"
                 aria-label="Regenerate"
@@ -644,18 +717,46 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       )}
                     </span>
                     <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
-                    {/* Worth Watching rating */}
-                    {(() => {
-                      const triage = summary?.triage as unknown as TriageData | null
-                      const score = triage?.signal_noise_score
-                      if (score === undefined || score === null) return null
-                      return (
-                        <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/15 text-[#1d9bf0] flex items-center gap-1">
-                          <span>Worth Watching</span>
-                          <span className="font-medium">{score + 1}/4</span>
-                        </span>
-                      )
-                    })()}
+                    {/* Worth Watching + Language selector grouped together */}
+                    <div className="flex items-center gap-3">
+                      {(() => {
+                        const triage = summary?.triage as unknown as TriageData | null
+                        const score = triage?.signal_noise_score
+                        if (score === undefined || score === null) return null
+                        return (
+                          <span className="px-2 py-1 rounded-l-lg bg-[#1d9bf0]/15 text-[#1d9bf0] flex items-center gap-1 text-xs">
+                            <span>Worth Watching</span>
+                            <span className="font-medium">{score + 1}/4</span>
+                          </span>
+                        )
+                      })()}
+                      {/* Language selector */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button className="flex items-center gap-0.5 hover:opacity-80 transition-opacity cursor-pointer">
+                            <span className="text-sm">{ANALYSIS_LANGUAGES.find(l => l.code === analysisLanguage)?.flag || "🇺🇸"}</span>
+                            <ChevronDown className="w-2.5 h-2.5 text-gray-500" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10 min-w-[140px]">
+                          {ANALYSIS_LANGUAGES.map((lang) => (
+                            <DropdownMenuItem
+                              key={lang.code}
+                              onClick={() => handleLanguageChange(lang.code)}
+                              className={`cursor-pointer hover:bg-white/10 flex items-center gap-2 ${
+                                analysisLanguage === lang.code ? "text-[#1d9bf0]" : "text-white/80"
+                              }`}
+                            >
+                              <span className="text-base">{lang.flag}</span>
+                              <span>{lang.label}</span>
+                              {analysisLanguage === lang.code && (
+                                <span className="ml-auto text-[#1d9bf0]">✓</span>
+                              )}
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                   </div>
                 </div>
 
@@ -830,7 +931,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
 
                 {/* Action buttons - hidden on mobile (in header) */}
                 <TooltipProvider delayDuration={300}>
-                  <div className="hidden sm:grid grid-cols-2 gap-2">
+                  <div className="hidden sm:grid grid-cols-3 gap-2">
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
@@ -844,10 +945,45 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       </TooltipTrigger>
                       <TooltipContent>Share analysis via email</TooltipContent>
                     </Tooltip>
+
+                    {/* Export Dropdown */}
+                    <DropdownMenu>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <DropdownMenuTrigger asChild>
+                            <Button
+                              size="sm"
+                              className="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 border border-purple-500/30 hover:border-purple-500/50 rounded-xl transition-all"
+                            >
+                              <Download className="mr-2 h-4 w-4 shrink-0" />
+                              <span className="truncate">Export</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                        </TooltipTrigger>
+                        <TooltipContent>Export as PDF or Markdown</TooltipContent>
+                      </Tooltip>
+                      <DropdownMenuContent align="center" className="bg-[#1a1a1a] border-white/10">
+                        <DropdownMenuItem
+                          onClick={() => window.open(`/api/export/pdf?id=${item?.id}`, "_blank")}
+                          className="cursor-pointer hover:bg-white/10 text-white/80"
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          PDF Report
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => window.open(`/api/export/markdown?id=${item?.id}`, "_blank")}
+                          className="cursor-pointer hover:bg-white/10 text-white/80"
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          Markdown
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button
-                          onClick={handleRegenerate}
+                          onClick={() => handleRegenerate()}
                           disabled={isRegenerating}
                           size="sm"
                           className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 rounded-xl transition-all disabled:opacity-50"
@@ -882,7 +1018,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       <p className="text-sm text-yellow-300/70 mb-3">We couldn't retrieve the content from the source.</p>
                       <p className="text-xs text-yellow-300/50 mb-4">{processingError}</p>
                       <button
-                        onClick={handleRegenerate}
+                        onClick={() => handleRegenerate()}
                         disabled={isRegenerating}
                         className="px-4 py-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30 transition-all disabled:opacity-50 text-sm"
                       >
@@ -1067,7 +1203,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                     >
                       <p className="text-white/40 text-sm mb-4">No summary generated yet.</p>
                       <button
-                        onClick={handleRegenerate}
+                        onClick={() => handleRegenerate()}
                         disabled={isRegenerating}
                         className="px-4 py-2 rounded-xl bg-[#1d9bf0] text-white text-sm hover:bg-[#1a8cd8] transition-all disabled:opacity-50"
                       >
@@ -1178,21 +1314,44 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                   )}
                   {!loading && item.full_text && (
                     <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
-                      {item.type === "youtube" && videoId ? (
-                        <TranscriptViewer
-                          transcript={item.full_text}
-                          videoId={videoId}
-                          onTimestampClick={handleTimestampClick}
-                        />
-                      ) : (
-                        <div className="prose prose-sm prose-invert max-w-none text-white/70 leading-relaxed">
-                          <MarkdownRenderer
-                            onTimestampClick={(seconds) => {
-                              youtubePlayerRef.current?.seekTo(seconds)
-                            }}
-                          >{item.full_text}</MarkdownRenderer>
-                        </div>
-                      )}
+                      {(() => {
+                        // Get claims from truth_check if available
+                        const truthCheck = summary?.truth_check as TruthCheckData | null
+                        const claims = truthCheck?.claims || []
+
+                        // Use highlighted transcript if we have claims
+                        if (claims.length > 0) {
+                          return (
+                            <HighlightedTranscript
+                              transcript={item.full_text}
+                              claims={claims}
+                              videoId={videoId || undefined}
+                              onTimestampClick={handleTimestampClick}
+                            />
+                          )
+                        }
+
+                        // Fallback to regular transcript/markdown display
+                        if (item.type === "youtube" && videoId) {
+                          return (
+                            <TranscriptViewer
+                              transcript={item.full_text}
+                              videoId={videoId}
+                              onTimestampClick={handleTimestampClick}
+                            />
+                          )
+                        }
+
+                        return (
+                          <div className="prose prose-sm prose-invert max-w-none text-white/70 leading-relaxed">
+                            <MarkdownRenderer
+                              onTimestampClick={(seconds) => {
+                                youtubePlayerRef.current?.seekTo(seconds)
+                              }}
+                            >{item.full_text}</MarkdownRenderer>
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
