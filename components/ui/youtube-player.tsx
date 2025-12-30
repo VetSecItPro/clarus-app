@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef, useCallback, forwardRef, useImperativeHandle } from "react"
+import { useEffect, useRef, useState, useCallback, forwardRef, useImperativeHandle } from "react"
 import { cn } from "@/lib/utils"
 
 interface YouTubePlayerProps {
@@ -23,34 +23,35 @@ declare global {
 
 export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
   ({ videoId, className }, ref) => {
-    const containerRef = useRef<HTMLDivElement>(null)
+    const iframeRef = useRef<HTMLIFrameElement>(null)
     const playerRef = useRef<any>(null)
-    const playerIdRef = useRef(`youtube-player-${Math.random().toString(36).substr(2, 9)}`)
+    const [useSimpleEmbed, setUseSimpleEmbed] = useState(false)
+
+    // Detect iOS Safari for simple embed fallback
+    useEffect(() => {
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+      const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
+      if (isIOS || isSafari) {
+        setUseSimpleEmbed(true)
+      }
+    }, [])
 
     const initPlayer = useCallback(() => {
-      if (!containerRef.current || !window.YT?.Player) return
+      if (useSimpleEmbed || !window.YT?.Player || !iframeRef.current) return
 
-      playerRef.current = new window.YT.Player(playerIdRef.current, {
-        videoId,
-        playerVars: {
-          autoplay: 0,
-          modestbranding: 1,
-          rel: 0,
-          playsinline: 1, // Important for iOS - plays inline instead of fullscreen
-          fs: 1, // Allow fullscreen
-          cc_load_policy: 0, // Don't force captions
-          iv_load_policy: 3, // Hide video annotations
-          origin: typeof window !== "undefined" ? window.location.origin : "",
-        },
+      // For non-iOS, use the IFrame API for better control
+      playerRef.current = new window.YT.Player(iframeRef.current, {
         events: {
           onReady: () => {
             // Player is ready
           },
         },
       })
-    }, [videoId])
+    }, [useSimpleEmbed])
 
     useEffect(() => {
+      if (useSimpleEmbed) return // Skip API loading for simple embed
+
       // Load YouTube IFrame API
       if (!window.YT) {
         const tag = document.createElement("script")
@@ -68,13 +69,17 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
           playerRef.current.destroy()
         }
       }
-    }, [initPlayer])
+    }, [initPlayer, useSimpleEmbed])
 
     useImperativeHandle(ref, () => ({
       seekTo: (seconds: number) => {
         if (playerRef.current?.seekTo) {
           playerRef.current.seekTo(seconds, true)
           playerRef.current.playVideo()
+        } else if (iframeRef.current) {
+          // Fallback: reload iframe with timestamp
+          const src = iframeRef.current.src.split('?')[0]
+          iframeRef.current.src = `${src}?start=${Math.floor(seconds)}&autoplay=1&playsinline=1&rel=0&modestbranding=1`
         }
       },
       play: () => {
@@ -89,20 +94,24 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
       },
     }))
 
+    // Build the embed URL with iOS-friendly parameters
+    const embedUrl = `https://www.youtube.com/embed/${videoId}?playsinline=1&rel=0&modestbranding=1&enablejsapi=1&origin=${typeof window !== "undefined" ? encodeURIComponent(window.location.origin) : ""}`
+
     return (
       <div className={cn("relative w-full", className)}>
-        {/* Container with proper aspect ratio for mobile - using aspect-ratio for better iOS Safari support */}
-        <div
-          ref={containerRef}
-          className="relative w-full overflow-hidden bg-black aspect-video"
-        >
-          <div
-            id={playerIdRef.current}
-            className="absolute inset-0 w-full h-full"
+        {/* Container with proper aspect ratio */}
+        <div className="relative w-full overflow-hidden bg-black aspect-video">
+          <iframe
+            ref={iframeRef}
+            src={embedUrl}
+            title="YouTube video player"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            className="absolute inset-0 w-full h-full border-0"
             style={{
-              // Ensure visibility on iOS Safari
-              WebkitTransform: 'translateZ(0)',
-              transform: 'translateZ(0)',
+              // iOS Safari rendering fixes
+              WebkitTransform: 'translate3d(0,0,0)',
+              transform: 'translate3d(0,0,0)',
             }}
           />
         </div>

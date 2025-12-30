@@ -336,7 +336,18 @@ function HomePageContent({ session }: HomePageProps) {
               onKeyDown={handleKeyDown}
               placeholder="Paste any URL here..."
               disabled={isSubmitting}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+              spellCheck={false}
               className="flex-1 bg-transparent text-white placeholder-white/30 text-base outline-none disabled:opacity-50"
+              style={{
+                // iOS Safari specific resets to remove gray bar/styling
+                WebkitAppearance: 'none',
+                appearance: 'none',
+                borderRadius: 0,
+                boxShadow: 'none',
+              }}
             />
 
             {inputValue && (
