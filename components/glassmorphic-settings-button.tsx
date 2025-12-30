@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Settings, LogOut, Loader2, Sparkles, UserIcon, Check, X, Pencil, CreditCard, Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -36,6 +36,7 @@ export default function GlasmorphicSettingsButton({ variant = "default" }: Glasm
   const [nameError, setNameError] = useState("")
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [managingSubscription, setManagingSubscription] = useState(false)
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false)
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -198,11 +199,13 @@ export default function GlasmorphicSettingsButton({ variant = "default" }: Glasm
 
   return (
     <>
-      <DropdownMenu>
+      <DropdownMenu onOpenChange={setIsDropdownOpen}>
         <DropdownMenuTrigger asChild>
           {variant === "mobile" ? (
             <button
-              className="flex flex-col items-center justify-center text-white/50 hover:text-white/70 transition-colors"
+              className={`flex flex-col items-center justify-center transition-colors ${
+                isDropdownOpen ? "text-[#1d9bf0]" : "text-white/50"
+              }`}
               aria-label="Settings and Profile"
             >
               <Settings className="w-5 h-5" />
