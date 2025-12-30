@@ -269,37 +269,38 @@ function HomePageContent({ session }: HomePageProps) {
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      <main className="flex-1 flex flex-col items-center px-3 sm:px-6 pt-12 sm:pt-20 lg:pt-24">
-        {/* Mobile Logo - only visible on mobile */}
+      <main className="flex-1 flex flex-col items-center justify-center px-3 sm:px-6 pb-20 sm:pb-24">
+        {/* App Name - visible on all screen sizes */}
         <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.4 }}
-          className="sm:hidden flex items-center gap-2 mb-4"
+          className="flex items-center gap-2.5 mb-8 sm:mb-10"
         >
-          <div className="w-9 h-9 bg-gradient-to-br from-[#1d9bf0] to-[#06b6d4] rounded-lg flex items-center justify-center shadow-lg shadow-[#1d9bf0]/25">
-            <Shield className="w-4 h-4 text-white" />
+          <div className="w-10 h-10 bg-gradient-to-br from-[#1d9bf0] via-[#0ea5e9] to-[#06b6d4] rounded-xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/25">
+            <Shield className="w-5 h-5 text-white" />
           </div>
-          <span className="text-white/90 font-medium text-base tracking-tight">Truth Checker</span>
+          <span className="text-white font-semibold text-lg sm:text-xl tracking-tight">Truth Checker</span>
         </motion.div>
 
-        {/* Welcome Message - more compact */}
+        {/* Welcome Message - centered */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5 }}
-          className="text-center mb-5 sm:mb-8"
+          className="text-center mb-6 sm:mb-8"
         >
-          {username && (
-            <p className="text-white/40 text-xs sm:text-sm mb-3 sm:mb-4">
-              Welcome back, <span className="text-white/60">{username}</span>
-            </p>
+          {username ? (
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-medium text-white mb-1.5 sm:mb-2">
+              Welcome back, <span className="text-[#1d9bf0]">{username}</span>
+            </h1>
+          ) : (
+            <h1 className="text-xl sm:text-2xl lg:text-3xl font-medium text-white mb-1.5 sm:mb-2">
+              Welcome back
+            </h1>
           )}
-          <h1 className="text-xl sm:text-3xl lg:text-4xl font-semibold text-white mb-1.5 sm:mb-3">
+          <p className="text-white/50 text-sm sm:text-base">
             {randomPrompt}
-          </h1>
-          <p className="text-white/40 text-sm hidden sm:block">
-            Paste a URL and get an instant truth check
           </p>
         </motion.div>
 
