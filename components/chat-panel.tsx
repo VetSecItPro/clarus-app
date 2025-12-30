@@ -301,8 +301,15 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
   }
 
   return (
-    <div className="fixed bottom-16 sm:bottom-4 right-0 sm:right-4 w-full sm:w-[420px] z-30">
-      <div className="bg-black/80 backdrop-blur-xl border border-white/[0.08] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
+    <>
+      {/* Backdrop - click to close */}
+      <div
+        className="fixed inset-0 z-20 bg-black/20 sm:bg-transparent"
+        onClick={() => setIsPanelOpen(false)}
+        aria-hidden="true"
+      />
+      <div className="fixed bottom-16 sm:bottom-4 right-0 sm:right-4 w-full sm:w-[420px] z-30">
+        <div className="bg-black/80 backdrop-blur-xl border border-white/[0.08] rounded-t-2xl sm:rounded-2xl shadow-2xl flex flex-col overflow-hidden">
         {/* Header */}
         <div className="w-full p-4 flex justify-between items-center border-b border-white/[0.08]">
           <div className="flex items-center gap-2">
@@ -529,7 +536,8 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
               </Button>
             </form>
           </div>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
