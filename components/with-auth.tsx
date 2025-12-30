@@ -59,6 +59,49 @@ export default function withAuth<P extends WithAuthProps>(WrappedComponent: Comp
             return
           }
 
+          // Check "remember me" preference and enforce session expiry
+          if (initialSession && typeof window !== "undefined") {
+            const rememberSession = localStorage.getItem("vajra-remember-session")
+            const sessionExpiry = localStorage.getItem("vajra-session-expiry")
+            const sessionActive = sessionStorage.getItem("vajra-session-active")
+
+            // Case 1: User chose NOT to remember - check if this is a new browser session
+            // (sessionStorage is cleared when browser closes)
+            if (!rememberSession && !sessionActive) {
+              // No remember flag and no active session marker = new browser session
+              // Sign out the user
+              console.log("Session not remembered, signing out...")
+              await supabase.auth.signOut()
+              cachedSession = null
+              cachedSubscriptionStatus = null
+              setSession(null)
+              setSubscriptionStatus(null)
+              authInitialized = true
+              setLoading(false)
+              return
+            }
+
+            // Case 2: Session expiry has passed (for "remember me" sessions)
+            if (sessionExpiry && Date.now() > parseInt(sessionExpiry, 10)) {
+              console.log("Session expired, signing out...")
+              localStorage.removeItem("vajra-remember-session")
+              localStorage.removeItem("vajra-session-expiry")
+              await supabase.auth.signOut()
+              cachedSession = null
+              cachedSubscriptionStatus = null
+              setSession(null)
+              setSubscriptionStatus(null)
+              authInitialized = true
+              setLoading(false)
+              return
+            }
+
+            // Mark this browser session as active (for non-remember sessions)
+            if (!rememberSession) {
+              sessionStorage.setItem("vajra-session-active", "true")
+            }
+          }
+
           cachedSession = initialSession
           setSession(initialSession)
 
@@ -131,11 +174,17 @@ export default function withAuth<P extends WithAuthProps>(WrappedComponent: Comp
             router.replace("/update-password")
           }
 
-          // Handle sign out - clear cache
+          // Handle sign out - clear cache and remember me preferences
           if (_event === "SIGNED_OUT") {
             cachedSession = null
             cachedSubscriptionStatus = null
             authInitialized = false
+            // Clear remember me preferences on sign out
+            if (typeof window !== "undefined") {
+              localStorage.removeItem("vajra-remember-session")
+              localStorage.removeItem("vajra-session-expiry")
+              sessionStorage.removeItem("vajra-session-active")
+            }
           }
         })
         return () => {

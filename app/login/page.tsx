@@ -52,6 +52,19 @@ export default function LoginPage() {
       setError(signInError.message)
       toast.error(`Login failed: ${signInError.message}`)
     } else {
+      // Store remember me preference
+      if (rememberMe) {
+        // Set flag to persist session for 30 days
+        localStorage.setItem("vajra-remember-session", "true")
+        localStorage.setItem("vajra-session-expiry", String(Date.now() + 30 * 24 * 60 * 60 * 1000))
+      } else {
+        // Session-only: remove on browser close
+        localStorage.removeItem("vajra-remember-session")
+        localStorage.removeItem("vajra-session-expiry")
+        // Set a flag in sessionStorage to track this browser session
+        sessionStorage.setItem("vajra-session-active", "true")
+      }
+
       toast.success("Login successful!")
       router.push("/")
       router.refresh()
