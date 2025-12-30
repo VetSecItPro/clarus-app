@@ -11,6 +11,7 @@ interface SectionCardProps {
   delay?: number
   icon?: ReactNode
   headerColor?: "blue" | "amber" | "emerald" | "yellow" | "orange" | "violet" | "cyan"
+  minContentHeight?: string // Ensures consistent card height during loading
 }
 
 const headerColorStyles: Record<string, { bg: string; border: string; text: string; icon: string }> = {
@@ -58,7 +59,7 @@ const headerColorStyles: Record<string, { bg: string; border: string; text: stri
   },
 }
 
-export function SectionCard({ title, children, isLoading, delay = 0, icon, headerColor }: SectionCardProps) {
+export function SectionCard({ title, children, isLoading, delay = 0, icon, headerColor, minContentHeight }: SectionCardProps) {
   const colors = headerColor ? headerColorStyles[headerColor] : null
 
   return (
@@ -78,7 +79,7 @@ export function SectionCard({ title, children, isLoading, delay = 0, icon, heade
           <Loader2 className="w-4 h-4 text-white/50 animate-spin" />
         )}
       </div>
-      <div className="px-4 sm:px-5 py-4 sm:py-5">
+      <div className="px-4 sm:px-5 py-4 sm:py-5" style={minContentHeight ? { minHeight: minContentHeight } : undefined}>
         {children}
       </div>
     </motion.div>
