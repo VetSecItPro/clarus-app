@@ -91,15 +91,19 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
 
     return (
       <div className={cn("relative w-full", className)}>
-        {/* Container with proper aspect ratio for mobile */}
+        {/* Container with proper aspect ratio for mobile - using aspect-ratio for better iOS Safari support */}
         <div
           ref={containerRef}
-          className="relative w-full overflow-hidden bg-black"
-          style={{ paddingBottom: "56.25%" }} // 16:9 aspect ratio
+          className="relative w-full overflow-hidden bg-black aspect-video"
         >
           <div
             id={playerIdRef.current}
             className="absolute inset-0 w-full h-full"
+            style={{
+              // Ensure visibility on iOS Safari
+              WebkitTransform: 'translateZ(0)',
+              transform: 'translateZ(0)',
+            }}
           />
         </div>
       </div>
