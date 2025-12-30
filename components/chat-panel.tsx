@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef, type FormEvent, type ChangeEvent } from "react"
+import { useState, useEffect, useCallback, useRef, memo, type FormEvent, type ChangeEvent } from "react"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { supabase } from "@/lib/supabase"
@@ -173,11 +173,16 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
         .from("chat_messages")
         .select("*")
         .eq("thread_id", threadData.id)
-        .order("created_at", { ascending: true })
+        .order("created_at", { ascending: false })
+        .limit(50) // Limit to last 50 messages for performance
+        .then(res => ({
+          ...res,
+          data: res.data?.reverse() // Reverse to show oldest first
+        }))
 
       if (messagesError) {
         toast.error("Failed to load messages", { description: messagesError.message })
-      } else {
+      } else if (messagesData) {
         setMessages(
           messagesData.map((m) => ({
             id: m.id,
@@ -266,7 +271,7 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
     inputRef.current?.focus()
   }
 
-  const getMessageContent = (message: (typeof messages)[0]): string => {
+  const getMessageContent = useCallback((message: (typeof messages)[0]): string => {
     if ("parts" in message && Array.isArray(message.parts)) {
       return message.parts
         .filter((p): p is { type: "text"; text: string } => p.type === "text")
@@ -278,7 +283,7 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
       return (message as any).content || ""
     }
     return ""
-  }
+  }, [])
 
   if (!userId) return null
 
@@ -370,7 +375,7 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
                   </div>
                 )}
                 {messages.map((m, i) => (
-                  <div key={i} className={cn("flex gap-2", m.role === "user" ? "justify-end" : "justify-start")}>
+                  <div key={m.id || i} className={cn("flex gap-2", m.role === "user" ? "justify-end" : "justify-start")}>
                     {/* Assistant avatar */}
                     {m.role === "assistant" && (
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg shadow-blue-500/20">
