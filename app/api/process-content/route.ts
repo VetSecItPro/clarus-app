@@ -156,14 +156,33 @@ async function getYouTubeTranscript(url: string, apiKey: string): Promise<{ full
 
         // Handle timestamped transcript format
         if (Array.isArray(data.content)) {
-          // Format transcript with timestamps: [0:30] Text here\n[1:45] More text...
-          const formattedText = data.content
-            .map((chunk: { text: string; offset: number }) => {
-              const timestamp = formatTimestamp(chunk.offset)
-              return `[${timestamp}] ${chunk.text}`
+          // Group transcript chunks into 30-second intervals for cleaner reading
+          const INTERVAL_MS = 30000 // 30 seconds
+          const groupedChunks: { timestamp: number; texts: string[] }[] = []
+
+          for (const chunk of data.content as { text: string; offset: number }[]) {
+            const intervalStart = Math.floor(chunk.offset / INTERVAL_MS) * INTERVAL_MS
+
+            // Find or create the group for this interval
+            let group = groupedChunks.find(g => g.timestamp === intervalStart)
+            if (!group) {
+              group = { timestamp: intervalStart, texts: [] }
+              groupedChunks.push(group)
+            }
+            group.texts.push(chunk.text)
+          }
+
+          // Sort by timestamp and format
+          groupedChunks.sort((a, b) => a.timestamp - b.timestamp)
+          const formattedText = groupedChunks
+            .map(group => {
+              const timestamp = formatTimestamp(group.timestamp)
+              const combinedText = group.texts.join(' ')
+              return `[${timestamp}] ${combinedText}`
             })
-            .join('\n')
-          console.log(`API: Formatted ${data.content.length} transcript chunks with timestamps`)
+            .join('\n\n')
+
+          console.log(`API: Grouped ${data.content.length} chunks into ${groupedChunks.length} intervals (30s each)`)
           return { full_text: formattedText }
         }
 

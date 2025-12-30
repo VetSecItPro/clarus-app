@@ -27,11 +27,15 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
     const playerRef = useRef<any>(null)
     const [useSimpleEmbed, setUseSimpleEmbed] = useState(false)
 
-    // Detect iOS Safari for simple embed fallback
+    // Detect mobile devices and Safari for simple embed fallback
+    // Direct iframe works more reliably than IFrame API on mobile
     useEffect(() => {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+      const isAndroid = /Android/.test(navigator.userAgent)
       const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
-      if (isIOS || isSafari) {
+      const isMobile = isIOS || isAndroid || /webOS|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent)
+
+      if (isMobile || isSafari) {
         setUseSimpleEmbed(true)
       }
     }, [])
