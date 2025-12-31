@@ -662,12 +662,13 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
           {!isDesktop && <div className="w-full mt-2" style={{ paddingBottom: "56.25%" }} />}
 
           {/* Split-screen layout for YouTube and Articles */}
-          <div className="lg:flex lg:gap-8 min-w-0">
-            {/* LEFT PANEL: Sticky video + scrollable metadata */}
-            <aside className="w-full lg:w-[480px] lg:flex-shrink-0 lg:self-start mb-4 lg:mb-0 min-w-0">
-              {/* Video or Thumbnail - DESKTOP ONLY - STICKY */}
+          {/* Desktop: Fixed height container with independent scrolling columns */}
+          <div className="lg:flex lg:gap-8 min-w-0 lg:h-[calc(100vh-100px)]">
+            {/* LEFT PANEL: Fixed in place, scrollable if content overflows */}
+            <aside className="w-full lg:w-[480px] lg:flex-shrink-0 mb-4 lg:mb-0 min-w-0 lg:overflow-y-auto subtle-scrollbar">
+              {/* Video or Thumbnail - DESKTOP ONLY */}
               {isDesktop && (
-                <div className="lg:sticky lg:top-20 z-10 mb-3">
+                <div className="mb-3">
                   <div className="rounded-2xl overflow-hidden border border-white/[0.08] bg-black w-full">
                     {item.type === "youtube" && videoId ? (
                       <YouTubePlayer
@@ -1064,8 +1065,8 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
               </div>
             </aside>
 
-            {/* RIGHT PANEL: Scrollable content */}
-            <div className="flex-1 min-w-0 overflow-hidden px-3 sm:px-4 lg:px-0">
+            {/* RIGHT PANEL: Independently scrollable on desktop */}
+            <div className="flex-1 min-w-0 lg:overflow-y-auto lg:pr-2 px-3 sm:px-4 lg:px-0 subtle-scrollbar">
               {activeMainTab === "summary" ? (
                 <div className="space-y-6 sm:space-y-8">
                   {processingError ? (
