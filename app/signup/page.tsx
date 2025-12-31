@@ -6,7 +6,6 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { AlertCircle, CheckCircle2, Shield, Mail, Lock, Eye, EyeOff, ArrowRight, User, Check } from "lucide-react"
-import LoadingSpinner from "@/components/loading-spinner"
 import { motion, AnimatePresence } from "framer-motion"
 
 function PasswordStrengthIndicator({ password }: { password: string }) {
@@ -122,18 +121,16 @@ export default function SignUpPage() {
   const [error, setError] = useState<string | null>(null)
   const [showSuccess, setShowSuccess] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [authLoading, setAuthLoading] = useState(true)
   const router = useRouter()
 
   useEffect(() => {
+    // Check session in background - don't block rendering
     const checkSession = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession()
       if (session) {
         router.replace("/")
-      } else {
-        setAuthLoading(false)
       }
     }
     checkSession()
@@ -199,9 +196,7 @@ export default function SignUpPage() {
     router.push("/login")
   }
 
-  if (authLoading) {
-    return <LoadingSpinner message="Checking session..." />
-  }
+  // No loading spinner - render form immediately, redirect in background if logged in
 
   return (
     <>

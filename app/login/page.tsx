@@ -16,21 +16,20 @@ export default function LoginPage() {
   const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [authLoading, setAuthLoading] = useState(true)
+  const [authLoading, setAuthLoading] = useState(false) // Don't block UI with loading state
   const router = useRouter()
   const searchParams = useSearchParams()
 
   const accountExists = searchParams.get("message") === "account_exists"
 
   useEffect(() => {
+    // Check session in background - don't block rendering
     const checkSession = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession()
       if (session) {
         router.replace("/")
-      } else {
-        setAuthLoading(false)
       }
     }
     checkSession()
@@ -71,9 +70,7 @@ export default function LoginPage() {
     }
   }
 
-  if (authLoading) {
-    return <LoadingSpinner message="Checking session..." />
-  }
+  // No loading spinner - render form immediately, redirect in background if logged in
 
   return (
     <div className="min-h-screen bg-black flex">
