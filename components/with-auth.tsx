@@ -24,7 +24,8 @@ export default function withAuth<P extends WithAuthProps>(WrappedComponent: Comp
     // Use cached values as initial state to prevent flash
     const [session, setSession] = useState<Session | null>(cachedSession)
     const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>(cachedSubscriptionStatus)
-    const [loading, setLoading] = useState(!authInitialized)
+    // Only show loading on truly first load - skip spinner if we have cached auth data
+    const [loading, setLoading] = useState(!authInitialized && !cachedSession)
     const listenerSetupRef = useRef(false)
 
     useEffect(() => {
@@ -33,12 +34,19 @@ export default function withAuth<P extends WithAuthProps>(WrappedComponent: Comp
       listenerSetupRef.current = true
 
       const checkInitialSessionAndSetupListener = async () => {
-        // If already initialized, use cached values
+        // If already initialized, use cached values immediately (no loading spinner)
         if (authInitialized) {
           setSession(cachedSession)
           setSubscriptionStatus(cachedSubscriptionStatus)
           setLoading(false)
+          // Still verify in background but don't block UI
           return
+        }
+
+        // If we have a cached session, use it immediately but verify in background
+        const hasCachedAuth = cachedSession !== null
+        if (hasCachedAuth) {
+          setLoading(false) // Don't show spinner when we have cached auth
         }
 
         try {
