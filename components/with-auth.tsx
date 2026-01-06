@@ -4,228 +4,206 @@ import { useEffect, useState, useRef, type ComponentType } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { Session } from "@supabase/supabase-js"
-import LoadingSpinner from "./loading-spinner"
-
-interface WithAuthProps {
-  [key: string]: any
-}
 
 type SubscriptionStatus = "active" | "trialing" | "grandfathered" | "canceled" | "none" | null
 
-// Cache auth state globally to prevent re-checking on every navigation
+// Props injected by the withAuth HOC
+export interface WithAuthInjectedProps {
+  session: Session | null
+  subscriptionStatus: SubscriptionStatus
+}
+
+// Global auth cache - persists across page navigations
 let cachedSession: Session | null = null
 let cachedSubscriptionStatus: SubscriptionStatus = null
 let authInitialized = false
+let authCheckPromise: Promise<void> | null = null
 
-export default function withAuth<P extends WithAuthProps>(WrappedComponent: ComponentType<P>) {
+/**
+ * HOC that wraps a component with authentication logic.
+ * Uses aggressive caching to prevent any flickering between pages.
+ */
+export default function withAuth<P extends object>(
+  WrappedComponent: ComponentType<P & WithAuthInjectedProps>
+): ComponentType<P> {
   const AuthComponent = (props: P) => {
     const router = useRouter()
     const pathname = usePathname()
-    // Use cached values as initial state to prevent flash
     const [session, setSession] = useState<Session | null>(cachedSession)
     const [subscriptionStatus, setSubscriptionStatus] = useState<SubscriptionStatus>(cachedSubscriptionStatus)
-    // Only show loading on truly first load - skip spinner if we have cached auth data
-    const [loading, setLoading] = useState(!authInitialized && !cachedSession)
+    // Only show loading on very first app load when we have NO cached data
+    const [loading, setLoading] = useState(!authInitialized && cachedSession === null)
     const listenerSetupRef = useRef(false)
+
+    // Public auth paths that don't require authentication
+    const publicAuthPaths = ["/login", "/signup", "/forgot-password", "/update-password", "/pricing"]
+    const isPublicPath = publicAuthPaths.includes(pathname)
+
+    // Sync with cache on mount (for navigations after initial load)
+    useEffect(() => {
+      if (authInitialized && cachedSession !== session) {
+        setSession(cachedSession)
+        setSubscriptionStatus(cachedSubscriptionStatus)
+      }
+    }, [pathname])
 
     useEffect(() => {
       // Only set up listener once globally
       if (listenerSetupRef.current) return
       listenerSetupRef.current = true
 
-      const checkInitialSessionAndSetupListener = async () => {
-        // If already initialized, use cached values immediately (no loading spinner)
+      const initAuth = async () => {
+        // If already initialized, just sync state
         if (authInitialized) {
           setSession(cachedSession)
           setSubscriptionStatus(cachedSubscriptionStatus)
           setLoading(false)
-          // Still verify in background but don't block UI
           return
         }
 
-        // If we have a cached session, use it immediately but verify in background
-        const hasCachedAuth = cachedSession !== null
-        if (hasCachedAuth) {
-          setLoading(false) // Don't show spinner when we have cached auth
+        // Prevent duplicate auth checks
+        if (authCheckPromise) {
+          await authCheckPromise
+          setSession(cachedSession)
+          setSubscriptionStatus(cachedSubscriptionStatus)
+          setLoading(false)
+          return
         }
 
-        try {
-          const {
-            data: { session: initialSession },
-            error,
-          } = await supabase.auth.getSession()
+        authCheckPromise = (async () => {
+          try {
+            const { data: { session: initialSession }, error } = await supabase.auth.getSession()
 
-          // Handle refresh token errors by clearing session
-          if (error) {
-            console.warn("Auth session error:", error.message)
+            if (error) {
+              console.warn("Auth session error:", error.message)
+              cachedSession = null
+              cachedSubscriptionStatus = null
+            } else {
+              cachedSession = initialSession
+
+              if (initialSession?.user) {
+                const { data: userData } = await supabase
+                  .from("users")
+                  .select("subscription_status")
+                  .eq("id", initialSession.user.id)
+                  .single()
+
+                cachedSubscriptionStatus = (userData?.subscription_status as SubscriptionStatus) || "none"
+              }
+            }
+
+            authInitialized = true
+          } catch (err) {
+            console.warn("Auth initialization error:", err)
             cachedSession = null
             cachedSubscriptionStatus = null
-            setSession(null)
-            setSubscriptionStatus(null)
             authInitialized = true
-            setLoading(false)
-            return
           }
+        })()
 
-          // Check "remember me" preference and enforce session expiry
-          if (initialSession && typeof window !== "undefined") {
-            const rememberSession = localStorage.getItem("vajra-remember-session")
-            const sessionExpiry = localStorage.getItem("vajra-session-expiry")
-            const sessionActive = sessionStorage.getItem("vajra-session-active")
+        await authCheckPromise
+        authCheckPromise = null
 
-            // Case 1: User chose NOT to remember - check if this is a new browser session
-            // (sessionStorage is cleared when browser closes)
-            if (!rememberSession && !sessionActive) {
-              // No remember flag and no active session marker = new browser session
-              // Sign out the user
-              console.log("Session not remembered, signing out...")
-              await supabase.auth.signOut()
-              cachedSession = null
-              cachedSubscriptionStatus = null
-              setSession(null)
-              setSubscriptionStatus(null)
-              authInitialized = true
-              setLoading(false)
-              return
-            }
+        setSession(cachedSession)
+        setSubscriptionStatus(cachedSubscriptionStatus)
+        setLoading(false)
+      }
 
-            // Case 2: Session expiry has passed (for "remember me" sessions)
-            if (sessionExpiry && Date.now() > parseInt(sessionExpiry, 10)) {
-              console.log("Session expired, signing out...")
-              localStorage.removeItem("vajra-remember-session")
-              localStorage.removeItem("vajra-session-expiry")
-              await supabase.auth.signOut()
-              cachedSession = null
-              cachedSubscriptionStatus = null
-              setSession(null)
-              setSubscriptionStatus(null)
-              authInitialized = true
-              setLoading(false)
-              return
-            }
+      initAuth()
 
-            // Mark this browser session as active (for non-remember sessions)
-            if (!rememberSession) {
-              sessionStorage.setItem("vajra-session-active", "true")
-            }
-          }
-
-          cachedSession = initialSession
-          setSession(initialSession)
-
-          if (initialSession?.user) {
-            const { data: userData } = await supabase
-              .from("users")
-              .select("subscription_status")
-              .eq("id", initialSession.user.id)
-              .single()
-
-            const status = (userData?.subscription_status as SubscriptionStatus) || "none"
-            cachedSubscriptionStatus = status
-            setSubscriptionStatus(status)
-          }
-
-          authInitialized = true
-          setLoading(false)
-        } catch (err) {
-          // Handle any auth errors (including refresh token issues)
-          console.warn("Auth initialization error:", err)
+      // Set up auth state listener
+      const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
+        if (_event === "TOKEN_REFRESHED" && !newSession) {
           cachedSession = null
           cachedSubscriptionStatus = null
           setSession(null)
           setSubscriptionStatus(null)
-          authInitialized = true
-          setLoading(false)
-
-          // Clear invalid tokens from storage
-          if (typeof window !== "undefined") {
-            // Supabase stores tokens in localStorage with a specific key pattern
-            const keys = Object.keys(localStorage).filter(key =>
-              key.includes("supabase") && key.includes("auth")
-            )
-            keys.forEach(key => localStorage.removeItem(key))
-          }
+          return
         }
 
-        // Set up auth state listener (outside try-catch so it always runs)
-        const { data: authListener } = supabase.auth.onAuthStateChange(async (_event, newSession) => {
-          // Handle token refresh errors
-          if (_event === "TOKEN_REFRESHED" && !newSession) {
-            // Token refresh failed, clear cache
-            cachedSession = null
-            cachedSubscriptionStatus = null
-            setSession(null)
-            setSubscriptionStatus(null)
-            return
-          }
+        cachedSession = newSession
+        setSession(newSession)
 
-          cachedSession = newSession
-          setSession(newSession)
+        if (newSession?.user) {
+          const { data: userData } = await supabase
+            .from("users")
+            .select("subscription_status")
+            .eq("id", newSession.user.id)
+            .single()
 
-          if (newSession?.user) {
-            const { data: userData } = await supabase
-              .from("users")
-              .select("subscription_status")
-              .eq("id", newSession.user.id)
-              .single()
-
-            const status = (userData?.subscription_status as SubscriptionStatus) || "none"
-            cachedSubscriptionStatus = status
-            setSubscriptionStatus(status)
-          } else {
-            cachedSubscriptionStatus = null
-            setSubscriptionStatus(null)
-          }
-
-          // Handle password recovery redirect
-          if (_event === "PASSWORD_RECOVERY") {
-            router.replace("/update-password")
-          }
-
-          // Handle sign out - clear cache and remember me preferences
-          if (_event === "SIGNED_OUT") {
-            cachedSession = null
-            cachedSubscriptionStatus = null
-            authInitialized = false
-            // Clear remember me preferences on sign out
-            if (typeof window !== "undefined") {
-              localStorage.removeItem("vajra-remember-session")
-              localStorage.removeItem("vajra-session-expiry")
-              sessionStorage.removeItem("vajra-session-active")
-            }
-          }
-        })
-        return () => {
-          authListener.subscription.unsubscribe()
+          const status = (userData?.subscription_status as SubscriptionStatus) || "none"
+          cachedSubscriptionStatus = status
+          setSubscriptionStatus(status)
+        } else {
+          cachedSubscriptionStatus = null
+          setSubscriptionStatus(null)
         }
+
+        if (_event === "PASSWORD_RECOVERY") {
+          router.replace("/update-password")
+        }
+
+        if (_event === "SIGNED_OUT") {
+          cachedSession = null
+          cachedSubscriptionStatus = null
+          authInitialized = false
+        }
+      })
+
+      return () => {
+        authListener.subscription.unsubscribe()
+      }
+    }, [router])
+
+    // Handle redirects
+    useEffect(() => {
+      if (loading) return
+
+      // Redirect to login if not authenticated and not on public path
+      if (!session && !isPublicPath) {
+        router.replace("/login")
+        return
       }
 
-      checkInitialSessionAndSetupListener()
-    }, [router]) // Removed pathname from dependencies
+      // Redirect to pricing if no valid subscription (but allow null during initial check)
+      if (
+        session &&
+        !isPublicPath &&
+        subscriptionStatus !== "active" &&
+        subscriptionStatus !== "trialing" &&
+        subscriptionStatus !== "grandfathered" &&
+        subscriptionStatus !== null
+      ) {
+        router.replace("/pricing")
+      }
+    }, [loading, session, subscriptionStatus, pathname, router, isPublicPath])
 
-    if (loading) {
-      return <LoadingSpinner message="Checking authentication..." />
+    // Only show loading on very first app load
+    // Once initialized, never show loading - just render with cached values
+    if (loading && !authInitialized) {
+      // Return null for minimal flash, or a very subtle indicator
+      return null
     }
 
-    // Public auth paths that don't require authentication
-    const publicAuthPaths = ["/login", "/signup", "/forgot-password", "/update-password", "/pricing"]
-
-    if (!session && !publicAuthPaths.includes(pathname)) {
-      router.replace("/login")
-      return <LoadingSpinner message="Redirecting to login..." />
+    // For public paths, always render
+    if (isPublicPath) {
+      return <WrappedComponent {...props} session={session} subscriptionStatus={subscriptionStatus} />
     }
 
-    // Only check on protected routes (not public auth paths)
+    // For protected paths, render if we have a session (redirect happens in useEffect)
+    // This prevents showing content briefly before redirect
+    if (!session) {
+      return null
+    }
+
+    // Check subscription - render null while redirect happens
     if (
-      session &&
-      !publicAuthPaths.includes(pathname) &&
       subscriptionStatus !== "active" &&
       subscriptionStatus !== "trialing" &&
       subscriptionStatus !== "grandfathered" &&
-      subscriptionStatus !== null // Still loading
+      subscriptionStatus !== null
     ) {
-      router.replace("/pricing")
-      return <LoadingSpinner message="Redirecting to pricing..." />
+      return null
     }
 
     return <WrappedComponent {...props} session={session} subscriptionStatus={subscriptionStatus} />

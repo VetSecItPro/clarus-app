@@ -48,6 +48,7 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
                   <Link
                     key={item.label}
                     href={item.href}
+                    prefetch={true}
                     className="relative px-4 py-2 group"
                   >
                     <div className={cn(

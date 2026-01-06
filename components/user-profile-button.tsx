@@ -46,10 +46,20 @@ export default function UserProfileButton() {
 
   const handleLogout = async () => {
     setLoading(true)
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh() // Ensure page state is reset
-    setLoading(false)
+    try {
+      // Clear cached auth state before signing out
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("vajra-remember-session")
+        localStorage.removeItem("vajra-session-expiry")
+        sessionStorage.removeItem("vajra-session-active")
+      }
+      await supabase.auth.signOut()
+      // Force a hard navigation to clear all cached state
+      window.location.href = "/login"
+    } catch (error) {
+      console.error("Logout error:", error)
+      setLoading(false)
+    }
   }
 
   const getInitials = (email?: string | null) => {
