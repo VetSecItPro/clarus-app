@@ -13,7 +13,6 @@ export default function LoginPage() {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [showPassword, setShowPassword] = useState(false)
-  const [rememberMe, setRememberMe] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [authLoading, setAuthLoading] = useState(false) // Don't block UI with loading state
@@ -51,19 +50,7 @@ export default function LoginPage() {
       setError(signInError.message)
       toast.error(`Login failed: ${signInError.message}`)
     } else {
-      // Store remember me preference
-      if (rememberMe) {
-        // Set flag to persist session for 30 days
-        localStorage.setItem("vajra-remember-session", "true")
-        localStorage.setItem("vajra-session-expiry", String(Date.now() + 30 * 24 * 60 * 60 * 1000))
-      } else {
-        // Session-only: remove on browser close
-        localStorage.removeItem("vajra-remember-session")
-        localStorage.removeItem("vajra-session-expiry")
-        // Set a flag in sessionStorage to track this browser session
-        sessionStorage.setItem("vajra-session-active", "true")
-      }
-
+      // Session persists until explicit logout (Instagram-style)
       toast.success("Login successful!")
       router.push("/")
       router.refresh()
@@ -250,20 +237,6 @@ export default function LoginPage() {
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
               </div>
-            </div>
-
-            {/* Remember me */}
-            <div className="flex items-center">
-              <input
-                id="remember"
-                type="checkbox"
-                checked={rememberMe}
-                onChange={(e) => setRememberMe(e.target.checked)}
-                className="w-4 h-4 rounded border-white/20 bg-white/[0.04] text-[#1d9bf0] focus:ring-[#1d9bf0] focus:ring-offset-0 focus:ring-1"
-              />
-              <label htmlFor="remember" className="ml-2 text-sm text-white/50">
-                Remember me for 30 days
-              </label>
             </div>
 
             {/* Error message */}

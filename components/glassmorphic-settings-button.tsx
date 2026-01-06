@@ -2,7 +2,8 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Settings, LogOut, Loader2, Sparkles, UserIcon, Check, X, Pencil, CreditCard, Bookmark } from "lucide-react"
+import { Settings, LogOut, Loader2, Sparkles, UserIcon, Check, X, Pencil, CreditCard, Bookmark, FileText, Shield } from "lucide-react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { EditAIPromptsModal } from "@/components/edit-ai-prompts-modal"
@@ -18,9 +19,10 @@ import type { User } from "@supabase/supabase-js"
 
 interface GlasmorphicSettingsButtonProps {
   variant?: "default" | "mobile"
+  onOpenChange?: (open: boolean) => void
 }
 
-export default function GlasmorphicSettingsButton({ variant = "default" }: GlasmorphicSettingsButtonProps) {
+export default function GlasmorphicSettingsButton({ variant = "default", onOpenChange }: GlasmorphicSettingsButtonProps) {
   const [isEditPromptModalOpen, setIsEditPromptModalOpen] = useState(false)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
@@ -161,10 +163,20 @@ export default function GlasmorphicSettingsButton({ variant = "default" }: Glasm
 
   const handleLogout = async () => {
     setLoggingOut(true)
-    await supabase.auth.signOut()
-    router.push("/login")
-    router.refresh()
-    setLoggingOut(false)
+    try {
+      // Clear cached auth state before signing out
+      if (typeof window !== "undefined") {
+        localStorage.removeItem("vajra-remember-session")
+        localStorage.removeItem("vajra-session-expiry")
+        sessionStorage.removeItem("vajra-session-active")
+      }
+      await supabase.auth.signOut()
+      // Force a hard navigation to clear all cached state
+      window.location.href = "/login"
+    } catch (error) {
+      console.error("Logout error:", error)
+      setLoggingOut(false)
+    }
   }
 
   const handleLogin = () => {
@@ -197,19 +209,24 @@ export default function GlasmorphicSettingsButton({ variant = "default" }: Glasm
     }
   }
 
+  const handleOpenChange = (open: boolean) => {
+    setIsDropdownOpen(open)
+    onOpenChange?.(open)
+  }
+
   return (
     <>
-      <DropdownMenu onOpenChange={setIsDropdownOpen}>
+      <DropdownMenu onOpenChange={handleOpenChange}>
         <DropdownMenuTrigger asChild>
           {variant === "mobile" ? (
             <button
               className={`flex flex-col items-center justify-center transition-colors ${
-                isDropdownOpen ? "text-[#1d9bf0]" : "text-white/50"
+                isDropdownOpen ? "text-[#1d9bf0]" : "text-white/40"
               }`}
               aria-label="Settings and Profile"
             >
-              <Settings className="w-5 h-5" />
-              <span className="text-[10px] mt-0.5 font-medium">Settings</span>
+              <Settings className="w-6 h-6" />
+              <span className="text-[11px] mt-1 font-medium">Settings</span>
             </button>
           ) : (
             <button
@@ -349,6 +366,21 @@ export default function GlasmorphicSettingsButton({ variant = "default" }: Glasm
               {managingSubscription && <Loader2 className="ml-auto h-4 w-4 animate-spin" />}
             </DropdownMenuItem>
           )}
+
+          {/* Legal links */}
+          <DropdownMenuSeparator className="bg-neutral-700/50 my-1" />
+          <Link href="/terms" className="block">
+            <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-400 hover:text-neutral-200">
+              <FileText className="h-4 w-4" />
+              <span className="text-sm">Terms of Service</span>
+            </DropdownMenuItem>
+          </Link>
+          <Link href="/privacy" className="block">
+            <DropdownMenuItem className="flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-400 hover:text-neutral-200">
+              <Shield className="h-4 w-4" />
+              <span className="text-sm">Privacy Policy</span>
+            </DropdownMenuItem>
+          </Link>
 
           {/* Logout - only show when logged in */}
           {user && (
