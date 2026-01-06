@@ -193,29 +193,24 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
     setIsPolling(true)
   }, [item])
 
-  // Fetch content and summary data
+  // Fetch content and summary data - parallelized for speed
   const fetchContentData = useCallback(async (showLoadingState = true) => {
     if (showLoadingState) setLoading(true)
 
-    const { data: contentData, error: contentError } = await supabase
-      .from("content")
-      .select("*")
-      .eq("id", params.id)
-      .single()
+    // Run content and summary queries in parallel
+    const [contentResult, summaryResult] = await Promise.all([
+      supabase.from("content").select("*").eq("id", params.id).single(),
+      supabase.from("summaries").select("*").eq("content_id", params.id).order("created_at", { ascending: false }).limit(1).maybeSingle()
+    ])
 
-    if (contentError) {
-      setError(contentError.message)
+    if (contentResult.error) {
+      setError(contentResult.error.message)
       setLoading(false)
       return null
     }
 
-    const { data: summaryData } = await supabase
-      .from("summaries")
-      .select("*")
-      .eq("content_id", params.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const contentData = contentResult.data
+    const summaryData = summaryResult.data
 
     const combinedItem: ContentWithSummary = {
       ...contentData,
@@ -266,34 +261,33 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   }, [params.id])
 
   useEffect(() => {
-    // Fetch user's rating for this content
-    const fetchRating = async () => {
-      if (!session?.user?.id) return
-
-      const { data } = await supabase
-        .from("content_ratings")
-        .select("signal_score")
-        .eq("content_id", params.id)
-        .eq("user_id", session.user.id)
-        .maybeSingle()
-
-      if (data) {
-        setCurrentUserContentRating({ signal_score: data.signal_score })
-      }
-    }
-
-    // Initial fetch
+    // Initial fetch - run content and rating queries in parallel
     const initFetch = async () => {
-      const data = await fetchContentData(true)
+      // Start both fetches in parallel
+      const contentPromise = fetchContentData(true)
+      const ratingPromise = session?.user?.id
+        ? supabase
+            .from("content_ratings")
+            .select("signal_score")
+            .eq("content_id", params.id)
+            .eq("user_id", session.user.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null })
+
+      const [contentData, ratingResult] = await Promise.all([contentPromise, ratingPromise])
+
+      // Handle rating result
+      if (ratingResult.data) {
+        setCurrentUserContentRating({ signal_score: ratingResult.data.signal_score })
+      }
 
       // If content is still processing, start polling
-      if (isContentProcessing(data)) {
+      if (isContentProcessing(contentData)) {
         setIsPolling(true)
       }
     }
 
     initFetch()
-    fetchRating()
 
     // Cleanup polling on unmount
     return () => {

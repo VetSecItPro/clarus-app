@@ -48,6 +48,15 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${inter.variable} dark bg-[#0a0e1a]`}>
+      <head>
+        {/* Preconnect to critical external domains for faster resource loading */}
+        <link rel="preconnect" href="https://***REMOVED***.supabase.co" />
+        <link rel="dns-prefetch" href="https://***REMOVED***.supabase.co" />
+        <link rel="preconnect" href="https://www.youtube.com" />
+        <link rel="dns-prefetch" href="https://www.youtube.com" />
+        <link rel="dns-prefetch" href="https://i.ytimg.com" />
+        <link rel="dns-prefetch" href="https://openrouter.ai" />
+      </head>
       <body className="font-sans antialiased">
         <SWRProvider>
           {children}
