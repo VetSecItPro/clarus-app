@@ -57,10 +57,12 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
     useEffect(() => {
       if (useSimpleEmbed) return // Skip API loading for simple embed
 
-      // Load YouTube IFrame API
+      // Load YouTube IFrame API (async for non-blocking load)
       if (!window.YT) {
         const tag = document.createElement("script")
         tag.src = "https://www.youtube.com/iframe_api"
+        tag.async = true
+        tag.defer = true
         const firstScriptTag = document.getElementsByTagName("script")[0]
         firstScriptTag.parentNode?.insertBefore(tag, firstScriptTag)
 
