@@ -1063,7 +1063,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0}
                         icon={<Eye className="w-4 h-4" />}
                         headerColor="blue"
-                        minContentHeight="120px"
+                        minContentHeight="100px"
                       >
                         {summary?.brief_overview ? (
                           <motion.p
@@ -1074,7 +1074,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                             {summary.brief_overview}
                           </motion.p>
                         ) : (
-                          <SectionSkeleton lines={4} />
+                          <SectionSkeleton lines={4} minHeight="80px" />
                         )}
                       </SectionCard>
                     )}
@@ -1089,12 +1089,12 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0.1}
                         icon={<Sparkles className="w-4 h-4" />}
                         headerColor="amber"
-                        minContentHeight="280px"
+                        minContentHeight="240px"
                       >
                         {summary?.triage ? (
                           <TriageCard triage={summary.triage as unknown as TriageData} />
                         ) : (
-                          <div className="space-y-4">
+                          <div className="space-y-4" style={{ minHeight: "220px" }}>
                             {/* Quality Score skeleton */}
                             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                               <div className="h-4 w-24 bg-white/[0.08] rounded mb-2 animate-pulse" />
@@ -1137,7 +1137,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0.15}
                         icon={<Lightbulb className="w-4 h-4" />}
                         headerColor="cyan"
-                        minContentHeight="300px"
+                        minContentHeight="320px"
                       >
                         {summary?.mid_length_summary ? (
                           <motion.div
@@ -1152,7 +1152,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                               >{summary.mid_length_summary}</MarkdownRenderer>
                           </motion.div>
                         ) : (
-                          <SectionSkeleton lines={10} />
+                          <SectionSkeleton lines={12} minHeight="300px" />
                         )}
                       </SectionCard>
                     )}
@@ -1167,12 +1167,12 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0.2}
                         icon={<Shield className="w-4 h-4" />}
                         headerColor="emerald"
-                        minContentHeight="250px"
+                        minContentHeight="280px"
                       >
                         {summary?.truth_check ? (
                           <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} />
                         ) : (
-                          <div className="space-y-4">
+                          <div className="space-y-4" style={{ minHeight: "260px" }}>
                             {/* Rating badge skeleton */}
                             <div className="h-10 w-32 bg-white/[0.08] rounded-full animate-pulse" />
                             {/* Issues list skeleton */}
@@ -1205,12 +1205,12 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0.3}
                         icon={<Target className="w-4 h-4" />}
                         headerColor="orange"
-                        minContentHeight="220px"
+                        minContentHeight="240px"
                       >
                         {summary?.action_items ? (
                           <ActionItemsCard actionItems={summary.action_items as unknown as ActionItemsData} />
                         ) : (
-                          <div className="space-y-3">
+                          <div className="space-y-3" style={{ minHeight: "220px" }}>
                             <div className="h-[68px] bg-white/[0.04] rounded-xl animate-pulse" />
                             <div className="h-[68px] bg-white/[0.04] rounded-xl animate-pulse" />
                             <div className="h-[68px] bg-white/[0.04] rounded-xl animate-pulse" />
