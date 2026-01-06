@@ -25,18 +25,19 @@ export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
   ({ videoId, className }, ref) => {
     const iframeRef = useRef<HTMLIFrameElement>(null)
     const playerRef = useRef<any>(null)
-    const [useSimpleEmbed, setUseSimpleEmbed] = useState(false)
+    // Default to simple embed (safer), only use API on desktop Chrome/Firefox
+    const [useSimpleEmbed, setUseSimpleEmbed] = useState(true)
 
-    // Detect mobile devices and Safari for simple embed fallback
-    // Direct iframe works more reliably than IFrame API on mobile
+    // Only enable IFrame API on desktop browsers where it works reliably
     useEffect(() => {
       const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
       const isAndroid = /Android/.test(navigator.userAgent)
       const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       const isMobile = isIOS || isAndroid || /webOS|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent)
 
-      if (isMobile || isSafari) {
-        setUseSimpleEmbed(true)
+      // Only use IFrame API on desktop non-Safari browsers
+      if (!isMobile && !isSafari) {
+        setUseSimpleEmbed(false)
       }
     }, [])
 
