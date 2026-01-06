@@ -79,8 +79,13 @@ export function SectionCard({ title, children, isLoading, delay = 0, icon, heade
           <Loader2 className="w-4 h-4 text-white/50 animate-spin" />
         )}
       </div>
-      <div className="px-4 sm:px-5 py-4 sm:py-5" style={minContentHeight ? { minHeight: minContentHeight } : undefined}>
-        {children}
+      <div
+        className="px-4 sm:px-5 py-4 sm:py-5"
+        style={minContentHeight ? { minHeight: minContentHeight, display: 'flex', flexDirection: 'column' } : undefined}
+      >
+        <div className="flex-1">
+          {children}
+        </div>
       </div>
     </motion.div>
   )
