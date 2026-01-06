@@ -73,7 +73,15 @@ export default function withAuth<P extends object>(
 
         authCheckPromise = (async () => {
           try {
-            const { data: { session: initialSession }, error } = await supabase.auth.getSession()
+            // Add timeout to prevent infinite loading
+            const timeoutPromise = new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error("Auth timeout")), 8000)
+            })
+
+            const { data: { session: initialSession }, error } = await Promise.race([
+              supabase.auth.getSession(),
+              timeoutPromise
+            ])
 
             if (error) {
               console.warn("Auth session error:", error.message)
@@ -83,19 +91,30 @@ export default function withAuth<P extends object>(
               cachedSession = initialSession
 
               if (initialSession?.user) {
-                const { data: userData } = await supabase
-                  .from("users")
-                  .select("subscription_status")
-                  .eq("id", initialSession.user.id)
-                  .single()
+                // Also add timeout to user data fetch
+                try {
+                  const userDataPromise = supabase
+                    .from("users")
+                    .select("subscription_status")
+                    .eq("id", initialSession.user.id)
+                    .single()
 
-                cachedSubscriptionStatus = (userData?.subscription_status as SubscriptionStatus) || "none"
+                  const userTimeout = new Promise<never>((_, reject) => {
+                    setTimeout(() => reject(new Error("User data timeout")), 5000)
+                  })
+
+                  const { data: userData } = await Promise.race([userDataPromise, userTimeout])
+                  cachedSubscriptionStatus = (userData?.subscription_status as SubscriptionStatus) || "none"
+                } catch (userErr) {
+                  console.warn("User data fetch error:", userErr)
+                  cachedSubscriptionStatus = "none"
+                }
               }
             }
 
             authInitialized = true
           } catch (err) {
-            console.warn("Auth initialization error:", err)
+            console.warn("Auth initialization error or timeout:", err)
             cachedSession = null
             cachedSubscriptionStatus = null
             authInitialized = true
