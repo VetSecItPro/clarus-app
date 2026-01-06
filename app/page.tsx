@@ -9,6 +9,7 @@ import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { AddUrlModal } from "@/components/add-url-modal"
 import { supabase } from "@/lib/supabase"
+import { getCachedSession } from "@/components/with-auth"
 import { getYouTubeVideoId, isXUrl, getDomainFromUrl } from "@/lib/utils"
 import { validateUrl } from "@/lib/validation"
 import { useRouter } from "next/navigation"
@@ -525,10 +526,21 @@ function HomePageContent({ session }: HomePageProps) {
 
 // Main page component that shows landing page for unauthenticated users
 export default function HomePage() {
-  const [session, setSession] = useState<Session | null>(null)
-  const [loading, setLoading] = useState(true)
+  // First check if we have a cached session from withAuth (instant, no fetch)
+  const cached = getCachedSession()
+
+  // Use cached session if auth was already initialized elsewhere
+  const [session, setSession] = useState<Session | null>(cached.session)
+  const [loading, setLoading] = useState(!cached.initialized)
 
   useEffect(() => {
+    // If auth was already initialized by withAuth, we already have the session
+    if (cached.initialized) {
+      setSession(cached.session)
+      setLoading(false)
+      return
+    }
+
     let isMounted = true
 
     // Get initial session with timeout to prevent infinite loading
@@ -575,7 +587,7 @@ export default function HomePage() {
       isMounted = false
       subscription.unsubscribe()
     }
-  }, [])
+  }, [cached.initialized, cached.session])
 
   // Show loading state briefly
   if (loading) {
