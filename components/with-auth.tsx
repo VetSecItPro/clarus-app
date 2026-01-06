@@ -4,6 +4,7 @@ import { useEffect, useState, useRef, type ComponentType } from "react"
 import { useRouter, usePathname } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { Session } from "@supabase/supabase-js"
+import { PrefetchData } from "./prefetch-data"
 
 type SubscriptionStatus = "active" | "trialing" | "grandfathered" | "canceled" | "none" | null
 
@@ -206,7 +207,12 @@ export default function withAuth<P extends object>(
       return null
     }
 
-    return <WrappedComponent {...props} session={session} subscriptionStatus={subscriptionStatus} />
+    return (
+      <>
+        <WrappedComponent {...props} session={session} subscriptionStatus={subscriptionStatus} />
+        <PrefetchData userId={session?.user?.id} />
+      </>
+    )
   }
 
   AuthComponent.displayName = `WithAuth(${WrappedComponent.displayName || WrappedComponent.name || "Component"})`
