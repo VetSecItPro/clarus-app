@@ -69,12 +69,13 @@ const fetcher = async (
     query = query.order("date_added", { ascending: false })
   }
 
-  // Apply pagination
+  // Apply pagination - fetch one extra to check if more exist
   query = query.range(offset, offset + pageSize)
 
   const { data, error } = await query
 
   if (error) throw error
+  if (!data) return { items: [], hasMore: false }
 
   let sortedData = data as LibraryItem[]
 
@@ -101,9 +102,13 @@ const fetcher = async (
     })
   }
 
+  // Check if we got more items than requested (indicates more exist)
+  const hasMoreItems = data.length > pageSize
+
+  // Return only pageSize items, keep the extra one just for hasMore check
   return {
-    items: sortedData,
-    hasMore: data.length > pageSize, // If we got more than pageSize, there's more
+    items: hasMoreItems ? sortedData.slice(0, pageSize) : sortedData,
+    hasMore: hasMoreItems,
   }
 }
 
@@ -145,8 +150,8 @@ export function useLibrary(options: UseLibraryOptions) {
   // Flatten all pages into a single array
   const items = data ? data.flatMap((page) => page.items) : []
 
-  // Check if there are more items to load
-  const hasMore = data ? data[data.length - 1]?.items.length === pageSize + 1 : false
+  // Check if there are more items to load (use hasMore flag from last page)
+  const hasMore = data && data.length > 0 ? data[data.length - 1]?.hasMore ?? false : false
 
   // Loading more (not initial load)
   const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined")
