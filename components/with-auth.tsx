@@ -20,6 +20,11 @@ let cachedSubscriptionStatus: SubscriptionStatus = null
 let authInitialized = false
 let authCheckPromise: Promise<void> | null = null
 
+// Export cached session for components that need quick access without re-fetching
+export function getCachedSession(): { session: Session | null; initialized: boolean } {
+  return { session: cachedSession, initialized: authInitialized }
+}
+
 /**
  * HOC that wraps a component with authentication logic.
  * Uses aggressive caching to prevent any flickering between pages.
