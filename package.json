@@ -30,6 +30,7 @@
     "@supabase/ssr": "0.8.0",
     "@supabase/supabase-js": "2.89.0",
     "@tanstack/react-virtual": "^3.13.16",
+    "@vercel/analytics": "^1.6.1",
     "ai": "5.0.117",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",

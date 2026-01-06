@@ -1,6 +1,7 @@
 import type React from "react"
 import type { Metadata } from "next"
 import { Inter } from "next/font/google"
+import { Analytics } from "@vercel/analytics/react"
 import { Toaster } from "sonner"
 import CookieConsent from "@/components/cookie-consent"
 import { ServiceWorkerRegister } from "@/components/service-worker-register"
@@ -55,6 +56,7 @@ export default function RootLayout({
         <CookieConsent />
         <ServiceWorkerRegister />
         <WebVitals />
+        <Analytics />
       </body>
     </html>
   )
