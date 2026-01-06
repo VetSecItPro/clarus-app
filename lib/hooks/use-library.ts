@@ -1,5 +1,6 @@
 "use client"
 
+import { useMemo } from "react"
 import useSWRInfinite from "swr/infinite"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/types/database.types"
@@ -147,11 +148,15 @@ export function useLibrary(options: UseLibraryOptions) {
     }
   )
 
-  // Flatten all pages into a single array
-  const items = data ? data.flatMap((page) => page.items) : []
+  // Flatten all pages into a single array - memoized to prevent infinite re-renders
+  const items = useMemo(() => {
+    return data ? data.flatMap((page) => page.items) : []
+  }, [data])
 
   // Check if there are more items to load (use hasMore flag from last page)
-  const hasMore = data && data.length > 0 ? data[data.length - 1]?.hasMore ?? false : false
+  const hasMore = useMemo(() => {
+    return data && data.length > 0 ? data[data.length - 1]?.hasMore ?? false : false
+  }, [data])
 
   // Loading more (not initial load)
   const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined")
