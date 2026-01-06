@@ -1063,7 +1063,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0}
                         icon={<Eye className="w-4 h-4" />}
                         headerColor="blue"
-                        minContentHeight="100px"
+                        minContentHeight="150px"
                       >
                         {summary?.brief_overview ? (
                           <motion.p
@@ -1074,7 +1074,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                             {summary.brief_overview}
                           </motion.p>
                         ) : (
-                          <SectionSkeleton lines={4} minHeight="80px" />
+                          <SectionSkeleton lines={6} minHeight="150px" />
                         )}
                       </SectionCard>
                     )}
@@ -1089,12 +1089,12 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0.1}
                         icon={<Sparkles className="w-4 h-4" />}
                         headerColor="amber"
-                        minContentHeight="240px"
+                        minContentHeight="350px"
                       >
                         {summary?.triage ? (
                           <TriageCard triage={summary.triage as unknown as TriageData} />
                         ) : (
-                          <div className="space-y-4" style={{ minHeight: "220px" }}>
+                          <div className="space-y-4" style={{ minHeight: "350px" }}>
                             {/* Quality Score skeleton */}
                             <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                               <div className="h-4 w-24 bg-white/[0.08] rounded mb-2 animate-pulse" />
@@ -1137,7 +1137,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0.15}
                         icon={<Lightbulb className="w-4 h-4" />}
                         headerColor="cyan"
-                        minContentHeight="320px"
+                        minContentHeight="500px"
                       >
                         {summary?.mid_length_summary ? (
                           <motion.div
@@ -1152,7 +1152,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                               >{summary.mid_length_summary}</MarkdownRenderer>
                           </motion.div>
                         ) : (
-                          <SectionSkeleton lines={12} minHeight="300px" />
+                          <SectionSkeleton lines={20} minHeight="500px" />
                         )}
                       </SectionCard>
                     )}
@@ -1167,28 +1167,66 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0.2}
                         icon={<Shield className="w-4 h-4" />}
                         headerColor="emerald"
-                        minContentHeight="280px"
+                        minContentHeight="650px"
                       >
                         {summary?.truth_check ? (
                           <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} />
                         ) : (
-                          <div className="space-y-4" style={{ minHeight: "260px" }}>
-                            {/* Rating badge skeleton */}
-                            <div className="h-10 w-32 bg-white/[0.08] rounded-full animate-pulse" />
+                          <div className="space-y-4" style={{ minHeight: "650px" }}>
+                            {/* Overall Rating skeleton */}
+                            <div>
+                              <div className="h-3 w-24 bg-white/[0.06] rounded animate-pulse mb-2" />
+                              <div className="h-6 w-20 bg-white/[0.08] rounded animate-pulse" />
+                            </div>
                             {/* Issues list skeleton */}
-                            <div className="space-y-3">
-                              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                                <div className="h-4 w-full bg-white/[0.06] rounded animate-pulse mb-2" />
-                                <div className="h-4 w-3/4 bg-white/[0.06] rounded animate-pulse" />
+                            <div>
+                              <div className="h-3 w-28 bg-white/[0.06] rounded animate-pulse mb-3" />
+                              <div className="space-y-4">
+                                <div className="flex items-start gap-3">
+                                  <div className="h-5 w-5 bg-white/[0.06] rounded animate-pulse flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <div className="h-4 w-full bg-white/[0.06] rounded animate-pulse mb-2" />
+                                    <div className="h-3 w-4/5 bg-white/[0.04] rounded animate-pulse mb-1" />
+                                    <div className="h-3 w-32 bg-white/[0.04] rounded animate-pulse" />
+                                  </div>
+                                </div>
+                                <div className="flex items-start gap-3">
+                                  <div className="h-5 w-5 bg-white/[0.06] rounded animate-pulse flex-shrink-0" />
+                                  <div className="flex-1">
+                                    <div className="h-4 w-11/12 bg-white/[0.06] rounded animate-pulse mb-2" />
+                                    <div className="h-3 w-3/4 bg-white/[0.04] rounded animate-pulse mb-1" />
+                                    <div className="h-3 w-28 bg-white/[0.04] rounded animate-pulse" />
+                                  </div>
+                                </div>
                               </div>
-                              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                                <div className="h-4 w-full bg-white/[0.06] rounded animate-pulse mb-2" />
-                                <div className="h-4 w-2/3 bg-white/[0.06] rounded animate-pulse" />
+                            </div>
+                            {/* Strengths skeleton */}
+                            <div>
+                              <div className="h-3 w-20 bg-white/[0.06] rounded animate-pulse mb-2" />
+                              <div className="space-y-2">
+                                <div className="flex items-start gap-2">
+                                  <div className="h-4 w-4 bg-white/[0.04] rounded animate-pulse flex-shrink-0" />
+                                  <div className="h-4 w-full bg-white/[0.06] rounded animate-pulse" />
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <div className="h-4 w-4 bg-white/[0.04] rounded animate-pulse flex-shrink-0" />
+                                  <div className="h-4 w-11/12 bg-white/[0.06] rounded animate-pulse" />
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <div className="h-4 w-4 bg-white/[0.04] rounded animate-pulse flex-shrink-0" />
+                                  <div className="h-4 w-10/12 bg-white/[0.06] rounded animate-pulse" />
+                                </div>
+                                <div className="flex items-start gap-2">
+                                  <div className="h-4 w-4 bg-white/[0.04] rounded animate-pulse flex-shrink-0" />
+                                  <div className="h-4 w-9/12 bg-white/[0.06] rounded animate-pulse" />
+                                </div>
                               </div>
-                              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-                                <div className="h-4 w-full bg-white/[0.06] rounded animate-pulse mb-2" />
-                                <div className="h-4 w-4/5 bg-white/[0.06] rounded animate-pulse" />
-                              </div>
+                            </div>
+                            {/* Sources Quality skeleton */}
+                            <div>
+                              <div className="h-3 w-28 bg-white/[0.06] rounded animate-pulse mb-2" />
+                              <div className="h-4 w-full bg-white/[0.06] rounded animate-pulse mb-1" />
+                              <div className="h-4 w-4/5 bg-white/[0.06] rounded animate-pulse" />
                             </div>
                           </div>
                         )}
@@ -1205,15 +1243,16 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                         delay={0.3}
                         icon={<Target className="w-4 h-4" />}
                         headerColor="orange"
-                        minContentHeight="240px"
+                        minContentHeight="350px"
                       >
                         {summary?.action_items ? (
                           <ActionItemsCard actionItems={summary.action_items as unknown as ActionItemsData} />
                         ) : (
-                          <div className="space-y-3" style={{ minHeight: "220px" }}>
-                            <div className="h-[68px] bg-white/[0.04] rounded-xl animate-pulse" />
-                            <div className="h-[68px] bg-white/[0.04] rounded-xl animate-pulse" />
-                            <div className="h-[68px] bg-white/[0.04] rounded-xl animate-pulse" />
+                          <div className="space-y-3" style={{ minHeight: "350px" }}>
+                            <div className="h-[80px] bg-white/[0.04] rounded-xl animate-pulse" />
+                            <div className="h-[80px] bg-white/[0.04] rounded-xl animate-pulse" />
+                            <div className="h-[80px] bg-white/[0.04] rounded-xl animate-pulse" />
+                            <div className="h-[80px] bg-white/[0.04] rounded-xl animate-pulse" />
                           </div>
                         )}
                       </SectionCard>
