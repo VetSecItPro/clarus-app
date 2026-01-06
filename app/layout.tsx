@@ -5,6 +5,7 @@ import { Toaster } from "sonner"
 import CookieConsent from "@/components/cookie-consent"
 import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import { SWRProvider } from "@/components/swr-provider"
+import { WebVitals } from "@/components/web-vitals"
 import "./globals.css"
 
 const inter = Inter({
@@ -53,6 +54,7 @@ export default function RootLayout({
         <Toaster position="top-center" />
         <CookieConsent />
         <ServiceWorkerRegister />
+        <WebVitals />
       </body>
     </html>
   )

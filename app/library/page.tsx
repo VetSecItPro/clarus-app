@@ -1,40 +1,25 @@
 "use client"
 
 import { supabase } from "@/lib/supabase"
-import withAuth from "@/components/with-auth"
+import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
 import { useEffect, useState, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
-import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
-import { Search, SlidersHorizontal, Loader2, FileText, Play, Trash2, LayoutGrid, LayoutList, Zap, Clock, Twitter, Sparkles, ChevronDown, ChevronUp, ArrowRight, Star, TrendingUp, Bookmark, Tag, X } from "lucide-react"
+import { Search, SlidersHorizontal, Loader2, LayoutGrid, LayoutList, Clock, Sparkles, ChevronDown, Bookmark, Tag, X } from "lucide-react"
 import Link from "next/link"
-import Image from "next/image"
-import { formatDistanceToNow, isToday, isYesterday, differenceInDays, differenceInWeeks, differenceInMonths } from "date-fns"
+import { isToday, isYesterday, differenceInDays, differenceInWeeks, differenceInMonths } from "date-fns"
 import { cn } from "@/lib/utils"
-import { formatDuration } from "@/lib/utils"
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useLibrary, type LibraryItem } from "@/lib/hooks/use-library"
 import { ContentListSkeleton } from "@/components/ui/content-skeleton"
-
-type SummaryData = {
-  brief_overview: string | null
-  mid_length_summary: string | null
-  triage: {
-    quality_score?: number
-    signal_noise_score?: number
-    worth_your_time?: string
-    one_liner?: string
-  } | null
-}
+import { LibraryItemCard } from "@/components/library-item-card"
 
 type HistoryItem = LibraryItem
 
-interface LibraryPageProps {
-  session: Session | null
-}
+// Library page only needs the auth props (no page params)
+type LibraryPageProps = WithAuthInjectedProps
 
 const SORT_OPTIONS = [
   { value: "date_desc", label: "Newest" },
@@ -160,8 +145,8 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     return () => clearTimeout(handler)
   }, [searchQuery])
 
-  // Use SWR for cached data fetching
-  const { items: swrItems, isLoading, refresh } = useLibrary({
+  // Use SWR for cached data fetching with pagination
+  const { items: swrItems, isLoading, isLoadingMore, hasMore, loadMore, refresh } = useLibrary({
     userId: session?.user?.id,
     searchQuery: debouncedSearch,
     filterType,
@@ -268,441 +253,7 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     }
   }
 
-  const getSummaryData = (item: HistoryItem): SummaryData | null => {
-    const summaries = item.summaries
-    if (Array.isArray(summaries)) {
-      return summaries[0] ?? null
-    }
-    return summaries as SummaryData | null
-  }
-
-  const getSignalRating = (item: HistoryItem) => {
-    const ratings = item.content_ratings
-    if (Array.isArray(ratings)) {
-      return ratings[0]?.signal_score ?? null
-    }
-    return (ratings as unknown as { signal_score: number | null })?.signal_score ?? null
-  }
-
-  const getSummaryPreview = (item: HistoryItem) => {
-    const summary = getSummaryData(item)
-    const overview = summary?.brief_overview
-    if (!overview) return null
-    return overview.length > 80 ? overview.slice(0, 80) + "..." : overview
-  }
-
-  const getDomain = (url: string | null) => {
-    if (!url) return ""
-    try {
-      return new URL(url).hostname.replace("www.", "")
-    } catch {
-      return ""
-    }
-  }
-
-  const getTypeBadge = (type: string | null) => {
-    switch (type) {
-      case "youtube":
-        return { icon: Play, label: "YouTube", color: "bg-red-500/20 text-red-400 border-red-500/30" }
-      case "x_post":
-        return { icon: Twitter, label: "X Post", color: "bg-white/10 text-white/80 border-white/20" }
-      case "article":
-      default:
-        return { icon: FileText, label: "Article", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" }
-    }
-  }
-
   const groupedItems = groupByDate(items)
-
-  const renderItem = (item: HistoryItem) => {
-    const typeBadge = getTypeBadge(item.type)
-    const TypeIcon = typeBadge.icon
-    const signalScore = getSignalRating(item)
-    const summaryPreview = getSummaryPreview(item)
-    const summaryData = getSummaryData(item)
-    const isExpanded = expandedId === item.id
-    const triage = summaryData?.triage
-
-    if (viewMode === "grid") {
-      return (
-        <div key={item.id} className="group relative bg-white/[0.04] border border-white/[0.08] rounded-2xl overflow-hidden hover:bg-white/[0.08] hover:border-white/[0.15] transition-all duration-200">
-          <Link href={`/item/${item.id}`}>
-            {/* Thumbnail */}
-            <div className="relative aspect-video bg-white/[0.06]">
-              {item.thumbnail_url ? (
-                <Image
-                  src={item.thumbnail_url}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <TypeIcon className="w-8 h-8 text-white/20" />
-                </div>
-              )}
-              {/* Duration badge for videos */}
-              {item.type === "youtube" && item.duration && (
-                <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-white font-medium">
-                  {formatDuration(item.duration)}
-                </div>
-              )}
-            </div>
-
-            {/* Content */}
-            <div className="p-3">
-              {/* Type badge & Signal */}
-              <div className="flex items-center justify-between mb-2">
-                <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium", typeBadge.color)}>
-                  <TypeIcon className="w-2.5 h-2.5" />
-                  {typeBadge.label}
-                </div>
-                {signalScore && (
-                  <div className="flex items-center gap-1 text-amber-400 text-xs">
-                    <Zap className="w-3 h-3 fill-current" />
-                    <span>{signalScore}</span>
-                  </div>
-                )}
-              </div>
-
-              <h3 className="text-white font-medium text-sm line-clamp-2 mb-1">
-                {item.title || "Processing..."}
-              </h3>
-              <p className="text-white/40 text-xs mb-1.5">{getDomain(item.url)}</p>
-              {/* Tags */}
-              {item.tags && item.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {item.tags.slice(0, 2).map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[9px] text-purple-400 capitalize"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {item.tags.length > 2 && (
-                    <span className="text-[9px] text-white/40">+{item.tags.length - 2}</span>
-                  )}
-                </div>
-              )}
-            </div>
-          </Link>
-
-          {/* Action buttons */}
-          <TooltipProvider delayDuration={300}>
-            <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={(e) => handleToggleBookmark(e, item)}
-                    disabled={togglingBookmark === item.id}
-                    className={cn(
-                      "p-1.5 rounded-lg transition-all",
-                      item.is_bookmarked
-                        ? "bg-amber-500/80 text-white"
-                        : "bg-black/60 hover:bg-amber-500/80"
-                    )}
-                  >
-                    {togglingBookmark === item.id ? (
-                      <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
-                    ) : (
-                      <Bookmark className={cn("w-3.5 h-3.5 text-white", item.is_bookmarked && "fill-current")} />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{item.is_bookmarked ? "Remove bookmark" : "Add bookmark"}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={(e) => handleDelete(e, item.id)}
-                    disabled={deletingId === item.id}
-                    className="p-1.5 bg-black/60 rounded-lg hover:bg-red-500/80 transition-all"
-                  >
-                    {deletingId === item.id ? (
-                      <Loader2 className="w-3.5 h-3.5 text-white animate-spin" />
-                    ) : (
-                      <Trash2 className="w-3.5 h-3.5 text-white" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Delete</TooltipContent>
-              </Tooltip>
-            </div>
-          </TooltipProvider>
-          {/* Bookmark indicator when bookmarked */}
-          {item.is_bookmarked && (
-            <div className="absolute top-2 left-2 p-1 bg-amber-500/80 rounded-md z-10">
-              <Bookmark className="w-3 h-3 text-white fill-current" />
-            </div>
-          )}
-        </div>
-      )
-    }
-
-    // List view with expandable cards
-    return (
-      <div key={item.id} className={cn(
-        "group relative bg-white/[0.04] border border-white/[0.08] rounded-2xl overflow-hidden transition-all duration-200 feed-item",
-        isExpanded ? "bg-white/[0.06] border-white/[0.15]" : "hover:bg-white/[0.06] hover:border-white/[0.12]"
-      )}>
-        {/* Main card content */}
-        <div
-          className="p-4 cursor-pointer"
-          onClick={(e) => toggleExpand(e, item.id)}
-        >
-          <div className="flex gap-4">
-            {/* Thumbnail */}
-            <div className="relative w-28 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-white/[0.06]">
-              {item.thumbnail_url ? (
-                <Image
-                  src={item.thumbnail_url}
-                  alt=""
-                  fill
-                  className="object-cover"
-                  sizes="112px"
-                  loading="lazy"
-                />
-              ) : (
-                <div className="w-full h-full flex items-center justify-center">
-                  <TypeIcon className="w-6 h-6 text-white/20" />
-                </div>
-              )}
-              {/* Duration badge for videos */}
-              {item.type === "youtube" && item.duration && (
-                <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-white font-medium">
-                  {formatDuration(item.duration)}
-                </div>
-              )}
-            </div>
-
-            {/* Content */}
-            <div className="flex-1 min-w-0">
-              {/* Type badge & Signal */}
-              <div className="flex items-center gap-2 mb-1.5">
-                <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium", typeBadge.color)}>
-                  <TypeIcon className="w-2.5 h-2.5" />
-                  {typeBadge.label}
-                </div>
-                {signalScore && (
-                  <div className="flex items-center gap-1 text-amber-400 text-xs">
-                    <Zap className="w-3 h-3 fill-current" />
-                    <span>{signalScore}</span>
-                  </div>
-                )}
-                {triage?.quality_score && (
-                  <div className="flex items-center gap-1 text-emerald-400 text-xs">
-                    <Star className="w-3 h-3" />
-                    <span>{triage.quality_score}/10</span>
-                  </div>
-                )}
-              </div>
-
-              <h3 className="text-white font-medium text-sm line-clamp-2 mb-1">
-                {item.title || "Processing..."}
-              </h3>
-
-              {/* Summary preview - only when collapsed */}
-              {!isExpanded && summaryPreview && (
-                <p className="text-white/50 text-xs line-clamp-1 mb-1">{summaryPreview}</p>
-              )}
-
-              <div className="flex items-center gap-2 text-xs text-white/40 mb-1">
-                <span>{getDomain(item.url)}</span>
-                {item.date_added && (
-                  <>
-                    <span>•</span>
-                    <span>Analyzed {formatDistanceToNow(new Date(item.date_added), { addSuffix: true })}</span>
-                  </>
-                )}
-              </div>
-              {/* Tags */}
-              {item.tags && item.tags.length > 0 && (
-                <div className="flex flex-wrap gap-1">
-                  {item.tags.slice(0, 3).map((tag) => (
-                    <span
-                      key={tag}
-                      className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[10px] text-purple-400 capitalize"
-                    >
-                      {tag}
-                    </span>
-                  ))}
-                  {item.tags.length > 3 && (
-                    <span className="text-[10px] text-white/40">+{item.tags.length - 3}</span>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Expand/collapse button */}
-            <div className="flex items-center">
-              <div className={cn(
-                "p-1.5 rounded-lg transition-all",
-                isExpanded ? "bg-white/[0.1]" : "opacity-50 group-hover:opacity-100"
-              )}>
-                {isExpanded ? (
-                  <ChevronUp className="w-4 h-4 text-white/60" />
-                ) : (
-                  <ChevronDown className="w-4 h-4 text-white/60" />
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Expanded content */}
-        {isExpanded && (
-          <div className="px-4 pb-4 border-t border-white/[0.08] pt-4 space-y-4">
-            {/* Triage info */}
-            {triage && (
-              <div className="flex flex-wrap gap-3">
-                {triage.quality_score && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-                    <Star className="w-3.5 h-3.5 text-emerald-400" />
-                    <span className="text-xs text-emerald-400">Quality: {triage.quality_score}/10</span>
-                  </div>
-                )}
-                {triage.signal_noise_score !== undefined && (
-                  <div className="flex items-center gap-2 px-3 py-1.5 bg-amber-500/10 border border-amber-500/20 rounded-lg">
-                    <TrendingUp className="w-3.5 h-3.5 text-amber-400" />
-                    <span className="text-xs text-amber-400">
-                      Signal: {["Noise", "Noteworthy", "Insightful", "Mind-blowing"][triage.signal_noise_score] || triage.signal_noise_score}
-                    </span>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* One-liner */}
-            {triage?.one_liner && (
-              <p className="text-white/70 text-sm italic">&ldquo;{triage.one_liner}&rdquo;</p>
-            )}
-
-            {/* Brief overview */}
-            {summaryData?.brief_overview && (
-              <div>
-                <h4 className="text-white/50 text-xs uppercase tracking-wide mb-2">Overview</h4>
-                <p className="text-white/80 text-sm leading-relaxed line-clamp-4">{summaryData.brief_overview}</p>
-              </div>
-            )}
-
-            {/* Key takeaways */}
-            {summaryData?.mid_length_summary && (
-              <div>
-                <h4 className="text-white/50 text-xs uppercase tracking-wide mb-2">Key Takeaways</h4>
-                <p className="text-white/70 text-sm leading-relaxed line-clamp-4">{summaryData.mid_length_summary}</p>
-              </div>
-            )}
-
-            {/* Worth reading */}
-            {triage?.worth_your_time && (
-              <div className="p-3 bg-white/[0.04] rounded-xl">
-                <h4 className="text-white/50 text-xs uppercase tracking-wide mb-1">Worth Your Time?</h4>
-                <p className="text-white/80 text-sm">{triage.worth_your_time}</p>
-              </div>
-            )}
-
-            {/* Action buttons */}
-            <div className="flex items-center justify-between pt-3">
-              <Link
-                href={`/item/${item.id}`}
-                onClick={(e) => e.stopPropagation()}
-                prefetch={true}
-                className="group/btn inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1d9bf0] to-[#0d8bdf] hover:from-[#1a8cd8] hover:to-[#0a7bc8] text-white rounded-full transition-all text-sm font-semibold shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40 hover:scale-[1.02] active:scale-[0.98]"
-              >
-                View Full Analysis
-                <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5" />
-              </Link>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={(e) => handleToggleBookmark(e, item)}
-                  disabled={togglingBookmark === item.id}
-                  className={cn(
-                    "w-10 h-10 flex items-center justify-center rounded-full transition-all border",
-                    item.is_bookmarked
-                      ? "bg-amber-500/20 border-amber-500/30 text-amber-400 hover:bg-amber-500/30"
-                      : "bg-white/[0.06] border-white/[0.08] text-white/50 hover:bg-amber-500/20 hover:border-amber-500/30 hover:text-amber-400"
-                  )}
-                  title={item.is_bookmarked ? "Remove bookmark" : "Add bookmark"}
-                >
-                  {togglingBookmark === item.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Bookmark className={cn("w-4 h-4", item.is_bookmarked && "fill-current")} />
-                  )}
-                </button>
-                <button
-                  onClick={(e) => handleDelete(e, item.id)}
-                  disabled={deletingId === item.id}
-                  className="w-10 h-10 flex items-center justify-center bg-white/[0.06] border border-white/[0.08] hover:bg-red-500/20 hover:border-red-500/30 text-white/50 hover:text-red-400 rounded-full transition-all"
-                  title="Delete"
-                >
-                  {deletingId === item.id ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Trash2 className="w-4 h-4" />
-                  )}
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Action buttons - only show when collapsed */}
-        {!isExpanded && (
-          <TooltipProvider delayDuration={300}>
-            <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={(e) => handleToggleBookmark(e, item)}
-                    disabled={togglingBookmark === item.id}
-                    className={cn(
-                      "p-2 rounded-lg transition-all",
-                      item.is_bookmarked
-                        ? "bg-amber-500/20 text-amber-400"
-                        : "hover:bg-amber-500/20 text-white/40 hover:text-amber-400"
-                    )}
-                  >
-                    {togglingBookmark === item.id ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Bookmark className={cn("w-4 h-4", item.is_bookmarked && "fill-current")} />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>{item.is_bookmarked ? "Remove bookmark" : "Add bookmark"}</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={(e) => handleDelete(e, item.id)}
-                    disabled={deletingId === item.id}
-                    className="p-2 rounded-lg hover:bg-red-500/20 transition-all"
-                  >
-                    {deletingId === item.id ? (
-                      <Loader2 className="w-4 h-4 text-white/60 animate-spin" />
-                    ) : (
-                      <Trash2 className="w-4 h-4 text-white/40 hover:text-red-400" />
-                    )}
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Delete</TooltipContent>
-              </Tooltip>
-            </div>
-          </TooltipProvider>
-        )}
-        {/* Bookmark indicator - always visible when bookmarked */}
-        {item.is_bookmarked && !isExpanded && (
-          <div className="absolute top-3 left-3">
-            <Bookmark className="w-4 h-4 text-amber-400 fill-current" />
-          </div>
-        )}
-      </div>
-    )
-  }
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
@@ -944,10 +495,42 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                     ? "grid grid-cols-2 lg:grid-cols-3 gap-4"
                     : "space-y-3"
                 )}>
-                  {group.items.map(renderItem)}
+                  {group.items.map((item) => (
+                    <LibraryItemCard
+                      key={item.id}
+                      item={item}
+                      viewMode={viewMode}
+                      isExpanded={expandedId === item.id}
+                      deletingId={deletingId}
+                      togglingBookmark={togglingBookmark}
+                      onToggleExpand={toggleExpand}
+                      onToggleBookmark={handleToggleBookmark}
+                      onDelete={handleDelete}
+                    />
+                  ))}
                 </div>
               </div>
             ))}
+
+            {/* Load More Button */}
+            {hasMore && (
+              <div className="flex justify-center pt-4 pb-8">
+                <button
+                  onClick={loadMore}
+                  disabled={isLoadingMore}
+                  className="px-6 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-full text-white/70 hover:text-white hover:bg-white/[0.1] transition-all text-sm font-medium disabled:opacity-50"
+                >
+                  {isLoadingMore ? (
+                    <span className="flex items-center gap-2">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Loading...
+                    </span>
+                  ) : (
+                    "Load More"
+                  )}
+                </button>
+              </div>
+            )}
           </div>
         )}
       </main>

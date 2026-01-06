@@ -14,6 +14,110 @@ import { cn } from "@/lib/utils"
 import { MarkdownRenderer } from "./markdown-renderer"
 import { useSpeechToText, useTextToSpeech } from "@/lib/hooks/use-speech"
 
+// Types for messages
+interface ChatMessage {
+  id?: string
+  role: "user" | "assistant"
+  parts?: Array<{ type: string; text?: string }>
+  content?: string
+}
+
+// Helper function to extract message content
+const getMessageContentFromParts = (message: ChatMessage): string => {
+  if (message.parts && Array.isArray(message.parts)) {
+    return message.parts
+      .filter((p): p is { type: "text"; text: string } => p.type === "text")
+      .map((p) => p.text)
+      .join("")
+  }
+  return message.content || ""
+}
+
+// Memoized message component to prevent re-renders
+interface ChatMessageBubbleProps {
+  message: ChatMessage
+  index: number
+  isSpeaking: boolean
+  speakingMessageIndex: number | null
+  ttsSupported: boolean
+  onSpeak: (text: string, index: number) => void
+  onStopSpeaking: () => void
+}
+
+const ChatMessageBubble = memo(function ChatMessageBubble({
+  message,
+  index,
+  isSpeaking,
+  speakingMessageIndex,
+  ttsSupported,
+  onSpeak,
+  onStopSpeaking,
+}: ChatMessageBubbleProps) {
+  const content = getMessageContentFromParts(message)
+
+  return (
+    <div className={cn("flex gap-2", message.role === "user" ? "justify-end" : "justify-start")}>
+      {/* Assistant avatar */}
+      {message.role === "assistant" && (
+        <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg shadow-blue-500/20">
+          <Shield className="w-4 h-4 text-white" />
+        </div>
+      )}
+
+      <div
+        className={cn(
+          "rounded-2xl max-w-[80%] backdrop-blur-xl overflow-hidden",
+          message.role === "user"
+            ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20 px-4 py-2.5"
+            : "bg-white/[0.04] border border-white/[0.08]",
+        )}
+      >
+        {message.role === "user" ? (
+          <p className="text-sm whitespace-pre-wrap">{content}</p>
+        ) : (
+          <div className="p-3 chat-assistant-message group relative">
+            <MarkdownRenderer className="text-sm [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:my-2 [&_ol]:my-2 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mt-3 [&_h2]:mb-1.5 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-white/90 [&_h3]:mt-2 [&_h3]:mb-1 [&_li]:text-sm [&_strong]:text-white [&_code]:bg-white/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_pre]:bg-white/10 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_a]:text-blue-400 [&_a]:underline">
+              {content}
+            </MarkdownRenderer>
+            {/* Per-message speaker icon - always visible on mobile, hover on desktop */}
+            {ttsSupported && (
+              <button
+                onClick={() => {
+                  if (speakingMessageIndex === index && isSpeaking) {
+                    onStopSpeaking()
+                  } else {
+                    onSpeak(content, index)
+                  }
+                }}
+                className={cn(
+                  "absolute top-2 right-2 w-6 h-6 flex items-center justify-center transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100",
+                  speakingMessageIndex === index && isSpeaking
+                    ? "text-[#1d9bf0] opacity-100"
+                    : "text-gray-500 hover:text-gray-300"
+                )}
+                aria-label={speakingMessageIndex === index && isSpeaking ? "Stop" : "Listen"}
+              >
+                {speakingMessageIndex === index && isSpeaking ? (
+                  <VolumeX className="w-3.5 h-3.5" />
+                ) : (
+                  <Volume2 className="w-3.5 h-3.5" />
+                )}
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* User avatar */}
+      {message.role === "user" && (
+        <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg">
+          <User className="w-4 h-4 text-white" />
+        </div>
+      )}
+    </div>
+  )
+})
+
 interface ChatPanelProps {
   contentId: string
   session: Session | null
@@ -285,6 +389,19 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
     return ""
   }, [])
 
+  // Callback for speaking a message
+  const handleSpeak = useCallback((text: string, index: number) => {
+    if (isSpeaking) stopSpeaking()
+    setSpeakingMessageIndex(index)
+    speak(text)
+  }, [isSpeaking, stopSpeaking, speak])
+
+  // Callback for stopping speaking
+  const handleStopSpeaking = useCallback(() => {
+    stopSpeaking()
+    setSpeakingMessageIndex(null)
+  }, [stopSpeaking])
+
   if (!userId) return null
 
   // Floating icon when collapsed
@@ -382,68 +499,16 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
                   </div>
                 )}
                 {messages.map((m, i) => (
-                  <div key={m.id || i} className={cn("flex gap-2", m.role === "user" ? "justify-end" : "justify-start")}>
-                    {/* Assistant avatar */}
-                    {m.role === "assistant" && (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg shadow-blue-500/20">
-                        <Shield className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-
-                    <div
-                      className={cn(
-                        "rounded-2xl max-w-[80%] backdrop-blur-xl overflow-hidden",
-                        m.role === "user"
-                          ? "bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20 px-4 py-2.5"
-                          : "bg-white/[0.04] border border-white/[0.08]",
-                      )}
-                    >
-                      {m.role === "user" ? (
-                        <p className="text-sm whitespace-pre-wrap">{getMessageContent(m)}</p>
-                      ) : (
-                        <div className="p-3 chat-assistant-message group relative">
-                          <MarkdownRenderer className="text-sm [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:my-2 [&_ol]:my-2 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mt-3 [&_h2]:mb-1.5 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-white/90 [&_h3]:mt-2 [&_h3]:mb-1 [&_li]:text-sm [&_strong]:text-white [&_code]:bg-white/10 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-xs [&_pre]:bg-white/10 [&_pre]:p-3 [&_pre]:rounded-lg [&_pre]:overflow-x-auto [&_a]:text-blue-400 [&_a]:underline">
-                            {getMessageContent(m)}
-                          </MarkdownRenderer>
-                          {/* Per-message speaker icon - always visible on mobile, hover on desktop */}
-                          {ttsSupported && (
-                            <button
-                              onClick={() => {
-                                if (speakingMessageIndex === i && isSpeaking) {
-                                  stopSpeaking()
-                                  setSpeakingMessageIndex(null)
-                                } else {
-                                  if (isSpeaking) stopSpeaking()
-                                  setSpeakingMessageIndex(i)
-                                  speak(getMessageContent(m))
-                                }
-                              }}
-                              className={cn(
-                                "absolute top-2 right-2 w-6 h-6 flex items-center justify-center transition-all opacity-100 sm:opacity-0 sm:group-hover:opacity-100",
-                                speakingMessageIndex === i && isSpeaking
-                                  ? "text-[#1d9bf0] opacity-100"
-                                  : "text-gray-500 hover:text-gray-300"
-                              )}
-                              aria-label={speakingMessageIndex === i && isSpeaking ? "Stop" : "Listen"}
-                            >
-                              {speakingMessageIndex === i && isSpeaking ? (
-                                <VolumeX className="w-3.5 h-3.5" />
-                              ) : (
-                                <Volume2 className="w-3.5 h-3.5" />
-                              )}
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* User avatar */}
-                    {m.role === "user" && (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg">
-                        <User className="w-4 h-4 text-white" />
-                      </div>
-                    )}
-                  </div>
+                  <ChatMessageBubble
+                    key={m.id || i}
+                    message={m as ChatMessage}
+                    index={i}
+                    isSpeaking={isSpeaking}
+                    speakingMessageIndex={speakingMessageIndex}
+                    ttsSupported={ttsSupported}
+                    onSpeak={handleSpeak}
+                    onStopSpeaking={handleStopSpeaking}
+                  />
                 ))}
                 {isLoading && messages[messages.length - 1]?.role === "user" && (
                   <div className="flex gap-2 justify-start">

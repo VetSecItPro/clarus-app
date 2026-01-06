@@ -1,6 +1,6 @@
 "use client"
 
-import useSWR from "swr"
+import useSWRInfinite from "swr/infinite"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/types/database.types"
 
@@ -31,10 +31,19 @@ interface UseLibraryOptions {
   sortBy?: string
   bookmarkOnly?: boolean
   selectedTags?: string[]
+  pageSize?: number
 }
 
-const fetcher = async (options: UseLibraryOptions): Promise<LibraryItem[]> => {
-  if (!options.userId) return []
+const PAGE_SIZE = 20
+
+const fetcher = async (
+  options: UseLibraryOptions,
+  page: number
+): Promise<{ items: LibraryItem[]; hasMore: boolean }> => {
+  if (!options.userId) return { items: [], hasMore: false }
+
+  const pageSize = options.pageSize || PAGE_SIZE
+  const offset = page * pageSize
 
   let query = supabase
     .from("content")
@@ -60,13 +69,16 @@ const fetcher = async (options: UseLibraryOptions): Promise<LibraryItem[]> => {
     query = query.order("date_added", { ascending: false })
   }
 
+  // Apply pagination
+  query = query.range(offset, offset + pageSize)
+
   const { data, error } = await query
 
   if (error) throw error
 
   let sortedData = data as LibraryItem[]
 
-  // Client-side sort for ratings
+  // Client-side sort for ratings (only works properly for single page, but rating sort is less common)
   if (options.sortBy === "rating_desc") {
     sortedData = sortedData.sort((a, b) => {
       const ratingA = a.content_ratings?.[0]?.signal_score ?? -1
@@ -89,38 +101,63 @@ const fetcher = async (options: UseLibraryOptions): Promise<LibraryItem[]> => {
     })
   }
 
-  return sortedData
+  return {
+    items: sortedData,
+    hasMore: data.length > pageSize, // If we got more than pageSize, there's more
+  }
 }
 
 export function useLibrary(options: UseLibraryOptions) {
-  const cacheKey = options.userId
-    ? [
-        "library",
-        options.userId,
-        options.searchQuery || "",
-        options.filterType || "all",
-        options.sortBy || "date_desc",
-        options.bookmarkOnly ? "bookmarked" : "",
-        (options.selectedTags || []).join(","),
-      ].join(":")
-    : null
+  const pageSize = options.pageSize || PAGE_SIZE
 
-  const { data, error, isLoading, mutate } = useSWR(
-    cacheKey,
-    () => fetcher(options),
+  const getKey = (pageIndex: number, previousPageData: { items: LibraryItem[]; hasMore: boolean } | null) => {
+    if (!options.userId) return null
+    // If previous page returned no items, don't fetch more
+    if (previousPageData && previousPageData.items.length === 0) return null
+
+    return [
+      "library",
+      options.userId,
+      options.searchQuery || "",
+      options.filterType || "all",
+      options.sortBy || "date_desc",
+      options.bookmarkOnly ? "bookmarked" : "",
+      (options.selectedTags || []).join(","),
+      pageIndex,
+    ].join(":")
+  }
+
+  const { data, error, isLoading, isValidating, size, setSize, mutate } = useSWRInfinite(
+    getKey,
+    (key) => {
+      const pageIndex = parseInt(key.split(":").pop() || "0")
+      return fetcher(options, pageIndex)
+    },
     {
-      revalidateOnFocus: true, // Revalidate when user returns to tab
+      revalidateOnFocus: false,
       revalidateOnReconnect: true,
-      dedupingInterval: 5000, // Dedupe requests within 5 seconds
-      keepPreviousData: true, // Keep showing old data while loading new
-      revalidateOnMount: true, // Always revalidate on mount
+      dedupingInterval: 30000,
+      revalidateFirstPage: false,
+      persistSize: true,
     }
   )
 
+  // Flatten all pages into a single array
+  const items = data ? data.flatMap((page) => page.items) : []
+
+  // Check if there are more items to load
+  const hasMore = data ? data[data.length - 1]?.items.length === pageSize + 1 : false
+
+  // Loading more (not initial load)
+  const isLoadingMore = isLoading || (size > 0 && data && typeof data[size - 1] === "undefined")
+
   return {
-    items: data || [],
-    isLoading,
+    items,
+    isLoading: isLoading && !data,
+    isLoadingMore,
     error,
-    refresh: mutate,
+    hasMore,
+    loadMore: () => setSize(size + 1),
+    refresh: () => mutate(),
   }
 }
