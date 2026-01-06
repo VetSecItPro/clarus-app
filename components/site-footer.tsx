@@ -7,20 +7,10 @@ export default function SiteFooter() {
   const currentYear = new Date().getFullYear()
 
   return (
-    <footer className="border-t border-white/[0.08] bg-black mb-14 sm:mb-0">
-      {/* Mobile: Ultra-minimal footer */}
-      <div className="sm:hidden px-4 py-2">
-        <p className="text-center text-[9px] text-white/25 leading-none">
-          <Link href="/terms" className="hover:text-white/40 transition-colors">Terms</Link>
-          <span className="text-white/15 mx-1.5">·</span>
-          <Link href="/privacy" className="hover:text-white/40 transition-colors">Privacy</Link>
-          <span className="text-white/15 mx-1.5">·</span>
-          <span>&copy; {currentYear}</span>
-        </p>
-      </div>
-
+    // Footer only shown on desktop - mobile has legal links in Settings menu
+    <footer className="hidden sm:block border-t border-white/[0.08] bg-black">
       {/* Desktop: Full footer */}
-      <div className="hidden sm:block max-w-6xl mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto px-4 py-8">
         <div className="flex flex-row items-center justify-between gap-6">
           {/* Logo/Brand */}
           <Link href="/" className="flex items-center gap-2 group">

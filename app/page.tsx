@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useMemo, useCallback } from "react"
-import { Loader2, Link2, Youtube, FileText, Twitter, CheckCircle2, X, Shield, ChevronDown } from "lucide-react"
+import { Loader2, Link2, Youtube, FileText, Twitter, CheckCircle2, X, Shield } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
@@ -16,26 +16,11 @@ import { motion, AnimatePresence } from "framer-motion"
 import { LandingPage } from "@/components/landing/landing-page"
 import Image from "next/image"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip"
-
-// Language options for analysis output
-const ANALYSIS_LANGUAGES = [
-  { code: "en", label: "English", flag: "🇺🇸" },
-  { code: "ar", label: "العربية", flag: "🇸🇦" },
-  { code: "fr", label: "Français", flag: "🇫🇷" },
-  { code: "es", label: "Español", flag: "🇪🇸" },
-  { code: "de", label: "Deutsch", flag: "🇩🇪" },
-] as const
 
 interface UrlPreview {
   url: string
@@ -69,22 +54,8 @@ function HomePageContent({ session }: HomePageProps) {
   const [inputValue, setInputValue] = useState("")
   const [isFocused, setIsFocused] = useState(false)
   const [urlPreview, setUrlPreview] = useState<UrlPreview | null>(null)
-  const [analysisLanguage, setAnalysisLanguage] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("vajra-analysis-language") || "en"
-    }
-    return "en"
-  })
   const inputRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
-
-  // Handle language change
-  const handleLanguageChange = useCallback((newLanguage: string) => {
-    setAnalysisLanguage(newLanguage)
-    if (typeof window !== "undefined") {
-      localStorage.setItem("vajra-analysis-language", newLanguage)
-    }
-  }, [])
 
   // Detect and validate URL as user types
   const detectUrl = useCallback((value: string) => {
@@ -213,13 +184,12 @@ function HomePageContent({ session }: HomePageProps) {
       toast.success("Analyzing content...")
       router.push(`/item/${newContent.id}`)
 
-      // Fire API in background with language preference
+      // Fire API in background
       fetch("/api/process-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           content_id: newContent.id,
-          language: analysisLanguage !== "en" ? analysisLanguage : undefined,
         }),
       })
         .then(async (response) => {
@@ -248,10 +218,21 @@ function HomePageContent({ session }: HomePageProps) {
 
     try {
       const clipboardText = await navigator.clipboard.readText()
-      if (clipboardText.trim()) {
-        setInputValue(clipboardText.trim())
-        // Don't auto-submit - let user verify with preview first
-        inputRef.current?.focus()
+      const trimmedText = clipboardText.trim()
+      if (trimmedText) {
+        setInputValue(trimmedText)
+
+        // Check if it's a valid URL and auto-submit
+        const validation = validateUrl(trimmedText)
+        if (validation.isValid && validation.sanitized) {
+          toast.success("URL detected - starting analysis...")
+          setTimeout(() => {
+            handleSubmit(validation.sanitized!)
+          }, 300)
+        } else {
+          // Not a valid URL, just focus the input
+          inputRef.current?.focus()
+        }
       } else {
         toast.error("Clipboard is empty")
       }
@@ -294,6 +275,28 @@ function HomePageContent({ session }: HomePageProps) {
       e.preventDefault()
       handleSubmit()
     }
+  }
+
+  // Auto-analyze when a valid URL is pasted
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const pastedText = e.clipboardData.getData("text").trim()
+    if (!pastedText) return
+
+    // Validate if it's a URL
+    const validation = validateUrl(pastedText)
+    if (!validation.isValid || !validation.sanitized) return
+
+    // Prevent default paste and manually set the value
+    e.preventDefault()
+    setInputValue(pastedText)
+
+    // Show acknowledgment and auto-submit
+    toast.success("URL detected - starting analysis...")
+
+    // Small delay to show the preview, then auto-submit
+    setTimeout(() => {
+      handleSubmit(validation.sanitized!)
+    }, 300)
   }
 
   const exampleChips = [
@@ -373,6 +376,7 @@ function HomePageContent({ session }: HomePageProps) {
               onFocus={() => setIsFocused(true)}
               onBlur={() => setIsFocused(false)}
               onKeyDown={handleKeyDown}
+              onPaste={handlePaste}
               placeholder="Paste any URL here..."
               disabled={isSubmitting}
               autoComplete="off"
@@ -481,24 +485,21 @@ function HomePageContent({ session }: HomePageProps) {
             )}
           </AnimatePresence>
 
-          {/* Keyboard hint - hidden on mobile */}
-          <p className="hidden sm:block text-center text-white/30 text-xs mt-3">
-            {urlPreview ? (
-              <>Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white/50 font-mono">Enter</kbd> or click Analyze</>
-            ) : (
-              <>Paste a URL to get started</>
-            )}
-          </p>
+          {/* Keyboard hint - only shown when URL is entered, hidden on mobile */}
+          {urlPreview && (
+            <p className="hidden sm:block text-center text-white/30 text-xs mt-3">
+              Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white/50 font-mono">Enter</kbd> or click Analyze
+            </p>
+          )}
         </motion.div>
 
-        {/* Example Chips + Language Selector */}
+        {/* Content type chips */}
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.2 }}
           className="flex flex-wrap items-center justify-center gap-6 sm:gap-8 mt-4 sm:mt-6 px-2"
         >
-            {/* Content type chips */}
             {exampleChips.map((chip) => {
               const Icon = chip.icon
               return (
@@ -511,36 +512,6 @@ function HomePageContent({ session }: HomePageProps) {
                 </div>
               )
             })}
-
-            {/* Language selector */}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-1.5 hover:opacity-70 transition-opacity cursor-pointer">
-                  <span className="text-[10px] leading-none opacity-50">{ANALYSIS_LANGUAGES.find(l => l.code === analysisLanguage)?.flag || "🇺🇸"}</span>
-                  <span className="text-[10px] text-white/40 uppercase">{analysisLanguage}</span>
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10 min-w-[160px]">
-                <div className="px-2 py-1.5 text-[10px] text-white/40 uppercase tracking-wider border-b border-white/10">
-                  AI Output Language
-                </div>
-                {ANALYSIS_LANGUAGES.map((lang) => (
-                  <DropdownMenuItem
-                    key={lang.code}
-                    onClick={() => handleLanguageChange(lang.code)}
-                    className={`cursor-pointer hover:bg-white/10 flex items-center gap-2 ${
-                      analysisLanguage === lang.code ? "text-[#1d9bf0]" : "text-white/80"
-                    }`}
-                  >
-                    <span className="text-base">{lang.flag}</span>
-                    <span>{lang.label}</span>
-                    {analysisLanguage === lang.code && (
-                      <span className="ml-auto text-[#1d9bf0]">✓</span>
-                    )}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
         </motion.div>
       </main>
 

@@ -1,16 +1,15 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, Globe } from "lucide-react"
+import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback, useRef, use } from "react"
 import { supabase } from "@/lib/supabase"
 import type { Tables, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
 import { formatDistanceToNow } from "date-fns"
 import { useRouter } from "next/navigation"
-import withAuth from "@/components/with-auth"
+import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
 import { formatDuration, getYouTubeVideoId, getDomainFromUrl } from "@/lib/utils"
-import type { Session } from "@supabase/supabase-js"
 import { EditAIPromptsModal } from "@/components/edit-ai-prompts-modal"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { TranscriptViewer } from "@/components/ui/transcript-viewer"
@@ -36,17 +35,13 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useIsDesktop } from "@/lib/hooks/use-media-query"
 
-// Props injected by withAuth HOC
-interface WithAuthInjectedProps {
-  session: Session | null
-}
-
-// Next.js page props
-interface PageParams {
+// Next.js page props (what Next.js provides to the page)
+interface PageProps {
   params: Promise<{ id: string }>
 }
 
-type ItemDetailPageProps = PageParams & WithAuthInjectedProps
+// Full props for the inner component (page props + auth props)
+type ItemDetailPageProps = PageProps & WithAuthInjectedProps
 
 type ContentItem = Tables<"content">
 type SummaryItem = Tables<"summaries">
@@ -54,15 +49,6 @@ type SummaryItem = Tables<"summaries">
 interface ContentWithSummary extends ContentItem {
   summary?: SummaryItem | null
 }
-
-// Language options for analysis output
-const ANALYSIS_LANGUAGES = [
-  { code: "en", label: "English", flag: "🇺🇸" },
-  { code: "ar", label: "العربية", flag: "🇸🇦" },
-  { code: "fr", label: "Français", flag: "🇫🇷" },
-  { code: "es", label: "Español", flag: "🇪🇸" },
-  { code: "de", label: "Deutsch", flag: "🇩🇪" },
-] as const
 
 function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPageProps) {
   const params = use(paramsPromise)
@@ -93,12 +79,6 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const [isDetailedExpanded, setIsDetailedExpanded] = useState(true)
   const [isShareModalOpen, setIsShareModalOpen] = useState(false)
-  const [analysisLanguage, setAnalysisLanguage] = useState(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("vajra-analysis-language") || "en"
-    }
-    return "en"
-  })
   const youtubePlayerRef = useRef<YouTubePlayerRef>(null)
   const [domainStats, setDomainStats] = useState<{
     total_analyses: number
@@ -154,7 +134,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
         toast.error("Failed to save rating")
       }
     },
-    [session, item],
+    [session?.user?.id, item],
   )
 
   const handleDelete = useCallback(async () => {
@@ -180,10 +160,8 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
     }
   }, [])
 
-  const handleRegenerate = useCallback(async (languageOverride?: string) => {
+  const handleRegenerate = useCallback(async () => {
     if (!item) return
-
-    const targetLanguage = languageOverride || analysisLanguage
 
     setIsRegenerating(true)
 
@@ -197,7 +175,6 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
       body: JSON.stringify({
         content_id: item.id,
         force_regenerate: true,
-        language: targetLanguage !== "en" ? targetLanguage : undefined,
       }),
     })
       .then(response => {
@@ -214,23 +191,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
 
     // Start polling immediately to pick up progressive updates
     setIsPolling(true)
-  }, [item, analysisLanguage])
-
-  // Handle language change - saves preference and optionally regenerates
-  const handleLanguageChange = useCallback((newLanguage: string) => {
-    setAnalysisLanguage(newLanguage)
-    if (typeof window !== "undefined") {
-      localStorage.setItem("vajra-analysis-language", newLanguage)
-    }
-
-    // Ask if user wants to regenerate in new language
-    if (item?.summary && newLanguage !== analysisLanguage) {
-      const langLabel = ANALYSIS_LANGUAGES.find(l => l.code === newLanguage)?.label || newLanguage
-      if (confirm(`Regenerate analysis in ${langLabel}?`)) {
-        handleRegenerate(newLanguage)
-      }
-    }
-  }, [item, analysisLanguage, handleRegenerate])
+  }, [item])
 
   // Fetch content and summary data
   const fetchContentData = useCallback(async (showLoadingState = true) => {
@@ -273,6 +234,37 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
     return combinedItem
   }, [params.id])
 
+  // Lightweight polling - only fetch status fields to minimize bandwidth
+  const pollContentStatus = useCallback(async (): Promise<boolean> => {
+    // Only fetch minimal fields needed to check processing status
+    const { data: contentStatus } = await supabase
+      .from("content")
+      .select("title, full_text")
+      .eq("id", params.id)
+      .single()
+
+    if (!contentStatus) return true // Still processing
+
+    // Check content status
+    const hasPlaceholderTitle = contentStatus.title?.startsWith("Analyzing:")
+    const noFullText = !contentStatus.full_text || contentStatus.full_text.startsWith("PROCESSING_FAILED::")
+
+    if (hasPlaceholderTitle || noFullText) return true // Still processing
+
+    // Check summary status
+    const { data: summaryStatus } = await supabase
+      .from("summaries")
+      .select("processing_status")
+      .eq("content_id", params.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+
+    const summaryNotComplete = !summaryStatus?.processing_status || summaryStatus.processing_status !== "complete"
+
+    return summaryNotComplete
+  }, [params.id])
+
   useEffect(() => {
     // Fetch user's rating for this content
     const fetchRating = async () => {
@@ -310,9 +302,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
         pollingIntervalRef.current = null
       }
     }
-  }, [params.id, session, fetchContentData, isContentProcessing])
+  }, [params.id, session?.user?.id, fetchContentData, isContentProcessing])
 
-  // Polling effect - runs when isPolling changes
+  // Polling effect - uses lightweight status check to minimize bandwidth
   useEffect(() => {
     if (!isPolling) {
       if (pollingIntervalRef.current) {
@@ -322,12 +314,13 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
       return
     }
 
-    // Poll every 2 seconds for updates
+    // Poll every 2 seconds using lightweight status check
     pollingIntervalRef.current = setInterval(async () => {
-      const data = await fetchContentData(false)
+      const stillProcessing = await pollContentStatus()
 
-      // Stop polling when content is ready
-      if (!isContentProcessing(data)) {
+      // Only fetch full content when processing is complete
+      if (!stillProcessing) {
+        await fetchContentData(false)
         setIsPolling(false)
         toast.success("Content ready!")
       }
@@ -349,7 +342,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
       }
       clearTimeout(maxPollingTimeout)
     }
-  }, [isPolling, fetchContentData, isContentProcessing])
+  }, [isPolling, pollContentStatus, fetchContentData])
 
   // Fetch domain credibility stats
   useEffect(() => {
@@ -721,47 +714,18 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                       )}
                     </span>
                     <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
-                    {/* Worth Watching (mobile only) + Language selector grouped together */}
-                    <div className="flex items-center gap-3">
-                      {/* Mobile-only inline badge - desktop has the full card below */}
-                      {!isDesktop && (() => {
-                        const triage = summary?.triage as unknown as TriageData | null
-                        const score = triage?.signal_noise_score
-                        if (score === undefined || score === null) return null
-                        return (
-                          <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/15 text-[#1d9bf0] flex items-center gap-1 text-xs">
-                            <span>Worth</span>
-                            <span className="font-medium">{score + 1}/4</span>
-                          </span>
-                        )
-                      })()}
-                      {/* Language selector */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="flex items-center gap-0.5 hover:opacity-80 transition-opacity cursor-pointer">
-                            <span className="text-sm">{ANALYSIS_LANGUAGES.find(l => l.code === analysisLanguage)?.flag || "🇺🇸"}</span>
-                            <ChevronDown className="w-2.5 h-2.5 text-gray-500" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10 min-w-[140px]">
-                          {ANALYSIS_LANGUAGES.map((lang) => (
-                            <DropdownMenuItem
-                              key={lang.code}
-                              onClick={() => handleLanguageChange(lang.code)}
-                              className={`cursor-pointer hover:bg-white/10 flex items-center gap-2 ${
-                                analysisLanguage === lang.code ? "text-[#1d9bf0]" : "text-white/80"
-                              }`}
-                            >
-                              <span className="text-base">{lang.flag}</span>
-                              <span>{lang.label}</span>
-                              {analysisLanguage === lang.code && (
-                                <span className="ml-auto text-[#1d9bf0]">✓</span>
-                              )}
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    {/* Worth Watching - mobile only inline badge */}
+                    {!isDesktop && (() => {
+                      const triage = summary?.triage as unknown as TriageData | null
+                      const score = triage?.signal_noise_score
+                      if (score === undefined || score === null) return null
+                      return (
+                        <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/15 text-[#1d9bf0] flex items-center gap-1 text-xs">
+                          <span>Worth</span>
+                          <span className="font-medium">{score + 1}/4</span>
+                        </span>
+                      )
+                    })()}
                   </div>
                 </div>
 

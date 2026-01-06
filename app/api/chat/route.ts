@@ -203,10 +203,13 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not load chat prompt." }, { status: 500 })
     }
 
-    // Build comprehensive context
+    // Build context - use full content only for first few messages, then use summaries
+    // This saves significant tokens for longer conversations
+    const isFirstMessages = limitedMessages.filter(m => m.role === "user").length <= 2
+
     let contextParts: string[] = []
 
-    // Content metadata
+    // Content metadata (always included)
     contextParts.push(`## Content Information`)
     contextParts.push(`- **Title:** ${contentData.title || "Untitled"}`)
     contextParts.push(`- **Type:** ${contentData.type || "Unknown"}`)
@@ -214,7 +217,7 @@ export async function POST(req: NextRequest) {
     if (contentData.url) contextParts.push(`- **Source:** ${contentData.url}`)
     contextParts.push("")
 
-    // Summary data if available
+    // Summary data if available (always included - it's compact)
     if (summaryData) {
       if (summaryData.brief_overview) {
         contextParts.push(`## Brief Overview`)
@@ -247,6 +250,7 @@ export async function POST(req: NextRequest) {
         contextParts.push("")
       }
 
+      // Detailed summary always included as it provides comprehensive coverage
       if (summaryData.detailed_summary) {
         contextParts.push(`## Detailed Analysis`)
         contextParts.push(summaryData.detailed_summary)
@@ -254,10 +258,20 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Full text (transcript/article)
-    if (contentData.full_text) {
+    // Full text (transcript/article) - ONLY for first messages to save tokens
+    // For follow-up questions, the summaries + conversation history provide enough context
+    if (contentData.full_text && isFirstMessages) {
+      // Truncate very long content to avoid token limits
+      const maxFullTextChars = 50000 // ~12.5k tokens
+      const fullText = contentData.full_text.length > maxFullTextChars
+        ? contentData.full_text.slice(0, maxFullTextChars) + "\n\n[Content truncated for length...]"
+        : contentData.full_text
       contextParts.push(`## Full Content`)
-      contextParts.push(contentData.full_text)
+      contextParts.push(fullText)
+    } else if (contentData.full_text && !isFirstMessages) {
+      // For follow-up messages, just note that full content was provided earlier
+      contextParts.push(`## Note`)
+      contextParts.push(`The full content/transcript was provided in earlier context. Use the summaries and conversation history to answer. If the user asks about specific quotes or details, you can reference what was discussed earlier.`)
     }
 
     const contentContext = contextParts.join("\n")
