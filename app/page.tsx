@@ -529,20 +529,52 @@ export default function HomePage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session)
-      setLoading(false)
-    })
+    let isMounted = true
+
+    // Get initial session with timeout to prevent infinite loading
+    const getSessionWithTimeout = async () => {
+      try {
+        // Create a promise that rejects after 5 seconds
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          setTimeout(() => reject(new Error("Session timeout")), 5000)
+        })
+
+        // Race between getSession and timeout
+        const { data: { session } } = await Promise.race([
+          supabase.auth.getSession(),
+          timeoutPromise
+        ])
+
+        if (isMounted) {
+          setSession(session)
+          setLoading(false)
+        }
+      } catch (error) {
+        console.warn("Session fetch error or timeout:", error)
+        // On timeout/error, assume no session and show landing page
+        if (isMounted) {
+          setSession(null)
+          setLoading(false)
+        }
+      }
+    }
+
+    getSessionWithTimeout()
 
     // Listen for auth changes
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session)
+      if (isMounted) {
+        setSession(session)
+        setLoading(false) // Also clear loading on auth change
+      }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      isMounted = false
+      subscription.unsubscribe()
+    }
   }, [])
 
   // Show loading state briefly
