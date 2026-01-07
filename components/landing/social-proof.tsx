@@ -4,8 +4,8 @@ import { motion } from "framer-motion"
 
 const stats = [
   { value: "10K+", label: "Content Analyzed" },
-  { value: "99%", label: "Accuracy Rate" },
-  { value: "<30s", label: "Analysis Time" },
+  { value: "AI", label: "Advanced Analysis" },
+  { value: "Fast", label: "Processing Speed" },
   { value: "24/7", label: "Availability" },
 ]
 
