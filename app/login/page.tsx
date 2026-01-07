@@ -139,13 +139,13 @@ export default function LoginPage() {
             </div>
             <div className="w-px h-10 bg-white/10" />
             <div className="text-center">
-              <div className="text-3xl font-bold text-white">99%</div>
-              <div className="text-white/40 text-sm">Accuracy</div>
+              <div className="text-3xl font-bold text-white">AI</div>
+              <div className="text-white/40 text-sm">Advanced Analysis</div>
             </div>
             <div className="w-px h-10 bg-white/10" />
             <div className="text-center">
-              <div className="text-3xl font-bold text-white">&lt;30s</div>
-              <div className="text-white/40 text-sm">Analysis Time</div>
+              <div className="text-3xl font-bold text-white">Fast</div>
+              <div className="text-white/40 text-sm">Processing</div>
             </div>
           </motion.div>
         </div>
