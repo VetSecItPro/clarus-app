@@ -4,7 +4,7 @@ import { useState, type FormEvent, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import { clearAuthCache } from "@/components/with-auth"
+import { setAuthCache } from "@/components/with-auth"
 import { toast } from "sonner"
 import { AlertCircle, Info, Shield, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react"
 import LoadingSpinner from "@/components/loading-spinner"
@@ -51,8 +51,22 @@ export default function LoginPage() {
       setError(signInError.message)
       toast.error(`Login failed: ${signInError.message}`)
     } else {
-      // Clear cached auth state so homepage re-fetches fresh session
-      clearAuthCache()
+      // Get the session and subscription status to cache before navigating
+      const { data: { session } } = await supabase.auth.getSession()
+
+      type SubscriptionStatus = "active" | "trialing" | "grandfathered" | "canceled" | "none" | null
+      let subscriptionStatus: SubscriptionStatus = null
+      if (session?.user) {
+        const { data: userData } = await supabase
+          .from("users")
+          .select("subscription_status")
+          .eq("id", session.user.id)
+          .single()
+        subscriptionStatus = (userData?.subscription_status as SubscriptionStatus) || "none"
+      }
+
+      // Set auth cache with session so homepage doesn't need to re-fetch
+      setAuthCache(session, subscriptionStatus)
       toast.success("Login successful!")
       router.push("/")
       router.refresh()
