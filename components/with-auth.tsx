@@ -25,6 +25,13 @@ export function getCachedSession(): { session: Session | null; initialized: bool
   return { session: cachedSession, initialized: authInitialized }
 }
 
+// Reset auth cache - call after successful login to force re-fetch
+export function clearAuthCache() {
+  authInitialized = false
+  cachedSession = null
+  cachedSubscriptionStatus = null
+}
+
 /**
  * HOC that wraps a component with authentication logic.
  * Uses aggressive caching to prevent any flickering between pages.
