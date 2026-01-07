@@ -15,6 +15,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
+import { clearAuthCache } from "@/components/with-auth"
 import type { User } from "@supabase/supabase-js"
 
 interface GlasmorphicSettingsButtonProps {
@@ -164,12 +165,16 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
   const handleLogout = async () => {
     setLoggingOut(true)
     try {
-      // Clear cached auth state before signing out
+      // Clear in-memory auth cache first
+      clearAuthCache()
+
+      // Clear localStorage/sessionStorage items
       if (typeof window !== "undefined") {
         localStorage.removeItem("vajra-remember-session")
         localStorage.removeItem("vajra-session-expiry")
         sessionStorage.removeItem("vajra-session-active")
       }
+
       await supabase.auth.signOut()
       // Force a hard navigation to clear all cached state
       window.location.href = "/login"
