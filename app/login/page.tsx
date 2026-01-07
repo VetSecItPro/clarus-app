@@ -4,6 +4,7 @@ import { useState, type FormEvent, useEffect } from "react"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { supabase } from "@/lib/supabase"
+import { clearAuthCache } from "@/components/with-auth"
 import { toast } from "sonner"
 import { AlertCircle, Info, Shield, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react"
 import LoadingSpinner from "@/components/loading-spinner"
@@ -50,7 +51,8 @@ export default function LoginPage() {
       setError(signInError.message)
       toast.error(`Login failed: ${signInError.message}`)
     } else {
-      // Session persists until explicit logout (Instagram-style)
+      // Clear cached auth state so homepage re-fetches fresh session
+      clearAuthCache()
       toast.success("Login successful!")
       router.push("/")
       router.refresh()
