@@ -325,7 +325,7 @@ export default function SignUpPage() {
             >
               {[
                 "Analyze YouTube videos, articles & X posts",
-                "AI-powered fact-checking in under 30 seconds",
+                "Fast AI-powered fact-checking and analysis",
                 "Get signal-to-noise ratings for any content",
               ].map((feature, index) => (
                 <div key={index} className="flex items-center gap-3">
@@ -510,6 +510,11 @@ export default function SignUpPage() {
                   </>
                 )}
               </button>
+              {!agreeToTerms && !isLoading && (
+                <p className="text-xs text-white/40 text-center">
+                  Please agree to the Terms of Service to continue
+                </p>
+              )}
             </form>
 
           </motion.div>

@@ -229,35 +229,35 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
     return combinedItem
   }, [params.id])
 
-  // Lightweight polling - only fetch status fields to minimize bandwidth
-  const pollContentStatus = useCallback(async (): Promise<boolean> => {
-    // Only fetch minimal fields needed to check processing status
-    const { data: contentStatus } = await supabase
-      .from("content")
-      .select("title, full_text")
-      .eq("id", params.id)
-      .single()
+  // Progressive polling - fetch full content and summary to show cards as they become available
+  const pollContentAndUpdate = useCallback(async (): Promise<boolean> => {
+    // Fetch full content and summary in parallel for progressive updates
+    const [contentResult, summaryResult] = await Promise.all([
+      supabase.from("content").select("*").eq("id", params.id).single(),
+      supabase
+        .from("summaries")
+        .select("*")
+        .eq("content_id", params.id)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
 
-    if (!contentStatus) return true // Still processing
+    if (!contentResult.data) return true // Still processing
 
-    // Check content status
-    const hasPlaceholderTitle = contentStatus.title?.startsWith("Analyzing:")
-    const noFullText = !contentStatus.full_text || contentStatus.full_text.startsWith("PROCESSING_FAILED::")
+    // Update state with latest data (enables progressive card rendering)
+    const combinedItem: ContentWithSummary = {
+      ...contentResult.data,
+      summary: summaryResult.data || null,
+    }
+    setItem(combinedItem)
 
-    if (hasPlaceholderTitle || noFullText) return true // Still processing
+    // Check if still processing
+    const hasPlaceholderTitle = contentResult.data.title?.startsWith("Analyzing:")
+    const noFullText = !contentResult.data.full_text || contentResult.data.full_text.startsWith("PROCESSING_FAILED::")
+    const summaryNotComplete = !summaryResult.data?.processing_status || summaryResult.data.processing_status !== "complete"
 
-    // Check summary status
-    const { data: summaryStatus } = await supabase
-      .from("summaries")
-      .select("processing_status")
-      .eq("content_id", params.id)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
-
-    const summaryNotComplete = !summaryStatus?.processing_status || summaryStatus.processing_status !== "complete"
-
-    return summaryNotComplete
+    return hasPlaceholderTitle || noFullText || summaryNotComplete
   }, [params.id])
 
   useEffect(() => {
@@ -298,7 +298,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
     }
   }, [params.id, session?.user?.id, fetchContentData, isContentProcessing])
 
-  // Polling effect - uses lightweight status check to minimize bandwidth
+  // Polling effect - progressively fetches content and updates UI as cards become available
   useEffect(() => {
     if (!isPolling) {
       if (pollingIntervalRef.current) {
@@ -308,17 +308,30 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
       return
     }
 
-    // Poll every 2 seconds using lightweight status check
+    // Poll every 2 seconds - each poll updates state with latest data for progressive card rendering
     pollingIntervalRef.current = setInterval(async () => {
-      const stillProcessing = await pollContentStatus()
+      const stillProcessing = await pollContentAndUpdate()
 
-      // Only fetch full content when processing is complete
+      // Stop polling when all processing is complete
       if (!stillProcessing) {
-        await fetchContentData(false)
         setIsPolling(false)
-        toast.success("Content ready!")
+        toast.success("Analysis complete!")
       }
     }, 2000)
+
+    // Handle visibility change - immediately poll when tab becomes visible again
+    // This fixes mobile Safari throttling issue where setInterval is paused in background
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === "visible" && isPolling) {
+        // Immediately fetch latest data when user returns to tab
+        const stillProcessing = await pollContentAndUpdate()
+        if (!stillProcessing) {
+          setIsPolling(false)
+          toast.success("Analysis complete!")
+        }
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
 
     // Stop polling after 2 minutes (safety timeout)
     const maxPollingTimeout = setTimeout(() => {
@@ -335,8 +348,9 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
         pollingIntervalRef.current = null
       }
       clearTimeout(maxPollingTimeout)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [isPolling, pollContentStatus, fetchContentData])
+  }, [isPolling, pollContentAndUpdate])
 
   // Fetch domain credibility stats
   useEffect(() => {

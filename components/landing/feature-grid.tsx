@@ -47,7 +47,7 @@ const secondaryFeatures = [
   {
     icon: Zap,
     title: "Lightning Fast",
-    description: "Results in under 30 seconds",
+    description: "Fast AI-powered analysis",
   },
   {
     icon: Clock,
