@@ -24,7 +24,7 @@ export default function MobileBottomNav() {
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-2xl border-t border-white/[0.06] sm:hidden safe-area-pb">
-      <div className="flex items-center justify-around h-[64px]">
+      <div className="flex items-center justify-around h-[60px]">
         {navItems.map((item) => {
           // Only show as active if Settings dropdown is NOT open
           const isActive = pathname === item.href && !settingsOpen

@@ -307,9 +307,9 @@ body {
   box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.1);
 }
 
-/* Mobile bottom navigation safe area */
+/* Mobile bottom navigation safe area - extra padding for iPhone home indicator */
 .safe-area-pb {
-  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
 }
 
 /* ========================================
