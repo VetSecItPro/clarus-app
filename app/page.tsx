@@ -223,13 +223,11 @@ function HomePageContent({ session }: HomePageProps) {
       if (trimmedText) {
         setInputValue(trimmedText)
 
-        // Check if it's a valid URL and auto-submit
+        // Check if it's a valid URL and auto-submit immediately
         const validation = validateUrl(trimmedText)
         if (validation.isValid && validation.sanitized) {
           toast.success("URL detected - starting analysis...")
-          setTimeout(() => {
-            handleSubmit(validation.sanitized!)
-          }, 300)
+          handleSubmit(validation.sanitized!)
         } else {
           // Not a valid URL, just focus the input
           inputRef.current?.focus()
@@ -291,13 +289,9 @@ function HomePageContent({ session }: HomePageProps) {
     e.preventDefault()
     setInputValue(pastedText)
 
-    // Show acknowledgment and auto-submit
+    // Show acknowledgment and auto-submit immediately
     toast.success("URL detected - starting analysis...")
-
-    // Small delay to show the preview, then auto-submit
-    setTimeout(() => {
-      handleSubmit(validation.sanitized!)
-    }, 300)
+    handleSubmit(validation.sanitized!)
   }
 
   const exampleChips = [
@@ -371,7 +365,8 @@ function HomePageContent({ session }: HomePageProps) {
 
             <input
               ref={inputRef}
-              type="text"
+              type="url"
+              name="content-url"
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onFocus={() => setIsFocused(true)}
@@ -384,6 +379,9 @@ function HomePageContent({ session }: HomePageProps) {
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
+              data-1p-ignore
+              data-lpignore="true"
+              data-form-type="other"
               className="flex-1 bg-transparent text-white placeholder-white/30 text-base outline-none disabled:opacity-50"
               style={{
                 // iOS Safari specific resets to remove gray bar/styling
