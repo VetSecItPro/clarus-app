@@ -1,7 +1,7 @@
 "use client"
 
 import withAuth from "@/components/with-auth"
-import { useEffect, useState, useCallback, memo } from "react"
+import { useEffect, useState, useCallback, memo, useMemo } from "react"
 import type { Session } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
@@ -16,6 +16,9 @@ import { cn } from "@/lib/utils"
 import { formatDuration } from "@/lib/utils"
 import { useCommunityFeed, type FeedItem } from "@/lib/hooks/use-community-feed"
 import { FeedListSkeleton } from "@/components/ui/content-skeleton"
+
+// Shimmer placeholder for better perceived loading
+const shimmerBase64 = "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9IiMxYTFhMWEiLz48L3N2Zz4="
 
 type SummaryData = {
   brief_overview: string | null
@@ -228,6 +231,8 @@ function CommunityPageContent({ session }: { session: Session | null }) {
                   className="object-cover"
                   sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
                   loading="lazy"
+                  placeholder="blur"
+                  blurDataURL={shimmerBase64}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -305,6 +310,8 @@ function CommunityPageContent({ session }: { session: Session | null }) {
                   className="object-cover"
                   sizes="112px"
                   loading="lazy"
+                  placeholder="blur"
+                  blurDataURL={shimmerBase64}
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">

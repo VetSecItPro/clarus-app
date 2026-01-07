@@ -509,7 +509,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                   <button
                     onClick={() => handleTabChange("summary")}
                     style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                    className={`px-4 sm:px-5 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 ${
+                    className={`px-3 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 ${
                       activeMainTab === "summary"
                         ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
                         : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
@@ -520,7 +520,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
                   <button
                     onClick={() => handleTabChange("fulltext")}
                     style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                    className={`px-4 sm:px-5 py-1.5 sm:py-2 text-[11px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
+                    className={`px-3 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
                       activeMainTab === "fulltext"
                         ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
                         : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"

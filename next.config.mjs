@@ -14,7 +14,12 @@ const nextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   experimental: {
-    optimizePackageImports: ['lucide-react', 'framer-motion', 'date-fns'],
+    optimizePackageImports: ['lucide-react', 'framer-motion', 'date-fns', 'recharts'],
+    // Cache client-side navigations for faster page transitions
+    staleTimes: {
+      dynamic: 30,  // Cache dynamic pages for 30 seconds
+      static: 180,  // Cache static pages for 3 minutes
+    },
   },
   compress: true,
   poweredByHeader: false,
