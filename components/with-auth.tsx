@@ -32,6 +32,13 @@ export function clearAuthCache() {
   cachedSubscriptionStatus = null
 }
 
+// Set auth cache with new session - call after successful login
+export function setAuthCache(session: Session | null, subscriptionStatus?: SubscriptionStatus) {
+  cachedSession = session
+  cachedSubscriptionStatus = subscriptionStatus ?? null
+  authInitialized = true
+}
+
 /**
  * HOC that wraps a component with authentication logic.
  * Uses aggressive caching to prevent any flickering between pages.
