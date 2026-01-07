@@ -319,6 +319,20 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
       }
     }, 2000)
 
+    // Handle visibility change - immediately poll when tab becomes visible again
+    // This fixes mobile Safari throttling issue where setInterval is paused in background
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === "visible" && isPolling) {
+        // Immediately fetch latest data when user returns to tab
+        const stillProcessing = await pollContentAndUpdate()
+        if (!stillProcessing) {
+          setIsPolling(false)
+          toast.success("Analysis complete!")
+        }
+      }
+    }
+    document.addEventListener("visibilitychange", handleVisibilityChange)
+
     // Stop polling after 2 minutes (safety timeout)
     const maxPollingTimeout = setTimeout(() => {
       if (pollingIntervalRef.current) {
@@ -334,6 +348,7 @@ function ItemDetailPageContent({ params: paramsPromise, session }: ItemDetailPag
         pollingIntervalRef.current = null
       }
       clearTimeout(maxPollingTimeout)
+      document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
   }, [isPolling, pollContentAndUpdate])
 
