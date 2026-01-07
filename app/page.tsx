@@ -165,11 +165,29 @@ function HomePageContent({ session }: HomePageProps) {
         return
       }
 
-      // Insert content record
-      const placeholderTitle = `Analyzing: ${validUrl.substring(0, 50)}${validUrl.length > 50 ? "..." : ""}`
+      // Fetch title immediately (don't wait too long - 3-4 second timeout)
+      let contentTitle: string | null = null
+      try {
+        const titleResponse = await fetch("/api/fetch-title", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: validUrl, type }),
+        })
+        if (titleResponse.ok) {
+          const titleData = await titleResponse.json()
+          contentTitle = titleData.title
+        }
+      } catch (err) {
+        console.warn("Title fetch failed, using placeholder:", err)
+      }
+
+      // Use fetched title or fallback to placeholder
+      const title = contentTitle || `Analyzing: ${validUrl.substring(0, 50)}${validUrl.length > 50 ? "..." : ""}`
+
+      // Insert content record with actual title
       const { data: newContent, error: insertError } = await supabase
         .from("content")
-        .insert([{ url: validUrl, type, user_id: user.id, title: placeholderTitle, full_text: null }])
+        .insert([{ url: validUrl, type, user_id: user.id, title, full_text: null }])
         .select("id")
         .single()
 
@@ -179,13 +197,13 @@ function HomePageContent({ session }: HomePageProps) {
         return
       }
 
-      // Clear input and redirect
+      // Clear input and redirect immediately
       setInputValue("")
       window.dispatchEvent(new CustomEvent("contentAdded"))
       toast.success("Analyzing content...")
       router.push(`/item/${newContent.id}`)
 
-      // Fire API in background
+      // Fire API in background (non-blocking)
       fetch("/api/process-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
