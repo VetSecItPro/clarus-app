@@ -9,49 +9,80 @@ import { AlertCircle, CheckCircle2, Shield, Mail, Lock, Eye, EyeOff, ArrowRight,
 import { motion, AnimatePresence } from "framer-motion"
 
 function PasswordStrengthIndicator({ password }: { password: string }) {
-  const strength = useMemo(() => {
-    let score = 0
-    if (password.length >= 6) score++
-    if (password.length >= 8) score++
-    if (/[A-Z]/.test(password)) score++
-    if (/[0-9]/.test(password)) score++
-    if (/[^A-Za-z0-9]/.test(password)) score++
-    return score
-  }, [password])
+  const requirements = useMemo(() => ({
+    minLength: password.length >= 10,
+    hasUppercase: /[A-Z]/.test(password),
+    hasLowercase: /[a-z]/.test(password),
+    hasSpecial: /[^A-Za-z0-9]/.test(password),
+  }), [password])
+
+  const metCount = Object.values(requirements).filter(Boolean).length
 
   const getStrengthLabel = () => {
-    if (strength === 0) return "Too weak"
-    if (strength <= 2) return "Weak"
-    if (strength <= 3) return "Fair"
-    if (strength <= 4) return "Good"
+    if (metCount === 0) return "Too weak"
+    if (metCount === 1) return "Weak"
+    if (metCount === 2) return "Fair"
+    if (metCount === 3) return "Good"
     return "Strong"
   }
 
   const getStrengthColor = () => {
-    if (strength === 0) return "bg-white/20"
-    if (strength <= 2) return "bg-red-500"
-    if (strength <= 3) return "bg-yellow-500"
-    if (strength <= 4) return "bg-blue-500"
+    if (metCount === 0) return "bg-white/20"
+    if (metCount === 1) return "bg-red-500"
+    if (metCount === 2) return "bg-yellow-500"
+    if (metCount === 3) return "bg-blue-500"
     return "bg-green-500"
   }
 
+  const requirementsList = [
+    { key: 'minLength', label: 'At least 10 characters', met: requirements.minLength },
+    { key: 'hasUppercase', label: 'One uppercase letter', met: requirements.hasUppercase },
+    { key: 'hasLowercase', label: 'One lowercase letter', met: requirements.hasLowercase },
+    { key: 'hasSpecial', label: 'One special character (!@#$%...)', met: requirements.hasSpecial },
+  ]
+
   return (
-    <div className="mt-2">
-      <div className="flex gap-1">
-        {[1, 2, 3, 4, 5].map((level) => (
-          <div
-            key={level}
-            className={`h-1 flex-1 rounded-full transition-all duration-300 ${
-              level <= strength ? getStrengthColor() : "bg-white/10"
-            }`}
-          />
+    <div className="mt-3 space-y-3">
+      {/* Strength bar */}
+      <div>
+        <div className="flex gap-1">
+          {[1, 2, 3, 4].map((level) => (
+            <div
+              key={level}
+              className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
+                level <= metCount ? getStrengthColor() : "bg-white/10"
+              }`}
+            />
+          ))}
+        </div>
+        {password && (
+          <p className={`text-xs mt-1.5 font-medium ${metCount <= 1 ? "text-red-400" : metCount === 2 ? "text-yellow-400" : metCount === 3 ? "text-blue-400" : "text-green-400"}`}>
+            {getStrengthLabel()}
+          </p>
+        )}
+      </div>
+
+      {/* Requirements checklist */}
+      <div className="space-y-1.5">
+        {requirementsList.map((req) => (
+          <div key={req.key} className="flex items-center gap-2">
+            <div className={`w-4 h-4 rounded-full flex items-center justify-center transition-all duration-200 ${
+              req.met ? "bg-green-500/20" : "bg-white/5"
+            }`}>
+              {req.met ? (
+                <CheckCircle2 className="w-3 h-3 text-green-400" />
+              ) : (
+                <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+              )}
+            </div>
+            <span className={`text-xs transition-colors duration-200 ${
+              req.met ? "text-green-400" : "text-white/40"
+            }`}>
+              {req.label}
+            </span>
+          </div>
         ))}
       </div>
-      {password && (
-        <p className={`text-xs mt-1.5 ${strength <= 2 ? "text-red-400" : strength <= 3 ? "text-yellow-400" : "text-green-400"}`}>
-          {getStrengthLabel()}
-        </p>
-      )}
     </div>
   )
 }
@@ -152,9 +183,25 @@ export default function SignUpPage() {
       return
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.")
-      toast.error("Password must be at least 6 characters long.")
+    // Password complexity validation
+    const passwordErrors: string[] = []
+    if (password.length < 10) {
+      passwordErrors.push("at least 10 characters")
+    }
+    if (!/[A-Z]/.test(password)) {
+      passwordErrors.push("one uppercase letter")
+    }
+    if (!/[a-z]/.test(password)) {
+      passwordErrors.push("one lowercase letter")
+    }
+    if (!/[^A-Za-z0-9]/.test(password)) {
+      passwordErrors.push("one special character")
+    }
+
+    if (passwordErrors.length > 0) {
+      const errorMsg = `Password must contain ${passwordErrors.join(", ")}.`
+      setError(errorMsg)
+      toast.error(errorMsg)
       return
     }
 
