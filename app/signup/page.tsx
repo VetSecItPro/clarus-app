@@ -510,6 +510,11 @@ export default function SignUpPage() {
                   </>
                 )}
               </button>
+              {!agreeToTerms && !isLoading && (
+                <p className="text-xs text-white/40 text-center">
+                  Please agree to the Terms of Service to continue
+                </p>
+              )}
             </form>
 
           </motion.div>
