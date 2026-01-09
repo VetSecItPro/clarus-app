@@ -40,7 +40,7 @@ export default function LoginPage() {
     setError(null)
     setIsLoading(true)
 
-    const { error: signInError } = await supabase.auth.signInWithPassword({
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({
       email,
       password,
     })
@@ -50,9 +50,9 @@ export default function LoginPage() {
     if (signInError) {
       setError(signInError.message)
       toast.error(`Login failed: ${signInError.message}`)
-    } else {
-      // Get the session and subscription status to cache before navigating
-      const { data: { session } } = await supabase.auth.getSession()
+    } else if (data.session) {
+      // Use session directly from signInWithPassword response (more reliable than getSession)
+      const session = data.session
 
       type SubscriptionStatus = "active" | "trialing" | "grandfathered" | "canceled" | "none" | null
       let subscriptionStatus: SubscriptionStatus = null
@@ -70,6 +70,10 @@ export default function LoginPage() {
       toast.success("Login successful!")
       router.push("/")
       router.refresh()
+    } else {
+      // Edge case: login succeeded but no session returned
+      setError("Login succeeded but session not established. Please try again.")
+      toast.error("Session error. Please try again.")
     }
   }
 

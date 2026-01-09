@@ -3,6 +3,13 @@ import { NextResponse, type NextRequest } from "next/server"
 import type { Database, Json, Tables, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
 import { validateContentId, checkRateLimit } from "@/lib/validation"
 
+// Extend Vercel function timeout to 5 minutes (requires Pro plan)
+// This is critical for processing long videos that require multiple AI calls
+export const maxDuration = 300
+
+// Timeout for individual AI API calls (2 minutes per call)
+const AI_CALL_TIMEOUT_MS = 120000
+
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supadataApiKey = process.env.SUPADATA_API_KEY
@@ -365,6 +372,9 @@ async function getModelSummary(
 
   try {
     console.log(`API: Calling OpenRouter with model ${openRouterModelId}...`)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -374,7 +384,10 @@ async function getModelSummary(
         "X-Title": "Vajra",
       },
       body: JSON.stringify(requestBody),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       const errorBody = await response.text()
@@ -426,12 +439,13 @@ async function getModelSummary(
     console.log("API: Summary generated successfully for model:", openRouterModelId)
     return summary
   } catch (error: any) {
-    console.error(`Failed to process summary with OpenRouter: ${error.message}`)
+    const isTimeout = error.name === "AbortError"
+    console.error(`Failed to process summary with OpenRouter: ${isTimeout ? "Request timed out" : error.message}`)
     return {
       error: true,
       modelName: openRouterModelId,
-      reason: "RequestFailed",
-      finalErrorMessage: error.message,
+      reason: isTimeout ? "Timeout" : "RequestFailed",
+      finalErrorMessage: isTimeout ? "Request timed out after 2 minutes" : error.message,
     }
   }
 }
@@ -487,6 +501,7 @@ async function generateSectionWithAI(
   textToAnalyze: string,
   promptType: string,
   contentType?: string,
+  maxRetries: number = 3,
 ): Promise<{ content: any; error?: string }> {
   if (!openRouterApiKey) {
     return { content: null, error: "OpenRouter API key not configured" }
@@ -515,47 +530,99 @@ async function generateSectionWithAI(
   if (prompt.max_tokens !== null) requestBody.max_tokens = prompt.max_tokens
   if (prompt.expect_json) requestBody.response_format = { type: "json_object" }
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openRouterApiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://vajra.vercel.app",
-        "X-Title": "Vajra Truth Checker",
-      },
-      body: JSON.stringify(requestBody),
-    })
+  // Self-healing retry loop with exponential backoff
+  let lastError: string = ""
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      console.log(`API: [${promptType}] Attempt ${attempt}/${maxRetries}...`)
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
 
-    if (!response.ok) {
-      const errorBody = await response.text()
-      return { content: null, error: `API Error (${response.status}): ${errorBody}` }
-    }
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openRouterApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://vajra.vercel.app",
+          "X-Title": "Vajra Truth Checker",
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      })
 
-    const result = await response.json()
-    const rawContent = result.choices[0]?.message?.content
+      clearTimeout(timeoutId)
 
-    if (!rawContent) {
-      return { content: null, error: "No content in API response" }
-    }
+      if (!response.ok) {
+        const errorBody = await response.text()
+        lastError = `API Error (${response.status}): ${errorBody}`
+        console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
 
-    if (prompt.expect_json) {
-      try {
-        // Try to parse JSON, handling markdown code blocks
-        const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)\s*```/)
-        if (jsonMatch && jsonMatch[1]) {
-          return { content: JSON.parse(jsonMatch[1]) }
+        // Don't retry on 4xx errors (client errors)
+        if (response.status >= 400 && response.status < 500) {
+          return { content: null, error: lastError }
         }
-        return { content: JSON.parse(rawContent) }
-      } catch (parseError) {
-        return { content: null, error: `JSON parse error: ${parseError}` }
+
+        // Wait before retry with exponential backoff (5s, 10s, 20s)
+        if (attempt < maxRetries) {
+          const delay = 5000 * Math.pow(2, attempt - 1)
+          console.log(`API: [${promptType}] Waiting ${delay / 1000}s before retry...`)
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        }
+        continue
+      }
+
+      const result = await response.json()
+      const rawContent = result.choices[0]?.message?.content
+
+      if (!rawContent) {
+        lastError = "No content in API response"
+        console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
+        if (attempt < maxRetries) {
+          const delay = 5000 * Math.pow(2, attempt - 1)
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        }
+        continue
+      }
+
+      if (prompt.expect_json) {
+        try {
+          // Try to parse JSON, handling markdown code blocks
+          const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)\s*```/)
+          if (jsonMatch && jsonMatch[1]) {
+            console.log(`API: [${promptType}] Success on attempt ${attempt}`)
+            return { content: JSON.parse(jsonMatch[1]) }
+          }
+          console.log(`API: [${promptType}] Success on attempt ${attempt}`)
+          return { content: JSON.parse(rawContent) }
+        } catch (parseError) {
+          lastError = `JSON parse error: ${parseError}`
+          console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
+          if (attempt < maxRetries) {
+            const delay = 5000 * Math.pow(2, attempt - 1)
+            await new Promise((resolve) => setTimeout(resolve, delay))
+          }
+          continue
+        }
+      }
+
+      console.log(`API: [${promptType}] Success on attempt ${attempt}`)
+      return { content: rawContent }
+    } catch (error: any) {
+      const isTimeout = error.name === "AbortError"
+      lastError = isTimeout ? "Request timed out after 2 minutes" : error.message
+      console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
+
+      // Wait before retry with exponential backoff
+      if (attempt < maxRetries) {
+        const delay = 5000 * Math.pow(2, attempt - 1)
+        console.log(`API: [${promptType}] Waiting ${delay / 1000}s before retry...`)
+        await new Promise((resolve) => setTimeout(resolve, delay))
       }
     }
-
-    return { content: rawContent }
-  } catch (error: any) {
-    return { content: null, error: error.message }
   }
+
+  console.error(`API: [${promptType}] All ${maxRetries} attempts failed. Last error: ${lastError}`)
+  return { content: null, error: `All ${maxRetries} attempts failed. Last error: ${lastError}` }
 }
 
 async function generateBriefOverview(fullText: string): Promise<string | null> {
@@ -883,16 +950,19 @@ export async function POST(req: NextRequest) {
   let titleNeedsFixing = !content.title || content.title.startsWith("Processing:") || content.title.startsWith("Analyzing:")
 
   // ============================================
-  // SEQUENTIAL SECTION GENERATION
+  // BULLETPROOF SEQUENTIAL SECTION GENERATION
   // Each section is saved immediately after generation
-  // so the frontend can poll and see progress
+  // Failed sections are tracked and retried at the end
   // ============================================
 
-  console.log(`API: Starting sequential section generation for content_id: ${content.id}`)
+  console.log(`API: Starting bulletproof section generation for content_id: ${content.id}`)
 
-  // 1. BRIEF OVERVIEW (fastest, first to appear)
+  // Track failed sections for final retry
+  const failedSections: string[] = []
+
+  // 1. BRIEF OVERVIEW (fastest, first to appear) - CRITICAL
   console.log(`API: [1/6] Generating brief overview...`)
-  const briefOverview = await generateBriefOverview(content.full_text)
+  let briefOverview = await generateBriefOverview(content.full_text)
   if (briefOverview) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       brief_overview: briefOverview,
@@ -900,11 +970,14 @@ export async function POST(req: NextRequest) {
     })
     responsePayload.sections_generated.push("brief_overview")
     console.log(`API: Brief overview saved.`)
+  } else {
+    failedSections.push("brief_overview")
+    console.warn(`API: Brief overview failed, will retry later...`)
   }
 
-  // 2. TRIAGE (quality score, audience, worth-it)
+  // 2. TRIAGE (quality score, audience, worth-it) - CRITICAL
   console.log(`API: [2/6] Generating triage...`)
-  const triage = await generateTriage(content.full_text)
+  let triage = await generateTriage(content.full_text)
   if (triage) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       triage: triage as unknown as Json,
@@ -912,11 +985,14 @@ export async function POST(req: NextRequest) {
     })
     responsePayload.sections_generated.push("triage")
     console.log(`API: Triage saved.`)
+  } else {
+    failedSections.push("triage")
+    console.warn(`API: Triage failed, will retry later...`)
   }
 
   // 3. TRUTH CHECK (bias, accuracy analysis)
   console.log(`API: [3/6] Generating truth check...`)
-  const truthCheck = await generateTruthCheck(content.full_text)
+  let truthCheck = await generateTruthCheck(content.full_text)
   if (truthCheck) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       truth_check: truthCheck as unknown as Json,
@@ -924,17 +1000,20 @@ export async function POST(req: NextRequest) {
     })
     responsePayload.sections_generated.push("truth_check")
     console.log(`API: Truth check saved.`)
+  } else {
+    failedSections.push("truth_check")
+    console.warn(`API: Truth check failed, will retry later...`)
   }
 
   // Update domain credibility stats
-  if (content.url) {
+  if (content.url && triage) {
     await updateDomainStats(supabase, content.url, triage, truthCheck)
     console.log(`API: Domain stats updated for ${content.url}`)
   }
 
   // 4. ACTION ITEMS (actionable takeaways)
   console.log(`API: [4/6] Generating action items...`)
-  const actionItems = await generateActionItems(content.full_text, content.type || "article")
+  let actionItems = await generateActionItems(content.full_text, content.type || "article")
   if (actionItems) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       action_items: actionItems as unknown as Json,
@@ -942,6 +1021,9 @@ export async function POST(req: NextRequest) {
     })
     responsePayload.sections_generated.push("action_items")
     console.log(`API: Action items saved.`)
+  } else {
+    failedSections.push("action_items")
+    console.warn(`API: Action items failed, will retry later...`)
   }
 
   // 5. MID-LENGTH SUMMARY (existing behavior, kept for compatibility)
@@ -968,12 +1050,13 @@ export async function POST(req: NextRequest) {
       console.log(`API: Mid-length summary saved.`)
     }
   } else {
-    console.warn(`API: Mid-length summary generation failed, continuing...`)
+    failedSections.push("mid_length_summary")
+    console.warn(`API: Mid-length summary generation failed, will retry later...`)
   }
 
-  // 6. DETAILED SUMMARY (most comprehensive, slowest)
+  // 6. DETAILED SUMMARY (most comprehensive, slowest) - CRITICAL
   console.log(`API: [6/6] Generating detailed summary...`)
-  const detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article")
+  let detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article")
   if (detailedSummary) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       detailed_summary: detailedSummary,
@@ -982,10 +1065,75 @@ export async function POST(req: NextRequest) {
     responsePayload.sections_generated.push("detailed_summary")
     console.log(`API: Detailed summary saved.`)
   } else {
-    // Mark as complete even if detailed summary failed
-    await updateSummarySection(supabase, content.id, content.user_id, {
-      processing_status: "complete",
-    })
+    failedSections.push("detailed_summary")
+    console.warn(`API: Detailed summary failed, will retry later...`)
+  }
+
+  // ============================================
+  // SELF-HEALING: FINAL RETRY PASS FOR CRITICAL SECTIONS
+  // Retry any failed critical sections one more time
+  // ============================================
+  const criticalSections = ["brief_overview", "triage", "detailed_summary"]
+  const criticalFailures = failedSections.filter((s) => criticalSections.includes(s))
+
+  if (criticalFailures.length > 0) {
+    console.log(`API: SELF-HEALING - Retrying ${criticalFailures.length} critical failed sections: ${criticalFailures.join(", ")}`)
+
+    for (const section of criticalFailures) {
+      console.log(`API: RETRY - Attempting ${section}...`)
+
+      if (section === "brief_overview" && !briefOverview) {
+        briefOverview = await generateBriefOverview(content.full_text)
+        if (briefOverview) {
+          await updateSummarySection(supabase, content.id, content.user_id, { brief_overview: briefOverview })
+          responsePayload.sections_generated.push("brief_overview")
+          console.log(`API: RETRY SUCCESS - Brief overview saved.`)
+        } else {
+          console.error(`API: RETRY FAILED - Brief overview still failed after retry.`)
+        }
+      }
+
+      if (section === "triage" && !triage) {
+        triage = await generateTriage(content.full_text)
+        if (triage) {
+          await updateSummarySection(supabase, content.id, content.user_id, { triage: triage as unknown as Json })
+          responsePayload.sections_generated.push("triage")
+          console.log(`API: RETRY SUCCESS - Triage saved.`)
+          // Update domain stats now that we have triage
+          if (content.url) {
+            await updateDomainStats(supabase, content.url, triage, truthCheck)
+          }
+        } else {
+          console.error(`API: RETRY FAILED - Triage still failed after retry.`)
+        }
+      }
+
+      if (section === "detailed_summary" && !detailedSummary) {
+        detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article")
+        if (detailedSummary) {
+          await updateSummarySection(supabase, content.id, content.user_id, { detailed_summary: detailedSummary })
+          responsePayload.sections_generated.push("detailed_summary")
+          console.log(`API: RETRY SUCCESS - Detailed summary saved.`)
+        } else {
+          console.error(`API: RETRY FAILED - Detailed summary still failed after retry.`)
+        }
+      }
+    }
+  }
+
+  // Always mark as complete
+  await updateSummarySection(supabase, content.id, content.user_id, {
+    processing_status: "complete",
+  })
+
+  // Log final status
+  const finalFailures = []
+  if (!briefOverview) finalFailures.push("brief_overview")
+  if (!triage) finalFailures.push("triage")
+  if (!detailedSummary) finalFailures.push("detailed_summary")
+
+  if (finalFailures.length > 0) {
+    console.warn(`API: Processing complete with ${finalFailures.length} critical sections missing: ${finalFailures.join(", ")}`)
   }
 
   console.log(`API: Processing complete for content_id: ${content_id}. Sections generated: ${responsePayload.sections_generated.join(", ")}`)
