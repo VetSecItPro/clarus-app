@@ -13,7 +13,7 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { priceId, interval } = await request.json()
+    const { priceId, interval, couponCode } = await request.json()
 
     // Validate price ID
     const validPriceId = priceId || (interval === "annual" ? PRICES.annual : PRICES.monthly)
@@ -74,6 +74,45 @@ export async function POST(request: Request) {
     // Get the origin for redirect URLs
     const origin = request.headers.get("origin") || "https://vajra-truth-checker.vercel.app"
 
+    // Look up promotion code if provided
+    let discounts: { promotion_code: string }[] | undefined
+    if (couponCode) {
+      // Sanitize and validate coupon code format (alphanumeric only, max 20 chars)
+      const sanitizedCode = String(couponCode).replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 20)
+
+      if (!sanitizedCode || sanitizedCode.length < 2 || sanitizedCode.length > 20) {
+        return NextResponse.json(
+          { error: "Please enter a valid coupon code (2-20 alphanumeric characters)" },
+          { status: 400 }
+        )
+      }
+
+      try {
+        // Search for promotion code by code string
+        const promotionCodes = await stripe.promotionCodes.list({
+          code: sanitizedCode,
+          active: true,
+          limit: 1,
+        })
+
+        if (promotionCodes.data.length > 0) {
+          discounts = [{ promotion_code: promotionCodes.data[0].id }]
+        } else {
+          // If not found as promotion code, return error with friendly message
+          return NextResponse.json(
+            { error: "This coupon code is invalid or has expired. Please check and try again." },
+            { status: 400 }
+          )
+        }
+      } catch (err) {
+        console.error("Error looking up coupon:", err)
+        return NextResponse.json(
+          { error: "Unable to validate coupon code. Please try again." },
+          { status: 400 }
+        )
+      }
+    }
+
     // Create checkout session
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
@@ -85,6 +124,7 @@ export async function POST(request: Request) {
           quantity: 1,
         },
       ],
+      ...(discounts && { discounts }),
       success_url: `${origin}/?success=true`,
       cancel_url: `${origin}/pricing?canceled=true`,
       metadata: {
