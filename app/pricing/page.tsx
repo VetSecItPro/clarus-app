@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Loader2, Zap, Gift } from "lucide-react"
+import { Check, Loader2, Zap, Gift, Tag } from "lucide-react"
 import { BlueCheckLogo } from "@/components/blue-check-logo"
 import { cn } from "@/lib/utils"
 import { toast } from "sonner"
@@ -11,6 +11,8 @@ type BillingInterval = "monthly" | "annual"
 export default function PricingPage() {
   const [interval, setInterval] = useState<BillingInterval>("monthly")
   const [isLoading, setIsLoading] = useState(false)
+  const [couponCode, setCouponCode] = useState("")
+  const [showCouponInput, setShowCouponInput] = useState(false)
 
   const handleSubscribe = async () => {
     setIsLoading(true)
@@ -18,7 +20,10 @@ export default function PricingPage() {
       const response = await fetch("/api/stripe/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ interval }),
+        body: JSON.stringify({
+          interval,
+          couponCode: couponCode.trim() || undefined,
+        }),
       })
 
       const data = await response.json()
@@ -114,6 +119,49 @@ export default function PricingPage() {
                 </li>
               ))}
             </ul>
+
+            {/* Coupon Code */}
+            <div className="mb-4">
+              {!showCouponInput ? (
+                <button
+                  onClick={() => setShowCouponInput(true)}
+                  className="flex items-center gap-2 text-sm text-white/50 hover:text-white/70 transition-colors"
+                >
+                  <Tag className="w-4 h-4" />
+                  Have a coupon code?
+                </button>
+              ) : (
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => {
+                      // Only allow alphanumeric characters, max 20 chars
+                      const sanitized = e.target.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase().slice(0, 20)
+                      setCouponCode(sanitized)
+                    }}
+                    placeholder="Enter code"
+                    maxLength={20}
+                    className="flex-1 px-3 py-2 bg-white/[0.06] border border-white/[0.12] rounded-lg text-sm text-white placeholder-white/40 focus:outline-none focus:border-[#1d9bf0]/50 uppercase"
+                  />
+                  <button
+                    onClick={() => {
+                      setShowCouponInput(false)
+                      setCouponCode("")
+                    }}
+                    className="px-3 py-2 text-white/40 hover:text-white/60 text-sm"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              )}
+              {couponCode && (
+                <p className="text-xs text-green-400 mt-2 flex items-center gap-1">
+                  <Check className="w-3 h-3" />
+                  Coupon "{couponCode}" will be applied at checkout
+                </p>
+              )}
+            </div>
 
             {/* Subscribe Button */}
             <button
