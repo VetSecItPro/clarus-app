@@ -109,6 +109,9 @@ const fetcher = async (options: UseCommunityFeedOptions): Promise<FeedItem[]> =>
 }
 
 export function useCommunityFeed(options: UseCommunityFeedOptions) {
+  // Track if we're waiting for userId to be available (session loading)
+  const isWaitingForSession = !options.userId
+
   const cacheKey = options.userId
     ? [
         "community",
@@ -134,7 +137,8 @@ export function useCommunityFeed(options: UseCommunityFeedOptions) {
 
   return {
     items: data || [],
-    isLoading,
+    // Show loading state if waiting for session OR if SWR is fetching
+    isLoading: isWaitingForSession || isLoading,
     error,
     refresh: mutate,
   }
