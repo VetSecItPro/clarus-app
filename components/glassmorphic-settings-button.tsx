@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
 import { clearAuthCache } from "@/components/with-auth"
+import { prefetchAdminMetrics } from "@/hooks/use-admin-metrics"
 import type { User } from "@supabase/supabase-js"
 
 interface GlasmorphicSettingsButtonProps {
@@ -382,7 +383,12 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
           {user && isAdmin && (
             <>
               <DropdownMenuSeparator className="bg-neutral-700/50 my-1" />
-              <Link href="/manage" className="block">
+              <Link
+                href="/manage"
+                className="block"
+                onMouseEnter={() => prefetchAdminMetrics(user.id)}
+                onFocus={() => prefetchAdminMetrics(user.id)}
+              >
                 <DropdownMenuItem className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#1d9bf0]/10 cursor-pointer text-[#1d9bf0]">
                   <LayoutDashboard className="h-4 w-4" />
                   <span>Admin Dashboard</span>

@@ -16,6 +16,215 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supadataApiKey = process.env.SUPADATA_API_KEY
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 const firecrawlApiKey = process.env.FIRECRAWL_API_KEY
+const tavilyApiKey = process.env.TAVILY_API_KEY
+
+// ============================================
+// WEB SEARCH INTEGRATION (Tavily)
+// Provides real-time fact-checking context
+// ============================================
+
+interface WebSearchResult {
+  query: string
+  answer?: string
+  results: Array<{
+    title: string
+    url: string
+    content: string
+  }>
+}
+
+interface WebSearchContext {
+  searches: WebSearchResult[]
+  formattedContext: string
+  timestamp: string
+}
+
+// Extract key topics/claims that need verification
+async function extractKeyTopics(text: string): Promise<string[]> {
+  if (!openRouterApiKey) return []
+
+  const truncatedText = text.substring(0, 8000) // Limit input for speed
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "anthropic/claude-3-haiku", // Fast and cheap
+        messages: [
+          {
+            role: "system",
+            content: `You extract key verifiable claims from content. Return ONLY a JSON array of 3-5 search queries that would help verify the main claims, products, people, or events mentioned. Focus on:
+- Product names, company announcements, releases
+- Specific claims or statistics
+- People and their roles/actions
+- Recent events or news
+Keep queries concise (2-6 words each). Return ONLY valid JSON array, nothing else.`
+          },
+          {
+            role: "user",
+            content: `Extract search queries to verify claims in this content:\n\n${truncatedText}`
+          }
+        ],
+        temperature: 0.1,
+        max_tokens: 200,
+        response_format: { type: "json_object" }
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn("API: Topic extraction failed, skipping web search")
+      return []
+    }
+
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+    if (!content) return []
+
+    // Parse the JSON response
+    const parsed = JSON.parse(content)
+    const topics = Array.isArray(parsed) ? parsed : parsed.queries || parsed.topics || []
+
+    // Limit to 5 topics max
+    return topics.slice(0, 5).filter((t: any) => typeof t === 'string' && t.length > 2)
+  } catch (error) {
+    console.warn("API: Topic extraction error:", error)
+    return []
+  }
+}
+
+// Search a single topic with Tavily
+async function searchTavily(query: string): Promise<WebSearchResult | null> {
+  if (!tavilyApiKey) return null
+
+  const timer = createTimer()
+  try {
+    const response = await fetch("https://api.tavily.com/search", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        api_key: tavilyApiKey,
+        query,
+        search_depth: "basic",
+        include_answer: true,
+        include_raw_content: false,
+        max_results: 3,
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn(`API: Tavily search failed for "${query}"`)
+      await logApiUsage({
+        apiName: "tavily",
+        operation: "search",
+        responseTimeMs: timer.elapsed(),
+        status: "error",
+        errorMessage: `HTTP ${response.status}`,
+      })
+      return null
+    }
+
+    const data = await response.json()
+
+    await logApiUsage({
+      apiName: "tavily",
+      operation: "search",
+      responseTimeMs: timer.elapsed(),
+      status: "success",
+      metadata: { query, resultsCount: data.results?.length || 0 },
+    })
+
+    return {
+      query,
+      answer: data.answer,
+      results: (data.results || []).slice(0, 3).map((r: any) => ({
+        title: r.title,
+        url: r.url,
+        content: r.content?.substring(0, 500) || "",
+      })),
+    }
+  } catch (error) {
+    console.warn(`API: Tavily search error for "${query}":`, error)
+    return null
+  }
+}
+
+// Get web search context for content analysis
+async function getWebSearchContext(text: string, contentTitle?: string): Promise<WebSearchContext | null> {
+  if (!tavilyApiKey) {
+    console.log("API: Tavily API key not configured, skipping web search")
+    return null
+  }
+
+  console.log("API: Extracting key topics for web search...")
+  const topics = await extractKeyTopics(text)
+
+  if (topics.length === 0) {
+    console.log("API: No topics extracted, skipping web search")
+    return null
+  }
+
+  console.log(`API: Searching ${topics.length} topics in parallel:`, topics)
+
+  // Search all topics in parallel for speed
+  const searchPromises = topics.map(topic => searchTavily(topic))
+  const results = await Promise.all(searchPromises)
+
+  // Filter successful searches
+  const validResults = results.filter((r): r is WebSearchResult => r !== null && r.results.length > 0)
+
+  if (validResults.length === 0) {
+    console.log("API: No web search results found")
+    return null
+  }
+
+  // Format context for AI consumption
+  const formattedContext = formatWebContext(validResults)
+
+  console.log(`API: Web search complete. ${validResults.length}/${topics.length} searches returned results.`)
+
+  return {
+    searches: validResults,
+    formattedContext,
+    timestamp: new Date().toISOString(),
+  }
+}
+
+// Format web search results for injection into prompts
+function formatWebContext(searches: WebSearchResult[]): string {
+  const lines: string[] = [
+    "\n\n---",
+    "## REAL-TIME WEB VERIFICATION CONTEXT",
+    "The following information was retrieved from web searches to help verify claims:",
+    ""
+  ]
+
+  for (const search of searches) {
+    lines.push(`### Search: "${search.query}"`)
+    if (search.answer) {
+      lines.push(`**Summary:** ${search.answer}`)
+    }
+    for (const result of search.results) {
+      lines.push(`- [${result.title}](${result.url})`)
+      if (result.content) {
+        lines.push(`  ${result.content.substring(0, 200)}...`)
+      }
+    }
+    lines.push("")
+  }
+
+  lines.push("---")
+  lines.push("Use this web context to verify claims. If something conflicts with web results, note the discrepancy.")
+  lines.push("")
+
+  return lines.join("\n")
+}
+
+// Cache for web context (per content processing)
+let webContextCache: WebSearchContext | null = null
 
 interface SupadataYouTubeResponse {
   id: string
@@ -587,6 +796,7 @@ async function generateSectionWithAI(
   maxRetries: number = 3,
   userId?: string | null,
   contentId?: string | null,
+  webContext?: string | null,
 ): Promise<{ content: any; error?: string }> {
   if (!openRouterApiKey) {
     return { content: null, error: "OpenRouter API key not configured" }
@@ -599,9 +809,18 @@ async function generateSectionWithAI(
   }
 
   // Replace template variables
-  const userContent = prompt.user_content_template
+  let userContent = prompt.user_content_template
     .replace("{{CONTENT}}", textToAnalyze)
     .replace("{{TYPE}}", contentType || "article")
+
+  // Inject web search context if available AND enabled for this prompt
+  const useWebSearch = (prompt as any).use_web_search !== false // Default to true if not set
+  if (webContext && useWebSearch) {
+    userContent = userContent + webContext
+    console.log(`API: [${promptType}] Web search context included`)
+  } else if (webContext && !useWebSearch) {
+    console.log(`API: [${promptType}] Web search disabled for this prompt`)
+  }
 
   const requestBody: { [key: string]: any } = {
     model: prompt.model_name,
@@ -788,8 +1007,8 @@ async function generateSectionWithAI(
   return { content: null, error: `All ${maxRetries} attempts failed. Last error: ${lastError}` }
 }
 
-async function generateBriefOverview(fullText: string, userId?: string | null, contentId?: string | null): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", undefined, 3, userId, contentId)
+async function generateBriefOverview(fullText: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", undefined, 3, userId, contentId, webContext)
   if (result.error) {
     console.error(`API: Brief overview generation failed: ${result.error}`)
     return null
@@ -797,8 +1016,8 @@ async function generateBriefOverview(fullText: string, userId?: string | null, c
   return result.content
 }
 
-async function generateTriage(fullText: string, userId?: string | null, contentId?: string | null): Promise<TriageData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", undefined, 3, userId, contentId)
+async function generateTriage(fullText: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<TriageData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", undefined, 3, userId, contentId, webContext)
   if (result.error) {
     console.error(`API: Triage generation failed: ${result.error}`)
     return null
@@ -806,8 +1025,8 @@ async function generateTriage(fullText: string, userId?: string | null, contentI
   return result.content as TriageData
 }
 
-async function generateTruthCheck(fullText: string, userId?: string | null, contentId?: string | null): Promise<TruthCheckData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", undefined, 3, userId, contentId)
+async function generateTruthCheck(fullText: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<TruthCheckData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", undefined, 3, userId, contentId, webContext)
   if (result.error) {
     console.error(`API: Truth check generation failed: ${result.error}`)
     return null
@@ -815,8 +1034,8 @@ async function generateTruthCheck(fullText: string, userId?: string | null, cont
   return result.content as TruthCheckData
 }
 
-async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null): Promise<ActionItemsData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, 3, userId, contentId)
+async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<ActionItemsData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, 3, userId, contentId, webContext)
   if (result.error) {
     console.error(`API: Action items generation failed: ${result.error}`)
     return null
@@ -828,9 +1047,9 @@ async function generateActionItems(fullText: string, contentType: string, userId
   return result.content as ActionItemsData
 }
 
-async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null): Promise<string | null> {
+async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<string | null> {
   // Now uses database prompt with {{CONTENT}} and {{TYPE}} placeholders
-  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId)
+  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId, webContext)
   if (result.error) {
     console.error(`API: Detailed summary generation failed: ${result.error}`)
     return null
@@ -1123,9 +1342,21 @@ export async function POST(req: NextRequest) {
   // Track failed sections for final retry
   const failedSections: string[] = []
 
+  // ============================================
+  // WEB SEARCH CONTEXT (run once, share across sections)
+  // ============================================
+  console.log(`API: [0/6] Getting web search context for fact-checking...`)
+  const webSearchContext = await getWebSearchContext(content.full_text.substring(0, 10000), content.title || undefined)
+  const webContext = webSearchContext?.formattedContext || null
+  if (webContext) {
+    console.log(`API: Web search context ready (${webSearchContext?.searches.length} searches)`)
+  } else {
+    console.log(`API: No web search context available (Tavily not configured or no topics found)`)
+  }
+
   // 1. BRIEF OVERVIEW (fastest, first to appear) - CRITICAL
   console.log(`API: [1/6] Generating brief overview...`)
-  let briefOverview = await generateBriefOverview(content.full_text, content.user_id, content.id)
+  let briefOverview = await generateBriefOverview(content.full_text, content.user_id, content.id, webContext)
   if (briefOverview) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       brief_overview: briefOverview,
@@ -1140,7 +1371,7 @@ export async function POST(req: NextRequest) {
 
   // 2. TRIAGE (quality score, audience, worth-it) - CRITICAL
   console.log(`API: [2/6] Generating triage...`)
-  let triage = await generateTriage(content.full_text, content.user_id, content.id)
+  let triage = await generateTriage(content.full_text, content.user_id, content.id, webContext)
   if (triage) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       triage: triage as unknown as Json,
@@ -1153,9 +1384,9 @@ export async function POST(req: NextRequest) {
     console.warn(`API: Triage failed, will retry later...`)
   }
 
-  // 3. TRUTH CHECK (bias, accuracy analysis)
+  // 3. TRUTH CHECK (bias, accuracy analysis) - WEB CONTEXT CRITICAL HERE
   console.log(`API: [3/6] Generating truth check...`)
-  let truthCheck = await generateTruthCheck(content.full_text, content.user_id, content.id)
+  let truthCheck = await generateTruthCheck(content.full_text, content.user_id, content.id, webContext)
   if (truthCheck) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       truth_check: truthCheck as unknown as Json,
@@ -1176,7 +1407,7 @@ export async function POST(req: NextRequest) {
 
   // 4. ACTION ITEMS (actionable takeaways)
   console.log(`API: [4/6] Generating action items...`)
-  let actionItems = await generateActionItems(content.full_text, content.type || "article", content.user_id, content.id)
+  let actionItems = await generateActionItems(content.full_text, content.type || "article", content.user_id, content.id, webContext)
   if (actionItems) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       action_items: actionItems as unknown as Json,
@@ -1219,7 +1450,7 @@ export async function POST(req: NextRequest) {
 
   // 6. DETAILED SUMMARY (most comprehensive, slowest) - CRITICAL
   console.log(`API: [6/6] Generating detailed summary...`)
-  let detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article", content.user_id, content.id)
+  let detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article", content.user_id, content.id, webContext)
   if (detailedSummary) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       detailed_summary: detailedSummary,
