@@ -15,7 +15,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Loader2, Sparkles } from 'lucide-react'
+import { Loader2, Sparkles, Globe } from 'lucide-react'
+import { Switch } from "@/components/ui/switch"
 import { cn } from "@/lib/utils"
 
 interface AnalysisPrompt {
@@ -30,6 +31,9 @@ interface AnalysisPrompt {
   max_tokens: number | null
   expect_json: boolean | null
   is_active: boolean | null
+  use_web_search: boolean | null
+  created_at: string | null
+  updated_at: string | null
 }
 
 interface EditAIPromptsModalProps {
@@ -46,23 +50,23 @@ const modelOptions = [
   "google/gemini-2.5-pro"
 ]
 
-// Order matches the actual analysis pipeline sequence
+// Order matches appearance on the analysis page
 const PROMPT_ORDER = [
   "brief_overview",
   "triage",
+  "short_summary",
   "truth_check",
   "action_items",
-  "short_summary",
   "detailed_summary",
 ]
 
 const PROMPT_LABELS: Record<string, { label: string; icon: string; step: number }> = {
-  brief_overview: { label: "Brief Overview", icon: "1️⃣", step: 1 },
-  triage: { label: "Triage", icon: "2️⃣", step: 2 },
-  truth_check: { label: "Truth Check", icon: "3️⃣", step: 3 },
-  action_items: { label: "Action Items", icon: "4️⃣", step: 4 },
-  short_summary: { label: "Short Summary", icon: "5️⃣", step: 5 },
-  detailed_summary: { label: "Detailed Summary", icon: "6️⃣", step: 6 },
+  brief_overview: { label: "Overview", icon: "1️⃣", step: 1 },
+  triage: { label: "Quick Assessment", icon: "2️⃣", step: 2 },
+  short_summary: { label: "Key Takeaways", icon: "3️⃣", step: 3 },
+  truth_check: { label: "Truth Check", icon: "4️⃣", step: 4 },
+  action_items: { label: "Action Items", icon: "5️⃣", step: 5 },
+  detailed_summary: { label: "Detailed Analysis", icon: "6️⃣", step: 6 },
 }
 
 export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalProps) {
@@ -89,17 +93,17 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
 
       if (error) throw error
 
-      // Sort by pipeline order
+      // Sort by step number from PROMPT_LABELS
       const sorted = (data || []).sort((a, b) => {
-        const orderA = PROMPT_ORDER.indexOf(a.prompt_type)
-        const orderB = PROMPT_ORDER.indexOf(b.prompt_type)
-        return (orderA === -1 ? 999 : orderA) - (orderB === -1 ? 999 : orderB)
-      })
+        const stepA = PROMPT_LABELS[a.prompt_type]?.step ?? 999
+        const stepB = PROMPT_LABELS[b.prompt_type]?.step ?? 999
+        return stepA - stepB
+      }) as AnalysisPrompt[]
 
       setPrompts(sorted)
       if (sorted.length > 0) {
-        setSelectedPrompt(sorted[0])
-        setEditedPrompt(sorted[0])
+        setSelectedPrompt(sorted[0] as AnalysisPrompt)
+        setEditedPrompt(sorted[0] as AnalysisPrompt)
       }
     } catch (error: any) {
       toast.error("Failed to fetch prompts", { description: error.message })
@@ -136,6 +140,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
           model_name: editedPrompt.model_name,
           temperature: editedPrompt.temperature,
           max_tokens: editedPrompt.max_tokens,
+          use_web_search: editedPrompt.use_web_search,
           updated_at: new Date().toISOString(),
         })
         .eq("id", editedPrompt.id)
@@ -279,6 +284,22 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
                       placeholder="2048"
                     />
                   </div>
+                </div>
+
+                {/* Web Search Toggle */}
+                <div className="flex items-center justify-between py-3 px-4 bg-white/[0.03] rounded-lg border border-white/[0.06]">
+                  <div className="flex items-center gap-3">
+                    <Globe className="w-4 h-4 text-[#1d9bf0]" />
+                    <div>
+                      <Label className="text-sm text-white/90 font-medium">Web Search</Label>
+                      <p className="text-xs text-white/40">Enable Tavily web search for fact-checking</p>
+                    </div>
+                  </div>
+                  <Switch
+                    checked={editedPrompt.use_web_search !== false}
+                    onCheckedChange={(checked) => handleChange("use_web_search", checked)}
+                    className="data-[state=checked]:bg-[#1d9bf0]"
+                  />
                 </div>
               </div>
             )}
