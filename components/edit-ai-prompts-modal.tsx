@@ -7,8 +7,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-  DialogFooter,
-  DialogClose,
 } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
@@ -16,29 +14,64 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import type { Database } from "@/types/database.types"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Loader2 } from 'lucide-react'
+import { Loader2, Sparkles } from 'lucide-react'
+import { cn } from "@/lib/utils"
 
-type SummarizerPrompt = Database["public"]["Tables"]["active_summarizer_prompt"]["Row"]
-type ChatPrompt = Database["public"]["Tables"]["active_chat_prompt"]["Row"]
+interface AnalysisPrompt {
+  id: string
+  prompt_type: string
+  name: string
+  description: string | null
+  system_content: string
+  user_content_template: string
+  model_name: string
+  temperature: number | null
+  max_tokens: number | null
+  expect_json: boolean | null
+  is_active: boolean | null
+}
 
 interface EditAIPromptsModalProps {
   isOpen: boolean
   onOpenChange: (isOpen: boolean) => void
 }
 
-const modelOptions = ["openai/gpt-5-chat", "anthropic/claude-sonnet-4", "x-ai/grok-4", "google/gemini-2.5-pro"]
-const MODEL_MAP: Record<string, string> = {
-  "openai/gpt-4.1": "openai/gpt-5-chat",
+const modelOptions = [
+  "anthropic/claude-sonnet-4",
+  "anthropic/claude-3.5-sonnet",
+  "openai/gpt-5-chat",
+  "openai/gpt-4o",
+  "x-ai/grok-4",
+  "google/gemini-2.5-pro"
+]
+
+// Order matches the actual analysis pipeline sequence
+const PROMPT_ORDER = [
+  "brief_overview",
+  "triage",
+  "truth_check",
+  "action_items",
+  "short_summary",
+  "detailed_summary",
+]
+
+const PROMPT_LABELS: Record<string, { label: string; icon: string; step: number }> = {
+  brief_overview: { label: "Brief Overview", icon: "1️⃣", step: 1 },
+  triage: { label: "Triage", icon: "2️⃣", step: 2 },
+  truth_check: { label: "Truth Check", icon: "3️⃣", step: 3 },
+  action_items: { label: "Action Items", icon: "4️⃣", step: 4 },
+  short_summary: { label: "Short Summary", icon: "5️⃣", step: 5 },
+  detailed_summary: { label: "Detailed Summary", icon: "6️⃣", step: 6 },
 }
 
 export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalProps) {
-  const [summarizerPrompt, setSummarizerPrompt] = useState<Partial<SummarizerPrompt>>({})
-  const [chatPrompt, setChatPrompt] = useState<Partial<ChatPrompt>>({})
+  const [prompts, setPrompts] = useState<AnalysisPrompt[]>([])
+  const [selectedPrompt, setSelectedPrompt] = useState<AnalysisPrompt | null>(null)
+  const [editedPrompt, setEditedPrompt] = useState<Partial<AnalysisPrompt>>({})
   const [isLoading, setIsLoading] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
+  const [hasChanges, setHasChanges] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -49,268 +82,231 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
   const fetchPrompts = async () => {
     setIsLoading(true)
     try {
-      const [summarizerRes, chatRes] = await Promise.all([
-        supabase.from("active_summarizer_prompt").select("*").eq("id", 1).single(),
-        supabase.from("active_chat_prompt").select("*").eq("id", 1).single(),
-      ])
+      const { data, error } = await supabase
+        .from("analysis_prompts")
+        .select("*")
+        .eq("is_active", true)
 
-      if (summarizerRes.error) throw summarizerRes.error
-      if (chatRes.error) throw chatRes.error
+      if (error) throw error
 
-      const sData = summarizerRes.data as SummarizerPrompt
-      const cData = chatRes.data as ChatPrompt
-      setSummarizerPrompt({
-        ...sData,
-        model_name: sData?.model_name ? MODEL_MAP[sData.model_name] ?? sData.model_name : sData?.model_name,
+      // Sort by pipeline order
+      const sorted = (data || []).sort((a, b) => {
+        const orderA = PROMPT_ORDER.indexOf(a.prompt_type)
+        const orderB = PROMPT_ORDER.indexOf(b.prompt_type)
+        return (orderA === -1 ? 999 : orderA) - (orderB === -1 ? 999 : orderB)
       })
-      setChatPrompt({
-        ...cData,
-        model_name: cData?.model_name ? MODEL_MAP[cData.model_name] ?? cData.model_name : cData?.model_name,
-      })
+
+      setPrompts(sorted)
+      if (sorted.length > 0) {
+        setSelectedPrompt(sorted[0])
+        setEditedPrompt(sorted[0])
+      }
     } catch (error: any) {
-      toast.error("Failed to fetch AI prompts.", { description: error.message })
+      toast.error("Failed to fetch prompts", { description: error.message })
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleSave = async (activeTab: "summarizer" | "chat") => {
+  const handleSelectPrompt = (prompt: AnalysisPrompt) => {
+    if (hasChanges) {
+      const confirm = window.confirm("You have unsaved changes. Discard them?")
+      if (!confirm) return
+    }
+    setSelectedPrompt(prompt)
+    setEditedPrompt(prompt)
+    setHasChanges(false)
+  }
+
+  const handleChange = (field: keyof AnalysisPrompt, value: string | number | boolean | null) => {
+    setEditedPrompt((prev) => ({ ...prev, [field]: value }))
+    setHasChanges(true)
+  }
+
+  const handleSave = async () => {
+    if (!selectedPrompt || !editedPrompt.id) return
+
     setIsSaving(true)
     try {
-      if (activeTab === "summarizer") {
-        const { error } = await supabase
-          .from("active_summarizer_prompt")
-          .update({
-            system_content: summarizerPrompt.system_content,
-            user_content_template: summarizerPrompt.user_content_template,
-            model_name: summarizerPrompt.model_name,
-            temperature: summarizerPrompt.temperature,
-            top_p: summarizerPrompt.top_p,
-            max_tokens: summarizerPrompt.max_tokens,
-          })
-          .eq("id", 1)
-        if (error) throw error
-        toast.success("Summarizer prompt updated successfully.")
-      } else if (activeTab === "chat") {
-        const { error } = await supabase
-          .from("active_chat_prompt")
-          .update({
-            system_content: chatPrompt.system_content,
-            model_name: chatPrompt.model_name,
-            temperature: chatPrompt.temperature,
-            top_p: chatPrompt.top_p,
-            max_tokens: chatPrompt.max_tokens,
-          })
-          .eq("id", 1)
-        if (error) throw error
-        toast.success("Chat prompt updated successfully.")
-      }
-      onOpenChange(false)
+      const { error } = await supabase
+        .from("analysis_prompts")
+        .update({
+          system_content: editedPrompt.system_content,
+          user_content_template: editedPrompt.user_content_template,
+          model_name: editedPrompt.model_name,
+          temperature: editedPrompt.temperature,
+          max_tokens: editedPrompt.max_tokens,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", editedPrompt.id)
+
+      if (error) throw error
+
+      setPrompts((prev) =>
+        prev.map((p) => (p.id === editedPrompt.id ? { ...p, ...editedPrompt } : p))
+      )
+      setSelectedPrompt({ ...selectedPrompt, ...editedPrompt } as AnalysisPrompt)
+      setHasChanges(false)
+      toast.success(`${PROMPT_LABELS[editedPrompt.prompt_type || ""]?.label || "Prompt"} updated`)
     } catch (error: any) {
-      toast.error("Failed to update prompt.", { description: error.message })
+      toast.error("Failed to save", { description: error.message })
     } finally {
       setIsSaving(false)
     }
   }
 
-  const handleSummarizerChange = (field: keyof SummarizerPrompt, value: string | number | null) => {
-    setSummarizerPrompt((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const handleChatChange = (field: keyof ChatPrompt, value: string | number | null) => {
-    setChatPrompt((prev) => ({ ...prev, [field]: value }))
-  }
-
-  const renderNumberInput = (
-    id: string,
-    label: string,
-    value: number | null | undefined,
-    onChange: (value: number | null) => void,
-    step: number,
-  ) => (
-    <div className="grid grid-cols-4 items-center gap-4">
-      <Label htmlFor={id} className="text-right">
-        {label}
-      </Label>
-      <Input
-        id={id}
-        type="number"
-        step={step}
-        value={value ?? ""}
-        onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
-        className="col-span-3 bg-gray-800 border-gray-600 focus:ring-blue-500"
-      />
-    </div>
-  )
+  const inputClassName = "bg-black/40 border-white/10 text-white text-sm placeholder-white/30 focus:border-[#1d9bf0]/50 focus:ring-0 rounded-lg"
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[600px] bg-gray-900 text-white border-gray-700">
-        <DialogHeader>
-          <DialogTitle>Edit AI Prompts</DialogTitle>
-          <DialogDescription>
-            Manage the prompts and settings for the AI models used for summarization and chat.
+      <DialogContent
+        className="!w-[90vw] !max-w-[580px] bg-neutral-900 text-white border border-white/10 rounded-2xl shadow-2xl p-0 overflow-hidden"
+      >
+        <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/[0.06]">
+          <DialogTitle className="text-lg font-semibold text-white flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-[#1d9bf0]" />
+            AI Analysis Prompts
+          </DialogTitle>
+          <DialogDescription className="text-sm text-white/50">
+            Configure how AI analyzes and summarizes your content
           </DialogDescription>
         </DialogHeader>
+
         {isLoading ? (
-          <div className="flex justify-center items-center h-96">
-            <Loader2 className="w-8 h-8 animate-spin" />
+          <div className="flex justify-center items-center h-64">
+            <Loader2 className="w-6 h-6 animate-spin text-[#1d9bf0]" />
           </div>
         ) : (
-          <Tabs defaultValue="summarizer" className="w-full">
-            <TabsList className="grid w-full grid-cols-2">
-              <TabsTrigger value="summarizer">Summarizer</TabsTrigger>
-              <TabsTrigger value="chat">Chat</TabsTrigger>
-            </TabsList>
-            <TabsContent value="summarizer">
-              <div className="grid gap-4 py-4 max-h-[60vh] md:max-h-none overflow-y-auto pr-4">
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="system_content" className="text-right pt-2">
-                    System Content
-                  </Label>
-                  <Textarea
-                    id="system_content"
-                    value={summarizerPrompt.system_content || ""}
-                    onChange={(e) => handleSummarizerChange("system_content", e.target.value)}
-                    className="col-span-3 bg-gray-800 border-gray-600 focus:ring-blue-500"
-                    rows={6}
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="user_content_template" className="text-right pt-2">
-                    User Template
-                  </Label>
-                  <Textarea
-                    id="user_content_template"
-                    value={summarizerPrompt.user_content_template || ""}
-                    onChange={(e) => handleSummarizerChange("user_content_template", e.target.value)}
-                    className="col-span-3 bg-gray-800 border-gray-600 focus:ring-blue-500"
-                    rows={4}
-                  />
-                </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="model_name_summarizer" className="text-right">
-                    Model Name
-                  </Label>
-                  <Select
-                    value={summarizerPrompt.model_name || ""}
-                    onValueChange={(value) => handleSummarizerChange("model_name", value)}
-                  >
-                    <SelectTrigger
-                      id="model_name_summarizer"
-                      className="col-span-3 bg-gray-800 border-gray-600 focus:ring-blue-500"
+          <div className="flex flex-col">
+            {/* Prompt selector tabs */}
+            <div className="px-6 py-4 border-b border-white/[0.06]">
+              <div className="flex flex-wrap gap-2">
+                {prompts.map((prompt) => {
+                  const info = PROMPT_LABELS[prompt.prompt_type] || { label: prompt.name, icon: "📄" }
+                  const isSelected = selectedPrompt?.id === prompt.id
+                  return (
+                    <button
+                      key={prompt.id}
+                      onClick={() => handleSelectPrompt(prompt)}
+                      className={cn(
+                        "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
+                        isSelected
+                          ? "bg-[#1d9bf0] text-white"
+                          : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1] hover:text-white"
+                      )}
                     >
-                      <SelectValue placeholder="Select a model" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 text-white border-gray-700">
-                      {modelOptions.map((model) => (
-                        <SelectItem key={model} value={model}>
-                          {model}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                {renderNumberInput(
-                  "temperature_summarizer",
-                  "Temperature",
-                  summarizerPrompt.temperature,
-                  (v) => handleSummarizerChange("temperature", v),
-                  0.1,
-                )}
-                {renderNumberInput(
-                  "top_p_summarizer",
-                  "Top P",
-                  summarizerPrompt.top_p,
-                  (v) => handleSummarizerChange("top_p", v),
-                  0.1,
-                )}
-                {renderNumberInput(
-                  "max_tokens_summarizer",
-                  "Max Tokens",
-                  summarizerPrompt.max_tokens,
-                  (v) => handleSummarizerChange("max_tokens", v),
-                  1,
-                )}
+                      <span>{info.icon}</span>
+                      <span>{info.label}</span>
+                    </button>
+                  )
+                })}
               </div>
-              <DialogFooter className="pt-4">
-                <DialogClose asChild>
-                  <Button type="button" variant="secondary" disabled={isSaving}>
-                    Cancel
-                  </Button>
-                </DialogClose>
-                <Button type="button" onClick={() => handleSave("summarizer")} disabled={isSaving || isLoading}>
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Save Summarizer
-                </Button>
-              </DialogFooter>
-            </TabsContent>
-            <TabsContent value="chat">
-              <div className="grid gap-4 py-4 max-h-[60vh] md:max-h-none overflow-y-auto pr-4">
-                <div className="grid grid-cols-4 items-start gap-4">
-                  <Label htmlFor="system_content_chat" className="text-right pt-2">
-                    System Content
-                  </Label>
+            </div>
+
+            {/* Edit form */}
+            {selectedPrompt && (
+              <div className="px-6 py-5 space-y-5 max-h-[50vh] overflow-y-auto">
+                <div className="space-y-2">
+                  <Label className="text-sm text-white/70 font-medium">System Prompt</Label>
                   <Textarea
-                    id="system_content_chat"
-                    value={chatPrompt.system_content || ""}
-                    onChange={(e) => handleChatChange("system_content", e.target.value)}
-                    className="col-span-3 bg-gray-800 border-gray-600 focus:ring-blue-500"
-                    rows={8}
+                    value={editedPrompt.system_content || ""}
+                    onChange={(e) => handleChange("system_content", e.target.value)}
+                    className={cn(inputClassName, "min-h-[120px] resize-y")}
+                    placeholder="Instructions for the AI..."
                   />
                 </div>
-                <div className="grid grid-cols-4 items-center gap-4">
-                  <Label htmlFor="model_name_chat" className="text-right">
-                    Model Name
-                  </Label>
-                  <Select
-                    value={chatPrompt.model_name || ""}
-                    onValueChange={(value) => handleChatChange("model_name", value)}
-                  >
-                    <SelectTrigger
-                      id="model_name_chat"
-                      className="col-span-3 bg-gray-800 border-gray-600 focus:ring-blue-500"
-                    >
-                      <SelectValue placeholder="Select a model" />
-                    </SelectTrigger>
-                    <SelectContent className="bg-gray-800 text-white border-gray-700">
-                      {modelOptions.map((model) => (
-                        <SelectItem key={model} value={model}>
-                          {model}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+
+                <div className="space-y-2">
+                  <Label className="text-sm text-white/70 font-medium">User Template</Label>
+                  <Textarea
+                    value={editedPrompt.user_content_template || ""}
+                    onChange={(e) => handleChange("user_content_template", e.target.value)}
+                    className={cn(inputClassName, "min-h-[100px] resize-y")}
+                    placeholder="Template with {{CONTENT}} placeholder..."
+                  />
+                  <p className="text-xs text-white/40">
+                    Variables: <code className="bg-white/10 px-1 rounded">{"{{CONTENT}}"}</code> for content, <code className="bg-white/10 px-1 rounded">{"{{TYPE}}"}</code> for type
+                  </p>
                 </div>
-                {renderNumberInput(
-                  "temperature_chat",
-                  "Temperature",
-                  chatPrompt.temperature,
-                  (v) => handleChatChange("temperature", v),
-                  0.1,
-                )}
-                {renderNumberInput("top_p_chat", "Top P", chatPrompt.top_p, (v) => handleChatChange("top_p", v), 0.1)}
-                {renderNumberInput(
-                  "max_tokens_chat",
-                  "Max Tokens",
-                  chatPrompt.max_tokens,
-                  (v) => handleChatChange("max_tokens", v),
-                  1,
-                )}
+
+                <div className="grid grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-sm text-white/70 font-medium">Model</Label>
+                    <Select
+                      value={editedPrompt.model_name || ""}
+                      onValueChange={(value) => handleChange("model_name", value)}
+                    >
+                      <SelectTrigger className={cn(inputClassName, "h-10")}>
+                        <SelectValue placeholder="Select model" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-neutral-900 border-white/10 text-white rounded-lg">
+                        {modelOptions.map((model) => (
+                          <SelectItem
+                            key={model}
+                            value={model}
+                            className="text-sm focus:bg-white/[0.08] focus:text-white rounded"
+                          >
+                            {model.split("/")[1]}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm text-white/70 font-medium">Temperature</Label>
+                    <Input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      max="2"
+                      value={editedPrompt.temperature ?? ""}
+                      onChange={(e) => handleChange("temperature", e.target.value ? Number(e.target.value) : null)}
+                      className={cn(inputClassName, "h-10")}
+                      placeholder="0.7"
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm text-white/70 font-medium">Max Tokens</Label>
+                    <Input
+                      type="number"
+                      step="256"
+                      min="256"
+                      value={editedPrompt.max_tokens ?? ""}
+                      onChange={(e) => handleChange("max_tokens", e.target.value ? Number(e.target.value) : null)}
+                      className={cn(inputClassName, "h-10")}
+                      placeholder="2048"
+                    />
+                  </div>
+                </div>
               </div>
-              <DialogFooter className="pt-4">
-                <DialogClose asChild>
-                  <Button type="button" variant="secondary" disabled={isSaving}>
-                    Cancel
-                  </Button>
-                </DialogClose>
-                <Button type="button" onClick={() => handleSave("chat")} disabled={isSaving || isLoading}>
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                  Save Chat
+            )}
+
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-white/[0.06] bg-black/20 flex items-center justify-between">
+              <div className="text-sm text-white/40">
+                {hasChanges && "• Unsaved changes"}
+              </div>
+              <div className="flex gap-3">
+                <Button
+                  variant="ghost"
+                  onClick={() => onOpenChange(false)}
+                  className="text-white/60 hover:text-white hover:bg-white/[0.06] h-9"
+                >
+                  Close
                 </Button>
-              </DialogFooter>
-            </TabsContent>
-          </Tabs>
+                <Button
+                  onClick={handleSave}
+                  disabled={isSaving || !hasChanges}
+                  className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white h-9 px-5 disabled:opacity-40"
+                >
+                  {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+                  Save Changes
+                </Button>
+              </div>
+            </div>
+          </div>
         )}
       </DialogContent>
     </Dialog>

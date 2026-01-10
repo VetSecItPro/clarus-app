@@ -2,6 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
 import type { Database, Json, Tables, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
 import { validateContentId, checkRateLimit } from "@/lib/validation"
+import { logApiUsage, logProcessingMetrics, createTimer } from "@/lib/api-usage"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -55,11 +56,12 @@ interface ScrapedArticleData {
   thumbnail_url: string | null
 }
 
-async function getYouTubeMetadata(url: string, apiKey: string): Promise<ProcessedYouTubeMetadata> {
+async function getYouTubeMetadata(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<ProcessedYouTubeMetadata> {
   console.log(`API: Fetching YouTube metadata for ${url} using supadata.ai`)
   const endpoint = `https://api.supadata.ai/v1/youtube/video?id=${encodeURIComponent(url)}`
   const retries = 3
   const delay = 1000 // 1 second
+  const timer = createTimer()
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -75,6 +77,17 @@ async function getYouTubeMetadata(url: string, apiKey: string): Promise<Processe
           throw new Error(`Supadata Metadata API Error: Expected JSON, got ${contentType}.`)
         }
         const data: SupadataYouTubeResponse = await response.json()
+
+        // Log successful API call
+        logApiUsage({
+          userId,
+          contentId,
+          apiName: "supadata",
+          operation: "metadata",
+          responseTimeMs: timer.elapsed(),
+          status: "success",
+        })
+
         return {
           title: data.title,
           author: data.channel?.name,
@@ -123,6 +136,18 @@ async function getYouTubeMetadata(url: string, apiKey: string): Promise<Processe
 
   const finalErrorMessage = `Failed to fetch YouTube metadata for ${url} after ${retries} attempts.`
   console.error(finalErrorMessage)
+
+  // Log failed API call
+  logApiUsage({
+    userId,
+    contentId,
+    apiName: "supadata",
+    operation: "metadata",
+    responseTimeMs: timer.elapsed(),
+    status: "error",
+    errorMessage: finalErrorMessage,
+  })
+
   throw new Error(finalErrorMessage)
 }
 
@@ -139,12 +164,13 @@ function formatTimestamp(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
-async function getYouTubeTranscript(url: string, apiKey: string): Promise<{ full_text: string | null }> {
+async function getYouTubeTranscript(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<{ full_text: string | null }> {
   console.log(`API: Fetching YouTube transcript for ${url} using supadata.ai`)
   // Remove text=true to get timestamped chunks
   const endpoint = `https://api.supadata.ai/v1/youtube/transcript?url=${encodeURIComponent(url)}`
   const retries = 3
   const delay = 1000
+  const timer = createTimer()
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -190,8 +216,29 @@ async function getYouTubeTranscript(url: string, apiKey: string): Promise<{ full
             .join('\n\n')
 
           console.log(`API: Grouped ${data.content.length} chunks into ${groupedChunks.length} intervals (30s each)`)
+
+          // Log successful API call
+          logApiUsage({
+            userId,
+            contentId,
+            apiName: "supadata",
+            operation: "transcript",
+            responseTimeMs: timer.elapsed(),
+            status: "success",
+          })
+
           return { full_text: formattedText }
         }
+
+        // Log successful API call
+        logApiUsage({
+          userId,
+          contentId,
+          apiName: "supadata",
+          operation: "transcript",
+          responseTimeMs: timer.elapsed(),
+          status: "success",
+        })
 
         // Fallback if content is already a string
         return { full_text: data.content }
@@ -230,14 +277,27 @@ async function getYouTubeTranscript(url: string, apiKey: string): Promise<{ full
 
   const finalErrorMessage = `Failed to fetch YouTube transcript for ${url} after ${retries} attempts.`
   console.error(finalErrorMessage)
+
+  // Log failed API call
+  logApiUsage({
+    userId,
+    contentId,
+    apiName: "supadata",
+    operation: "transcript",
+    responseTimeMs: timer.elapsed(),
+    status: "error",
+    errorMessage: finalErrorMessage,
+  })
+
   throw new Error(finalErrorMessage)
 }
 
-async function scrapeArticle(url: string, apiKey: string): Promise<ScrapedArticleData> {
+async function scrapeArticle(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<ScrapedArticleData> {
   console.log(`API: Scraping article for ${url} using FireCrawl`)
   const endpoint = "https://api.firecrawl.dev/v0/scrape"
   const retries = 5
   const delay = 2000
+  const timer = createTimer()
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
@@ -259,6 +319,17 @@ async function scrapeArticle(url: string, apiKey: string): Promise<ScrapedArticl
         const result = await response.json()
         if (result.success && result.data) {
           console.log("API: FireCrawl scrape successful.")
+
+          // Log successful API call
+          logApiUsage({
+            userId,
+            contentId,
+            apiName: "firecrawl",
+            operation: "scrape",
+            responseTimeMs: timer.elapsed(),
+            status: "success",
+          })
+
           return {
             title: result.data.metadata?.title || null,
             full_text: result.data.markdown || result.data.content || null,
@@ -304,6 +375,18 @@ async function scrapeArticle(url: string, apiKey: string): Promise<ScrapedArticl
 
   const finalErrorMessage = `Failed to scrape article with FireCrawl for ${url} after ${retries} attempts.`
   console.error(finalErrorMessage)
+
+  // Log failed API call
+  logApiUsage({
+    userId,
+    contentId,
+    apiName: "firecrawl",
+    operation: "scrape",
+    responseTimeMs: timer.elapsed(),
+    status: "error",
+    errorMessage: finalErrorMessage,
+  })
+
   throw new Error(finalErrorMessage)
 }
 
@@ -502,6 +585,8 @@ async function generateSectionWithAI(
   promptType: string,
   contentType?: string,
   maxRetries: number = 3,
+  userId?: string | null,
+  contentId?: string | null,
 ): Promise<{ content: any; error?: string }> {
   if (!openRouterApiKey) {
     return { content: null, error: "OpenRouter API key not configured" }
@@ -532,7 +617,11 @@ async function generateSectionWithAI(
 
   // Self-healing retry loop with exponential backoff
   let lastError: string = ""
+  let retryCount = 0
+  const timer = createTimer()
+
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const attemptTimer = createTimer()
     try {
       console.log(`API: [${promptType}] Attempt ${attempt}/${maxRetries}...`)
       const controller = new AbortController()
@@ -556,6 +645,7 @@ async function generateSectionWithAI(
         const errorBody = await response.text()
         lastError = `API Error (${response.status}): ${errorBody}`
         console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
+        retryCount++
 
         // Don't retry on 4xx errors (client errors)
         if (response.status >= 400 && response.status < 500) {
@@ -573,6 +663,7 @@ async function generateSectionWithAI(
 
       const result = await response.json()
       const rawContent = result.choices[0]?.message?.content
+      const usage = result.usage || {}
 
       if (!rawContent) {
         lastError = "No content in API response"
@@ -588,12 +679,35 @@ async function generateSectionWithAI(
         try {
           // Try to parse JSON, handling markdown code blocks
           const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)\s*```/)
-          if (jsonMatch && jsonMatch[1]) {
-            console.log(`API: [${promptType}] Success on attempt ${attempt}`)
-            return { content: JSON.parse(jsonMatch[1]) }
-          }
+          const parsedContent = jsonMatch && jsonMatch[1] ? JSON.parse(jsonMatch[1]) : JSON.parse(rawContent)
+
           console.log(`API: [${promptType}] Success on attempt ${attempt}`)
-          return { content: JSON.parse(rawContent) }
+
+          // Log successful API call and processing metrics
+          logApiUsage({
+            userId,
+            contentId,
+            apiName: "openrouter",
+            operation: "analyze",
+            tokensInput: usage.prompt_tokens || 0,
+            tokensOutput: usage.completion_tokens || 0,
+            modelName: prompt.model_name,
+            responseTimeMs: attemptTimer.elapsed(),
+            status: "success",
+          })
+          logProcessingMetrics({
+            contentId: contentId || undefined,
+            userId,
+            sectionType: promptType,
+            modelName: prompt.model_name,
+            tokensInput: usage.prompt_tokens || 0,
+            tokensOutput: usage.completion_tokens || 0,
+            processingTimeMs: attemptTimer.elapsed(),
+            retryCount,
+            status: "success",
+          })
+
+          return { content: parsedContent }
         } catch (parseError) {
           lastError = `JSON parse error: ${parseError}`
           console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
@@ -606,11 +720,37 @@ async function generateSectionWithAI(
       }
 
       console.log(`API: [${promptType}] Success on attempt ${attempt}`)
+
+      // Log successful API call for non-JSON content
+      logApiUsage({
+        userId,
+        contentId,
+        apiName: "openrouter",
+        operation: "analyze",
+        tokensInput: usage.prompt_tokens || 0,
+        tokensOutput: usage.completion_tokens || 0,
+        modelName: prompt.model_name,
+        responseTimeMs: attemptTimer.elapsed(),
+        status: "success",
+      })
+      logProcessingMetrics({
+        contentId: contentId || undefined,
+        userId,
+        sectionType: promptType,
+        modelName: prompt.model_name,
+        tokensInput: usage.prompt_tokens || 0,
+        tokensOutput: usage.completion_tokens || 0,
+        processingTimeMs: attemptTimer.elapsed(),
+        retryCount,
+        status: "success",
+      })
+
       return { content: rawContent }
     } catch (error: any) {
       const isTimeout = error.name === "AbortError"
       lastError = isTimeout ? "Request timed out after 2 minutes" : error.message
       console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
+      retryCount++
 
       // Wait before retry with exponential backoff
       if (attempt < maxRetries) {
@@ -622,11 +762,34 @@ async function generateSectionWithAI(
   }
 
   console.error(`API: [${promptType}] All ${maxRetries} attempts failed. Last error: ${lastError}`)
+
+  // Log failed API call
+  logApiUsage({
+    userId,
+    contentId,
+    apiName: "openrouter",
+    operation: "analyze",
+    modelName: prompt.model_name,
+    responseTimeMs: timer.elapsed(),
+    status: "error",
+    errorMessage: lastError,
+  })
+  logProcessingMetrics({
+    contentId: contentId || undefined,
+    userId,
+    sectionType: promptType,
+    modelName: prompt.model_name,
+    processingTimeMs: timer.elapsed(),
+    retryCount,
+    status: "error",
+    errorMessage: lastError,
+  })
+
   return { content: null, error: `All ${maxRetries} attempts failed. Last error: ${lastError}` }
 }
 
-async function generateBriefOverview(fullText: string): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview")
+async function generateBriefOverview(fullText: string, userId?: string | null, contentId?: string | null): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", undefined, 3, userId, contentId)
   if (result.error) {
     console.error(`API: Brief overview generation failed: ${result.error}`)
     return null
@@ -634,8 +797,8 @@ async function generateBriefOverview(fullText: string): Promise<string | null> {
   return result.content
 }
 
-async function generateTriage(fullText: string): Promise<TriageData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage")
+async function generateTriage(fullText: string, userId?: string | null, contentId?: string | null): Promise<TriageData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", undefined, 3, userId, contentId)
   if (result.error) {
     console.error(`API: Triage generation failed: ${result.error}`)
     return null
@@ -643,8 +806,8 @@ async function generateTriage(fullText: string): Promise<TriageData | null> {
   return result.content as TriageData
 }
 
-async function generateTruthCheck(fullText: string): Promise<TruthCheckData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check")
+async function generateTruthCheck(fullText: string, userId?: string | null, contentId?: string | null): Promise<TruthCheckData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", undefined, 3, userId, contentId)
   if (result.error) {
     console.error(`API: Truth check generation failed: ${result.error}`)
     return null
@@ -652,8 +815,8 @@ async function generateTruthCheck(fullText: string): Promise<TruthCheckData | nu
   return result.content as TruthCheckData
 }
 
-async function generateActionItems(fullText: string, contentType: string): Promise<ActionItemsData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType)
+async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null): Promise<ActionItemsData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, 3, userId, contentId)
   if (result.error) {
     console.error(`API: Action items generation failed: ${result.error}`)
     return null
@@ -665,9 +828,9 @@ async function generateActionItems(fullText: string, contentType: string): Promi
   return result.content as ActionItemsData
 }
 
-async function generateDetailedSummary(fullText: string, contentType: string): Promise<string | null> {
+async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null): Promise<string | null> {
   // Now uses database prompt with {{CONTENT}} and {{TYPE}} placeholders
-  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType)
+  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId)
   if (result.error) {
     console.error(`API: Detailed summary generation failed: ${result.error}`)
     return null
@@ -825,7 +988,7 @@ export async function POST(req: NextRequest) {
         !content.thumbnail_url ||
         !content.raw_youtube_metadata
       if (shouldFetchYouTubeMetadata) {
-        const metadata = await getYouTubeMetadata(content.url, supadataApiKey)
+        const metadata = await getYouTubeMetadata(content.url, supadataApiKey, content.user_id, content.id)
         const updatePayload: Partial<Database["public"]["Tables"]["content"]["Update"]> = {}
         if (metadata.title) updatePayload.title = metadata.title
         if (metadata.author) updatePayload.author = metadata.author
@@ -848,7 +1011,7 @@ export async function POST(req: NextRequest) {
 
       const shouldFetchYouTubeText = !content.full_text || force_regenerate
       if (shouldFetchYouTubeText) {
-        const { full_text } = await getYouTubeTranscript(content.url, supadataApiKey)
+        const { full_text } = await getYouTubeTranscript(content.url, supadataApiKey, content.user_id, content.id)
         if (full_text) {
           const { error: updateTranscriptError } = await supabase
             .from("content")
@@ -878,7 +1041,7 @@ export async function POST(req: NextRequest) {
           }
         }
 
-        const scrapedData = await scrapeArticle(urlToScrape, firecrawlApiKey)
+        const scrapedData = await scrapeArticle(urlToScrape, firecrawlApiKey, content.user_id, content.id)
 
         const updatePayload: Partial<Database["public"]["Tables"]["content"]["Update"]> = {}
         if (scrapedData.title) updatePayload.title = scrapedData.title
@@ -962,7 +1125,7 @@ export async function POST(req: NextRequest) {
 
   // 1. BRIEF OVERVIEW (fastest, first to appear) - CRITICAL
   console.log(`API: [1/6] Generating brief overview...`)
-  let briefOverview = await generateBriefOverview(content.full_text)
+  let briefOverview = await generateBriefOverview(content.full_text, content.user_id, content.id)
   if (briefOverview) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       brief_overview: briefOverview,
@@ -977,7 +1140,7 @@ export async function POST(req: NextRequest) {
 
   // 2. TRIAGE (quality score, audience, worth-it) - CRITICAL
   console.log(`API: [2/6] Generating triage...`)
-  let triage = await generateTriage(content.full_text)
+  let triage = await generateTriage(content.full_text, content.user_id, content.id)
   if (triage) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       triage: triage as unknown as Json,
@@ -992,7 +1155,7 @@ export async function POST(req: NextRequest) {
 
   // 3. TRUTH CHECK (bias, accuracy analysis)
   console.log(`API: [3/6] Generating truth check...`)
-  let truthCheck = await generateTruthCheck(content.full_text)
+  let truthCheck = await generateTruthCheck(content.full_text, content.user_id, content.id)
   if (truthCheck) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       truth_check: truthCheck as unknown as Json,
@@ -1013,7 +1176,7 @@ export async function POST(req: NextRequest) {
 
   // 4. ACTION ITEMS (actionable takeaways)
   console.log(`API: [4/6] Generating action items...`)
-  let actionItems = await generateActionItems(content.full_text, content.type || "article")
+  let actionItems = await generateActionItems(content.full_text, content.type || "article", content.user_id, content.id)
   if (actionItems) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       action_items: actionItems as unknown as Json,
@@ -1056,7 +1219,7 @@ export async function POST(req: NextRequest) {
 
   // 6. DETAILED SUMMARY (most comprehensive, slowest) - CRITICAL
   console.log(`API: [6/6] Generating detailed summary...`)
-  let detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article")
+  let detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article", content.user_id, content.id)
   if (detailedSummary) {
     await updateSummarySection(supabase, content.id, content.user_id, {
       detailed_summary: detailedSummary,
@@ -1083,7 +1246,7 @@ export async function POST(req: NextRequest) {
       console.log(`API: RETRY - Attempting ${section}...`)
 
       if (section === "brief_overview" && !briefOverview) {
-        briefOverview = await generateBriefOverview(content.full_text)
+        briefOverview = await generateBriefOverview(content.full_text, content.user_id, content.id)
         if (briefOverview) {
           await updateSummarySection(supabase, content.id, content.user_id, { brief_overview: briefOverview })
           responsePayload.sections_generated.push("brief_overview")
@@ -1094,7 +1257,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (section === "triage" && !triage) {
-        triage = await generateTriage(content.full_text)
+        triage = await generateTriage(content.full_text, content.user_id, content.id)
         if (triage) {
           await updateSummarySection(supabase, content.id, content.user_id, { triage: triage as unknown as Json })
           responsePayload.sections_generated.push("triage")
@@ -1109,7 +1272,7 @@ export async function POST(req: NextRequest) {
       }
 
       if (section === "detailed_summary" && !detailedSummary) {
-        detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article")
+        detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article", content.user_id, content.id)
         if (detailedSummary) {
           await updateSummarySection(supabase, content.id, content.user_id, { detailed_summary: detailedSummary })
           responsePayload.sections_generated.push("detailed_summary")
