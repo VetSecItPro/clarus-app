@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react"
 import { useRouter } from "next/navigation"
-import { Settings, LogOut, Loader2, Sparkles, UserIcon, Check, X, Pencil, CreditCard, Bookmark, FileText, Shield } from "lucide-react"
+import { Settings, LogOut, Loader2, Sparkles, UserIcon, Check, X, Pencil, CreditCard, Bookmark, FileText, Shield, LayoutDashboard } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -40,6 +40,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [managingSubscription, setManagingSubscription] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -51,7 +52,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
       if (session?.user) {
         const { data } = await supabase
           .from("users")
-          .select("name, subscription_status")
+          .select("name, subscription_status, is_admin")
           .eq("id", session.user.id)
           .single()
         if (data?.name) {
@@ -60,6 +61,9 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
         }
         if (data?.subscription_status) {
           setSubscriptionStatus(data.subscription_status)
+        }
+        if (data?.is_admin) {
+          setIsAdmin(true)
         }
       }
 
@@ -351,14 +355,16 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
             </DropdownMenuItem>
           )}
 
-          {/* Edit AI Prompts */}
-          <DropdownMenuItem
-            onClick={() => setIsEditPromptModalOpen(true)}
-            className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-200"
-          >
-            <Sparkles className="h-4 w-4 text-neutral-400" />
-            <span>Edit AI Prompts</span>
-          </DropdownMenuItem>
+          {/* Edit AI Prompts - Admin only */}
+          {user && isAdmin && (
+            <DropdownMenuItem
+              onClick={() => setIsEditPromptModalOpen(true)}
+              className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-200"
+            >
+              <Sparkles className="h-4 w-4 text-neutral-400" />
+              <span>Edit AI Prompts</span>
+            </DropdownMenuItem>
+          )}
 
           {user && subscriptionStatus && ["active", "trialing"].includes(subscriptionStatus) && (
             <DropdownMenuItem
@@ -370,6 +376,19 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
               <span>Manage Subscription</span>
               {managingSubscription && <Loader2 className="ml-auto h-4 w-4 animate-spin" />}
             </DropdownMenuItem>
+          )}
+
+          {/* Admin Dashboard - only show for admin users */}
+          {user && isAdmin && (
+            <>
+              <DropdownMenuSeparator className="bg-neutral-700/50 my-1" />
+              <Link href="/manage" className="block">
+                <DropdownMenuItem className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#1d9bf0]/10 cursor-pointer text-[#1d9bf0]">
+                  <LayoutDashboard className="h-4 w-4" />
+                  <span>Admin Dashboard</span>
+                </DropdownMenuItem>
+              </Link>
+            </>
           )}
 
           {/* Legal links */}

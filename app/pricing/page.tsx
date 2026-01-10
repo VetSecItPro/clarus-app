@@ -90,8 +90,8 @@ export default function PricingPage() {
       </div>
 
       {/* Pricing Card */}
-      <div className="w-full max-w-sm">
-        <div className="relative bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-6 overflow-hidden">
+      <div className="w-72">
+        <div className="relative bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] rounded-2xl p-5 overflow-hidden">
           {/* Glow effect */}
           <div className="absolute inset-0 bg-gradient-to-br from-[#1d9bf0]/10 to-transparent pointer-events-none" />
 
