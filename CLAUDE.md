@@ -40,8 +40,18 @@ PGPASSWORD="UI5MeSG65Igmcuh7" psql "postgres://postgres.dxyfpehucygiughjmiek:UI5
 
 ### Run Locally
 ```bash
-pnpm install && pnpm dev
+export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm install && pnpm dev
 ```
+
+### Shell Commands (Claude Code)
+Since nvm isn't loaded in Claude Code's shell, always prefix pnpm commands with:
+```bash
+export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm <command>
+```
+Examples:
+- `export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm typecheck`
+- `export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm lint`
+- `export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm build`
 
 ## DB Tables
 users, content, content_ratings, chat_threads, chat_messages, summaries, active_chat_prompt, active_summarizer_prompt, analysis_prompts, domains
