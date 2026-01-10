@@ -444,7 +444,7 @@ function HomePageContent({ session }: HomePageProps) {
               <button
                 onClick={handlePasteFromClipboard}
                 disabled={isSubmitting}
-                className="shrink-0 px-4 sm:px-5 py-2 rounded-full bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white/70 text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
+                className="shrink-0 px-4 sm:px-5 py-2 rounded-xl sm:rounded-full bg-white/[0.06] hover:bg-white/[0.1] border border-white/10 text-white/70 text-xs sm:text-sm font-medium transition-all disabled:opacity-50"
               >
                 Paste
               </button>
