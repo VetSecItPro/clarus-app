@@ -1,0 +1,130 @@
+{
+  "auditDate": "2026-01-14T12:30:00.000Z",
+  "summary": {
+    "critical": 0,
+    "high": 3,
+    "medium": 0,
+    "low": 0,
+    "info": 4,
+    "autoFixed": 9
+  },
+  "autoFixed": [
+    {
+      "id": "FIXED-001",
+      "category": "headers",
+      "description": "Added security headers (X-Frame-Options, X-Content-Type-Options, X-XSS-Protection, Referrer-Policy, Permissions-Policy)",
+      "severity": "medium"
+    },
+    {
+      "id": "FIXED-002",
+      "category": "dependencies",
+      "description": "Updated jsPDF from 3.0.4 to 4.0.0 (fixed path traversal CVE)",
+      "severity": "critical"
+    },
+    {
+      "id": "FIXED-003",
+      "category": "dependencies",
+      "description": "Updated stripe from 20.1.0 to 20.1.2 (fixed qs DoS vulnerability)",
+      "severity": "high"
+    },
+    {
+      "id": "FIXED-004",
+      "category": "error-handling",
+      "description": "Sanitized error messages in 10+ API routes to prevent information disclosure",
+      "severity": "medium"
+    },
+    {
+      "id": "FIXED-005",
+      "category": "authorization",
+      "description": "Added authentication and user-scoping to /api/tags endpoint",
+      "severity": "medium"
+    },
+    {
+      "id": "FIXED-006",
+      "category": "information-disclosure",
+      "description": "Removed debug console.log statements from stripe webhook and other API routes",
+      "severity": "medium"
+    },
+    {
+      "id": "FIXED-007",
+      "category": "authorization",
+      "description": "Added rate limiting to /api/tags endpoint",
+      "severity": "low"
+    },
+    {
+      "id": "FIXED-008",
+      "category": "privacy",
+      "description": "Scoped /api/tags to return only authenticated user's tags (was returning all users' tags)",
+      "severity": "medium"
+    },
+    {
+      "id": "FIXED-009",
+      "category": "caching",
+      "description": "Changed /api/tags cache from public to private for user-scoped data",
+      "severity": "low"
+    }
+  ],
+  "findings": [
+    {
+      "id": "FIX-005",
+      "category": "authentication",
+      "severity": "high",
+      "title": "OTP Expiry Too Long",
+      "file": "Supabase Auth Configuration",
+      "line": null,
+      "code": null,
+      "description": "Email OTP expiry is set to more than one hour, increasing risk of code interception or reuse.",
+      "remediation": "Set OTP expiry to less than 1 hour in Supabase dashboard",
+      "status": "REQUIRES_MANUAL_ACTION",
+      "manualSteps": "See .security-reports/MANUAL-FIXES-REQUIRED.md"
+    },
+    {
+      "id": "FIX-006",
+      "category": "authentication",
+      "severity": "high",
+      "title": "Leaked Password Protection Disabled",
+      "file": "Supabase Auth Configuration",
+      "line": null,
+      "code": null,
+      "description": "Supabase Auth's leaked password protection (HaveIBeenPwned check) is disabled.",
+      "remediation": "Enable leaked password protection in Supabase Auth settings",
+      "status": "REQUIRES_MANUAL_ACTION",
+      "manualSteps": "See .security-reports/MANUAL-FIXES-REQUIRED.md"
+    },
+    {
+      "id": "FIX-008",
+      "category": "infrastructure",
+      "severity": "high",
+      "title": "Postgres Version Has Security Patches",
+      "file": "Supabase Database",
+      "line": null,
+      "code": null,
+      "description": "Current Postgres version has outstanding security patches available.",
+      "remediation": "Upgrade Postgres database through Supabase dashboard",
+      "status": "REQUIRES_MANUAL_ACTION",
+      "manualSteps": "See .security-reports/MANUAL-FIXES-REQUIRED.md"
+    }
+  ],
+  "positiveFindings": [
+    {
+      "id": "INFO-001",
+      "title": "Rate Limiting Implemented",
+      "description": "Rate limiting is properly implemented across all API routes"
+    },
+    {
+      "id": "INFO-002",
+      "title": "Input Validation Library Present",
+      "description": "Comprehensive validation library with SQL injection detection, XSS prevention, UUID validation"
+    },
+    {
+      "id": "INFO-003",
+      "title": "SSRF Protection in URL Validation",
+      "description": "URL validation blocks localhost, internal IPs, and dangerous schemes"
+    },
+    {
+      "id": "INFO-004",
+      "title": "RLS Enabled on All Tables",
+      "description": "All 13 public tables have Row Level Security enabled with proper admin-only policies"
+    }
+  ]
+}

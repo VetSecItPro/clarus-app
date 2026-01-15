@@ -209,7 +209,7 @@ export async function GET(request: Request) {
     })
 
     return NextResponse.json(
-      { error: "Failed to fetch MRR data", details: error.message },
+      { error: "Failed to fetch MRR data. Please try again later." },
       { status: 500 }
     )
   }
