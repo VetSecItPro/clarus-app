@@ -48,7 +48,8 @@ export async function PATCH(
       .single()
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+      console.error("Bookmark update error:", error)
+      return NextResponse.json({ success: false, error: "Failed to update bookmark. Please try again." }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, data })

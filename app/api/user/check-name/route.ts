@@ -40,7 +40,8 @@ export async function GET(request: Request) {
     .maybeSingle()
 
   if (error) {
-    return NextResponse.json({ available: false, error: error.message }, { status: 500 })
+    console.error("Check name error:", error)
+    return NextResponse.json({ available: false, error: "Unable to check name availability. Please try again." }, { status: 500 })
   }
 
   return NextResponse.json({ available: !data })
