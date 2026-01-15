@@ -49,7 +49,8 @@ export async function POST(request: Request) {
     const { error } = await supabaseAdmin.from("users").update({ name: validatedName }).eq("id", validatedUserId)
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+      console.error("Update name error:", error)
+      return NextResponse.json({ success: false, error: "Failed to update name. Please try again." }, { status: 500 })
     }
 
     return NextResponse.json({ success: true })
