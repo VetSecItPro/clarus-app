@@ -27,7 +27,8 @@ export async function GET(
       .single()
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+      console.error("Tags fetch error:", error)
+      return NextResponse.json({ success: false, error: "Failed to fetch tags. Please try again." }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, tags: data?.tags || [] })
@@ -87,7 +88,8 @@ export async function PATCH(
       .single()
 
     if (fetchError) {
-      return NextResponse.json({ success: false, error: fetchError.message }, { status: 500 })
+      console.error("Tags fetch error:", fetchError)
+      return NextResponse.json({ success: false, error: "Failed to fetch tags. Please try again." }, { status: 500 })
     }
 
     let newTags: string[] = current?.tags || []
@@ -129,7 +131,8 @@ export async function PATCH(
       .single()
 
     if (error) {
-      return NextResponse.json({ success: false, error: error.message }, { status: 500 })
+      console.error("Tags update error:", error)
+      return NextResponse.json({ success: false, error: "Failed to update tags. Please try again." }, { status: 500 })
     }
 
     return NextResponse.json({ success: true, data })
