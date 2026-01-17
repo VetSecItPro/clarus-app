@@ -1,7 +1,9 @@
 "use client"
 
-import { memo } from "react"
+import { memo, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
+import { prefetchContent } from "@/lib/prefetch"
 import {
   Youtube,
   FileText,
@@ -80,6 +82,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
   onBookmark,
   onDelete,
 }: ChatThreadCardProps) {
+  const router = useRouter()
   const domain = getDomainFromUrl(url)
   const recommendation =
     triage?.signal_noise_score !== undefined
@@ -88,11 +91,18 @@ export const ChatThreadCard = memo(function ChatThreadCard({
 
   const timeAgo = formatDistanceToNow(new Date(date_added), { addSuffix: true })
 
+  // Prefetch both the route and content data on hover for instant navigation
+  const handleMouseEnter = useCallback(() => {
+    router.prefetch(`/chat/${id}`)
+    prefetchContent(id)
+  }, [router, id])
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       className="group relative"
+      onMouseEnter={handleMouseEnter}
     >
       <button
         onClick={onClick}

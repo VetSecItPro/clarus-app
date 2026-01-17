@@ -20,6 +20,8 @@ const nextConfig = {
       dynamic: 30,  // Cache dynamic pages for 30 seconds
       static: 180,  // Cache static pages for 3 minutes
     },
+    // Enable View Transitions API for smooth page transitions
+    viewTransition: true,
   },
   compress: true,
   poweredByHeader: false,

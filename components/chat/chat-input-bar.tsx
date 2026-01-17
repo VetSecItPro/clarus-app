@@ -12,6 +12,7 @@ import {
   FileText,
   Twitter,
   Loader2,
+  FileUp,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { validateUrl } from "@/lib/validation"
@@ -30,24 +31,30 @@ interface UrlPreview {
 interface ChatInputBarProps {
   onSubmitUrl: (url: string, urlMeta: UrlPreview) => void
   onSubmitMessage: (message: string) => void
+  onSubmitPdf?: (file: File) => void
   mode?: "url-only" | "chat-only" | "auto"
   placeholder?: string
   disabled?: boolean
   isProcessing?: boolean
+  showPdfUpload?: boolean
 }
 
 export function ChatInputBar({
   onSubmitUrl,
   onSubmitMessage,
+  onSubmitPdf,
   mode = "auto",
   placeholder = "Paste a URL or ask a question...",
   disabled = false,
   isProcessing = false,
+  showPdfUpload = true,
 }: ChatInputBarProps) {
   const [inputValue, setInputValue] = useState("")
   const [urlPreview, setUrlPreview] = useState<UrlPreview | null>(null)
   const [isFocused, setIsFocused] = useState(false)
+  const [selectedPdf, setSelectedPdf] = useState<File | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Speech-to-text
   const {
@@ -112,6 +119,12 @@ export function ChatInputBar({
   }, [inputValue, detectUrl, mode])
 
   const handleSubmit = () => {
+    // Handle PDF submission
+    if (selectedPdf && onSubmitPdf) {
+      handlePdfSubmit()
+      return
+    }
+
     const trimmed = inputValue.trim()
     if (!trimmed || disabled || isProcessing) return
 
@@ -167,7 +180,40 @@ export function ChatInputBar({
   const clearInput = () => {
     setInputValue("")
     setUrlPreview(null)
+    setSelectedPdf(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
     inputRef.current?.focus()
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.type !== "application/pdf") {
+      toast.error("Please select a PDF file")
+      return
+    }
+
+    if (file.size > 20 * 1024 * 1024) { // 20MB limit
+      toast.error("PDF must be under 20MB")
+      return
+    }
+
+    setSelectedPdf(file)
+    setInputValue("") // Clear any text input
+    setUrlPreview(null) // Clear any URL preview
+  }
+
+  const handlePdfSubmit = () => {
+    if (!selectedPdf || !onSubmitPdf) return
+    toast.success("PDF uploaded - starting analysis...")
+    onSubmitPdf(selectedPdf)
+    setSelectedPdf(null)
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
   }
 
   const getTypeIcon = (type: "youtube" | "article" | "x_post") => {
@@ -182,7 +228,8 @@ export function ChatInputBar({
   }
 
   const isUrlMode = urlPreview && mode !== "chat-only"
-  const canSubmit = inputValue.trim() && !disabled && !isProcessing
+  const isPdfMode = selectedPdf && onSubmitPdf
+  const canSubmit = (inputValue.trim() || selectedPdf) && !disabled && !isProcessing
 
   return (
     <div className="w-full flex justify-center px-4 py-3">
@@ -221,6 +268,43 @@ export function ChatInputBar({
           )}
         </AnimatePresence>
 
+        {/* PDF Preview */}
+        <AnimatePresence>
+          {isPdfMode && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-2 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                <FileUp className="w-4 h-4 text-orange-400" />
+                <span className="text-xs text-white/80 truncate flex-1">
+                  {selectedPdf.name}
+                </span>
+                <span className="text-xs text-white/50">
+                  {(selectedPdf.size / 1024 / 1024).toFixed(1)}MB
+                </span>
+                <button
+                  onClick={clearInput}
+                  className="text-white/40 hover:text-white/60"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="application/pdf"
+          onChange={handleFileSelect}
+          className="hidden"
+        />
+
         {/* Input Container - pill shape like ChatGPT */}
         <div
           className={cn(
@@ -256,9 +340,29 @@ export function ChatInputBar({
             </button>
           )}
 
+          {/* PDF upload button */}
+          {showPdfUpload && onSubmitPdf && mode !== "chat-only" && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled || isProcessing}
+              className={cn(
+                "h-9 w-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0",
+                selectedPdf
+                  ? "bg-orange-500/20 text-orange-400"
+                  : "text-gray-400 hover:text-white hover:bg-white/[0.08]"
+              )}
+              aria-label="Upload PDF"
+            >
+              <FileUp className="w-4 h-4" />
+            </button>
+          )}
+
           {/* Link icon */}
           <div className="flex-shrink-0">
-            {isUrlMode ? (
+            {isPdfMode ? (
+              <FileUp className="w-4 h-4 text-orange-400" />
+            ) : isUrlMode ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
             ) : (
               <Link2
@@ -283,8 +387,10 @@ export function ChatInputBar({
               placeholder={
                 isListening
                   ? ""
+                  : selectedPdf
+                  ? `${selectedPdf.name} ready to analyze`
                   : mode === "url-only"
-                  ? "Paste a URL to analyze..."
+                  ? "Paste a URL or upload a PDF..."
                   : mode === "chat-only"
                   ? "Ask anything..."
                   : placeholder
