@@ -18,7 +18,7 @@ export default function SiteFooter() {
               <Shield className="w-4 h-4 text-[#1d9bf0]" />
             </div>
             <span className="text-white/80 font-medium group-hover:text-white transition-colors">
-              Truth Checker
+              Vajra
             </span>
           </Link>
 
@@ -40,7 +40,7 @@ export default function SiteFooter() {
 
           {/* Copyright */}
           <p className="text-white/40 text-sm">
-            &copy; {currentYear} Truth Checker. All rights reserved.
+            &copy; {currentYear} Vajra. All rights reserved.
           </p>
         </div>
       </div>

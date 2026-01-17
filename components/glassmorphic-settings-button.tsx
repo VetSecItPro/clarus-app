@@ -230,7 +230,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
         <DropdownMenuTrigger asChild>
           {variant === "mobile" ? (
             <button
-              className={`flex flex-col items-center justify-center transition-colors ${
+              className={`flex flex-col items-center justify-center transition-colors focus:outline-none ${
                 isDropdownOpen ? "text-[#1d9bf0]" : "text-white/40"
               }`}
               aria-label="Settings and Profile"
@@ -240,7 +240,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
             </button>
           ) : (
             <button
-              className="relative p-2 rounded-lg text-white/50 hover:text-white/90 transition-all duration-200 group"
+              className="relative p-2 rounded-lg text-white/50 hover:text-white/90 transition-all duration-200 group focus:outline-none"
               aria-label="Settings and Profile"
             >
               <Settings className="h-5 w-5 transition-transform duration-200 group-hover:rotate-45" />
