@@ -562,6 +562,62 @@ export function useChatSession({
     }
   }, [contentId, startPolling])
 
+  // Submit a PDF for analysis
+  const submitPdf = useCallback(
+    async (file: File) => {
+      if (!userId) {
+        toast.error("Please sign in to continue")
+        return
+      }
+
+      setState("processing")
+
+      // Add user message showing the PDF
+      addMessage({
+        id: `user-pdf-${Date.now()}`,
+        type: "user-url",
+        content: `📄 ${file.name}`,
+        url: `pdf://${file.name}`,
+        urlMeta: {
+          domain: "PDF Upload",
+          type: "article" as const,
+          favicon: "",
+        },
+        timestamp: new Date(),
+      })
+
+      try {
+        const formData = new FormData()
+        formData.append("file", file)
+        formData.append("userId", userId)
+
+        const response = await fetch("/api/process-pdf", {
+          method: "POST",
+          body: formData,
+        })
+
+        if (!response.ok) {
+          const data = await response.json()
+          toast.error(data.error || "Failed to upload PDF")
+          setState("idle")
+          return
+        }
+
+        const data = await response.json()
+        setContentId(data.contentId)
+        onContentCreated?.(data.contentId)
+
+        // Start polling for status
+        startPolling(data.contentId)
+      } catch (error) {
+        console.error("PDF upload error:", error)
+        toast.error("Failed to upload PDF")
+        setState("idle")
+      }
+    },
+    [userId, addMessage, onContentCreated, startPolling]
+  )
+
   // Get streaming message from AI SDK
   const streamingMessage: ChatMessageData | null = (() => {
     if (aiStatus !== "streaming") return null
@@ -606,6 +662,7 @@ export function useChatSession({
 
     // Actions
     submitUrl,
+    submitPdf,
     sendChatMessage,
     handleSuggestion,
     loadContent,
