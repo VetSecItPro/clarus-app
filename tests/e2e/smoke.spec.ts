@@ -5,7 +5,7 @@ test.describe('Smoke Tests', () => {
     await page.goto('/login')
 
     // Check page heading (use first() since logo appears in both desktop and mobile)
-    await expect(page.locator('text=Truth Checker').first()).toBeVisible()
+    await expect(page.locator('text=Vajra').first()).toBeVisible()
 
     // Check email input exists
     await expect(page.locator('input[type="email"]')).toBeVisible()
@@ -21,7 +21,7 @@ test.describe('Smoke Tests', () => {
     await page.goto('/signup')
 
     // Check page heading (use first() since logo appears in both desktop and mobile)
-    await expect(page.locator('text=Truth Checker').first()).toBeVisible()
+    await expect(page.locator('text=Vajra').first()).toBeVisible()
 
     // Check email input exists
     await expect(page.locator('input[type="email"]')).toBeVisible()

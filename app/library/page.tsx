@@ -3,22 +3,36 @@
 import { supabase } from "@/lib/supabase"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
 import { useEffect, useState, useCallback } from "react"
-import { useSearchParams } from "next/navigation"
+import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
-import { Search, SlidersHorizontal, Loader2, LayoutGrid, LayoutList, Clock, Sparkles, ChevronDown, Bookmark, Tag, X } from "lucide-react"
+import {
+  Search,
+  SlidersHorizontal,
+  Loader2,
+  Clock,
+  Sparkles,
+  ChevronDown,
+  Bookmark,
+  Tag,
+  X,
+} from "lucide-react"
 import Link from "next/link"
-import { isToday, isYesterday, differenceInDays, differenceInWeeks, differenceInMonths } from "date-fns"
+import {
+  isToday,
+  isYesterday,
+  differenceInDays,
+  differenceInWeeks,
+  differenceInMonths,
+} from "date-fns"
 import { cn } from "@/lib/utils"
 import { useLibrary, type LibraryItem } from "@/lib/hooks/use-library"
-import { ContentListSkeleton } from "@/components/ui/content-skeleton"
-import { LibraryItemCard } from "@/components/library-item-card"
+import { ChatThreadCard } from "@/components/chat"
+import type { TriageData } from "@/types/database.types"
 
 type HistoryItem = LibraryItem
-
-// Library page only needs the auth props (no page params)
 type LibraryPageProps = WithAuthInjectedProps
 
 const SORT_OPTIONS = [
@@ -35,8 +49,10 @@ const TYPE_OPTIONS = [
   { value: "x_post", label: "X Posts" },
 ]
 
-// Group items by date with granular time blocks
-function groupByDate(items: HistoryItem[]): { label: string; items: HistoryItem[] }[] {
+// Group items by date
+function groupByDate(
+  items: HistoryItem[]
+): { label: string; items: HistoryItem[] }[] {
   const groups: { [key: string]: HistoryItem[] } = {}
   const now = new Date()
 
@@ -58,26 +74,12 @@ function groupByDate(items: HistoryItem[]): { label: string; items: HistoryItem[
       key = "today"
     } else if (isYesterday(date)) {
       key = "yesterday"
-    } else if (daysAgo === 2) {
-      key = "2_days_ago"
-    } else if (daysAgo === 3) {
-      key = "3_days_ago"
-    } else if (daysAgo >= 4 && daysAgo <= 6) {
+    } else if (daysAgo >= 2 && daysAgo <= 6) {
       key = "this_week"
     } else if (weeksAgo === 1) {
       key = "last_week"
-    } else if (weeksAgo === 2) {
-      key = "2_weeks_ago"
-    } else if (weeksAgo === 3) {
-      key = "3_weeks_ago"
-    } else if (weeksAgo === 4 || monthsAgo === 1) {
-      key = "1_month_ago"
-    } else if (monthsAgo === 2) {
-      key = "2_months_ago"
-    } else if (monthsAgo === 3) {
-      key = "3_months_ago"
-    } else if (monthsAgo >= 4 && monthsAgo <= 6) {
-      key = "4_6_months_ago"
+    } else if (monthsAgo === 1) {
+      key = "last_month"
     } else {
       key = "older"
     }
@@ -86,20 +88,12 @@ function groupByDate(items: HistoryItem[]): { label: string; items: HistoryItem[
     groups[key].push(item)
   })
 
-  // Define the order and labels for groups
   const groupOrder: { key: string; label: string }[] = [
     { key: "today", label: "Today" },
     { key: "yesterday", label: "Yesterday" },
-    { key: "2_days_ago", label: "2 Days Ago" },
-    { key: "3_days_ago", label: "3 Days Ago" },
     { key: "this_week", label: "This Week" },
     { key: "last_week", label: "Last Week" },
-    { key: "2_weeks_ago", label: "2 Weeks Ago" },
-    { key: "3_weeks_ago", label: "3 Weeks Ago" },
-    { key: "1_month_ago", label: "1 Month Ago" },
-    { key: "2_months_ago", label: "2 Months Ago" },
-    { key: "3_months_ago", label: "3 Months Ago" },
-    { key: "4_6_months_ago", label: "4-6 Months Ago" },
+    { key: "last_month", label: "Last Month" },
     { key: "older", label: "Older" },
   ]
 
@@ -114,17 +108,18 @@ function groupByDate(items: HistoryItem[]): { label: string; items: HistoryItem[
   return result
 }
 
-function HistoryPageContent({ session }: LibraryPageProps) {
+function LibraryPageContent({ session }: LibraryPageProps) {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [sortBy, setSortBy] = useState("date_desc")
   const [filterType, setFilterType] = useState("all")
   const [showFilters, setShowFilters] = useState(false)
-  const [viewMode, setViewMode] = useState<"list" | "grid">("list")
   const [deletingId, setDeletingId] = useState<string | null>(null)
-  const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [bookmarkOnly, setBookmarkOnly] = useState(() => searchParams.get("bookmarks") === "true")
+  const [bookmarkOnly, setBookmarkOnly] = useState(
+    () => searchParams.get("bookmarks") === "true"
+  )
   const [togglingBookmark, setTogglingBookmark] = useState<string | null>(null)
   const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
@@ -145,8 +140,15 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     return () => clearTimeout(handler)
   }, [searchQuery])
 
-  // Use SWR for cached data fetching with pagination
-  const { items: swrItems, isLoading, isLoadingMore, hasMore, loadMore, refresh } = useLibrary({
+  // Use SWR for cached data fetching
+  const {
+    items: swrItems,
+    isLoading,
+    isLoadingMore,
+    hasMore,
+    loadMore,
+    refresh,
+  } = useLibrary({
     userId: session?.user?.id,
     searchQuery: debouncedSearch,
     filterType,
@@ -190,13 +192,9 @@ function HistoryPageContent({ session }: LibraryPageProps) {
     }
   }, [refresh])
 
-  const handleDelete = async (e: React.MouseEvent, itemId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-
+  const handleDelete = async (itemId: string) => {
     if (!window.confirm("Delete this item? This cannot be undone.")) return
 
-    // Optimistic update - remove immediately
     setLocalItems((prev) => prev.filter((item) => item.id !== itemId))
     setDeletingId(itemId)
 
@@ -204,29 +202,18 @@ function HistoryPageContent({ session }: LibraryPageProps) {
       const { error } = await supabase.from("content").delete().eq("id", itemId)
       if (error) throw error
       toast.success("Item deleted")
-      refresh() // Refresh cache
-    } catch (error) {
-      console.error("Error deleting:", error)
+      refresh()
+    } catch {
       toast.error("Failed to delete item")
-      refresh() // Revert by refreshing
+      refresh()
     } finally {
       setDeletingId(null)
     }
   }
 
-  const toggleExpand = (e: React.MouseEvent, itemId: string) => {
-    e.preventDefault()
-    e.stopPropagation()
-    setExpandedId(expandedId === itemId ? null : itemId)
-  }
-
-  const handleToggleBookmark = async (e: React.MouseEvent, item: HistoryItem) => {
-    e.preventDefault()
-    e.stopPropagation()
-
+  const handleToggleBookmark = async (item: HistoryItem) => {
     const newValue = !item.is_bookmarked
 
-    // Optimistic update - toggle immediately
     setLocalItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, is_bookmarked: newValue } : i))
     )
@@ -241,16 +228,20 @@ function HistoryPageContent({ session }: LibraryPageProps) {
 
       if (!response.ok) throw new Error("Failed to update bookmark")
       toast.success(newValue ? "Added to bookmarks" : "Removed from bookmarks")
-    } catch (error) {
-      console.error("Error toggling bookmark:", error)
+    } catch {
       toast.error("Failed to update bookmark")
-      // Revert on error
       setLocalItems((prev) =>
-        prev.map((i) => (i.id === item.id ? { ...i, is_bookmarked: !newValue } : i))
+        prev.map((i) =>
+          i.id === item.id ? { ...i, is_bookmarked: !newValue } : i
+        )
       )
     } finally {
       setTogglingBookmark(null)
     }
+  }
+
+  const handleItemClick = (itemId: string) => {
+    router.push(`/chat/${itemId}`)
   }
 
   const groupedItems = groupByDate(items)
@@ -260,38 +251,18 @@ function HistoryPageContent({ session }: LibraryPageProps) {
       <SiteHeader />
 
       <main className="flex-1 max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
-        {/* Header with view toggle */}
-        <div className="flex items-center justify-between mb-3 sm:mb-6">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-white">Library</h1>
-            <p className="text-white/50 text-xs sm:text-sm">Your analyzed content</p>
-          </div>
-          <div className="flex items-center gap-1 p-1 bg-white/[0.06] rounded-lg">
-            <button
-              onClick={() => setViewMode("list")}
-              className={cn(
-                "w-8 h-8 flex items-center justify-center rounded-md transition-all",
-                viewMode === "list" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
-              )}
-              title="List view"
-            >
-              <LayoutList className="w-4 h-4" />
-            </button>
-            <button
-              onClick={() => setViewMode("grid")}
-              className={cn(
-                "w-8 h-8 flex items-center justify-center rounded-md transition-all",
-                viewMode === "grid" ? "bg-white/[0.1] text-white" : "text-white/40 hover:text-white/60"
-              )}
-              title="Grid view"
-            >
-              <LayoutGrid className="w-4 h-4" />
-            </button>
-          </div>
+        {/* Header */}
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl font-semibold text-white">
+            Library
+          </h1>
+          <p className="text-white/50 text-xs sm:text-sm">
+            Your analyzed content
+          </p>
         </div>
 
         {/* Search & Filter Bar */}
-        <div className="mb-3 sm:mb-6 space-y-2 sm:space-y-3">
+        <div className="mb-4 sm:mb-6 space-y-2 sm:space-y-3">
           {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
@@ -324,7 +295,9 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                   : "bg-white/[0.06] border border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
               )}
             >
-              <Bookmark className={cn("w-4 h-4", bookmarkOnly && "fill-current")} />
+              <Bookmark
+                className={cn("w-4 h-4", bookmarkOnly && "fill-current")}
+              />
               Bookmarked
             </button>
 
@@ -341,7 +314,12 @@ function HistoryPageContent({ session }: LibraryPageProps) {
               >
                 <Tag className="w-4 h-4" />
                 Tags {selectedTags.length > 0 && `(${selectedTags.length})`}
-                <ChevronDown className={cn("w-3 h-3 transition-transform", showTagDropdown && "rotate-180")} />
+                <ChevronDown
+                  className={cn(
+                    "w-3 h-3 transition-transform",
+                    showTagDropdown && "rotate-180"
+                  )}
+                />
               </button>
 
               {showTagDropdown && (
@@ -357,7 +335,9 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                           key={tag}
                           onClick={() => {
                             if (selectedTags.includes(tag)) {
-                              setSelectedTags(selectedTags.filter((t) => t !== tag))
+                              setSelectedTags(
+                                selectedTags.filter((t) => t !== tag)
+                              )
                             } else {
                               setSelectedTags([...selectedTags, tag])
                             }
@@ -399,7 +379,9 @@ function HistoryPageContent({ session }: LibraryPageProps) {
                   >
                     <span className="capitalize">{tag}</span>
                     <button
-                      onClick={() => setSelectedTags(selectedTags.filter((t) => t !== tag))}
+                      onClick={() =>
+                        setSelectedTags(selectedTags.filter((t) => t !== tag))
+                      }
                       className="hover:text-white transition-colors"
                     >
                       <X className="w-3 h-3" />
@@ -415,7 +397,9 @@ function HistoryPageContent({ session }: LibraryPageProps) {
             <div className="p-4 bg-white/[0.04] border border-white/[0.08] rounded-2xl space-y-4">
               {/* Sort */}
               <div>
-                <p className="text-white/50 text-xs mb-2 uppercase tracking-wide">Sort by</p>
+                <p className="text-white/50 text-xs mb-2 uppercase tracking-wide">
+                  Sort by
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {SORT_OPTIONS.map((opt) => (
                     <button
@@ -436,7 +420,9 @@ function HistoryPageContent({ session }: LibraryPageProps) {
 
               {/* Type */}
               <div>
-                <p className="text-white/50 text-xs mb-2 uppercase tracking-wide">Type</p>
+                <p className="text-white/50 text-xs mb-2 uppercase tracking-wide">
+                  Type
+                </p>
                 <div className="flex flex-wrap gap-2">
                   {TYPE_OPTIONS.map((opt) => (
                     <button
@@ -460,20 +446,25 @@ function HistoryPageContent({ session }: LibraryPageProps) {
 
         {/* Content */}
         {isLoading && items.length === 0 ? (
-          <div className="space-y-8">
-            <div>
-              <div className="h-4 w-20 bg-white/[0.08] rounded mb-3 animate-pulse" />
-              <ContentListSkeleton count={4} viewMode={viewMode} />
-            </div>
+          <div className="space-y-4">
+            {[...Array(4)].map((_, i) => (
+              <div
+                key={i}
+                className="h-20 bg-white/[0.04] rounded-xl animate-pulse"
+              />
+            ))}
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">
             <div className="w-20 h-20 bg-gradient-to-br from-[#1d9bf0]/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
               <Sparkles className="w-10 h-10 text-[#1d9bf0]" />
             </div>
-            <h3 className="text-white text-lg font-medium mb-2">No content yet</h3>
+            <h3 className="text-white text-lg font-medium mb-2">
+              No content yet
+            </h3>
             <p className="text-white/50 text-sm mb-6 max-w-xs mx-auto">
-              Start by pasting a URL on the home page to analyze your first piece of content.
+              Start by pasting a URL on the home page to analyze your first
+              piece of content.
             </p>
             <Link
               href="/"
@@ -484,30 +475,33 @@ function HistoryPageContent({ session }: LibraryPageProps) {
             </Link>
           </div>
         ) : (
-          <div className="space-y-8">
+          <div className="space-y-6">
             {groupedItems.map((group) => (
               <div key={group.label}>
                 <h2 className="text-white/50 text-xs font-medium uppercase tracking-wider mb-3 px-1">
                   {group.label}
                 </h2>
-                <div className={cn(
-                  viewMode === "grid"
-                    ? "grid grid-cols-2 lg:grid-cols-3 gap-4"
-                    : "space-y-3"
-                )}>
-                  {group.items.map((item) => (
-                    <LibraryItemCard
-                      key={item.id}
-                      item={item}
-                      viewMode={viewMode}
-                      isExpanded={expandedId === item.id}
-                      deletingId={deletingId}
-                      togglingBookmark={togglingBookmark}
-                      onToggleExpand={toggleExpand}
-                      onToggleBookmark={handleToggleBookmark}
-                      onDelete={handleDelete}
-                    />
-                  ))}
+                <div className="space-y-2">
+                  {group.items.map((item) => {
+                    const summary = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
+                    return (
+                      <ChatThreadCard
+                        key={item.id}
+                        id={item.id}
+                        title={item.title || "Untitled"}
+                        url={item.url}
+                        type={(item.type as "youtube" | "article" | "x_post") || "article"}
+                        thumbnail_url={item.thumbnail_url}
+                        brief_overview={summary?.brief_overview}
+                        triage={summary?.triage as TriageData | null | undefined}
+                        date_added={item.date_added || new Date().toISOString()}
+                        is_bookmarked={item.is_bookmarked}
+                        onClick={() => handleItemClick(item.id)}
+                        onBookmark={() => handleToggleBookmark(item)}
+                        onDelete={() => handleDelete(item.id)}
+                      />
+                    )
+                  })}
                 </div>
               </div>
             ))}
@@ -541,4 +535,4 @@ function HistoryPageContent({ session }: LibraryPageProps) {
   )
 }
 
-export default withAuth(HistoryPageContent)
+export default withAuth(LibraryPageContent)

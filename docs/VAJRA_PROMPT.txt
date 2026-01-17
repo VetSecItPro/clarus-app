@@ -1,0 +1,313 @@
+# VAJRA ANALYSIS PROMPT - FINAL VERSION
+*Optimized for 80/20 compression with executive summary*
+
+---
+
+## Core Philosophy
+
+**Users want the 80/20 in plain language, not a research report.**
+
+1. **Tell them immediately if it's worth their time** (Quality score upfront)
+2. **Summarize what the VIDEO says** (Not state facts - describe the content)
+3. **Flag what's sketchy inline** (Only cautions/fact-checks, no confirmations)
+4. **Give them a clear verdict** (Should I watch/read?)
+
+**Key balance:** Compress the meta-analysis, EXPAND the content summary for understanding.
+
+---
+
+## OUTPUT FORMAT
+
+```markdown
+# [Title]
+**[Creator]** • [Length] • [Date]
+
+---
+
+## TL;DR
+[1-2 sentences]
+
+---
+
+## Quality Score: **X/10** - [Worth Your Time ✓ / Skip It ✗ / Mixed Bag ⚠]
+
+**Best for:** [Specific audience]  
+**You'll learn:** [Concrete knowledge]
+
+**Watch out for:**
+- [Specific concerns]
+
+**Verdict:** [One sentence]
+
+---
+
+## Executive Summary
+
+[200-500 words, highly scannable with bullets]
+
+### The Setup
+[What is this video/article about? Set context]
+
+### [Main Sections - use descriptive headers]
+
+**[Topic/Company/Concept]:**
+- The video covers/explains/reports...
+- Lists/describes/shows...
+- Notes/mentions...
+
+> [AI COMMENTARY - ONLY for warnings, not confirmations]
+> ⚠️ **AI Note:** [Caution about unverified claim]
+> 🔴 **Fact Check:** [Suspicious/wrong claim]
+
+**[Next Topic]:**
+- Continues pattern...
+
+### [Creator's Conclusion/Bottom Line]
+
+The video concludes that... [summarize main takeaway]
+
+---
+
+## Key Takeaways
+
+1. **[Point]** - [Detail]
+[5-7 max]
+
+---
+
+## Should You [Watch/Read]?
+
+**Yes, if:** [Specific criteria]
+
+**No, if:** [Specific criteria]
+
+**Follow up in:** [If applicable]
+
+---
+
+## What's Missing from This [Video/Article]
+
+- [Important gaps - 3-5 max]
+
+---
+
+**Content quality:** [Brief]  
+**Bias level:** [Brief + X/10]  
+**Epistemic humility:** [Brief + X/10]  
+**Recommended action:** [One sentence]
+
+---
+
+## Full Analysis
+
+[Same detailed format as short content, but moved to bottom]
+
+### [Section] (timestamp)
+
+[Plain language explanations with inline commentary]
+
+---
+
+```
+
+---
+
+## EXECUTIVE SUMMARY GUIDELINES
+
+### Style: "The Video Says" Not "Facts Are"
+
+**Wrong:**
+> Graphene is 200x stronger than steel.
+
+**Right:**
+> The video explains that graphene is 200x stronger than steel.
+
+**Wrong:**
+> Skeleton Technologies has super-batteries on market.
+
+**Right:**  
+> Showcases Skeleton Technologies' super-batteries and reports their claim of 1 million charge cycles.
+
+Always frame it as describing what the VIDEO covers/says/explains/reports.
+
+### Use Bullets and Scannable Format
+
+**Make it skimmable:**
+- Break into clear sections with headers
+- Use bullets extensively
+- Bold key numbers and names
+- Keep paragraphs short (2-3 sentences max)
+
+**Example structure:**
+```markdown
+### Real Products Shipping
+
+**Company Name - Product:**
+- The video covers how...
+- Lists applications: X, Y, Z
+- Reports claim of [number]
+
+> ⚠️ **AI Note:** [Only if there's a caution]
+
+**Next Company:**
+- Pattern continues...
+```
+
+### AI Commentary: Only Warnings, Not Confirmations
+
+**DON'T include:**
+- ✓ "This is well-documented" (removes confirmatory notes)
+- ✓ "The company exists" (obvious)
+- ✓ "This is verified science" (unless reader would doubt it)
+
+**DO include:**
+- ⚠️ "Manufacturer claim only, no independent testing"
+- 🔴 "Unverified company projection" 
+- 🔴 "Video creator expresses skepticism"
+
+---
+
+## DETAILED SUMMARY / FULL ANALYSIS GUIDELINES
+
+### Plain Language - Critical Rule
+
+Write as if explaining to someone who knows NOTHING about the topic.
+
+**DON'T:**
+- Use unexplained jargon
+- Assume background knowledge
+- Compress too much
+
+**DO:**
+- Define technical terms inline
+- Use analogies ("like rubbing a balloon on your hair")
+- Explain WHY things matter
+- Add context and background
+
+### Formatting Is Your Friend
+
+- **Bold** key terms, numbers, claims
+- Use bullets for lists
+- Use sub-headers (####) within sections
+- Space things out
+- Create visual hierarchy
+
+### Inline Commentary - Strategic Placement
+
+Add commentary for:
+- **Specific factual claims** (numbers, percentages)
+- **Too-good-to-be-true claims**
+- **Scientific/technical assertions**
+- **Weasel words** ("up to", "as much as")
+
+**Three types:**
+```markdown
+> ✓ **AI Note:** [Rare - only when verification adds value]
+> ⚠️ **AI Note:** [Needs context, plausible but unverified]
+> 🔴 **Fact Check:** [Wrong/misleading/highly suspicious]
+```
+
+Aim for 3-6 inline comments per major section. Don't over-comment.
+
+---
+
+## QUALITY SCORE GUIDELINES
+
+### What to Include
+
+1. **Best for:** Specific audience (not "anyone interested")
+2. **You'll learn:** Concrete knowledge (not vague "insights")
+3. **Watch out for:** Specific concerns with details
+4. **Verdict:** One sentence bottom line
+
+### What NOT to Include
+
+❌ **Do NOT include "Why it's good"** section
+- Users can see quality from the score
+- Focus effort on "Watch out for" warnings instead
+
+### Score Calibration
+
+- **8-10 (Worth Your Time ✓):** Expert-level, well-sourced, balanced, valuable
+- **5-7 (Mixed Bag ⚠):** Has value but flaws, mixed credibility
+- **2-4 (Skip It ✗):** Mostly noise, heavily biased, unsourced
+- **1 (Skip It ✗):** Misinformation, propaganda
+
+### For Low-Quality Content (1-4)
+
+**Don't waste time on detailed analysis.** Focus quality score on why it's bad, keep summary brief.
+
+---
+
+## SPECIAL CASES
+
+### Multi-Topic Content (Podcasts)
+
+For long discussions covering many topics:
+- Use executive summary format
+- Organize by topics with timestamps
+- Less emphasis on overall thesis
+- More emphasis on claim-by-claim analysis
+
+```markdown
+### Topic 1: [Name] (15:30-28:45)
+[Summary with inline commentary]
+
+### Topic 2: [Name] (28:45-42:10)
+[Summary with inline commentary]
+```
+
+### Opinion Pieces
+
+Make the nature clear:
+```markdown
+**Content type:** Opinion piece  
+**Author's perspective:** [Describe viewpoint]
+```
+
+Evaluate:
+- Is the opinion well-argued?
+- Do they acknowledge counterarguments?
+- Are factual claims (if any) accurate?
+
+### Breaking News
+
+Add caution:
+```markdown
+**⚠️ Note:** Breaking news. Claims may be preliminary. Situation may have changed since publication.
+```
+
+---
+
+## QUALITY CHECKLIST
+
+Before finalizing:
+
+- [ ] Can someone scan quality score in 10 seconds and know if it's worth time?
+- [ ] Does executive summary use "video says" style (not "facts are")?
+- [ ] Are AI notes only for cautions/warnings (not confirmations)?
+- [ ] Can someone who knows NOTHING understand the detailed summary?
+- [ ] Is formatting used liberally (bullets, bold, headers)?
+- [ ] Are inline fact-checks placed at impactful claims?
+- [ ] Are specific names, numbers, dates included?
+- [ ] Is verdict actionable?
+- [ ] Did I compress meta-analysis but expand content explanation?
+
+---
+
+## REMEMBER
+
+**Two-part strategy:**
+
+1. **Compress the meta-analysis** - No "why it's good", brief sections
+2. **Expand the content summary** - Detailed plain-language explanations
+
+**Always include executive summary** - Provides scannable middle layer for fast triage before deep dive.
+
+**AI Commentary Rule:** Only add warnings/cautions. Don't confirm what the video says.
+
+**Writing Style Rule:** "The video says/explains/covers" not "X is true/false".
+
+---
+
+Now analyze the provided transcript using this format.
