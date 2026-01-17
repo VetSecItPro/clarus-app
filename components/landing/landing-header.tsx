@@ -23,7 +23,7 @@ export function LandingHeader() {
               <div className="absolute inset-0 bg-[#1d9bf0]/20 rounded-lg blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
             <span className="text-white/90 font-medium text-[15px] tracking-tight group-hover:text-white transition-colors duration-200">
-              Truth Checker
+              Vajra
             </span>
           </Link>
 

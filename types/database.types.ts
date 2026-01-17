@@ -1,5 +1,20 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
+// Content categories for contextual UI
+export type ContentCategory =
+  | "music"           // Music videos, songs, performances
+  | "podcast"         // Podcasts, interviews, long-form discussions
+  | "news"            // News reports, current events
+  | "opinion"         // Opinion pieces, editorials, hot takes
+  | "educational"     // Tutorials, courses, how-tos
+  | "entertainment"   // Comedy, vlogs, general entertainment
+  | "documentary"     // Documentaries, investigative content
+  | "product_review"  // Product reviews, comparisons
+  | "tech"            // Tech news, software, gadgets
+  | "finance"         // Finance, crypto, investing
+  | "health"          // Health, fitness, medical
+  | "other"           // General/uncategorized
+
 // Triage assessment for content quality
 export interface TriageData {
   quality_score: number // 1-10
@@ -8,6 +23,7 @@ export interface TriageData {
   content_density: string // "Low/Medium/High - description"
   estimated_value?: string // What you'll gain
   signal_noise_score: number // 0=Noise, 1=Noteworthy, 2=Insightful, 3=Mind-blowing
+  content_category?: ContentCategory // Category of content for contextual UI
 }
 
 // Claim for inline highlighting in transcript

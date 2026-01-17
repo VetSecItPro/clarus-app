@@ -2,9 +2,9 @@ import type { MetadataRoute } from "next"
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Truth Checker",
-    short_name: "Truth Checker",
-    description: "Verify and fact-check your favorite content.",
+    name: "Vajra",
+    short_name: "Vajra",
+    description: "AI-powered content analysis and fact-checking.",
     start_url: "/",
     display: "standalone",
     background_color: "#000000",

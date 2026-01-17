@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase"
 import type { Session } from "@supabase/supabase-js"
 import { PrefetchData } from "./prefetch-data"
 
-type SubscriptionStatus = "active" | "trialing" | "grandfathered" | "canceled" | "none" | null
+type SubscriptionStatus = "active" | "trialing" | "grandfathered" | "enterprise" | "canceled" | "none" | null
 
 // Props injected by the withAuth HOC
 export interface WithAuthInjectedProps {
@@ -211,6 +211,7 @@ export default function withAuth<P extends object>(
         subscriptionStatus !== "active" &&
         subscriptionStatus !== "trialing" &&
         subscriptionStatus !== "grandfathered" &&
+        subscriptionStatus !== "enterprise" &&
         subscriptionStatus !== null
       ) {
         router.replace("/pricing")
@@ -240,6 +241,7 @@ export default function withAuth<P extends object>(
       subscriptionStatus !== "active" &&
       subscriptionStatus !== "trialing" &&
       subscriptionStatus !== "grandfathered" &&
+      subscriptionStatus !== "enterprise" &&
       subscriptionStatus !== null
     ) {
       return null
