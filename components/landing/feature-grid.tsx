@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Youtube, FileText, Twitter, Brain, Zap, Clock, Shield, BarChart3, FileUp } from "lucide-react"
+import { Youtube, FileText, Brain, FileUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const features = [
@@ -26,7 +26,7 @@ const features = [
   {
     icon: FileUp,
     title: "PDF Documents",
-    description: "Upload any PDF and chat with it. Research papers, reports, ebooks - ask questions and get answers from your documents.",
+    description: "Upload text-based PDFs and chat with them. Research papers, reports, ebooks - ask questions and get answers from your documents.",
     gradient: "from-orange-500/20 to-orange-500/5",
     iconBg: "bg-orange-500/10",
     iconColor: "text-orange-400",
@@ -40,29 +40,6 @@ const features = [
     iconBg: "bg-teal-500/10",
     iconColor: "text-teal-400",
     glowColor: "group-hover:shadow-teal-500/20",
-  },
-]
-
-const secondaryFeatures = [
-  {
-    icon: Zap,
-    title: "Lightning Fast",
-    description: "Fast AI-powered analysis",
-  },
-  {
-    icon: Clock,
-    title: "24/7 Available",
-    description: "Analyze content anytime",
-  },
-  {
-    icon: Shield,
-    title: "Privacy First",
-    description: "Your data stays private",
-  },
-  {
-    icon: BarChart3,
-    title: "Detailed Reports",
-    description: "Comprehensive analysis",
   },
 ]
 
@@ -111,7 +88,7 @@ export function FeatureGrid() {
         </motion.div>
 
         {/* Main Feature Grid - 4 columns on desktop */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -148,27 +125,6 @@ export function FeatureGrid() {
               <p className="relative text-white/50 text-sm leading-relaxed">
                 {feature.description}
               </p>
-            </motion.div>
-          ))}
-        </div>
-
-        {/* Secondary features row - more compact */}
-        <div className="flex flex-wrap justify-center gap-6 md:gap-10">
-          {secondaryFeatures.map((feature, index) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true, margin: "-30px" }}
-              transition={{
-                delay: 0.4 + index * 0.1,
-                duration: 0.4,
-                ease: [0.22, 1, 0.36, 1]
-              }}
-              className="flex items-center gap-2 text-white/50 hover:text-white/70 transition-colors"
-            >
-              <feature.icon className="w-4 h-4 text-[#1d9bf0]" />
-              <span className="text-sm font-medium">{feature.title}</span>
             </motion.div>
           ))}
         </div>

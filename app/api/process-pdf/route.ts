@@ -17,6 +17,7 @@ if (!supabaseUrl || !supabaseKey) {
 const LIMITS = {
   MAX_UPLOADS_PER_HOUR: 10,
   MAX_FILE_SIZE: 20 * 1024 * 1024, // 20MB
+  MIN_TEXT_LENGTH: 100, // Minimum chars required
 }
 
 export async function POST(req: NextRequest) {
@@ -68,23 +69,27 @@ export async function POST(req: NextRequest) {
     // Extract text from PDF using pdf-parse
     let pdfText = ""
     try {
-      // Dynamic import to avoid issues with edge runtime
       const { PDFParse } = await import("pdf-parse")
       const parser = new PDFParse({ data: new Uint8Array(buffer) })
       const textResult = await parser.getText()
       pdfText = textResult.text || textResult.pages.map((p: { text: string }) => p.text).join("\n\n")
       await parser.destroy()
+      console.log(`pdf-parse extracted ${pdfText.length} characters`)
     } catch (pdfError) {
       console.error("PDF parsing error:", pdfError)
       return NextResponse.json(
-        { error: "Failed to parse PDF. Please ensure the PDF contains readable text." },
+        { error: "Failed to parse PDF. The file may be corrupted or password-protected." },
         { status: 400 }
       )
     }
 
-    if (!pdfText || pdfText.trim().length < 100) {
+    // Check if we got enough text
+    if (!pdfText || pdfText.trim().length < LIMITS.MIN_TEXT_LENGTH) {
       return NextResponse.json(
-        { error: "PDF appears to be empty or contains mostly images. Please use a text-based PDF." },
+        {
+          error: "This PDF appears to be scanned or image-based. Please use a text-based PDF, or convert your scanned PDF to text using a tool like Adobe Acrobat, Google Docs, or an online OCR service first.",
+          isScannedPdf: true
+        },
         { status: 400 }
       )
     }
@@ -122,7 +127,6 @@ export async function POST(req: NextRequest) {
     const contentId = contentData.id
 
     // Trigger async processing (same as URL processing)
-    // We'll call the internal processing endpoint
     const processResponse = await fetch(
       `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/process-content`,
       {
