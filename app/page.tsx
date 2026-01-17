@@ -21,18 +21,18 @@ import {
 import { useChatSession } from "@/lib/hooks/use-chat-session"
 
 const rotatingPrompts = [
-  "What do you want to analyze?",
-  "What should we fact-check today?",
-  "Got something to verify?",
-  "What claims need checking?",
-  "Ready to separate fact from fiction?",
-  "What content should we examine?",
-  "Time to find the truth?",
-  "What needs a reality check?",
-  "Let's validate something together",
-  "What story should we investigate?",
-  "Ready to cut through the noise?",
-  "What deserves a closer look?",
+  "What do you want to explore?",
+  "Drop a link and let's dive in",
+  "What are we learning about today?",
+  "Ready to break down some content?",
+  "What caught your attention?",
+  "Let's unpack something together",
+  "What would you like to understand?",
+  "Share a link, start a conversation",
+  "What's on your mind?",
+  "Let's chat about something interesting",
+  "Paste a video or article to get started",
+  "What should we dig into?",
 ]
 
 interface HomePageProps {
@@ -57,6 +57,7 @@ function HomePageContent({ session }: HomePageProps) {
     isProcessing,
     isAiLoading,
     submitUrl,
+    submitPdf,
     sendChatMessage,
     handleSuggestion,
     retryAnalysis,
@@ -166,8 +167,9 @@ function HomePageContent({ session }: HomePageProps) {
               <ChatInputBar
                 onSubmitUrl={onSubmitUrl}
                 onSubmitMessage={onSubmitMessage}
+                onSubmitPdf={submitPdf}
                 mode="url-only"
-                placeholder="Paste any URL to analyze..."
+                placeholder="Paste any URL or upload a PDF..."
                 disabled={!userId}
                 isProcessing={isLoading}
               />
@@ -223,6 +225,7 @@ function HomePageContent({ session }: HomePageProps) {
             <ChatInputBar
               onSubmitUrl={onSubmitUrl}
               onSubmitMessage={onSubmitMessage}
+              onSubmitPdf={submitPdf}
               mode={inputMode}
               placeholder={
                 state === "initial_complete"
@@ -231,6 +234,7 @@ function HomePageContent({ session }: HomePageProps) {
               }
               disabled={!userId}
               isProcessing={isLoading}
+              showPdfUpload={false}
             />
           </div>
         )}
