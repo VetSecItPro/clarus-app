@@ -1385,18 +1385,28 @@ export async function POST(req: NextRequest) {
   }
 
   // 3. TRUTH CHECK (bias, accuracy analysis) - WEB CONTEXT CRITICAL HERE
-  console.log(`API: [3/6] Generating truth check...`)
-  let truthCheck = await generateTruthCheck(content.full_text, content.user_id, content.id, webContext)
-  if (truthCheck) {
-    await updateSummarySection(supabase, content.id, content.user_id, {
-      truth_check: truthCheck as unknown as Json,
-      processing_status: "truth_check_complete",
-    })
-    responsePayload.sections_generated.push("truth_check")
-    console.log(`API: Truth check saved.`)
+  // Skip for content categories without verifiable claims
+  const skipTruthCheckCategories = ["music", "entertainment"]
+  const triageCategory = triage?.content_category
+  const shouldSkipTruthCheck = triageCategory && skipTruthCheckCategories.includes(triageCategory)
+
+  let truthCheck: TruthCheckData | null = null
+  if (shouldSkipTruthCheck) {
+    console.log(`API: [3/6] Skipping truth check for ${triageCategory} content (no verifiable claims)`)
   } else {
-    failedSections.push("truth_check")
-    console.warn(`API: Truth check failed, will retry later...`)
+    console.log(`API: [3/6] Generating truth check...`)
+    truthCheck = await generateTruthCheck(content.full_text, content.user_id, content.id, webContext)
+    if (truthCheck) {
+      await updateSummarySection(supabase, content.id, content.user_id, {
+        truth_check: truthCheck as unknown as Json,
+        processing_status: "truth_check_complete",
+      })
+      responsePayload.sections_generated.push("truth_check")
+      console.log(`API: Truth check saved.`)
+    } else {
+      failedSections.push("truth_check")
+      console.warn(`API: Truth check failed, will retry later...`)
+    }
   }
 
   // Update domain credibility stats
@@ -1406,18 +1416,28 @@ export async function POST(req: NextRequest) {
   }
 
   // 4. ACTION ITEMS (actionable takeaways)
-  console.log(`API: [4/6] Generating action items...`)
-  let actionItems = await generateActionItems(content.full_text, content.type || "article", content.user_id, content.id, webContext)
-  if (actionItems) {
-    await updateSummarySection(supabase, content.id, content.user_id, {
-      action_items: actionItems as unknown as Json,
-      processing_status: "action_items_complete",
-    })
-    responsePayload.sections_generated.push("action_items")
-    console.log(`API: Action items saved.`)
+  // Skip for content categories that don't have actionable items
+  const skipActionItemsCategories = ["music", "entertainment"]
+  const contentCategory = triage?.content_category
+  const shouldSkipActionItems = contentCategory && skipActionItemsCategories.includes(contentCategory)
+
+  let actionItems: ActionItemsData | null = null
+  if (shouldSkipActionItems) {
+    console.log(`API: [4/6] Skipping action items for ${contentCategory} content`)
   } else {
-    failedSections.push("action_items")
-    console.warn(`API: Action items failed, will retry later...`)
+    console.log(`API: [4/6] Generating action items...`)
+    actionItems = await generateActionItems(content.full_text, content.type || "article", content.user_id, content.id, webContext)
+    if (actionItems) {
+      await updateSummarySection(supabase, content.id, content.user_id, {
+        action_items: actionItems as unknown as Json,
+        processing_status: "action_items_complete",
+      })
+      responsePayload.sections_generated.push("action_items")
+      console.log(`API: Action items saved.`)
+    } else {
+      // Don't add to failed sections for non-actionable content types
+      console.warn(`API: Action items generation failed, skipping...`)
+    }
   }
 
   // 5. MID-LENGTH SUMMARY (existing behavior, kept for compatibility)

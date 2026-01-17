@@ -16,8 +16,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Truth Checker",
-  description: "Check and verify content truth",
+  title: "Vajra",
+  description: "AI-powered content analysis and fact-checking",
   generator: "v0.dev",
   manifest: "/manifest.json",
   icons: {
