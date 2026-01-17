@@ -21,7 +21,7 @@ export function HeroSection() {
           className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.05] border border-white/[0.1] backdrop-blur-sm mb-5"
         >
           <Sparkles className="w-3.5 h-3.5 text-[#1d9bf0]" />
-          <span className="text-sm text-white/70 font-medium">AI-Powered Fact Checking</span>
+          <span className="text-sm text-white/70 font-medium">Your AI Content Companion</span>
         </motion.div>
 
         {/* Main Headline */}
@@ -31,12 +31,12 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
           className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white tracking-tight leading-[1.1] mb-5"
         >
-          Separate{" "}
+          Understand{" "}
           <span className="relative inline-block">
-            <span className="relative z-10">Fact</span>
-            <span className="absolute inset-0 bg-yellow-400/40 -skew-x-6 -rotate-1 rounded-sm scale-x-115 scale-y-[0.65] translate-y-[15%]" />
+            <span className="relative z-10">Any</span>
+            <span className="absolute inset-0 bg-[#1d9bf0]/40 -skew-x-6 -rotate-1 rounded-sm scale-x-115 scale-y-[0.65] translate-y-[15%]" />
           </span>
-          {" "}from <span className="gradient-text">Fiction</span>
+          {" "}Content <span className="gradient-text">Instantly</span>
         </motion.h1>
 
         {/* Subheadline */}
@@ -46,8 +46,8 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.2, ease: [0.22, 1, 0.36, 1] }}
           className="text-lg sm:text-xl text-white/50 max-w-2xl mx-auto mb-6 leading-relaxed"
         >
-          Analyze YouTube videos, articles, and X posts instantly.
-          Get AI-powered summaries and truth ratings in seconds.
+          Drop any YouTube video, article, or X post. Get instant AI summaries,
+          key insights, and chat with your content like never before.
         </motion.p>
 
         {/* CTA Button */}

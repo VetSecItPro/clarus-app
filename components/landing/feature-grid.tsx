@@ -1,14 +1,14 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { Youtube, FileText, Twitter, Brain, Zap, Clock, Shield, BarChart3 } from "lucide-react"
+import { Youtube, FileText, Twitter, Brain, Zap, Clock, Shield, BarChart3, FileUp } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const features = [
   {
     icon: Youtube,
-    title: "YouTube Analysis",
-    description: "Drop a video link and we'll pull the transcript, check claims for accuracy with timestamps, and tell you what's actually worth remembering.",
+    title: "YouTube Videos",
+    description: "Drop a video link and instantly get the transcript, key takeaways, and timestamps. Then chat about anything in the video.",
     gradient: "from-red-500/20 to-red-500/5",
     iconBg: "bg-red-500/10",
     iconColor: "text-red-400",
@@ -16,26 +16,26 @@ const features = [
   },
   {
     icon: FileText,
-    title: "Article Scanner",
-    description: "Paste any article URL and we'll break it down for you: what's true, what's spin, and whether it's worth your time.",
+    title: "Articles & Blogs",
+    description: "Paste any article and get an instant summary with the main points. Ask follow-up questions and dive deeper into any topic.",
     gradient: "from-blue-500/20 to-blue-500/5",
     iconBg: "bg-blue-500/10",
     iconColor: "text-blue-400",
     glowColor: "group-hover:shadow-blue-500/20",
   },
   {
-    icon: Twitter,
-    title: "X Post Verification",
-    description: "See a tweet that seems off? We'll analyze the claims and give you the full picture before you hit repost.",
-    gradient: "from-white/10 to-white/5",
-    iconBg: "bg-white/10",
-    iconColor: "text-white",
-    glowColor: "group-hover:shadow-white/10",
+    icon: FileUp,
+    title: "PDF Documents",
+    description: "Upload any PDF and chat with it. Research papers, reports, ebooks - ask questions and get answers from your documents.",
+    gradient: "from-orange-500/20 to-orange-500/5",
+    iconBg: "bg-orange-500/10",
+    iconColor: "text-orange-400",
+    glowColor: "group-hover:shadow-orange-500/20",
   },
   {
     icon: Brain,
-    title: "Worth Your Time?",
-    description: "Every piece of content gets a signal-to-noise score. Basically, is this actually useful or just filler? We'll tell you upfront.",
+    title: "Chat With Your Content",
+    description: "Every piece of content becomes a conversation. Ask questions, get explanations, and explore ideas with AI assistance.",
     gradient: "from-teal-500/20 to-teal-500/5",
     iconBg: "bg-teal-500/10",
     iconColor: "text-teal-400",
@@ -103,15 +103,15 @@ export function FeatureGrid() {
         >
           <h2 className="text-4xl sm:text-5xl font-bold text-white mb-4">
             Everything you need to{" "}
-            <span className="gradient-text">verify content</span>
+            <span className="gradient-text">understand content</span>
           </h2>
           <p className="text-white/50 text-lg max-w-2xl mx-auto">
-            Powerful tools designed to help you cut through misinformation and find the truth
+            Powerful AI tools to summarize, analyze, and chat with any content you find online
           </p>
         </motion.div>
 
-        {/* Main Bento Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+        {/* Main Feature Grid - 4 columns on desktop */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}
@@ -121,72 +121,54 @@ export function FeatureGrid() {
               viewport={{ once: true, margin: "-50px" }}
               variants={cardVariants}
               whileHover={{
-                y: -8,
-                transition: { duration: 0.3, ease: "easeOut" }
+                y: -4,
+                transition: { duration: 0.2, ease: "easeOut" }
               }}
               className={cn(
-                "feature-card group relative p-8 rounded-3xl border border-white/[0.08]",
+                "feature-card group relative p-5 rounded-2xl border border-white/[0.06]",
                 "bg-gradient-to-br backdrop-blur-xl cursor-pointer",
                 feature.gradient,
-                "hover:border-white/[0.2] transition-all duration-300",
-                "shadow-lg shadow-transparent",
-                feature.glowColor,
-                "group-hover:shadow-2xl"
+                "hover:border-white/[0.15] transition-all duration-300"
               )}
             >
-              {/* Animated glow effect on hover */}
-              <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-white/[0.03] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-
               <motion.div
                 variants={iconVariants}
                 initial="initial"
                 whileHover="hover"
                 className={cn(
-                  "relative w-14 h-14 rounded-2xl flex items-center justify-center mb-6",
-                  feature.iconBg,
-                  "transition-shadow duration-300"
+                  "relative w-10 h-10 rounded-xl flex items-center justify-center mb-3",
+                  feature.iconBg
                 )}
               >
-                <feature.icon className={cn("w-7 h-7", feature.iconColor)} />
+                <feature.icon className={cn("w-5 h-5", feature.iconColor)} />
               </motion.div>
-              <h3 className="relative text-2xl font-semibold text-white mb-3 group-hover:text-white transition-colors">
+              <h3 className="relative text-base font-semibold text-white mb-2">
                 {feature.title}
               </h3>
-              <p className="relative text-white/50 text-lg leading-relaxed group-hover:text-white/60 transition-colors">
+              <p className="relative text-white/50 text-sm leading-relaxed">
                 {feature.description}
               </p>
             </motion.div>
           ))}
         </div>
 
-        {/* Secondary features row */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        {/* Secondary features row - more compact */}
+        <div className="flex flex-wrap justify-center gap-6 md:gap-10">
           {secondaryFeatures.map((feature, index) => (
             <motion.div
               key={feature.title}
-              initial={{ opacity: 0, y: 30, scale: 0.95 }}
-              whileInView={{ opacity: 1, y: 0, scale: 1 }}
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-30px" }}
               transition={{
                 delay: 0.4 + index * 0.1,
-                duration: 0.5,
+                duration: 0.4,
                 ease: [0.22, 1, 0.36, 1]
               }}
-              whileHover={{
-                y: -4,
-                scale: 1.02,
-                transition: { duration: 0.2 }
-              }}
-              className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.06] hover:border-[#1d9bf0]/30 hover:bg-white/[0.04] transition-all duration-300 cursor-pointer group"
+              className="flex items-center gap-2 text-white/50 hover:text-white/70 transition-colors"
             >
-              <motion.div
-                whileHover={{ scale: 1.15, rotate: 5 }}
-                transition={{ duration: 0.2 }}
-              >
-                <feature.icon className="w-6 h-6 text-[#1d9bf0] mb-3 group-hover:text-[#1d9bf0] transition-colors" />
-              </motion.div>
-              <h4 className="text-white font-medium mb-1 group-hover:text-white transition-colors">{feature.title}</h4>
-              <p className="text-white/40 text-sm group-hover:text-white/50 transition-colors">{feature.description}</p>
+              <feature.icon className="w-4 h-4 text-[#1d9bf0]" />
+              <span className="text-sm font-medium">{feature.title}</span>
             </motion.div>
           ))}
         </div>

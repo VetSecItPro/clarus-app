@@ -6,18 +6,18 @@ import Link from "next/link"
 
 export function CTASection() {
   return (
-    <section className="py-16 px-6">
+    <section className="py-12 px-6">
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         whileInView={{ opacity: 1, y: 0 }}
         viewport={{ once: true }}
         transition={{ duration: 0.6 }}
-        className="max-w-4xl mx-auto"
+        className="max-w-md mx-auto"
       >
-        <div className="relative p-12 md:p-16 rounded-[2.5rem] overflow-hidden">
+        <div className="relative px-5 py-8 md:px-6 md:py-10 rounded-2xl overflow-hidden">
           {/* Background gradient */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#1d9bf0]/20 via-sky-500/10 to-teal-500/10" />
-          <div className="absolute inset-0 border border-white/[0.1] rounded-[2.5rem]" />
+          <div className="absolute inset-0 bg-gradient-to-br from-[#1d9bf0]/15 via-sky-500/10 to-teal-500/5" />
+          <div className="absolute inset-0 border border-white/[0.08] rounded-2xl" />
 
           {/* Subtle animated glow */}
           <motion.div
@@ -35,20 +35,20 @@ export function CTASection() {
 
           {/* Content */}
           <div className="relative z-10 text-center">
-            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
-              Ready to find the{" "}
-              <span className="gradient-text">truth</span>?
+            <h2 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Ready to{" "}
+              <span className="gradient-text">dive in</span>?
             </h2>
-            <p className="text-white/50 text-lg md:text-xl mb-10 max-w-xl mx-auto">
-              Join thousands of users who trust Truth Checker to verify content daily.
+            <p className="text-white/50 text-sm md:text-base mb-6">
+              Join thousands using Vajra to understand content faster.
             </p>
             <Link href="/signup">
-              <button className="group inline-flex items-center gap-3 px-10 py-5 bg-white text-black hover:bg-white/90 font-semibold rounded-2xl transition-all duration-200 shadow-xl">
+              <button className="group inline-flex items-center gap-2 px-6 py-3 bg-white text-black hover:bg-white/90 font-semibold rounded-xl transition-all duration-200 shadow-lg text-sm">
                 Start Free Trial
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </Link>
-            <p className="mt-6 text-white/40 text-sm">
+            <p className="mt-4 text-white/40 text-xs">
               No credit card required
             </p>
           </div>
