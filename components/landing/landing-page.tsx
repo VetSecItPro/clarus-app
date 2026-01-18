@@ -5,7 +5,6 @@ import { HeroSection } from "./hero-section"
 import { FeatureGrid } from "./feature-grid"
 import { SocialProof } from "./social-proof"
 import { CTASection } from "./cta-section"
-import SiteFooter from "@/components/site-footer"
 
 export function LandingPage() {
   return (
@@ -18,8 +17,6 @@ export function LandingPage() {
         <SocialProof />
         <CTASection />
       </main>
-
-      <SiteFooter />
     </div>
   )
 }
