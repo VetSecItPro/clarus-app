@@ -132,10 +132,23 @@ export function useSpeechToText(options: UseSpeechToTextOptions = {}): UseSpeech
       }
 
       recognition.onerror = (event) => {
-        console.error("Speech recognition error:", event.error)
         setIsListening(false)
-        if (onErrorRef.current) {
-          onErrorRef.current(event.error)
+
+        // Map error codes to user-friendly messages
+        const errorMessages: Record<string, string> = {
+          "not-allowed": "Microphone access denied. Please allow microphone in browser settings.",
+          "service-not-allowed": "Speech recognition not available in this browser.",
+          "no-speech": "No speech detected. Please try again.",
+          "audio-capture": "No microphone found. Please connect a microphone.",
+          "network": "Network error. Please check your connection.",
+          "aborted": "", // Silently ignore aborted (user cancelled)
+        }
+
+        const message = errorMessages[event.error]
+
+        // Only fire callback with user-friendly message (skip aborted)
+        if (message && onErrorRef.current) {
+          onErrorRef.current(message)
         }
       }
 
