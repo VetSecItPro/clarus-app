@@ -6,7 +6,6 @@ import { useEffect, useState, useCallback } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
-import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import {
   Search,
@@ -529,7 +528,6 @@ function LibraryPageContent({ session }: LibraryPageProps) {
         )}
       </main>
 
-      <SiteFooter />
       <MobileBottomNav />
     </div>
   )

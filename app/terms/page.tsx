@@ -1,7 +1,6 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft, Shield } from "lucide-react"
-import SiteFooter from "@/components/site-footer"
 
 export const metadata: Metadata = {
   title: "Terms of Service | Truth Checker",
@@ -152,8 +151,6 @@ export default function TermsPage() {
           </div>
         </div>
       </main>
-
-      <SiteFooter />
     </div>
   )
 }
