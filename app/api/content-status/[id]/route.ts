@@ -3,6 +3,8 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { validateContentId, checkRateLimit } from "@/lib/validation"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
