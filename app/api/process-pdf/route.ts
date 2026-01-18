@@ -32,7 +32,11 @@ const LIMITS = {
 async function extractTextWithOCR(buffer: Buffer, filename: string): Promise<string> {
   // Check file size for OCR (free tier limit)
   if (buffer.length > LIMITS.OCR_MAX_FILE_SIZE) {
-    throw new Error("PDF too large for OCR processing. Maximum 1MB for scanned PDFs.")
+    const sizeMB = (buffer.length / (1024 * 1024)).toFixed(1)
+    throw new Error(
+      `This scanned PDF is ${sizeMB}MB, but OCR processing is limited to 1MB. ` +
+      `Try compressing the PDF or splitting it into smaller files.`
+    )
   }
 
   console.log("Starting OCR extraction via OCR.space...")
