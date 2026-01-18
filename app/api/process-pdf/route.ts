@@ -8,7 +8,9 @@ export const maxDuration = 120
 
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-const ocrApiKey = process.env.OCR_SPACE_API_KEY // Free API key from ocr.space
+// OCR.space free tier: use "helloworld" demo key if no custom key provided
+// Limits: 500 req/day per IP, 1MB file size, 3 PDF pages
+const ocrApiKey = process.env.OCR_SPACE_API_KEY || "helloworld"
 
 if (!supabaseUrl || !supabaseKey) {
   console.warn("PDF API: Supabase credentials not set")
@@ -19,22 +21,18 @@ const LIMITS = {
   MAX_UPLOADS_PER_HOUR: 10,
   MAX_FILE_SIZE: 20 * 1024 * 1024, // 20MB
   MIN_TEXT_LENGTH: 100, // Minimum chars required
-  OCR_MAX_FILE_SIZE: 5 * 1024 * 1024, // OCR.space free tier limit: 5MB
+  OCR_MAX_FILE_SIZE: 1024 * 1024, // OCR.space free tier limit: 1MB
 }
 
 /**
  * Extract text from scanned PDF using OCR.space API
- * Free tier: 25,000 requests/month
+ * Free tier (demo key): 500 requests/day per IP, 1MB file size, 3 pages
  * Docs: https://ocr.space/ocrapi
  */
 async function extractTextWithOCR(buffer: Buffer, filename: string): Promise<string> {
-  if (!ocrApiKey) {
-    throw new Error("OCR service not configured. Please set OCR_SPACE_API_KEY.")
-  }
-
   // Check file size for OCR (free tier limit)
   if (buffer.length > LIMITS.OCR_MAX_FILE_SIZE) {
-    throw new Error("PDF too large for OCR processing. Maximum 5MB for scanned PDFs.")
+    throw new Error("PDF too large for OCR processing. Maximum 1MB for scanned PDFs.")
   }
 
   console.log("Starting OCR extraction via OCR.space...")
@@ -150,17 +148,6 @@ export async function POST(req: NextRequest) {
 
     // Step 2: If pdf-parse didn't get enough text, try OCR
     if (!pdfText || pdfText.trim().length < LIMITS.MIN_TEXT_LENGTH) {
-      if (!ocrApiKey) {
-        // OCR not configured, give helpful error
-        return NextResponse.json(
-          {
-            error: "This PDF appears to be scanned or image-based. OCR processing is not yet configured. Please use a text-based PDF, or convert your scanned PDF using Adobe Acrobat, Google Docs, or an online OCR service first.",
-            isScannedPdf: true
-          },
-          { status: 400 }
-        )
-      }
-
       console.log("Text extraction insufficient, attempting OCR...")
       try {
         pdfText = await extractTextWithOCR(buffer, file.name)
