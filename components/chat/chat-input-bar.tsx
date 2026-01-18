@@ -201,9 +201,20 @@ export function ChatInputBar({
       return
     }
 
+    // Auto-submit PDF immediately (no user interaction needed)
+    if (onSubmitPdf) {
+      toast.success("PDF detected - starting analysis...")
+      onSubmitPdf(file)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+      return
+    }
+
+    // Fallback if no submit handler
     setSelectedPdf(file)
-    setInputValue("") // Clear any text input
-    setUrlPreview(null) // Clear any URL preview
+    setInputValue("")
+    setUrlPreview(null)
   }
 
   const handlePdfSubmit = () => {
