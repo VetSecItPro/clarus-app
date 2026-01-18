@@ -194,7 +194,7 @@ export async function POST(req: NextRequest) {
         url: `pdf://${file.name}`,
         type: "pdf",
         full_text: truncatedText,
-        processing_status: "pending",
+        status: "pending",
       })
       .select("id")
       .single()
@@ -210,8 +210,13 @@ export async function POST(req: NextRequest) {
     const contentId = contentData.id
 
     // Trigger async processing (same as URL processing)
+    // Construct base URL from request headers for local dev compatibility
+    const protocol = req.headers.get("x-forwarded-proto") || "http"
+    const host = req.headers.get("host") || "localhost:3000"
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `${protocol}://${host}`
+
     const processResponse = await fetch(
-      `${process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3000"}/api/process-content`,
+      `${baseUrl}/api/process-content`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
