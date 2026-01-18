@@ -5,7 +5,6 @@ import { Loader2, Shield, MessageSquare } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import SiteHeader from "@/components/site-header"
-import SiteFooter from "@/components/site-footer"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { supabase } from "@/lib/supabase"
 import { getCachedSession, setAuthCache } from "@/components/with-auth"
@@ -240,7 +239,6 @@ function HomePageContent({ session }: HomePageProps) {
         )}
       </main>
 
-      <SiteFooter />
       <MobileBottomNav />
     </div>
   )

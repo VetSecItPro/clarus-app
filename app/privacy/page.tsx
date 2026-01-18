@@ -1,7 +1,6 @@
 import { Metadata } from "next"
 import Link from "next/link"
 import { ArrowLeft, Shield, Lock, Eye, Trash2, Download, Mail } from "lucide-react"
-import SiteFooter from "@/components/site-footer"
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Truth Checker",
@@ -236,8 +235,6 @@ export default function PrivacyPage() {
           </div>
         </div>
       </main>
-
-      <SiteFooter />
     </div>
   )
 }
