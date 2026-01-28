@@ -3,8 +3,8 @@ import Link from "next/link"
 import { ArrowLeft, Shield, Lock, Eye, Trash2, Download, Mail } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "Privacy Policy | Truth Checker",
-  description: "Privacy Policy for Truth Checker - GDPR Compliant",
+  title: "Privacy Policy | Clarus",
+  description: "Privacy Policy for Clarus - GDPR Compliant",
 }
 
 export default function PrivacyPage() {
@@ -63,7 +63,7 @@ export default function PrivacyPage() {
             <section>
               <h2 className="text-xl font-semibold text-white mb-4">1. Introduction</h2>
               <p className="leading-relaxed">
-                Truth Checker (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy.
+                Clarus (&quot;we,&quot; &quot;our,&quot; or &quot;us&quot;) is committed to protecting your privacy.
                 This Privacy Policy explains how we collect, use, disclose, and safeguard your information
                 when you use our service. We comply with the General Data Protection Regulation (GDPR)
                 and other applicable data protection laws.

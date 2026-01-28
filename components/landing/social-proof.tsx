@@ -42,7 +42,7 @@ export function SocialProof() {
         >
           <blockquote className="max-w-3xl mx-auto">
             <p className="text-2xl md:text-3xl text-white/80 font-light leading-relaxed italic">
-              &ldquo;In an era of information overload, Truth Checker is the clarity we all need.&rdquo;
+              &ldquo;In an era of information overload, Clarus brings the clarity we all need.&rdquo;
             </p>
             <footer className="mt-6">
               <div className="text-white/60">Built for critical thinkers</div>

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Clarus</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Header -->
+    <header id="header">
+      <div class="logo">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="#10b981" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M2 17L12 22L22 17" stroke="#10b981" stroke-width="2" stroke-linejoin="round"/>
+          <path d="M2 12L12 17L22 12" stroke="#10b981" stroke-width="2" stroke-linejoin="round"/>
+        </svg>
+        <span class="logo-text">Clarus</span>
+      </div>
+      <div id="user-info" class="hidden">
+        <span id="user-email" class="user-email"></span>
+        <button id="btn-signout" class="btn-text" title="Sign out">Sign out</button>
+      </div>
+    </header>
+
+    <!-- State 1: Logged Out -->
+    <section id="state-logged-out" class="state hidden">
+      <div class="state-content">
+        <h2>Understand any webpage instantly.</h2>
+        <p class="subtitle">Get key insights, quality scores, and actionable takeaways from any article or video.</p>
+
+        <form id="login-form" class="form">
+          <input type="email" id="input-email" placeholder="Email" required autocomplete="email">
+          <input type="password" id="input-password" placeholder="Password" required autocomplete="current-password">
+          <button type="submit" id="btn-login" class="btn btn-primary">Log In</button>
+          <p id="login-error" class="error hidden"></p>
+        </form>
+
+        <div class="divider">
+          <span>or</span>
+        </div>
+
+        <button id="btn-signup" class="btn btn-secondary">Create Account</button>
+
+        <p class="footnote">Free: 5 analyses/month</p>
+      </div>
+    </section>
+
+    <!-- State 2: Ready -->
+    <section id="state-ready" class="state hidden">
+      <div class="state-content">
+        <p class="label">Current page</p>
+        <p id="current-url" class="current-url">Loading...</p>
+
+        <button id="btn-analyze" class="btn btn-primary btn-large">Analyze This Page</button>
+
+        <p id="remaining-count" class="remaining"></p>
+      </div>
+    </section>
+
+    <!-- State 3: Processing -->
+    <section id="state-processing" class="state hidden">
+      <div class="state-content">
+        <h2>Analyzing...</h2>
+
+        <div class="progress-bar">
+          <div id="progress-fill" class="progress-fill"></div>
+        </div>
+
+        <p id="progress-status" class="progress-status">Fetching content...</p>
+
+        <div class="progress-steps">
+          <div id="step-fetch" class="step active">Fetching content</div>
+          <div id="step-overview" class="step">Generating overview</div>
+          <div id="step-quality" class="step">Evaluating quality</div>
+          <div id="step-facts" class="step">Fact-checking claims</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- State 4: Results Teaser -->
+    <section id="state-results" class="state hidden">
+      <div class="state-content">
+        <div class="result-card">
+          <div class="score-section">
+            <p class="label">Quality Score</p>
+            <div class="score-display">
+              <span id="result-score" class="score-number">7</span>
+              <span class="score-max">/10</span>
+            </div>
+            <div class="score-bar">
+              <div id="score-fill" class="score-fill"></div>
+            </div>
+          </div>
+
+          <div class="recommendation-section">
+            <p class="label">Recommendation</p>
+            <div id="result-recommendation" class="recommendation">Worth It</div>
+          </div>
+
+          <div class="overview-section">
+            <p id="result-overview" class="overview-text"></p>
+          </div>
+        </div>
+
+        <button id="btn-full-analysis" class="btn btn-primary btn-large">View Full Analysis</button>
+
+        <p id="results-remaining" class="remaining"></p>
+      </div>
+    </section>
+
+    <!-- State 5: Limit Reached -->
+    <section id="state-limit" class="state hidden">
+      <div class="state-content">
+        <div class="limit-icon">
+          <svg width="48" height="48" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="12" r="10" stroke="#f59e0b" stroke-width="2"/>
+            <path d="M12 8V12" stroke="#f59e0b" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="12" cy="16" r="1" fill="#f59e0b"/>
+          </svg>
+        </div>
+        <h2>Monthly limit reached</h2>
+        <p class="subtitle">You've used all <span id="limit-count">5</span> free analyses this month.</p>
+        <p class="subtitle">Upgrade to Pro for unlimited analyses.</p>
+
+        <button id="btn-upgrade" class="btn btn-primary btn-large">Upgrade to Pro</button>
+
+        <p id="limit-reset" class="footnote"></p>
+      </div>
+    </section>
+  </div>
+
+  <!-- Scripts (order matters: config -> storage -> auth -> api -> main) -->
+  <script src="lib/config.js"></script>
+  <script src="lib/storage.js"></script>
+  <script src="lib/auth.js"></script>
+  <script src="lib/api.js"></script>
+  <script src="sidepanel.js"></script>
+</body>
+</html>

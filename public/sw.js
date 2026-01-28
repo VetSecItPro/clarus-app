@@ -1,13 +1,14 @@
 // Service Worker for aggressive caching
-const CACHE_NAME = 'vajra-v1';
-const STATIC_CACHE = 'vajra-static-v1';
-const DYNAMIC_CACHE = 'vajra-dynamic-v1';
+const CACHE_NAME = 'clarus-v1';
+const STATIC_CACHE = 'clarus-static-v1';
+const DYNAMIC_CACHE = 'clarus-dynamic-v1';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
   '/',
   '/library',
   '/feed',
+  '/offline.html',
 ];
 
 // Install event - cache static assets
@@ -59,7 +60,9 @@ self.addEventListener('fetch', (event) => {
           return response;
         })
         .catch(() => {
-          return caches.match(request);
+          return caches.match(request).then((cached) => {
+            return cached || caches.match('/offline.html');
+          });
         })
     );
     return;

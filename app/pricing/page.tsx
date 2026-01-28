@@ -55,9 +55,9 @@ export default function PricingPage() {
       {/* Header */}
       <div className="flex flex-col items-center mb-6">
         <BlueCheckLogo size={56} />
-        <h1 className="text-2xl font-bold text-white mt-4">Truth Checker Pro</h1>
+        <h1 className="text-2xl font-bold text-white mt-4">Clarus Pro</h1>
         <p className="text-neutral-500 text-sm mt-1 text-center">
-          Unlock the full power of AI-assisted truth verification
+          Unlock the full power of AI-assisted content analysis
         </p>
       </div>
 

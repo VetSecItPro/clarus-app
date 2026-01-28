@@ -182,10 +182,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Could not load content to chat with." }, { status: 500 })
     }
 
-    // Fetch summary data
+    // Fetch summary data (including action_items for grounded chat)
     const { data: summaryData } = await supabaseAdmin
       .from("summaries")
-      .select("brief_overview, mid_length_summary, detailed_summary, triage, truth_check")
+      .select("brief_overview, mid_length_summary, detailed_summary, triage, truth_check, action_items")
       .eq("content_id", contentIdValidation.sanitized!)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -237,7 +237,7 @@ export async function POST(req: NextRequest) {
 
       if (summaryData.truth_check) {
         const truthCheck = summaryData.truth_check as Record<string, unknown>
-        contextParts.push(`## Truth Check`)
+        contextParts.push(`## Accuracy Analysis`)
         if (truthCheck.accuracy_assessment) contextParts.push(`- **Accuracy:** ${truthCheck.accuracy_assessment}`)
         if (truthCheck.bias_assessment) contextParts.push(`- **Bias:** ${truthCheck.bias_assessment}`)
         if (truthCheck.key_claims) contextParts.push(`- **Key Claims:** ${JSON.stringify(truthCheck.key_claims)}`)
@@ -247,6 +247,14 @@ export async function POST(req: NextRequest) {
       if (summaryData.mid_length_summary) {
         contextParts.push(`## Key Takeaways`)
         contextParts.push(summaryData.mid_length_summary)
+        contextParts.push("")
+      }
+
+      // Action items if available
+      if (summaryData.action_items) {
+        const actionItems = summaryData.action_items as Record<string, unknown>
+        contextParts.push(`## Action Items`)
+        contextParts.push(JSON.stringify(actionItems, null, 2))
         contextParts.push("")
       }
 
@@ -276,7 +284,7 @@ export async function POST(req: NextRequest) {
 
     const contentContext = contextParts.join("\n")
 
-    // Enhanced system prompt
+    // Enhanced system prompt with grounding
     const webSearchCapability = tavilyApiKey
       ? `
 ## Web Search Tool
@@ -291,34 +299,39 @@ You have access to a webSearch tool. USE IT ACTIVELY when:
 IMPORTANT: When the user asks about something not fully covered in the content (like who created a video, background on a speaker, etc.), USE the webSearch tool immediately. Don't say you can't find it - search for it!`
       : ""
 
-    const systemPrompt = `You are an intelligent AI assistant helping users understand and discuss content they've saved. You have access to the full content, summaries, and analysis.
+    // Determine content type label
+    const contentTypeLabel = contentData.type === "youtube" ? "video" : contentData.type === "x_post" ? "post" : "article"
 
-## Your Capabilities:
-- Answer questions about the content accurately and thoroughly
-- Explain complex concepts mentioned in the content
-- Compare points made in the content with broader knowledge
-- Provide additional context and background information
-- Search the web for information not in the content
+    const systemPrompt = `You are Clarus, an analysis assistant for content that has already been analyzed. You help users understand the analysis results and gain clarity on the content.
+
+## Content Being Discussed
+- **Type:** ${contentTypeLabel}
+- **Title:** ${contentData.title || "Untitled"}
+${contentData.author ? `- **Author:** ${contentData.author}` : ""}
+${contentData.url ? `- **Source:** ${contentData.url}` : ""}
 ${webSearchCapability}
 
-## Critical: Accuracy First
-- ALWAYS verify information before presenting it as fact
-- Cross-reference claims with the source content and your knowledge
-- If you're uncertain about something, say so clearly
-- Distinguish between what's stated in the content vs. your interpretation
-- When making claims, be precise - avoid overgeneralizing
-- If the content contains errors or misinformation, point them out
+## Analysis Data Available
+${contentContext}
 
-## Response Guidelines:
-- Use **bold** for emphasis on key terms and important points
-- Use bullet points and numbered lists for clarity
-- Use headers (##) to organize longer responses
-- Include relevant quotes from the content when appropriate
-- Be conversational but informative
-- If information isn't in the content, search for it rather than saying you don't know
+## Your Role
+You are grounded in the analysis above. Your primary job is to help users understand, navigate, and act on the analysis findings.
 
-## Content Context:
-${contentContext}`
+## Rules
+1. **Only reference information from the analysis above** — do not invent facts not present in the analysis
+2. **If asked something not covered**, say so honestly: "The analysis doesn't cover that specific aspect"
+3. **Cite which section** the information comes from (Overview, Quick Assessment, Key Takeaways, Accuracy Analysis, Action Items, Detailed Analysis)
+4. **Help the user** understand, summarize, compare, or prioritize findings
+5. **Be concise** — users want quick, actionable answers
+6. **If the content contains errors or questionable claims**, point them out based on the Accuracy Analysis data
+7. **For follow-up questions** about topics beyond the analysis, use web search if available
+
+## Response Style
+- Use **bold** for key terms and important points
+- Use bullet points for clarity
+- Keep responses focused and relevant to the analysis
+- Be conversational but precise
+- When referencing scores or ratings, include the actual numbers`
 
     const modelMessages = convertToModelMessages(sanitizedMessages as UIMessage[])
 

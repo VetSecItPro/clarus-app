@@ -64,7 +64,7 @@ const PROMPT_LABELS: Record<string, { label: string; icon: string; step: number 
   brief_overview: { label: "Overview", icon: "1️⃣", step: 1 },
   triage: { label: "Quick Assessment", icon: "2️⃣", step: 2 },
   short_summary: { label: "Key Takeaways", icon: "3️⃣", step: 3 },
-  truth_check: { label: "Truth Check", icon: "4️⃣", step: 4 },
+  truth_check: { label: "Accuracy Analysis", icon: "4️⃣", step: 4 },
   action_items: { label: "Action Items", icon: "5️⃣", step: 5 },
   detailed_summary: { label: "Detailed Analysis", icon: "6️⃣", step: 6 },
 }

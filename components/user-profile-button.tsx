@@ -49,9 +49,9 @@ export default function UserProfileButton() {
     try {
       // Clear cached auth state before signing out
       if (typeof window !== "undefined") {
-        localStorage.removeItem("vajra-remember-session")
-        localStorage.removeItem("vajra-session-expiry")
-        sessionStorage.removeItem("vajra-session-active")
+        localStorage.removeItem("clarus-remember-session")
+        localStorage.removeItem("clarus-session-expiry")
+        sessionStorage.removeItem("clarus-session-active")
       }
       await supabase.auth.signOut()
       // Force a hard navigation to clear all cached state

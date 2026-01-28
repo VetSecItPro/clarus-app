@@ -94,7 +94,7 @@ export function AddUrlModal({ isOpen, onOpenChange }: AddUrlModalProps) {
 
       // Read saved language preference from localStorage
       const savedLanguage = typeof window !== "undefined"
-        ? localStorage.getItem("vajra-analysis-language")
+        ? localStorage.getItem("clarus-analysis-language")
         : null
 
       fetch("/api/process-content", {

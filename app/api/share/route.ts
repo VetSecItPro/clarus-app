@@ -36,7 +36,7 @@ export async function POST(request: Request) {
                     <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
                   </svg>
                 </div>
-                <span style="color: white; font-size: 20px; font-weight: 600;">Truth Checker</span>
+                <span style="color: white; font-size: 20px; font-weight: 600;">Clarus</span>
               </div>
             </div>
 
@@ -74,10 +74,10 @@ export async function POST(request: Request) {
             <!-- Footer -->
             <div style="text-align: center; margin-top: 32px;">
               <p style="color: rgba(255,255,255,0.4); font-size: 12px; margin: 0;">
-                Sent via <a href="https://infosecops.io" style="color: #1d9bf0; text-decoration: none;">Truth Checker</a>
+                Sent via <a href="https://infosecops.io" style="color: #1d9bf0; text-decoration: none;">Clarus</a>
               </p>
               <p style="color: rgba(255,255,255,0.3); font-size: 11px; margin: 8px 0 0 0;">
-                AI-powered fact checking and content analysis
+                AI-powered content analysis for clarity
               </p>
             </div>
           </div>
@@ -86,7 +86,7 @@ export async function POST(request: Request) {
     `
 
     const { data, error } = await resend.emails.send({
-      from: "Truth Checker <noreply@infosecops.io>",
+      from: "Clarus <noreply@infosecops.io>",
       to: [to],
       subject,
       html,
