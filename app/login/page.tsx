@@ -134,13 +134,13 @@ export default function LoginPage() {
               <div className="w-12 h-12 bg-gradient-to-br from-[#1d9bf0] to-[#1a8cd8] rounded-2xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/30">
                 <Shield className="w-6 h-6 text-white" />
               </div>
-              <span className="text-white font-semibold text-2xl">Vajra</span>
+              <span className="text-white font-semibold text-2xl">Clarus</span>
             </Link>
             <h2 className="text-4xl font-bold text-white mb-4">
               Welcome back
             </h2>
             <p className="text-white/50 text-lg max-w-md">
-              Sign in to continue fact-checking content and separating truth from fiction.
+              Sign in to continue analyzing content and gaining clarity on what matters.
             </p>
           </motion.div>
 
@@ -182,7 +182,7 @@ export default function LoginPage() {
             <div className="w-10 h-10 bg-gradient-to-br from-[#1d9bf0] to-[#1a8cd8] rounded-xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/20">
               <Shield className="w-5 h-5 text-white" />
             </div>
-            <span className="text-white font-semibold text-xl">Vajra</span>
+            <span className="text-white font-semibold text-xl">Clarus</span>
           </Link>
 
           {/* Header */}

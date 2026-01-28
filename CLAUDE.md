@@ -1,4 +1,6 @@
-# Vajra Truth Checker
+# Clarus
+
+AI-powered content analysis and fact-checking.
 
 ## Tech Stack
 - **Framework**: Next.js (App Router)
@@ -8,7 +10,7 @@
 - **AI**: OpenRouter
 - **Scraping**: Firecrawl, Supadata
 - **Hosting**: Vercel
-- **Production URL**: https://infosecops.io
+- **Production URL**: https://clarusapp.io
 
 ## Quick Commands
 

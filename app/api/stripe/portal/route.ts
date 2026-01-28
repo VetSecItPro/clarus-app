@@ -45,7 +45,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No subscription found" }, { status: 400 })
     }
 
-    const origin = request.headers.get("origin") || "https://vajra-truth-checker.vercel.app"
+    const origin = request.headers.get("origin") || "https://clarusapp.io"
 
     const session = await stripe.billingPortal.sessions.create({
       customer: userData.stripe_customer_id,

@@ -48,7 +48,7 @@ export function ShareModal({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           to: email,
-          subject: `Truth Check: ${contentTitle}`,
+          subject: `Analysis: ${contentTitle}`,
           contentTitle,
           contentUrl,
           briefOverview,

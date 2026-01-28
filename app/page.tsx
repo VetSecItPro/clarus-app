@@ -126,7 +126,7 @@ function HomePageContent({ session }: HomePageProps) {
           <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
         </div>
         <span className="text-white font-semibold text-base sm:text-lg tracking-tight">
-          Vajra
+          Clarus
         </span>
       </motion.div>
 

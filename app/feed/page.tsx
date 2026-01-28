@@ -1,8 +1,7 @@
 "use client"
 
-import withAuth from "@/components/with-auth"
+import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
 import { useEffect, useState } from "react"
-import type { Session } from "@supabase/supabase-js"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { useRouter } from "next/navigation"
@@ -28,7 +27,7 @@ const TYPE_FILTERS = [
   { value: "x_post", label: "X Posts" },
 ]
 
-function CommunityPageContent({ session }: { session: Session | null }) {
+function CommunityPageContent({ session }: WithAuthInjectedProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
