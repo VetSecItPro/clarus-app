@@ -1,44 +1,161 @@
 # Clarus
 
-AI-powered content analysis and fact-checking.
+AI-powered content analysis for clarity and understanding.
+
+## Links & Resources
+
+| Resource | URL | Status |
+|----------|-----|--------|
+| **Production** | https://clarusapp.io | Pending DNS setup |
+| **GitHub Repo** | https://github.com/VetSecItPro/clarusapp | ✅ Active |
+| **Vercel Project** | TBD - needs new project | ❌ Needs setup |
+| **Supabase Project** | TBD - needs new project | ❌ Needs setup |
+
+---
+
+## Services to Configure
+
+### 1. Domain (Hostinger)
+- **Domain**: clarusapp.io
+- **Status**: ✅ Purchased
+- **Action**: Configure DNS to point to Vercel after project setup
+
+### 2. GitHub
+- **Repo**: https://github.com/VetSecItPro/clarusapp
+- **Status**: ✅ Complete
+- **Env vars needed**: None (public repo)
+
+### 3. Vercel (Hosting)
+- **Dashboard**: https://vercel.com/dashboard
+- **Status**: ❌ Needs new project
+- **Actions**:
+  1. Create new project linked to VetSecItPro/clarusapp
+  2. Add custom domain clarusapp.io
+  3. Configure environment variables (see below)
+- **Env var**: None for Vercel itself
+
+### 4. Supabase (Database + Auth)
+- **Dashboard**: https://supabase.com/dashboard
+- **Status**: ❌ Needs new project
+- **Actions**:
+  1. Create new Supabase project
+  2. Run `scripts/000-full-schema.sql` to create tables
+  3. Run `scripts/000b-insert-prompts.sql` to seed AI prompts
+  4. Run `scripts/023-add-fulltext-search.sql` for search
+  5. Enable Google OAuth in Auth settings
+  6. Configure email templates
+- **Env vars needed**:
+  - `NEXT_PUBLIC_SUPABASE_URL` - Project URL
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Anon key
+  - `SUPABASE_SERVICE_ROLE_KEY` - Service role key
+
+### 5. OpenRouter (AI/LLM)
+- **Dashboard**: https://openrouter.ai/settings/keys
+- **Status**: ❌ Needs API key
+- **Actions**:
+  1. Create OpenRouter account
+  2. Add credits ($20-50 to start)
+  3. Generate API key
+- **Env var**: `OPENROUTER_API_KEY`
+
+### 6. Stripe (Payments)
+- **Dashboard**: https://dashboard.stripe.com
+- **Status**: ❌ Needs account
+- **Actions**:
+  1. Create Stripe account
+  2. Create product "Clarus Pro" with monthly/annual prices
+  3. Set up webhook endpoint: `https://clarusapp.io/api/stripe/webhook`
+  4. Get API keys
+- **Env vars needed**:
+  - `STRIPE_SECRET_KEY` - Secret key
+  - `STRIPE_WEBHOOK_SECRET` - Webhook signing secret
+  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Publishable key
+  - `STRIPE_PRICE_MONTHLY` - Monthly price ID (price_xxx)
+  - `STRIPE_PRICE_ANNUAL` - Annual price ID (price_xxx)
+
+### 7. Firecrawl (Web Scraping)
+- **Dashboard**: https://www.firecrawl.dev/app
+- **Status**: ❌ Needs API key
+- **Actions**:
+  1. Create Firecrawl account
+  2. Get API key (free tier: 500 credits)
+- **Env var**: `FIRECRAWL_API_KEY`
+
+### 8. Supadata (YouTube Transcripts)
+- **Dashboard**: https://supadata.ai/dashboard
+- **Status**: ❌ Needs API key
+- **Actions**:
+  1. Create Supadata account
+  2. Get API key
+- **Env var**: `SUPADATA_API_KEY`
+
+### 9. Tavily (Web Search for AI)
+- **Dashboard**: https://tavily.com/dashboard
+- **Status**: ❌ Needs API key
+- **Actions**:
+  1. Create Tavily account
+  2. Get API key (free tier: 1000 searches/month)
+- **Env var**: `TAVILY_API_KEY`
+
+### 10. Resend (Transactional Email)
+- **Dashboard**: https://resend.com/emails
+- **Status**: ❌ Needs API key
+- **Actions**:
+  1. Create Resend account
+  2. Verify domain clarusapp.io
+  3. Get API key
+- **Env var**: `RESEND_API_KEY`
+
+---
+
+## All Environment Variables
+
+```env
+# Supabase
+NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
+
+# OpenRouter (AI)
+OPENROUTER_API_KEY=sk-or-...
+
+# Stripe (Payments)
+STRIPE_SECRET_KEY=sk_live_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
+STRIPE_PRICE_MONTHLY=price_...
+STRIPE_PRICE_ANNUAL=price_...
+
+# Firecrawl (Web Scraping)
+FIRECRAWL_API_KEY=fc-...
+
+# Supadata (YouTube Transcripts)
+SUPADATA_API_KEY=...
+
+# Tavily (Web Search)
+TAVILY_API_KEY=tvly-...
+
+# Resend (Email)
+RESEND_API_KEY=re_...
+```
+
+---
 
 ## Tech Stack
-- **Framework**: Next.js (App Router)
+
+- **Framework**: Next.js 15 (App Router)
 - **Database**: Supabase/Postgres
-- **Auth**: Supabase Auth
+- **Auth**: Supabase Auth (Email + Google OAuth)
 - **Payments**: Stripe
-- **AI**: OpenRouter
-- **Scraping**: Firecrawl, Supadata
+- **AI**: OpenRouter (Claude Sonnet 4, Haiku)
+- **Scraping**: Firecrawl (articles), Supadata (YouTube)
+- **Search**: Tavily (web search for AI context)
+- **Email**: Resend
 - **Hosting**: Vercel
-- **Production URL**: https://clarusapp.io
+
+---
 
 ## Quick Commands
-
-### Vercel (MCP connected)
-Use MCP tools for Vercel operations:
-- `mcp__vercel__list_projects` - List projects
-- `mcp__vercel__list_deployments` - View deployments
-- `mcp__vercel__deploy_to_vercel` - Deploy project
-- Team ID: `team_HFUTBVxI8jKYi334LvgVsVNh` (VetSecItPro)
-
-Fallback CLI (if MCP unavailable):
-```bash
-vercel env pull .env.vercel --yes   # Pull env vars
-vercel --prod                        # Deploy production
-```
-
-### Database (MCP connected)
-Use MCP tools for Supabase operations:
-- `mcp__supabase__list_tables` - List all tables
-- `mcp__supabase__execute_sql` - Run queries
-- `mcp__supabase__apply_migration` - Apply DDL migrations
-- `mcp__supabase__get_logs` - Debug issues
-- Project ref: `dxyfpehucygiughjmiek`
-
-Fallback psql (if MCP unavailable):
-```bash
-PGPASSWORD="UI5MeSG65Igmcuh7" psql "postgres://postgres.dxyfpehucygiughjmiek:UI5MeSG65Igmcuh7@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require" -c "YOUR_SQL_HERE"
-```
 
 ### Run Locally
 ```bash
@@ -46,51 +163,40 @@ export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm install && pnp
 ```
 
 ### Shell Commands (Claude Code)
-Since nvm isn't loaded in Claude Code's shell, always prefix pnpm commands with:
 ```bash
-export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm <command>
+export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm typecheck
+export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm lint
+export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm build
 ```
-Examples:
-- `export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm typecheck`
-- `export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm lint`
-- `export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm build`
 
-## DB Tables
+---
+
+## Database Tables
+
 users, content, content_ratings, chat_threads, chat_messages, summaries, active_chat_prompt, active_summarizer_prompt, analysis_prompts, domains
 
-## Git Workflow (Feature Branch + PR)
+### Migration Scripts
+1. `scripts/000-full-schema.sql` - Complete schema (run first)
+2. `scripts/000b-insert-prompts.sql` - AI prompts data
+3. `scripts/023-add-fulltext-search.sql` - Full-text search indexes
+
+---
+
+## Git Workflow
 
 **NEVER push directly to main.** Always use feature branches:
 
-1. **Create feature branch**: `git checkout -b feature/short-description`
-2. **Make changes and commit**:
-   ```bash
-   git add -A
-   git commit -m "feat: description
+1. `git checkout -b feature/short-description`
+2. Make changes and commit
+3. `git push origin feature/short-description`
+4. `gh pr create --title "..." --body "..."`
+5. CI runs → merge after passing
 
-   🤖 Generated with [Claude Code](https://claude.com/claude-code)
-
-   Co-Authored-By: Claude Opus 4.5 <noreply@anthropic.com>"
-   ```
-3. **Push feature branch**: `git push origin feature/short-description`
-4. **Create PR**: `gh pr create --title "..." --body "..."`
-5. **CI runs on PR** → lint, typecheck, build, E2E, Lighthouse
-6. **Review & merge** → After approval, merge to main
-7. **Deploy** → Vercel auto-deploys on merge to main
-
-### Branch Naming
-- `feature/...` - New features
-- `fix/...` - Bug fixes
-- `refactor/...` - Code refactoring
-- `docs/...` - Documentation updates
+---
 
 ## Workflow Rules
-- **Always explain what you're doing before doing it** - User wants to understand actions before they're taken
-- **Always create a todo list for any task** - Turn every request into a todo list and implement items one by one so progress can be tracked
+
+- **Always explain what you're doing before doing it**
+- **Always create a todo list for any task**
 - Delete dead/unused code when found
 - Run typecheck before committing
-
-## Notes
-- Vercel MCP: ✅ Connected (team_HFUTBVxI8jKYi334LvgVsVNh)
-- Supabase MCP: ✅ Connected (dxyfpehucygiughjmiek)
-- GitHub CLI works: `gh`
