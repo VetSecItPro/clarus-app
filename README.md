@@ -1,30 +1,29 @@
-# Vajra
+# Clarus
 
-*Automatically synced with your [v0.dev](https://v0.dev) deployments*
+AI-powered content analysis for clarity and understanding.
 
-[![Deployed on Vercel](https://img.shields.io/badge/Deployed%20on-Vercel-black?style=for-the-badge&logo=vercel)](https://vercel.com/***REMOVED***s-projects/v0-vajra-pt1)
-[![Built with v0](https://img.shields.io/badge/Built%20with-v0.dev-black?style=for-the-badge)](https://v0.dev/chat/projects/DBkH8Uvy235)
+Analyze YouTube videos, articles, and content to extract key insights, make informed decisions, and gain clarity on any topic.
 
-## Overview
+## Features
 
-This repository will stay in sync with your deployed chats on [v0.dev](https://v0.dev).
-Any changes you make to your deployed app will be automatically pushed to this repository from [v0.dev](https://v0.dev).
+- **Content Analysis** - Deep analysis of YouTube videos, articles, and web content
+- **Key Takeaways** - Extract the most important insights from any content
+- **Action Items** - Get actionable recommendations from what you consume
+- **Quality Assessment** - Understand if content is worth your time
+- **Ask Questions** - Chat with AI about any analyzed content
 
-## Deployment
+## Tech Stack
 
-Your project is live at:
+- Next.js 15 (App Router)
+- Supabase (Auth & Database)
+- OpenRouter (AI)
+- Vercel (Hosting)
 
-**[https://vercel.com/***REMOVED***s-projects/v0-vajra-pt1](https://vercel.com/***REMOVED***s-projects/v0-vajra-pt1)**
+## Development
 
-## Build your app
+```bash
+pnpm install
+pnpm dev
+```
 
-Continue building your app on:
-
-**[https://v0.dev/chat/projects/DBkH8Uvy235](https://v0.dev/chat/projects/DBkH8Uvy235)**
-
-## How It Works
-
-1. Create and modify your project using [v0.dev](https://v0.dev)
-2. Deploy your chats from the v0 interface
-3. Changes are automatically pushed to this repository
-4. Vercel deploys the latest version from this repository
+Visit [https://clarusapp.io](https://clarusapp.io)

@@ -1,7 +1,7 @@
 {
-  "name": "Truth Checker",
-  "short_name": "Truth",
-  "description": "AI-powered content analysis and truth checking",
+  "name": "Clarus",
+  "short_name": "Clarus",
+  "description": "AI-powered content analysis for clarity and understanding",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",

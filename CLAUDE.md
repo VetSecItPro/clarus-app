@@ -1,4 +1,6 @@
-# Vajra Truth Checker
+# Clarus
+
+AI-powered content analysis and fact-checking.
 
 ## Tech Stack
 - **Framework**: Next.js (App Router)

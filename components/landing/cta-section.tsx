@@ -40,7 +40,7 @@ export function CTASection() {
               <span className="gradient-text">dive in</span>?
             </h2>
             <p className="text-white/50 text-sm md:text-base mb-6">
-              Join thousands using Vajra to understand content faster.
+              Join thousands using Clarus to understand content faster.
             </p>
             <Link href="/signup">
               <button className="group inline-flex items-center gap-2 px-6 py-3 bg-white text-black hover:bg-white/90 font-semibold rounded-xl transition-all duration-200 shadow-lg text-sm">
