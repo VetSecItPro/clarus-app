@@ -57,16 +57,19 @@ async function extractKeyTopics(text: string): Promise<string[]> {
         messages: [
           {
             role: "system",
-            content: `You extract key verifiable claims from content. Return ONLY a JSON array of 3-5 search queries that would help verify the main claims, products, people, or events mentioned. Focus on:
-- Product names, company announcements, releases
-- Specific claims or statistics
-- People and their roles/actions
-- Recent events or news
-Keep queries concise (2-6 words each). Return ONLY valid JSON array, nothing else.`
+            content: `You are a search query strategist for fact-verification. Given content, generate targeted web search queries that would help verify the most important and time-sensitive claims.
+
+PRIORITIZATION:
+1. Specific factual assertions (statistics, dates, figures, rankings)
+2. Claims about people, companies, or organizations
+3. References to studies, reports, or official announcements
+4. Time-sensitive claims that may have changed since publication
+
+OUTPUT: Return a JSON object with a "queries" key containing an array of 3-5 concise search queries (2-8 words each). Target verifiable assertions, not general topics.`
           },
           {
             role: "user",
-            content: `Extract search queries to verify claims in this content:\n\n${truncatedText}`
+            content: `Generate fact-verification search queries for the key claims in this content:\n\n${truncatedText}`
           }
         ],
         temperature: 0.1,
@@ -672,8 +675,8 @@ async function getModelSummary(
       headers: {
         Authorization: `Bearer ${openRouterApiKey}`,
         "Content-Type": "application/json",
-        "HTTP-Referer": "https://vajra.vercel.app",
-        "X-Title": "Vajra",
+        "HTTP-Referer": "https://clarusapp.io",
+        "X-Title": "Clarus",
       },
       body: JSON.stringify(requestBody),
       signal: controller.signal,
@@ -851,8 +854,8 @@ async function generateSectionWithAI(
         headers: {
           Authorization: `Bearer ${openRouterApiKey}`,
           "Content-Type": "application/json",
-          "HTTP-Referer": "https://vajra.vercel.app",
-          "X-Title": "Vajra Truth Checker",
+          "HTTP-Referer": "https://clarusapp.io",
+          "X-Title": "Clarus",
         },
         body: JSON.stringify(requestBody),
         signal: controller.signal,

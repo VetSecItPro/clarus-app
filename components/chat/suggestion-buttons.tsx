@@ -73,7 +73,7 @@ const CATEGORY_PROMPTS: Record<ContentCategory, { label: string; prompt: string;
     { label: "Similar content", prompt: "What similar content would I enjoy?", icon: Heart },
   ],
   documentary: [
-    { label: "Fact check", prompt: "How accurate are the claims in this documentary?", icon: AlertTriangle },
+    { label: "Verify claims", prompt: "How accurate are the claims in this documentary?", icon: AlertTriangle },
     { label: "Key points", prompt: "What are the main points and conclusions?", icon: Lightbulb },
     { label: "Sources", prompt: "What sources and evidence are presented?", icon: BookOpen },
     { label: "Perspectives", prompt: "What perspectives might be missing?", icon: Scale },
@@ -119,12 +119,12 @@ const DEFAULT_PROMPTS = [
 // Core action buttons (always shown first)
 const CORE_ACTIONS: { action: SuggestionAction; label: string; icon: typeof FileText }[] = [
   { action: "executive_summary", label: "Summary", icon: FileText },
-  { action: "truth_check", label: "Truth Check", icon: AlertTriangle },
+  { action: "truth_check", label: "Accuracy", icon: AlertTriangle },
   { action: "full_analysis", label: "Deep Dive", icon: ListChecks },
 ]
 
-// Categories that don't need truth check
-const NO_TRUTH_CHECK_CATEGORIES: ContentCategory[] = ["music", "entertainment"]
+// Categories that don't need accuracy analysis
+const NO_ACCURACY_CHECK_CATEGORIES: ContentCategory[] = ["music", "entertainment"]
 
 export function SuggestionButtons({
   onSelect,
@@ -135,7 +135,7 @@ export function SuggestionButtons({
 }: SuggestionButtonsProps) {
   // Filter core actions based on category
   const filteredCoreActions = CORE_ACTIONS.filter((action) => {
-    if (action.action === "truth_check" && contentCategory && NO_TRUTH_CHECK_CATEGORIES.includes(contentCategory)) {
+    if (action.action === "truth_check" && contentCategory && NO_ACCURACY_CHECK_CATEGORIES.includes(contentCategory)) {
       return false
     }
     return true

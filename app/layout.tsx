@@ -16,8 +16,8 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "Vajra",
-  description: "AI-powered content analysis and fact-checking",
+  title: "Clarus",
+  description: "AI-powered content analysis for clarity and understanding",
   generator: "v0.dev",
   manifest: "/manifest.json",
   icons: {
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Vajra",
+    title: "Clarus",
   },
 }
 

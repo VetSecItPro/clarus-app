@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
@@ -17,6 +17,7 @@ import {
   Bookmark,
   Tag,
   X,
+  Star,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -37,8 +38,16 @@ type LibraryPageProps = WithAuthInjectedProps
 const SORT_OPTIONS = [
   { value: "date_desc", label: "Newest" },
   { value: "date_asc", label: "Oldest" },
+  { value: "score_desc", label: "Best Quality" },
   { value: "rating_desc", label: "Highest Rated" },
   { value: "rating_asc", label: "Lowest Rated" },
+]
+
+const SCORE_FILTER_OPTIONS = [
+  { value: "all", label: "All Scores", min: 0, max: 10 },
+  { value: "high", label: "8+", min: 8, max: 10 },
+  { value: "good", label: "6-7", min: 6, max: 7 },
+  { value: "low", label: "Below 6", min: 0, max: 5 },
 ]
 
 const TYPE_OPTIONS = [
@@ -124,6 +133,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const [localItems, setLocalItems] = useState<HistoryItem[]>([])
+  const [scoreFilter, setScoreFilter] = useState("all")
 
   // Sync bookmarkOnly with URL params
   useEffect(() => {
@@ -161,7 +171,20 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     setLocalItems(swrItems)
   }, [swrItems])
 
-  const items = localItems
+  // Apply client-side score filtering
+  const items = useMemo(() => {
+    if (scoreFilter === "all") return localItems
+
+    const filterConfig = SCORE_FILTER_OPTIONS.find((opt) => opt.value === scoreFilter)
+    if (!filterConfig) return localItems
+
+    return localItems.filter((item) => {
+      const summary = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
+      const score = summary?.triage?.quality_score
+      if (score === undefined || score === null) return scoreFilter === "all"
+      return score >= filterConfig.min && score <= filterConfig.max
+    })
+  }, [localItems, scoreFilter])
 
   // Fetch all tags
   const fetchAllTags = useCallback(async () => {
@@ -366,6 +389,25 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                   )}
                 </div>
               )}
+            </div>
+
+            {/* Quality Score filter */}
+            <div className="flex items-center gap-1">
+              {SCORE_FILTER_OPTIONS.map((opt) => (
+                <button
+                  key={opt.value}
+                  onClick={() => setScoreFilter(opt.value)}
+                  className={cn(
+                    "flex items-center gap-1.5 h-10 px-3 rounded-full text-sm transition-all",
+                    scoreFilter === opt.value
+                      ? "bg-emerald-500/20 border border-emerald-500/30 text-emerald-400"
+                      : "bg-white/[0.06] border border-white/[0.08] text-white/60 hover:text-white hover:bg-white/[0.08]"
+                  )}
+                >
+                  {opt.value === "high" && <Star className="w-3 h-3 fill-current" />}
+                  {opt.label}
+                </button>
+              ))}
             </div>
 
             {/* Selected tags display */}

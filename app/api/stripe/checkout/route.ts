@@ -72,7 +72,7 @@ export async function POST(request: Request) {
     }
 
     // Get the origin for redirect URLs
-    const origin = request.headers.get("origin") || "https://vajra-truth-checker.vercel.app"
+    const origin = request.headers.get("origin") || "https://clarusapp.io"
 
     // Look up promotion code if provided
     let discounts: { promotion_code: string }[] | undefined

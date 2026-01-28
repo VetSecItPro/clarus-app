@@ -473,7 +473,7 @@ export function ChatInputBar({
 
         {/* AI Disclaimer */}
         <p className="text-center text-[10px] text-white/30 mt-2">
-          Vajra uses AI and may make mistakes. Always verify important information.
+          Clarus uses AI and may make mistakes. Always verify important information.
         </p>
       </div>
     </div>
