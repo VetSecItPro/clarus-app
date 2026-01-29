@@ -1,6 +1,6 @@
 import { Metadata } from "next"
 import Link from "next/link"
-import { ArrowLeft, Shield, Lock, Eye, Trash2, Download, Mail } from "lucide-react"
+import { ArrowLeft, Lock, Eye, Trash2, Download, Mail } from "lucide-react"
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Clarus",

@@ -11,7 +11,6 @@ import { formatDistanceToNow } from "date-fns"
 import { formatDuration } from "@/lib/utils"
 
 type ContentItem = Database["public"]["Tables"]["content"]["Row"]
-type UserItem = Database["public"]["Tables"]["users"]["Row"]
 
 // Extended DisplayItem to include rater info for the feed
 export type DisplayItem = ContentItem & {
@@ -41,7 +40,7 @@ const getDomainFromUrl = (url: string | null): string => {
   if (!url) return "unknown.com"
   try {
     return new URL(url).hostname.replace("www.", "")
-  } catch (e) {
+  } catch {
     return "unknown.com"
   }
 }

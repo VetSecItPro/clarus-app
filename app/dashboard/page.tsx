@@ -50,7 +50,7 @@ export default function DashboardPage() {
     }
 
     fetchContent()
-  }, [supabase])
+  }, [])
 
   if (loading) {
     return (

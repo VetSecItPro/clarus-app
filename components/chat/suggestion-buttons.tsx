@@ -3,7 +3,6 @@
 import { motion } from "framer-motion"
 import {
   FileText,
-  MessageSquare,
   ListChecks,
   AlertTriangle,
   Music,
@@ -130,7 +129,7 @@ export function SuggestionButtons({
   onSelect,
   onCustomPrompt,
   contentCategory,
-  contentType,
+  contentType: _contentType,
   disabled = false,
 }: SuggestionButtonsProps) {
   // Filter core actions based on category

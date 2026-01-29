@@ -34,8 +34,6 @@ function CommunityPageContent({ session }: WithAuthInjectedProps) {
   const [activeType, setActiveType] = useState("all")
   const [activeSort, setActiveSort] = useState("date_added_desc")
   const [showFilters, setShowFilters] = useState(false)
-  const [togglingBookmark, setTogglingBookmark] = useState<string | null>(null)
-  const [hidingId, setHidingId] = useState<string | null>(null)
   const [localBookmarks, setLocalBookmarks] = useState<Record<string, boolean>>({})
 
   // Debounce search
@@ -59,7 +57,6 @@ function CommunityPageContent({ session }: WithAuthInjectedProps) {
   const handleToggleBookmark = async (item: FeedItem) => {
     const newValue = !isBookmarked(item.id)
     setLocalBookmarks((prev) => ({ ...prev, [item.id]: newValue }))
-    setTogglingBookmark(item.id)
 
     try {
       const response = await fetch(`/api/content/${item.id}/bookmark`, {
@@ -70,12 +67,9 @@ function CommunityPageContent({ session }: WithAuthInjectedProps) {
 
       if (!response.ok) throw new Error("Failed to update bookmark")
       toast.success(newValue ? "Added to bookmarks" : "Removed from bookmarks")
-    } catch (error) {
-      console.error("Error toggling bookmark:", error)
+    } catch {
       toast.error("Failed to update bookmark")
       setLocalBookmarks((prev) => ({ ...prev, [item.id]: !newValue }))
-    } finally {
-      setTogglingBookmark(null)
     }
   }
 
@@ -83,8 +77,6 @@ function CommunityPageContent({ session }: WithAuthInjectedProps) {
     if (!session?.user?.id) return
 
     if (!window.confirm("Hide this item from your feed?")) return
-
-    setHidingId(itemId)
 
     try {
       const { error } = await supabase.from("hidden_content").insert({
@@ -94,11 +86,8 @@ function CommunityPageContent({ session }: WithAuthInjectedProps) {
       if (error) throw error
       toast.success("Hidden from your feed")
       refresh()
-    } catch (error) {
-      console.error("Error hiding:", error)
+    } catch {
       toast.error("Failed to hide item")
-    } finally {
-      setHidingId(null)
     }
   }
 

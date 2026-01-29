@@ -4,7 +4,6 @@ import { useState, useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { Loader2, ArrowLeft, Share2, MoreVertical, Trash2 } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
-import { motion } from "framer-motion"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
@@ -41,7 +40,6 @@ function ChatPageContent({
   const userId = session.user.id
 
   const {
-    state,
     messages,
     contentStatus,
     showSuggestions,

@@ -4,7 +4,6 @@ import { memo } from "react"
 import { Shield, User, Link2, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
-import { TriageCard } from "@/components/ui/triage-card"
 import type { TriageData, TruthCheckData } from "@/types/database.types"
 import { motion } from "framer-motion"
 

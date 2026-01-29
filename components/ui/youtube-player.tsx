@@ -14,23 +14,40 @@ export interface YouTubePlayerRef {
   pause: () => void
 }
 
+// YouTube IFrame API types
+interface YTPlayerInstance {
+  seekTo: (seconds: number, allowSeekAhead: boolean) => void
+  playVideo: () => void
+  pauseVideo: () => void
+  destroy: () => void
+}
+
+interface YTPlayerConstructor {
+  new (element: HTMLElement, options: { events?: { onReady?: () => void } }): YTPlayerInstance
+}
+
+interface YTNamespace {
+  Player: YTPlayerConstructor
+}
+
 declare global {
   interface Window {
-    YT: any
+    YT?: YTNamespace
     onYouTubeIframeAPIReady: () => void
+    MSStream?: unknown
   }
 }
 
 export const YouTubePlayer = forwardRef<YouTubePlayerRef, YouTubePlayerProps>(
   ({ videoId, className }, ref) => {
     const iframeRef = useRef<HTMLIFrameElement>(null)
-    const playerRef = useRef<any>(null)
+    const playerRef = useRef<YTPlayerInstance | null>(null)
     // Default to simple embed (safer), only use API on desktop Chrome/Firefox
     const [useSimpleEmbed, setUseSimpleEmbed] = useState(true)
 
     // Only enable IFrame API on desktop browsers where it works reliably
     useEffect(() => {
-      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream
+      const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream
       const isAndroid = /Android/.test(navigator.userAgent)
       const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent)
       const isMobile = isIOS || isAndroid || /webOS|BlackBerry|Opera Mini|IEMobile/i.test(navigator.userAgent)

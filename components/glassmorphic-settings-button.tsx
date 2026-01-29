@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback, useRef } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { Settings, LogOut, Loader2, Sparkles, UserIcon, Check, X, Pencil, CreditCard, Bookmark, FileText, Shield, LayoutDashboard } from "lucide-react"
 import Link from "next/link"
@@ -193,13 +193,13 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
     router.push("/login")
   }
 
-  // Added function to manage subscription via Stripe portal
+  // Function to manage subscription via Polar portal
   const handleManageSubscription = async () => {
     if (!user) return
 
     setManagingSubscription(true)
     try {
-      const res = await fetch("/api/stripe/portal", {
+      const res = await fetch("/api/polar/portal", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ userId: user.id }),

@@ -94,7 +94,7 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ title })
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Fetch title error:", error)
     return NextResponse.json({ title: null })
   }
