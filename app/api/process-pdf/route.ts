@@ -6,7 +6,7 @@ import { checkRateLimit } from "@/lib/validation"
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
 
-const supabaseUrl = process.env.SUPABASE_URL
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 // OCR.space free tier: use "helloworld" demo key if no custom key provided
 // Limits: 500 req/day per IP, 1MB file size, 3 PDF pages
@@ -15,6 +15,20 @@ const ocrApiKey = process.env.OCR_SPACE_API_KEY || "helloworld"
 if (!supabaseUrl || !supabaseKey) {
   console.warn("PDF API: Supabase credentials not set")
 }
+
+// Allowed file MIME types for upload
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "application/vnd.ms-powerpoint",
+  "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  "text/plain",
+  "text/csv",
+  "application/csv",
+])
 
 // Rate limiting
 const LIMITS = {
@@ -119,8 +133,15 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "User ID required" }, { status: 400 })
     }
 
-    if (file.type !== "application/pdf") {
-      return NextResponse.json({ error: "File must be a PDF" }, { status: 400 })
+    if (file.size === 0) {
+      return NextResponse.json({ error: "File is empty" }, { status: 400 })
+    }
+
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      return NextResponse.json(
+        { error: "Unsupported file type. Accepted: PDF, Word, Excel, PowerPoint, TXT, CSV." },
+        { status: 400 }
+      )
     }
 
     if (file.size > LIMITS.MAX_FILE_SIZE) {
@@ -184,15 +205,16 @@ export async function POST(req: NextRequest) {
       : pdfText
 
     // Create content record
-    const title = file.name.replace(/\.pdf$/i, "") || "Uploaded PDF"
+    const title = file.name.replace(/\.[^.]+$/, "") || "Uploaded File"
+    const fileExtension = file.name.split(".").pop()?.toLowerCase() || "file"
 
     const { data: contentData, error: contentError } = await supabaseAdmin
       .from("content")
       .insert({
         user_id: userId,
         title,
-        url: `pdf://${file.name}`,
-        type: "pdf",
+        url: `file://${file.name}`,
+        type: fileExtension === "pdf" ? "pdf" : "document",
         full_text: truncatedText,
         status: "pending",
       })
