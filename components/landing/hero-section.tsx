@@ -58,7 +58,7 @@ export function HeroSection() {
           className="flex justify-center"
         >
           <Link href="/signup">
-            <button className="group flex items-center gap-2 px-8 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-full transition-all duration-200 shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40">
+            <button className="group flex items-center gap-2 px-8 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-full transition-all duration-200 shadow-lg shadow-[#1d9bf0]/25 hover:shadow-xl hover:shadow-[#1d9bf0]/40 hover:-translate-y-1">
               Get Started Free
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </button>

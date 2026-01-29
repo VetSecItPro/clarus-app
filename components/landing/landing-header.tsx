@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Shield } from "lucide-react"
+import Image from "next/image"
 import { motion } from "framer-motion"
 
 export function LandingHeader() {
@@ -17,19 +17,23 @@ export function LandingHeader() {
           {/* Logo - minimal and elegant */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#1d9bf0] via-[#0ea5e9] to-[#06b6d4] rounded-lg flex items-center justify-center shadow-lg shadow-[#1d9bf0]/25 group-hover:shadow-[#1d9bf0]/40 transition-all duration-300 group-hover:scale-105">
-                <Shield className="w-4 h-4 text-white" />
-              </div>
-              <div className="absolute inset-0 bg-[#1d9bf0]/20 rounded-lg blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <Image
+                src="/clarus-logo.png"
+                alt="Clarus"
+                width={40}
+                height={40}
+                className="w-10 h-10 transition-all duration-300 group-hover:scale-105"
+              />
+              <div className="absolute inset-0 bg-[#1d9bf0]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
-            <span className="text-white/90 font-medium text-[15px] tracking-tight group-hover:text-white transition-colors duration-200">
+            <span className="text-white/90 font-bold text-3xl italic tracking-wide group-hover:text-white transition-colors duration-200" style={{ fontFamily: 'var(--font-cormorant)' }}>
               Clarus
             </span>
           </Link>
 
           {/* Auth button */}
           <Link href="/login">
-            <button className="px-5 py-2 bg-white/[0.08] hover:bg-white/[0.12] text-white text-sm font-medium rounded-lg transition-all duration-200 border border-white/[0.1]">
+            <button className="px-5 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-[#1d9bf0]/25 hover:shadow-lg hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5">
               Log In
             </button>
           </Link>

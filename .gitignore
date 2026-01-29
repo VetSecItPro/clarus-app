@@ -34,3 +34,5 @@ next-env.d.ts
 
 # misc
 .DS_Store
+.env*.local
+_chrome-extension-disabled/

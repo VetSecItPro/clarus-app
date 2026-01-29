@@ -6,7 +6,8 @@ import { checkRateLimit } from "@/lib/validation"
 
 const supabaseAdmin = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { db: { schema: "clarus" } }
 )
 
 // GET all unique tags for the authenticated user's content
@@ -28,6 +29,9 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
+        db: {
+          schema: "clarus",
+        },
         cookies: {
           getAll() {
             return cookieStore.getAll()

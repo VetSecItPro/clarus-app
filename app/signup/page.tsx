@@ -2,10 +2,11 @@
 
 import { useState, type FormEvent, useEffect, useMemo } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import { AlertCircle, CheckCircle2, Shield, Mail, Lock, Eye, EyeOff, ArrowRight, User, Check } from "lucide-react"
+import { AlertCircle, CheckCircle2, Mail, Lock, Eye, EyeOff, ArrowRight, User, Check } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 
 function PasswordStrengthIndicator({ password }: { password: string }) {
@@ -295,17 +296,20 @@ export default function SignUpPage() {
           />
 
           {/* Content overlay */}
-          <div className="relative z-10 flex flex-col justify-center px-16">
+          <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-16 text-center">
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.8 }}
             >
-              <Link href="/" className="flex items-center gap-3 mb-8 hover:opacity-80 transition-opacity">
-                <div className="w-12 h-12 bg-gradient-to-br from-[#1d9bf0] to-[#1a8cd8] rounded-2xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/30">
-                  <Shield className="w-6 h-6 text-white" />
-                </div>
-                <span className="text-white font-semibold text-2xl">Clarus</span>
+              <Link href="/" className="inline-block mb-10 hover:opacity-80 transition-opacity">
+                <Image
+                  src="/clarus-email-logo-transparent.png"
+                  alt="Clarus"
+                  width={400}
+                  height={130}
+                  className="h-36 w-auto"
+                />
               </Link>
               <h2 className="text-4xl font-bold text-white mb-4">
                 Start your journey to{" "}
@@ -314,27 +318,6 @@ export default function SignUpPage() {
               <p className="text-white/50 text-lg max-w-md">
                 Join thousands of users who trust us to understand content and make informed decisions.
               </p>
-            </motion.div>
-
-            {/* Features list */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="mt-12 space-y-4"
-            >
-              {[
-                "Analyze YouTube videos, articles & X posts",
-                "Fast AI-powered analysis and key insights",
-                "Get signal-to-noise ratings for any content",
-              ].map((feature, index) => (
-                <div key={index} className="flex items-center gap-3">
-                  <div className="w-5 h-5 rounded-full bg-[#1d9bf0]/20 flex items-center justify-center">
-                    <Check className="w-3 h-3 text-[#1d9bf0]" />
-                  </div>
-                  <span className="text-white/60">{feature}</span>
-                </div>
-              ))}
             </motion.div>
           </div>
         </div>
@@ -345,20 +328,23 @@ export default function SignUpPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6 }}
-            className="w-full max-w-md"
+            className="w-full max-w-xs"
           >
             {/* Mobile logo */}
-            <Link href="/" className="lg:hidden flex items-center justify-center gap-3 mb-8 hover:opacity-80 transition-opacity">
-              <div className="w-10 h-10 bg-gradient-to-br from-[#1d9bf0] to-[#1a8cd8] rounded-xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/20">
-                <Shield className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-white font-semibold text-xl">Clarus</span>
+            <Link href="/" className="lg:hidden flex justify-center mb-8 hover:opacity-80 transition-opacity">
+              <Image
+                src="/clarus-email-logo-transparent.png"
+                alt="Clarus"
+                width={140}
+                height={48}
+                className="h-10 w-auto"
+              />
             </Link>
 
             {/* Header */}
-            <div className="text-center lg:text-left mb-8">
-              <h1 className="text-3xl font-bold text-white mb-2">Create account</h1>
-              <p className="text-white/50">
+            <div className="text-center lg:text-left mb-6">
+              <h1 className="text-2xl font-bold text-white mb-2">Create account</h1>
+              <p className="text-white/50 text-sm">
                 Already have an account?{" "}
                 <Link href="/login" className="text-[#1d9bf0] hover:text-[#1a8cd8] font-medium transition-colors">
                   Sign in
@@ -367,14 +353,14 @@ export default function SignUpPage() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSignUp} className="space-y-5">
+            <form onSubmit={handleSignUp} className="space-y-4">
               {/* Name field */}
-              <div className="space-y-2">
-                <label htmlFor="name" className="block text-sm font-medium text-white/70">
+              <div className="space-y-1.5">
+                <label htmlFor="name" className="block text-xs font-medium text-white/70">
                   Full name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                   <input
                     id="name"
                     type="text"
@@ -382,18 +368,18 @@ export default function SignUpPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full h-12 pl-12 pr-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                    className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
                   />
                 </div>
               </div>
 
               {/* Email field */}
-              <div className="space-y-2">
-                <label htmlFor="email" className="block text-sm font-medium text-white/70">
+              <div className="space-y-1.5">
+                <label htmlFor="email" className="block text-xs font-medium text-white/70">
                   Email address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                   <input
                     id="email"
                     type="email"
@@ -401,18 +387,18 @@ export default function SignUpPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full h-12 pl-12 pr-4 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                    className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
                   />
                 </div>
               </div>
 
               {/* Password field */}
-              <div className="space-y-2">
-                <label htmlFor="password" className="block text-sm font-medium text-white/70">
+              <div className="space-y-1.5">
+                <label htmlFor="password" className="block text-xs font-medium text-white/70">
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -420,26 +406,26 @@ export default function SignUpPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full h-12 pl-12 pr-12 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                    className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
                   >
-                    {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 <PasswordStrengthIndicator password={password} />
               </div>
 
               {/* Confirm password field */}
-              <div className="space-y-2">
-                <label htmlFor="confirm-password" className="block text-sm font-medium text-white/70">
+              <div className="space-y-1.5">
+                <label htmlFor="confirm-password" className="block text-xs font-medium text-white/70">
                   Confirm password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-white/30" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
                   <input
                     id="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
@@ -447,14 +433,14 @@ export default function SignUpPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    className="w-full h-12 pl-12 pr-12 bg-white/[0.04] border border-white/[0.08] rounded-xl text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                    className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-4 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
                   >
-                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {confirmPassword && password !== confirmPassword && (
@@ -463,15 +449,15 @@ export default function SignUpPage() {
               </div>
 
               {/* Terms checkbox */}
-              <div className="flex items-start gap-3">
+              <div className="flex items-start gap-2">
                 <input
                   id="terms"
                   type="checkbox"
                   checked={agreeToTerms}
                   onChange={(e) => setAgreeToTerms(e.target.checked)}
-                  className="mt-1 w-4 h-4 rounded border-white/20 bg-white/[0.04] text-[#1d9bf0] focus:ring-[#1d9bf0] focus:ring-offset-0 focus:ring-1"
+                  className="mt-0.5 w-3.5 h-3.5 rounded border-white/20 bg-white/[0.04] text-[#1d9bf0] focus:ring-[#1d9bf0] focus:ring-offset-0 focus:ring-1"
                 />
-                <label htmlFor="terms" className="text-sm text-white/50">
+                <label htmlFor="terms" className="text-xs text-white/50">
                   I agree to the{" "}
                   <Link href="/terms" className="text-[#1d9bf0] hover:underline">
                     Terms of Service
@@ -488,30 +474,32 @@ export default function SignUpPage() {
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center p-4 text-sm text-red-400 bg-red-500/10 rounded-xl border border-red-500/20"
+                  className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20"
                 >
-                  <AlertCircle className="w-5 h-5 mr-3 flex-shrink-0" />
+                  <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
                   <span>{error}</span>
                 </motion.div>
               )}
 
               {/* Submit button */}
-              <button
-                type="submit"
-                disabled={isLoading || !agreeToTerms}
-                className="w-full h-12 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group"
-              >
-                {isLoading ? (
-                  "Creating account..."
-                ) : (
-                  <>
-                    Create account
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </button>
+              <div className="flex justify-center pt-2">
+                <button
+                  type="submit"
+                  disabled={isLoading || !agreeToTerms}
+                  className="px-8 h-9 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group shadow-lg shadow-[#1d9bf0]/25 hover:shadow-xl hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5"
+                >
+                  {isLoading ? (
+                    "Creating account..."
+                  ) : (
+                    <>
+                      Create account
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </button>
+              </div>
               {!agreeToTerms && !isLoading && (
-                <p className="text-xs text-white/40 text-center">
+                <p className="text-[10px] text-white/40 text-center">
                   Please agree to the Terms of Service to continue
                 </p>
               )}

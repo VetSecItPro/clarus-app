@@ -8,6 +8,18 @@ export function getSupabaseClient() {
     supabaseInstance = createBrowserClient<Database>(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        db: {
+          schema: "clarus",
+        },
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: true,
+          // Keep user logged in for 30 days
+          storage: typeof window !== "undefined" ? window.localStorage : undefined,
+        },
+      }
     )
   }
   return supabaseInstance
@@ -17,4 +29,15 @@ export function getSupabaseClient() {
 export const supabase = createBrowserClient<Database>(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+  {
+    db: {
+      schema: "clarus",
+    },
+    auth: {
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
+      storage: typeof window !== "undefined" ? window.localStorage : undefined,
+    },
+  }
 )

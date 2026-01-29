@@ -4,8 +4,8 @@ test.describe('Smoke Tests', () => {
   test('login page loads correctly', async ({ page }) => {
     await page.goto('/login')
 
-    // Check page heading (use first() since logo appears in both desktop and mobile)
-    await expect(page.locator('text=Clarus').first()).toBeVisible()
+    // Check page heading exists
+    await expect(page.locator('h1:has-text("Sign in")')).toBeVisible()
 
     // Check email input exists
     await expect(page.locator('input[type="email"]')).toBeVisible()
@@ -20,21 +20,14 @@ test.describe('Smoke Tests', () => {
   test('signup page loads correctly', async ({ page }) => {
     await page.goto('/signup')
 
-    // Check page heading (use first() since logo appears in both desktop and mobile)
-    await expect(page.locator('text=Clarus').first()).toBeVisible()
+    // Check page heading exists
+    await expect(page.locator('h1:has-text("Create account")')).toBeVisible()
 
     // Check email input exists
     await expect(page.locator('input[type="email"]')).toBeVisible()
 
     // Check signup button exists
     await expect(page.locator('button:has-text("Create account")')).toBeVisible()
-  })
-
-  test('pricing page loads correctly', async ({ page }) => {
-    await page.goto('/pricing')
-
-    // Check pricing content is visible
-    await expect(page.locator('text=Pro')).toBeVisible()
   })
 
   test('forgot password page loads correctly', async ({ page }) => {

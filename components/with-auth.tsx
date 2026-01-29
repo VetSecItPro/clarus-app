@@ -56,7 +56,7 @@ export default function withAuth<P extends object>(
     const listenerSetupRef = useRef(false)
 
     // Public auth paths that don't require authentication
-    const publicAuthPaths = ["/login", "/signup", "/forgot-password", "/update-password", "/pricing"]
+    const publicAuthPaths = ["/login", "/signup", "/forgot-password", "/update-password"]
     const isPublicPath = publicAuthPaths.includes(pathname)
 
     // Sync with cache on mount (for navigations after initial load)
@@ -205,20 +205,7 @@ export default function withAuth<P extends object>(
         router.replace("/login")
         return
       }
-
-      // Redirect to pricing if no valid subscription (but allow null during initial check)
-      if (
-        session &&
-        !isPublicPath &&
-        subscriptionStatus !== "active" &&
-        subscriptionStatus !== "trialing" &&
-        subscriptionStatus !== "grandfathered" &&
-        subscriptionStatus !== "enterprise" &&
-        subscriptionStatus !== null
-      ) {
-        router.replace("/pricing")
-      }
-    }, [loading, session, subscriptionStatus, pathname, router, isPublicPath])
+    }, [loading, session, pathname, router, isPublicPath])
 
     // Only show loading on very first app load
     // Once initialized, never show loading - just render with cached values
@@ -235,17 +222,6 @@ export default function withAuth<P extends object>(
     // For protected paths, render if we have a session (redirect happens in useEffect)
     // This prevents showing content briefly before redirect
     if (!session) {
-      return null
-    }
-
-    // Check subscription - render null while redirect happens
-    if (
-      subscriptionStatus !== "active" &&
-      subscriptionStatus !== "trialing" &&
-      subscriptionStatus !== "grandfathered" &&
-      subscriptionStatus !== "enterprise" &&
-      subscriptionStatus !== null
-    ) {
       return null
     }
 

@@ -1,7 +1,8 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { Loader2, Shield, MessageSquare } from "lucide-react"
+import Image from "next/image"
+import { Loader2, MessageSquare } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import SiteHeader from "@/components/site-header"
@@ -119,10 +120,14 @@ function HomePageContent({ session }: HomePageProps) {
         transition={{ duration: 0.3 }}
         className="lg:hidden flex items-center justify-center gap-2.5 py-4 sm:py-5 border-b border-white/[0.04]"
       >
-        <div className="w-8 h-8 sm:w-9 sm:h-9 bg-gradient-to-br from-[#1d9bf0] via-[#0ea5e9] to-[#06b6d4] rounded-xl flex items-center justify-center shadow-lg shadow-[#1d9bf0]/25">
-          <Shield className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
-        </div>
-        <span className="text-white font-semibold text-base sm:text-lg tracking-tight">
+        <Image
+          src="/clarus-logo.png"
+          alt="Clarus"
+          width={36}
+          height={36}
+          className="w-8 h-8 sm:w-9 sm:h-9"
+        />
+        <span className="text-white font-bold text-lg sm:text-xl italic tracking-wide" style={{ fontFamily: 'var(--font-cormorant)' }}>
           Clarus
         </span>
       </motion.div>
