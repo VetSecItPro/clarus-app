@@ -157,6 +157,7 @@ export interface Database {
           max_tokens: number | null
           expect_json: boolean | null
           is_active: boolean | null
+          use_web_search: boolean | null
           created_at: string | null
           updated_at: string | null
         }
@@ -172,6 +173,7 @@ export interface Database {
           max_tokens?: number | null
           expect_json?: boolean | null
           is_active?: boolean | null
+          use_web_search?: boolean | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -187,6 +189,7 @@ export interface Database {
           max_tokens?: number | null
           expect_json?: boolean | null
           is_active?: boolean | null
+          use_web_search?: boolean | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -550,7 +553,7 @@ export interface Database {
           name: string | null
           reputation: number | null
           xp: number | null
-          stripe_customer_id: string | null
+          polar_customer_id: string | null
           subscription_status: string | null
           subscription_id: string | null
           subscription_ends_at: string | null
@@ -564,7 +567,7 @@ export interface Database {
           name?: string | null
           reputation?: number | null
           xp?: number | null
-          stripe_customer_id?: string | null
+          polar_customer_id?: string | null
           subscription_status?: string | null
           subscription_id?: string | null
           subscription_ends_at?: string | null
@@ -578,7 +581,7 @@ export interface Database {
           name?: string | null
           reputation?: number | null
           xp?: number | null
-          stripe_customer_id?: string | null
+          polar_customer_id?: string | null
           subscription_status?: string | null
           subscription_id?: string | null
           subscription_ends_at?: string | null

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { stripe } from "@/lib/stripe"
+import { polar } from "@/lib/polar"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { checkRateLimit } from "@/lib/validation"
@@ -39,20 +39,18 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
     }
 
-    const { data: userData } = await supabase.from("users").select("stripe_customer_id").eq("id", user.id).single()
+    const { data: userData } = await supabase.from("users").select("polar_customer_id").eq("id", user.id).single()
 
-    if (!userData?.stripe_customer_id) {
+    if (!userData?.polar_customer_id) {
       return NextResponse.json({ error: "No subscription found" }, { status: 400 })
     }
 
-    const origin = request.headers.get("origin") || "https://clarusapp.io"
-
-    const session = await stripe.billingPortal.sessions.create({
-      customer: userData.stripe_customer_id,
-      return_url: `${origin}/`,
+    // Create customer portal session
+    const session = await polar.customerSessions.create({
+      customerId: userData.polar_customer_id,
     })
 
-    return NextResponse.json({ url: session.url })
+    return NextResponse.json({ url: session.customerPortalUrl })
   } catch (error: unknown) {
     console.error("Portal error:", error)
     return NextResponse.json({ error: "Failed to access billing portal. Please try again later." }, { status: 500 })

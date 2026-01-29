@@ -1,11 +1,25 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
+import { createClient, SupabaseClient } from "@supabase/supabase-js"
+import { authenticateAdmin, AuthErrors } from "@/lib/auth"
+import { z } from "zod"
+import { parseQuery } from "@/lib/schemas"
 
-// Server-side Supabase client with service role for admin access
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Schema for metrics query params
+const metricsQuerySchema = z.object({
+  timeRange: z.coerce.number().int().min(1).max(365).optional().default(30),
+})
+
+// Lazy initialization of admin client to avoid build-time env var issues
+let _adminClient: SupabaseClient | null = null
+function getSupabaseAdmin(): SupabaseClient {
+  if (!_adminClient) {
+    _adminClient = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+  }
+  return _adminClient
+}
 
 // Types
 interface ApiCostBreakdown {
@@ -124,32 +138,21 @@ const COLORS = {
   orange: "#f97316",
 }
 
-// Verify admin status
-async function verifyAdmin(userId: string): Promise<boolean> {
-  const { data } = await supabaseAdmin
-    .from("users")
-    .select("is_admin")
-    .eq("id", userId)
-    .single()
-  return data?.is_admin === true
-}
-
 export async function GET(request: NextRequest) {
   try {
-    // Get user ID from query params (passed from client after auth)
-    const searchParams = request.nextUrl.searchParams
-    const userId = searchParams.get("userId")
-    const timeRange = parseInt(searchParams.get("timeRange") || "30", 10)
-
-    if (!userId) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    // Authenticate and verify admin status from session
+    const auth = await authenticateAdmin()
+    if (!auth.success) {
+      return auth.response
     }
 
-    // Verify admin status
-    const isAdmin = await verifyAdmin(userId)
-    if (!isAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    // Validate query parameters
+    const validation = parseQuery(metricsQuerySchema, request.nextUrl.searchParams)
+    if (!validation.success) {
+      return AuthErrors.badRequest(validation.error)
     }
+
+    const timeRange = validation.data.timeRange
 
     const now = new Date()
     const startDate = new Date(now.getTime() - timeRange * 24 * 60 * 60 * 1000)
@@ -186,66 +189,66 @@ export async function GET(request: NextRequest) {
       previousContentResult,
     ] = await Promise.all([
       // Total users
-      supabaseAdmin.from("users").select("id", { count: "exact", head: true }),
+      getSupabaseAdmin().from("users").select("id", { count: "exact", head: true }),
       // New users today
-      supabaseAdmin.from("users").select("id", { count: "exact", head: true })
+      getSupabaseAdmin().from("users").select("id", { count: "exact", head: true })
         .gte("created_at", todayStart),
       // Active users (content in last N days)
-      supabaseAdmin.from("content").select("user_id")
+      getSupabaseAdmin().from("content").select("user_id")
         .gte("date_added", startDateStr),
       // Total content
-      supabaseAdmin.from("content").select("id", { count: "exact", head: true }),
+      getSupabaseAdmin().from("content").select("id", { count: "exact", head: true }),
       // Content today
-      supabaseAdmin.from("content").select("id", { count: "exact", head: true })
+      getSupabaseAdmin().from("content").select("id", { count: "exact", head: true })
         .gte("date_added", todayStart),
       // Content by type
-      supabaseAdmin.from("content").select("type"),
+      getSupabaseAdmin().from("content").select("type"),
       // Subscriptions
-      supabaseAdmin.from("users").select("subscription_status"),
+      getSupabaseAdmin().from("users").select("subscription_status"),
       // Chat threads
-      supabaseAdmin.from("chat_threads").select("id", { count: "exact", head: true }),
+      getSupabaseAdmin().from("chat_threads").select("id", { count: "exact", head: true }),
       // Chat messages
-      supabaseAdmin.from("chat_messages").select("id", { count: "exact", head: true }),
+      getSupabaseAdmin().from("chat_messages").select("id", { count: "exact", head: true }),
       // Signup trend
-      supabaseAdmin.from("users").select("created_at")
+      getSupabaseAdmin().from("users").select("created_at")
         .gte("created_at", startDateStr)
         .order("created_at", { ascending: true }),
       // Content trend
-      supabaseAdmin.from("content").select("date_added")
+      getSupabaseAdmin().from("content").select("date_added")
         .gte("date_added", startDateStr)
         .order("date_added", { ascending: true }),
       // Top domains
-      supabaseAdmin.from("domains").select("domain, total_analyses, avg_quality_score")
+      getSupabaseAdmin().from("domains").select("domain, total_analyses, avg_quality_score")
         .order("total_analyses", { ascending: false })
         .limit(10),
       // Truth ratings from summaries
-      supabaseAdmin.from("summaries").select("truth_check"),
+      getSupabaseAdmin().from("summaries").select("truth_check"),
       // Processing metrics
-      supabaseAdmin.from("processing_metrics").select("status, processing_time_ms, section_type")
+      getSupabaseAdmin().from("processing_metrics").select("status, processing_time_ms, section_type")
         .gte("created_at", startDateStr),
       // API usage/costs today
-      supabaseAdmin.from("api_usage").select("estimated_cost_usd, status, api_name, operation, error_message, created_at")
+      getSupabaseAdmin().from("api_usage").select("estimated_cost_usd, status, api_name, operation, error_message, created_at")
         .gte("created_at", todayStart),
       // API usage for 7 days (for trends)
-      supabaseAdmin.from("api_usage").select("estimated_cost_usd, status, api_name, operation, error_message, created_at, tokens_input, tokens_output, metadata")
+      getSupabaseAdmin().from("api_usage").select("estimated_cost_usd, status, api_name, operation, error_message, created_at, tokens_input, tokens_output, metadata")
         .gte("created_at", sevenDaysAgo)
         .order("created_at", { ascending: true }),
       // Processing metrics for 7 days (for trends)
-      supabaseAdmin.from("processing_metrics").select("processing_time_ms, created_at, status")
+      getSupabaseAdmin().from("processing_metrics").select("processing_time_ms, created_at, status")
         .gte("created_at", sevenDaysAgo)
         .order("created_at", { ascending: true }),
       // Content by type with date for monthly breakdown
-      supabaseAdmin.from("content").select("type, date_added")
+      getSupabaseAdmin().from("content").select("type, date_added")
         .gte("date_added", new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString()),
       // API usage for last 24 hours (for status calculation)
-      supabaseAdmin.from("api_usage").select("api_name, status")
+      getSupabaseAdmin().from("api_usage").select("api_name, status")
         .gte("created_at", todayStart),
       // Previous period users (for growth calculation)
-      supabaseAdmin.from("users").select("id", { count: "exact", head: true })
+      getSupabaseAdmin().from("users").select("id", { count: "exact", head: true })
         .gte("created_at", previousPeriodStart)
         .lt("created_at", previousPeriodEnd),
       // Previous period content (for growth calculation)
-      supabaseAdmin.from("content").select("id", { count: "exact", head: true })
+      getSupabaseAdmin().from("content").select("id", { count: "exact", head: true })
         .gte("date_added", previousPeriodStart)
         .lt("date_added", previousPeriodEnd),
     ])
@@ -426,7 +429,7 @@ export async function GET(request: NextRequest) {
       { name: "supadata", label: "Supadata (YouTube Transcripts)", tracked: true },
       { name: "firecrawl", label: "FireCrawl (Article Scraping)", tracked: true },
       { name: "tavily", label: "Tavily (Web Search)", tracked: true },
-      { name: "stripe", label: "Stripe (Payments)", tracked: true },
+      { name: "polar", label: "Polar (Payments)", tracked: true },
       { name: "supabase", label: "Supabase (Database)", tracked: false },
       { name: "vercel", label: "Vercel (Hosting)", tracked: false },
     ]

@@ -1,32 +1,42 @@
-import { createClient } from "@supabase/supabase-js"
 import type { TruthCheckData, TriageData, ActionItemsData, ClaimHighlight } from "@/types/database.types"
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
+import { exportSchema, parseQuery } from "@/lib/schemas"
+import { checkRateLimit } from "@/lib/validation"
 
 export async function GET(request: Request) {
   try {
+    // Rate limiting
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+    const rateLimit = checkRateLimit(`export-md:${clientIp}`, 20, 60000) // 20 per minute
+    if (!rateLimit.allowed) {
+      return AuthErrors.rateLimit(rateLimit.resetIn)
+    }
+
+    // Authenticate user
+    const auth = await authenticateRequest()
+    if (!auth.success) {
+      return auth.response
+    }
+
+    // Validate input
     const { searchParams } = new URL(request.url)
-    const contentId = searchParams.get("id")
-
-    if (!contentId) {
-      return new Response("Missing content ID", { status: 400 })
+    const validation = parseQuery(exportSchema, searchParams)
+    if (!validation.success) {
+      return AuthErrors.badRequest(validation.error)
     }
 
-    // Fetch content and summary
-    const { data: content, error: contentError } = await supabase
-      .from("content")
-      .select("*")
-      .eq("id", contentId)
-      .single()
+    const contentId = validation.data.id
 
-    if (contentError || !content) {
-      return new Response("Content not found", { status: 404 })
+    // Verify ownership
+    const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, contentId)
+    if (!ownership.owned) {
+      return ownership.response
     }
 
-    const { data: summary } = await supabase
+    const content = ownership.content
+
+    // Fetch summary
+    const { data: summary } = await auth.supabase
       .from("summaries")
       .select("*")
       .eq("content_id", contentId)
