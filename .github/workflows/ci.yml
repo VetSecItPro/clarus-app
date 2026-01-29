@@ -1,10 +1,14 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
     branches: [main]
+
+# Cancel in-progress runs when new commits are pushed to the same PR
+# Saves CI minutes by not running stale checks
+concurrency:
+  group: ci-${{ github.head_ref }}
+  cancel-in-progress: true
 
 env:
   # Placeholder env vars for build (not real secrets)
@@ -15,17 +19,17 @@ env:
   OPENROUTER_API_KEY: placeholder-openrouter-key
   SUPADATA_API_KEY: placeholder-supadata-key
   FIRECRAWL_API_KEY: placeholder-firecrawl-key
-  STRIPE_SECRET_KEY: placeholder-stripe-key
-  STRIPE_WEBHOOK_SECRET: placeholder-webhook-secret
-  NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: placeholder-stripe-pub-key
+  POLAR_ACCESS_TOKEN: placeholder-polar-token
+  POLAR_WEBHOOK_SECRET: placeholder-webhook-secret
+  POLAR_ORGANIZATION_ID: placeholder-org-id
 
 jobs:
-  # Quick checks that run in parallel
-  lint:
-    name: Lint
+  # Combined lint + typecheck (saves ~30s setup time vs separate jobs)
+  quality:
+    name: Lint & Type Check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -33,7 +37,7 @@ jobs:
           version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -41,37 +45,18 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Run ESLint
+      - name: Lint
         run: pnpm lint
 
-  typecheck:
-    name: Type Check
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          version: 9
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: '20'
-          cache: 'pnpm'
-
-      - name: Install dependencies
-        run: pnpm install --frozen-lockfile
-
-      - name: Run TypeScript type check
+      - name: Type Check
         run: pnpm typecheck
 
+  # Security audit runs in parallel (non-blocking)
   security:
     name: Security Audit
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -79,7 +64,7 @@ jobs:
           version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -91,13 +76,13 @@ jobs:
         run: pnpm audit --audit-level=high
         continue-on-error: true
 
-  # Build runs after lint and typecheck pass
+  # Build runs after quality checks pass
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [lint, typecheck]
+    needs: [quality]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -105,7 +90,7 @@ jobs:
           version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
@@ -116,21 +101,22 @@ jobs:
       - name: Build application
         run: pnpm build
 
-      - name: Cache build output
-        uses: actions/cache/save@v5
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
         with:
+          name: build-output
           path: |
             .next
             node_modules
-          key: build-${{ github.sha }}
+          retention-days: 1
 
-  # E2E and Lighthouse run in parallel after build
+  # E2E tests run after build
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
     needs: [build]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -138,41 +124,50 @@ jobs:
           version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Restore build cache
-        uses: actions/cache/restore@v5
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            .next
-            node_modules
-          key: build-${{ github.sha }}
-          fail-on-cache-miss: true
+          name: build-output
+          path: .
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        id: playwright-cache
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - name: Install Playwright browsers
+        if: steps.playwright-cache.outputs.cache-hit != 'true'
         run: pnpm exec playwright install chromium --with-deps
+
+      - name: Install Playwright deps (if cached)
+        if: steps.playwright-cache.outputs.cache-hit == 'true'
+        run: pnpm exec playwright install-deps chromium
 
       - name: Run Playwright tests
         run: pnpm test
 
       - name: Upload test results
-        uses: actions/upload-artifact@v6
-        if: always()
+        uses: actions/upload-artifact@v4
+        if: failure()
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
 
+  # Lighthouse audit runs in parallel with E2E
   lighthouse:
     name: Lighthouse Audit
     runs-on: ubuntu-latest
     needs: [build]
-    if: github.event_name == 'pull_request'
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
@@ -180,19 +175,16 @@ jobs:
           version: 9
 
       - name: Setup Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v4
         with:
           node-version: '20'
           cache: 'pnpm'
 
-      - name: Restore build cache
-        uses: actions/cache/restore@v5
+      - name: Download build artifacts
+        uses: actions/download-artifact@v4
         with:
-          path: |
-            .next
-            node_modules
-          key: build-${{ github.sha }}
-          fail-on-cache-miss: true
+          name: build-output
+          path: .
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
