@@ -293,3 +293,69 @@ Polar replaced Stripe on 2026-01-28. Key files:
 - `app/api/polar/portal/route.ts` - Customer portal access
 
 Database column: `users.polar_customer_id` (not stripe_customer_id)
+
+---
+
+## Clarus Session Work
+
+> **Last Updated**: 2026-01-28
+
+### ✅ Completed This Session
+
+| Task | PR | Status |
+|------|-----|--------|
+| Security hardening: Zod validation, auth helpers, security headers | #3 | ✅ Merged |
+| Optimize CI workflow (PR-only triggers, concurrency, combined jobs) | #4 | ✅ Merged |
+| Add clarus schema isolation for shared Supabase | #5 | 🔄 In Review |
+| Configure MCP servers (Vercel, Supabase) | - | ✅ Done (.mcp.json) |
+| Document Supabase isolation rules | - | ✅ Done (CLAUDE.md) |
+
+### 🔄 In Progress
+
+- **PR #5**: Schema isolation - waiting for CI to pass and merge
+- **Vercel Deployment**: Need to import repo and add env vars
+
+### 📋 Next Session TODO
+
+1. **Complete Vercel Setup**
+   - Import GitHub repo to Vercel
+   - Add environment variables (see "All Environment Variables" section)
+   - Connect custom domain (clarusapp.io)
+
+2. **Run Database Migrations**
+   - Use Supabase MCP (after restart) to run:
+     1. `scripts/100-create-clarus-schema.sql`
+     2. `scripts/000-full-schema.sql`
+     3. `scripts/000b-insert-prompts.sql`
+   - Verify tables created in `clarus` schema
+
+3. **Add Remaining MCP Servers** (optional)
+   ```bash
+   # Tavily (web search)
+   claude mcp add --transport http tavily "https://mcp.tavily.com/mcp/?tavilyApiKey=YOUR_KEY" --scope project
+
+   # Firecrawl (web scraping)
+   claude mcp add firecrawl -e FIRECRAWL_API_KEY=YOUR_KEY --scope project -- npx -y @anthropic-ai/mcp-server-firecrawl
+   ```
+
+4. **Set Up External Services**
+   - OpenRouter: Get API key, add credits
+   - Tavily: Get API key (free tier: 1000 searches/month)
+   - Firecrawl: Get API key (free tier: 500 credits)
+   - Polar: Create account for payments (optional for launch)
+
+5. **Test End-to-End**
+   - Submit a URL for analysis
+   - Verify all 6 analysis cards render
+   - Test chat functionality
+
+### 🚫 Known Issues
+
+- **Vercel deployment failing**: Missing env vars (need to add in Vercel dashboard)
+- **33 uncommitted local changes**: Various component files modified but not related to current work
+
+### 📝 Notes for Next Session
+
+- Restart Claude Code to authenticate MCP servers (Vercel, Supabase)
+- Supabase project ID: `srqmutgamvktxqmylied`
+- Tables in `public` schema belong to OTHER projects - DO NOT TOUCH
