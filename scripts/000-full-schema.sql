@@ -1,4 +1,4 @@
--- Vajra Truth Checker - Full Database Schema
+-- Clarus - Full Database Schema
 -- This file contains everything needed to set up a fresh Supabase database
 -- Run this ONCE on a new database, then run the numbered migrations in order
 
@@ -21,7 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
     created_at timestamptz DEFAULT now(),
     global_knowledge text,
     global_secret_sauce text,
-    stripe_customer_id text,
+    polar_customer_id text,
     subscription_status text DEFAULT 'none',
     subscription_id text,
     subscription_ends_at timestamptz,
@@ -481,7 +481,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- Insert default chat prompt
 INSERT INTO active_chat_prompt (id, system_content, model_name, temperature, max_tokens)
 VALUES (1,
-'You are Vajra, an AI assistant helping users understand content they''ve analyzed. You have access to the full analysis including overview, key takeaways, truth check, and action items. Be helpful, accurate, and cite specific sections when relevant.',
+'You are Clarus, an AI assistant helping users understand content they''ve analyzed. You have access to the full analysis including overview, key takeaways, accuracy analysis, and action items. Be helpful, accurate, and cite specific sections when relevant.',
 'anthropic/claude-sonnet-4',
 0.7,
 2000
