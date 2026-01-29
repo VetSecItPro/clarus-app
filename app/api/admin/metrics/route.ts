@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient, SupabaseClient } from "@supabase/supabase-js"
+import { createClient } from "@supabase/supabase-js"
 import { authenticateAdmin, AuthErrors } from "@/lib/auth"
 import { z } from "zod"
 import { parseQuery } from "@/lib/schemas"
+import type { Database } from "@/types/database.types"
 
 // Schema for metrics query params
 const metricsQuerySchema = z.object({
@@ -10,12 +11,13 @@ const metricsQuerySchema = z.object({
 })
 
 // Lazy initialization of admin client to avoid build-time env var issues
-let _adminClient: SupabaseClient | null = null
-function getSupabaseAdmin(): SupabaseClient {
+let _adminClient: ReturnType<typeof createClient<Database, "clarus">> | null = null
+function getSupabaseAdmin() {
   if (!_adminClient) {
-    _adminClient = createClient(
+    _adminClient = createClient<Database, "clarus">(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!
+      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      { db: { schema: "clarus" } }
     )
   }
   return _adminClient

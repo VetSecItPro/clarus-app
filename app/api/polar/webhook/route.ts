@@ -1,9 +1,29 @@
 import { NextResponse } from "next/server"
 import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks"
 import { createClient } from "@supabase/supabase-js"
+import {
+  sendSubscriptionStartedEmail,
+  sendSubscriptionCancelledEmail,
+  sendPaymentFailedEmail,
+} from "@/lib/email"
 
 // Use service role for webhook to bypass RLS
-const supabaseAdmin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!)
+const supabaseAdmin = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!,
+  { db: { schema: "clarus" } }
+)
+
+async function getUserEmailAndName(userId: string): Promise<{ email: string; name?: string } | null> {
+  const { data, error } = await supabaseAdmin
+    .from("users")
+    .select("email, display_name")
+    .eq("id", userId)
+    .single()
+
+  if (error || !data?.email) return null
+  return { email: data.email, name: data.display_name }
+}
 
 async function findUserByCustomerId(customerId: string): Promise<string | undefined> {
   const { data, error } = await supabaseAdmin.from("users").select("id").eq("polar_customer_id", customerId).single()
@@ -122,6 +142,33 @@ export async function POST(request: Request) {
           ...(endDate && { subscription_ends_at: endDate }),
           polar_customer_id: customerId,
         })
+
+        // Send subscription emails
+        const user = await getUserEmailAndName(userId)
+        if (user) {
+          if (event.type === "subscription.created" && status === "active") {
+            // New subscription started
+            await sendSubscriptionStartedEmail(
+              user.email,
+              user.name,
+              "Clarus Pro",
+              "Monthly",
+              "$4.00/month",
+              endDate ? new Date(endDate).toLocaleDateString() : "Next month"
+            )
+          } else if (event.type === "subscription.updated" && subscription.status === "past_due") {
+            // Payment failed
+            await sendPaymentFailedEmail(
+              user.email,
+              user.name,
+              "$4.00",
+              "Clarus Pro",
+              "Payment method declined",
+              "in 3 days",
+              "https://clarusapp.io/manage"
+            )
+          }
+        }
         break
       }
 
@@ -140,6 +187,21 @@ export async function POST(request: Request) {
             subscription_status: "canceled",
             subscription_ends_at: new Date().toISOString(),
           })
+
+          // Send cancellation email
+          const user = await getUserEmailAndName(userId)
+          if (user) {
+            const endDate = subscription.currentPeriodEnd
+              ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+              : "today"
+            await sendSubscriptionCancelledEmail(
+              user.email,
+              user.name,
+              "Clarus Pro",
+              endDate,
+              "https://clarusapp.io/pricing"
+            )
+          }
         }
         break
       }

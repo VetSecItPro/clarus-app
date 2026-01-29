@@ -73,7 +73,7 @@ export type ProcessingStatus =
   | "error"
 
 export interface Database {
-  public: {
+  clarus: {
     Tables: {
       active_chat_prompt: {
         Row: {
@@ -595,6 +595,102 @@ export interface Database {
           },
         ]
       }
+      api_usage: {
+        Row: {
+          id: string
+          user_id: string | null
+          content_id: string | null
+          api_name: string | null
+          operation: string | null
+          tokens_input: number | null
+          tokens_output: number | null
+          estimated_cost_usd: number | null
+          response_time_ms: number | null
+          status: string
+          error_message: string | null
+          metadata: Record<string, unknown> | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id?: string | null
+          content_id?: string | null
+          api_name?: string | null
+          operation?: string | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+          estimated_cost_usd?: number | null
+          response_time_ms?: number | null
+          status: string
+          error_message?: string | null
+          metadata?: Record<string, unknown> | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string | null
+          content_id?: string | null
+          api_name?: string | null
+          operation?: string | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+          estimated_cost_usd?: number | null
+          response_time_ms?: number | null
+          status?: string
+          error_message?: string | null
+          metadata?: Record<string, unknown> | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
+      processing_metrics: {
+        Row: {
+          id: string
+          summary_id: string | null
+          content_id: string | null
+          user_id: string | null
+          section_type: string
+          model_name: string | null
+          tokens_input: number | null
+          tokens_output: number | null
+          processing_time_ms: number | null
+          retry_count: number | null
+          status: string
+          error_message: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          summary_id?: string | null
+          content_id?: string | null
+          user_id?: string | null
+          section_type: string
+          model_name?: string | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+          processing_time_ms?: number | null
+          retry_count?: number | null
+          status: string
+          error_message?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          summary_id?: string | null
+          content_id?: string | null
+          user_id?: string | null
+          section_type?: string
+          model_name?: string | null
+          tokens_input?: number | null
+          tokens_output?: number | null
+          processing_time_ms?: number | null
+          retry_count?: number | null
+          status?: string
+          error_message?: string | null
+          created_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
@@ -616,11 +712,11 @@ export interface Database {
   }
 }
 
-export type Tables<TableName extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][TableName]["Row"]
+export type Tables<TableName extends keyof Database["clarus"]["Tables"]> =
+  Database["clarus"]["Tables"][TableName]["Row"]
 
-export type TablesInsert<TableName extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][TableName]["Insert"]
+export type TablesInsert<TableName extends keyof Database["clarus"]["Tables"]> =
+  Database["clarus"]["Tables"][TableName]["Insert"]
 
-export type TablesUpdate<TableName extends keyof Database["public"]["Tables"]> =
-  Database["public"]["Tables"][TableName]["Update"]
+export type TablesUpdate<TableName extends keyof Database["clarus"]["Tables"]> =
+  Database["clarus"]["Tables"][TableName]["Update"]
