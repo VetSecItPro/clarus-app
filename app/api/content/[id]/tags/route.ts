@@ -1,11 +1,21 @@
-import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
-import { validateContentId, checkRateLimit } from "@/lib/validation"
+import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
+import { uuidSchema, parseBody } from "@/lib/schemas"
+import { checkRateLimit } from "@/lib/validation"
+import { z } from "zod"
 
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+// Schema for tag operations
+const tagActionSchema = z.object({
+  action: z.enum(["add", "remove"]),
+  tag: z.string().trim().min(1).max(50),
+})
+
+const tagSetSchema = z.object({
+  action: z.literal("set"),
+  tags: z.array(z.string().trim().min(1).max(50)).max(10),
+})
+
+const tagsUpdateSchema = z.union([tagActionSchema, tagSetSchema])
 
 // GET all tags for a content item
 export async function GET(
@@ -15,23 +25,25 @@ export async function GET(
   try {
     const { id } = await params
 
-    const idValidation = validateContentId(id)
-    if (!idValidation.isValid) {
-      return NextResponse.json({ success: false, error: idValidation.error }, { status: 400 })
+    // Validate content ID
+    const idResult = uuidSchema.safeParse(id)
+    if (!idResult.success) {
+      return AuthErrors.badRequest("Invalid content ID")
     }
 
-    const { data, error } = await supabaseAdmin
-      .from("content")
-      .select("tags")
-      .eq("id", idValidation.sanitized)
-      .single()
-
-    if (error) {
-      console.error("Tags fetch error:", error)
-      return NextResponse.json({ success: false, error: "Failed to fetch tags. Please try again." }, { status: 500 })
+    // Authenticate user
+    const auth = await authenticateRequest()
+    if (!auth.success) {
+      return auth.response
     }
 
-    return NextResponse.json({ success: true, tags: data?.tags || [] })
+    // Verify ownership
+    const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, idResult.data)
+    if (!ownership.owned) {
+      return ownership.response
+    }
+
+    return NextResponse.json({ success: true, tags: ownership.content.tags || [] })
   } catch {
     return NextResponse.json({ success: false, error: "Invalid request" }, { status: 400 })
   }
@@ -49,84 +61,66 @@ export async function PATCH(
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
     const rateLimit = checkRateLimit(`tags:${clientIp}`, 60, 60000) // 60 requests per minute
     if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { success: false, error: "Too many requests. Please try again later." },
-        { status: 429 }
-      )
+      return AuthErrors.rateLimit(rateLimit.resetIn)
     }
 
-    const idValidation = validateContentId(id)
-    if (!idValidation.isValid) {
-      return NextResponse.json({ success: false, error: idValidation.error }, { status: 400 })
+    // Validate content ID
+    const idResult = uuidSchema.safeParse(id)
+    if (!idResult.success) {
+      return AuthErrors.badRequest("Invalid content ID")
     }
 
-    const { action, tag } = await request.json()
-
-    if (!["add", "remove", "set"].includes(action)) {
-      return NextResponse.json(
-        { success: false, error: "action must be 'add', 'remove', or 'set'" },
-        { status: 400 }
-      )
+    // Authenticate user
+    const auth = await authenticateRequest()
+    if (!auth.success) {
+      return auth.response
     }
 
-    // Validate tag
-    if (action !== "set" && (typeof tag !== "string" || tag.trim().length === 0)) {
-      return NextResponse.json(
-        { success: false, error: "tag must be a non-empty string" },
-        { status: 400 }
-      )
+    // Verify ownership
+    const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, idResult.data)
+    if (!ownership.owned) {
+      return ownership.response
     }
 
-    // Sanitize tag: lowercase, trim, limit length
-    const sanitizedTag = action !== "set" ? tag.trim().toLowerCase().slice(0, 50) : null
-
-    // Get current tags
-    const { data: current, error: fetchError } = await supabaseAdmin
-      .from("content")
-      .select("tags")
-      .eq("id", idValidation.sanitized)
-      .single()
-
-    if (fetchError) {
-      console.error("Tags fetch error:", fetchError)
-      return NextResponse.json({ success: false, error: "Failed to fetch tags. Please try again." }, { status: 500 })
+    // Validate request body
+    const body = await request.json()
+    const validation = parseBody(tagsUpdateSchema, body)
+    if (!validation.success) {
+      return AuthErrors.badRequest(validation.error)
     }
 
-    let newTags: string[] = current?.tags || []
+    const currentTags: string[] = ownership.content.tags || []
+    let newTags: string[]
 
-    if (action === "add" && sanitizedTag) {
-      // Add tag if not already present
-      if (!newTags.includes(sanitizedTag)) {
-        newTags = [...newTags, sanitizedTag]
+    const actionData = validation.data
+    if (actionData.action === "add") {
+      const sanitizedTag = actionData.tag.toLowerCase()
+      if (!currentTags.includes(sanitizedTag)) {
+        newTags = [...currentTags, sanitizedTag]
+      } else {
+        newTags = currentTags
       }
-    } else if (action === "remove" && sanitizedTag) {
-      // Remove tag
-      newTags = newTags.filter((t) => t !== sanitizedTag)
-    } else if (action === "set") {
-      // Set tags to provided array
-      const { tags } = await request.json()
-      if (!Array.isArray(tags)) {
-        return NextResponse.json(
-          { success: false, error: "tags must be an array for 'set' action" },
-          { status: 400 }
-        )
-      }
-      newTags = tags.map((t: string) => t.trim().toLowerCase().slice(0, 50)).filter(Boolean)
+    } else if (actionData.action === "remove") {
+      const sanitizedTag = actionData.tag.toLowerCase()
+      newTags = currentTags.filter((t) => t !== sanitizedTag)
+    } else if (actionData.action === "set") {
+      // Explicit check for "set" action to satisfy TypeScript
+      newTags = actionData.tags.map((t: string) => t.toLowerCase())
+    } else {
+      // Should never happen, but TypeScript exhaustiveness check
+      newTags = currentTags
     }
 
     // Limit to 10 tags per content
     if (newTags.length > 10) {
-      return NextResponse.json(
-        { success: false, error: "Maximum 10 tags allowed per content" },
-        { status: 400 }
-      )
+      return AuthErrors.badRequest("Maximum 10 tags allowed per content")
     }
 
     // Update tags
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await auth.supabase
       .from("content")
       .update({ tags: newTags })
-      .eq("id", idValidation.sanitized)
+      .eq("id", idResult.data)
       .select("id, tags")
       .single()
 

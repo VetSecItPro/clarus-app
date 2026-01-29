@@ -1,11 +1,7 @@
-import { createClient } from "@supabase/supabase-js"
 import { NextResponse } from "next/server"
-import { validateContentId, checkRateLimit } from "@/lib/validation"
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
+import { uuidSchema, bookmarkUpdateSchema, parseBody } from "@/lib/schemas"
+import { checkRateLimit } from "@/lib/validation"
 
 export async function PATCH(
   request: Request,
@@ -18,32 +14,39 @@ export async function PATCH(
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
     const rateLimit = checkRateLimit(`bookmark:${clientIp}`, 30, 60000) // 30 requests per minute
     if (!rateLimit.allowed) {
-      return NextResponse.json(
-        { success: false, error: "Too many requests. Please try again later." },
-        { status: 429 }
-      )
+      return AuthErrors.rateLimit(rateLimit.resetIn)
     }
 
     // Validate content ID
-    const idValidation = validateContentId(id)
-    if (!idValidation.isValid) {
-      return NextResponse.json({ success: false, error: idValidation.error }, { status: 400 })
+    const idResult = uuidSchema.safeParse(id)
+    if (!idResult.success) {
+      return AuthErrors.badRequest("Invalid content ID")
     }
 
-    const { is_bookmarked } = await request.json()
+    // Authenticate user
+    const auth = await authenticateRequest()
+    if (!auth.success) {
+      return auth.response
+    }
 
-    if (typeof is_bookmarked !== "boolean") {
-      return NextResponse.json(
-        { success: false, error: "is_bookmarked must be a boolean" },
-        { status: 400 }
-      )
+    // Verify ownership
+    const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, idResult.data)
+    if (!ownership.owned) {
+      return ownership.response
+    }
+
+    // Validate request body
+    const body = await request.json()
+    const validation = parseBody(bookmarkUpdateSchema, body)
+    if (!validation.success) {
+      return AuthErrors.badRequest(validation.error)
     }
 
     // Update bookmark status
-    const { data, error } = await supabaseAdmin
+    const { data, error } = await auth.supabase
       .from("content")
-      .update({ is_bookmarked })
-      .eq("id", idValidation.sanitized)
+      .update({ is_bookmarked: validation.data.is_bookmarked })
+      .eq("id", idResult.data)
       .select("id, is_bookmarked")
       .single()
 
@@ -53,7 +56,7 @@ export async function PATCH(
     }
 
     return NextResponse.json({ success: true, data })
-  } catch (error) {
+  } catch {
     return NextResponse.json({ success: false, error: "Invalid request" }, { status: 400 })
   }
 }
