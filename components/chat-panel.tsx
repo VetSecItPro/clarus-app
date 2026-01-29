@@ -345,9 +345,10 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
       })
 
       sendMessage({ text: currentInputValue })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error during form submission process:", error)
-      toast.error("Error sending message", { description: error.message })
+      const message = error instanceof Error ? error.message : "Unknown error"
+      toast.error("Error sending message", { description: message })
       setLocalInput(currentInputValue)
     }
   }
@@ -383,8 +384,8 @@ export function ChatPanel({ contentId, session }: ChatPanelProps) {
         .join("")
     }
     // Fallback for old format
-    if ("content" in message) {
-      return (message as any).content || ""
+    if ("content" in message && typeof (message as { content?: string }).content === "string") {
+      return (message as { content: string }).content
     }
     return ""
   }, [])

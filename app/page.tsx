@@ -9,7 +9,6 @@ import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { supabase } from "@/lib/supabase"
 import { getCachedSession, setAuthCache } from "@/components/with-auth"
 import { LandingPage } from "@/components/landing/landing-page"
-import { useRouter } from "next/navigation"
 import {
   ChatMessagesArea,
   ChatInputBar,
@@ -39,7 +38,6 @@ interface HomePageProps {
 }
 
 function HomePageContent({ session }: HomePageProps) {
-  const router = useRouter()
   const userId = session?.user?.id || null
 
   // Username state
@@ -48,7 +46,6 @@ function HomePageContent({ session }: HomePageProps) {
   // Chat session hook
   const {
     state,
-    contentId,
     messages,
     contentStatus,
     showSuggestions,

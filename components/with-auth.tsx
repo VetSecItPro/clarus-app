@@ -60,11 +60,13 @@ export default function withAuth<P extends object>(
     const isPublicPath = publicAuthPaths.includes(pathname)
 
     // Sync with cache on mount (for navigations after initial load)
+    // We intentionally only run on pathname change, not session change (would cause infinite loop)
     useEffect(() => {
       if (authInitialized && cachedSession !== session) {
         setSession(cachedSession)
         setSubscriptionStatus(cachedSubscriptionStatus)
       }
+      // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [pathname])
 
     useEffect(() => {

@@ -71,9 +71,10 @@ export function ShareModal({
         setSendStatus("idle")
         onOpenChange(false)
       }, 1500)
-    } catch (err: any) {
+    } catch (err: unknown) {
       setSendStatus("error")
-      toast.error(err.message || "Failed to send email")
+      const message = err instanceof Error ? err.message : "Failed to send email"
+      toast.error(message)
     } finally {
       setIsSending(false)
     }

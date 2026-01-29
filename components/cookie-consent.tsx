@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { X, Cookie, Shield, Settings } from "lucide-react"
-import { cn } from "@/lib/utils"
 import Link from "next/link"
 
 interface CookiePreferences {
