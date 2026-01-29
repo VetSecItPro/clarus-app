@@ -284,9 +284,9 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
       .select("id")
       .eq("user_id", userId)
       .eq("content_id", contentId)
-      .single()
+      .maybeSingle()
 
-    if (threadError && threadError.code !== "PGRST116") {
+    if (threadError) {
       return
     }
 
@@ -400,7 +400,7 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
       <div className="px-3 py-2 flex justify-between items-center border-b border-white/[0.08] bg-white/[0.02]">
         <div className="flex items-center gap-1.5">
           <MessageSquare className="w-3.5 h-3.5 text-[#1d9bf0]" />
-          <h3 className="text-xs font-semibold text-white">Ask about this content</h3>
+          <h3 className="text-xs font-semibold text-white">Chat about this content</h3>
         </div>
         {threadId && messages.length > 0 && (
           <button
@@ -414,12 +414,12 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
       </div>
 
       {/* Messages area - fixed max height with own scroll */}
-      <div className="h-[320px] lg:h-[280px] overflow-y-auto subtle-scrollbar">
+      <div className="h-[400px] lg:h-[360px] overflow-y-auto subtle-scrollbar">
         <div className="p-3 space-y-2.5">
           {messages.length === 0 && !isLoading && (
             <div className="flex flex-col items-center justify-center text-center text-gray-500 py-4">
               <MessageSquare className="w-8 h-8 mb-2 text-gray-600" />
-              <p className="text-xs text-gray-400 mb-3">Ask anything about this content</p>
+              <p className="text-xs text-gray-400 mb-3">Chat about this content</p>
               {/* Suggestion chips */}
               <SuggestionChips
                 onSelect={handleSuggestionClick}
@@ -490,7 +490,7 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
             ref={inputRef}
             value={localInput}
             onChange={handleLocalInputChange}
-            placeholder={isListening ? "" : "Ask about this content..."}
+            placeholder={isListening ? "" : "Chat about this content..."}
             className={cn(
               "w-full bg-white/[0.04] border-white/[0.08] text-white placeholder:text-gray-500 focus:ring-1 focus:ring-[#1d9bf0] focus:border-[#1d9bf0] rounded-lg h-9 text-xs",
               isListening && "border-red-500/50 ring-1 ring-red-500/30",

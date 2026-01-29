@@ -238,7 +238,7 @@ function CommunityPageContent({ session }: WithAuthInjectedProps) {
                   date_added={item.date_added || new Date().toISOString()}
                   is_bookmarked={isBookmarked(item.id)}
                   analyzer={analyzer}
-                  onClick={() => router.push(`/chat/${item.id}`)}
+                  onClick={() => router.push(`/item/${item.id}`)}
                   onBookmark={() => handleToggleBookmark(item)}
                   onDelete={() => handleHide(item.id)}
                 />
