@@ -4,6 +4,13 @@ import { useEffect } from "react"
 import { preload } from "swr"
 import { supabase } from "@/lib/supabase"
 
+// Type for community feed items from Supabase join query
+interface CommunityFeedItem {
+  id: string
+  summaries: { brief_overview: string | null; triage: { quality_score?: number } | null } | Array<{ brief_overview: string | null; triage: { quality_score?: number } | null }> | null
+  [key: string]: unknown
+}
+
 // Helper to add timeout to promises
 const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
   const timeout = new Promise<never>((_, reject) => {
@@ -63,9 +70,9 @@ export function PrefetchData({ userId }: { userId: string | undefined }) {
           const hiddenIds = new Set((hiddenResult.data || []).map((h) => h.content_id))
           const data = contentResult.data || []
 
-          return data
-            .filter((item: any) => !hiddenIds.has(item.id))
-            .map((item: any) => {
+          return (data as CommunityFeedItem[])
+            .filter((item) => !hiddenIds.has(item.id))
+            .map((item) => {
               const summaryData = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
               const triage = summaryData?.triage as { quality_score?: number } | null
               const qualityScore = triage?.quality_score ?? null

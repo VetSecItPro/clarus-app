@@ -124,9 +124,10 @@ export function AddUrlModal({ isOpen, onOpenChange }: AddUrlModalProps) {
           window.dispatchEvent(new CustomEvent("contentAdded"))
           router.refresh()
         })
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Error adding URL:", error)
-      toast.error(error.message || "An unexpected error occurred.")
+      const message = error instanceof Error ? error.message : "An unexpected error occurred."
+      toast.error(message)
     } finally {
       setIsLoading(false)
     }

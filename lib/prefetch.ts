@@ -35,7 +35,7 @@ export async function prefetchContent(contentId: string): Promise<void> {
       // Populate the content-status cache key used by useChatSession
       mutate(`content-status:${contentId}`, content, { revalidate: false })
     }
-  } catch (error) {
+  } catch {
     // Silently fail - prefetch is an optimization, not critical
     console.debug("Prefetch failed for content:", contentId)
   }
@@ -59,7 +59,7 @@ export async function prefetchLibrary(userId: string): Promise<void> {
       const cacheKey = `library:${userId}::all:date_desc::0`
       mutate(cacheKey, { items: data, hasMore: data.length >= 20 }, { revalidate: false })
     }
-  } catch (error) {
+  } catch {
     console.debug("Prefetch failed for library")
   }
 }

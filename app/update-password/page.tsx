@@ -26,7 +26,7 @@ export default function UpdatePasswordPage() {
   useEffect(() => {
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((event, session) => {
+    } = supabase.auth.onAuthStateChange((event, _session) => {
       if (event === "PASSWORD_RECOVERY") {
         // This event is triggered when the user lands on this page after clicking the reset link.
         // The session is now available, and we can allow the password update.
@@ -47,7 +47,7 @@ export default function UpdatePasswordPage() {
     return () => {
       subscription.unsubscribe()
     }
-  }, [supabase.auth])
+  }, [])
 
   const handleUpdatePassword = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()

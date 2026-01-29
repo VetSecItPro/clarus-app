@@ -35,7 +35,7 @@ export function SWRProvider({ children }: SWRProviderProps) {
                   map.set(key, value)
                 })
               }
-            } catch (e) {
+            } catch {
               // Ignore errors
             }
 
@@ -47,7 +47,7 @@ export function SWRProvider({ children }: SWRProviderProps) {
                   data[key] = value
                 })
                 sessionStorage.setItem('swr-cache', JSON.stringify(data))
-              } catch (e) {
+              } catch {
                 // Ignore quota errors
               }
             }

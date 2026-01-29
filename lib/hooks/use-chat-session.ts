@@ -71,7 +71,6 @@ export function useChatSession({
   // AI SDK chat hook for follow-up questions
   const {
     messages: aiMessages,
-    setMessages: setAiMessages,
     status: aiStatus,
     sendMessage,
   } = useChat({
@@ -191,6 +190,7 @@ export function useChatSession({
         setState("idle")
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [userId, addMessage, onContentCreated]
   )
 

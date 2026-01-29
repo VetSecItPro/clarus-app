@@ -76,7 +76,7 @@ export function ContentSummaryCard({
   triage,
   brief_overview,
   transcript,
-  onViewFullAnalysis,
+  onViewFullAnalysis: _onViewFullAnalysis,
 }: ContentSummaryCardProps) {
   const [showTranscript, setShowTranscript] = useState(false)
   const domain = getDomainFromUrl(url)
