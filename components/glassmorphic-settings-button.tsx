@@ -190,7 +190,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
               className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-200"
             >
               <Bookmark className="h-4 w-4 text-amber-400" />
-              <span>My Bookmarks</span>
+              <span>Reading List</span>
             </DropdownMenuItem>
           )}
 

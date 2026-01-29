@@ -163,6 +163,16 @@ export const htmlSafeSchema = z.string().transform((text) =>
     .replace(/'/g, "&#x27;")
 )
 
+/**
+ * Share token schema (10-16 alphanumeric chars)
+ */
+export const shareTokenSchema = z
+  .string()
+  .trim()
+  .min(10, "Invalid share token")
+  .max(16, "Invalid share token")
+  .regex(/^[a-zA-Z0-9]+$/, "Invalid share token")
+
 // ===========================================
 // CONTENT TYPE SCHEMAS
 // ===========================================
@@ -269,6 +279,13 @@ export const checkoutSchema = z.object({
   productId: z.string().min(1, "Product ID is required"),
   successUrl: safeUrlSchema.optional(),
   cancelUrl: safeUrlSchema.optional(),
+})
+
+/**
+ * Digest preferences update
+ */
+export const digestPreferencesSchema = z.object({
+  digest_enabled: z.boolean(),
 })
 
 /**
