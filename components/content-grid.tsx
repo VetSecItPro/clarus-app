@@ -10,7 +10,7 @@ import type { Database } from "@/types/database.types"
 import { formatDistanceToNow } from "date-fns"
 import { formatDuration } from "@/lib/utils"
 
-type ContentItem = Database["public"]["Tables"]["content"]["Row"]
+type ContentItem = Database["clarus"]["Tables"]["content"]["Row"]
 
 // Extended DisplayItem to include rater info for the feed
 export type DisplayItem = ContentItem & {

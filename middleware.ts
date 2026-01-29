@@ -1,29 +1,46 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
+import { createMiddlewareClient } from "@/lib/supabase-middleware"
 
-// CORS middleware for Chrome extension support
-// Chrome extensions have origin format: chrome-extension://[extension-id]
-
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const origin = request.headers.get("origin")
+  const pathname = request.nextUrl.pathname
 
-  // Only process API routes
-  if (!request.nextUrl.pathname.startsWith("/api/")) {
+  // Skip static files and _next
+  if (
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/favicon") ||
+    pathname.includes(".")
+  ) {
     return NextResponse.next()
   }
 
-  // Handle preflight requests (OPTIONS)
-  if (request.method === "OPTIONS") {
-    const response = new NextResponse(null, { status: 204 })
+  // Handle API routes with CORS
+  if (pathname.startsWith("/api/")) {
+    // Handle preflight requests (OPTIONS)
+    if (request.method === "OPTIONS") {
+      const response = new NextResponse(null, { status: 204 })
+      setCorsHeaders(response, origin)
+      setSecurityHeaders(response)
+      return response
+    }
+
+    // Refresh session for API routes
+    const { supabase, response } = createMiddlewareClient(request)
+    await supabase.auth.getSession()
+
     setCorsHeaders(response, origin)
     setSecurityHeaders(response)
     return response
   }
 
-  // Add CORS and security headers to response
-  const response = NextResponse.next()
-  setCorsHeaders(response, origin)
-  setSecurityHeaders(response)
+  // For all other routes, refresh the session to keep users logged in
+  const { supabase, response } = createMiddlewareClient(request)
+
+  // This will refresh the session if it's expired
+  // The refreshed session will be stored in cookies automatically
+  await supabase.auth.getSession()
+
   return response
 }
 
@@ -33,6 +50,7 @@ function setCorsHeaders(response: NextResponse, origin: string | null) {
     "https://infosecops.io",
     "https://clarusapp.io",
     "http://localhost:3000", // Development
+    "http://localhost:3456", // Clarus dev port
   ]
 
   // Check if origin is a Chrome extension or in allowed list
@@ -100,5 +118,14 @@ function setSecurityHeaders(response: NextResponse) {
 }
 
 export const config = {
-  matcher: "/api/:path*",
+  matcher: [
+    /*
+     * Match all request paths except:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 }

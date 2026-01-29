@@ -653,7 +653,7 @@ async function getModelSummary(
     console.error(msg)
     return { error: true, modelName: "N/A", reason: "ClientNotInitialized", finalErrorMessage: msg }
   }
-  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey)
+  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey, { db: { schema: "clarus" } })
 
   const { data: promptData, error: promptError } = await supabaseAdmin
     .from("active_summarizer_prompt")
@@ -812,7 +812,7 @@ async function fetchPromptFromDB(promptType: string): Promise<AnalysisPrompt | n
     return promptsCache.get(promptType) || null
   }
 
-  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey)
+  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey, { db: { schema: "clarus" } })
 
   const { data, error } = await supabaseAdmin
     .from("analysis_prompts")
@@ -1112,7 +1112,7 @@ async function updateSummarySection(
   supabase: ReturnType<typeof createClient<Database>>,
   contentId: string,
   userId: string,
-  updates: Partial<Database["public"]["Tables"]["summaries"]["Update"]>,
+  updates: Partial<Database["clarus"]["Tables"]["summaries"]["Update"]>,
 ) {
   const { error } = await supabase
     .from("summaries")
@@ -1249,7 +1249,7 @@ export async function POST(req: NextRequest) {
         !content.raw_youtube_metadata
       if (shouldFetchYouTubeMetadata) {
         const metadata = await getYouTubeMetadata(content.url, supadataApiKey, content.user_id, content.id)
-        const updatePayload: Partial<Database["public"]["Tables"]["content"]["Update"]> = {}
+        const updatePayload: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {}
         if (metadata.title) updatePayload.title = metadata.title
         if (metadata.author) updatePayload.author = metadata.author
         if (metadata.duration) updatePayload.duration = metadata.duration
@@ -1303,7 +1303,7 @@ export async function POST(req: NextRequest) {
 
         const scrapedData = await scrapeArticle(urlToScrape, firecrawlApiKey, content.user_id, content.id)
 
-        const updatePayload: Partial<Database["public"]["Tables"]["content"]["Update"]> = {}
+        const updatePayload: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {}
         if (scrapedData.title) updatePayload.title = scrapedData.title
         if (scrapedData.full_text) updatePayload.full_text = scrapedData.full_text
         if (scrapedData.description) updatePayload.description = scrapedData.description

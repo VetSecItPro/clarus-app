@@ -13,7 +13,7 @@ type SummaryData = {
   } | null
 }
 
-type FeedItemFromDb = Database["public"]["Tables"]["content"]["Row"] & {
+type FeedItemFromDb = Database["clarus"]["Tables"]["content"]["Row"] & {
   users: { name: string | null; email: string | null } | null
   content_ratings: { signal_score: number | null; user_id: string; created_at: string }[]
   summaries: SummaryData | SummaryData[]

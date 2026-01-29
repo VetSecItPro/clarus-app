@@ -14,20 +14,25 @@ export default function manifest(): MetadataRoute.Manifest {
     categories: ["news", "productivity", "utilities", "education"],
     icons: [
       {
-        src: "/favicon.svg",
-        sizes: "any",
-        type: "image/svg+xml",
+        src: "/favicon.png",
+        sizes: "32x32",
+        type: "image/png",
+      },
+      {
+        src: "/apple-touch-icon.png",
+        sizes: "180x180",
+        type: "image/png",
         purpose: "maskable",
       },
       {
-        src: "/icon-192x192.svg",
+        src: "/icon-192x192.png",
         sizes: "192x192",
-        type: "image/svg+xml",
+        type: "image/png",
       },
       {
-        src: "/icon-512x512.svg",
+        src: "/icon-512x512.png",
         sizes: "512x512",
-        type: "image/svg+xml",
+        type: "image/png",
       },
     ],
     screenshots: [
@@ -50,14 +55,14 @@ export default function manifest(): MetadataRoute.Manifest {
         short_name: "Analyze",
         description: "Quickly analyze a new URL",
         url: "/",
-        icons: [{ src: "/favicon.svg", sizes: "96x96" }],
+        icons: [{ src: "/icon-192x192.png", sizes: "192x192" }],
       },
       {
         name: "My Library",
         short_name: "Library",
         description: "View your analyzed content",
         url: "/library",
-        icons: [{ src: "/favicon.svg", sizes: "96x96" }],
+        icons: [{ src: "/icon-192x192.png", sizes: "192x192" }],
       },
     ],
   }

@@ -1,6 +1,6 @@
 import type React from "react"
 import type { Metadata } from "next"
-import { Inter } from "next/font/google"
+import { Inter, Cormorant_Garamond } from "next/font/google"
 import { Analytics } from "@vercel/analytics/react"
 import { Toaster } from "sonner"
 import CookieConsent from "@/components/cookie-consent"
@@ -15,17 +15,22 @@ const inter = Inter({
   display: "swap",
 })
 
+const cormorant = Cormorant_Garamond({
+  subsets: ["latin"],
+  weight: ["700"],
+  style: ["italic"],
+  variable: "--font-cormorant",
+  display: "swap",
+})
+
 export const metadata: Metadata = {
   title: "Clarus",
   description: "AI-powered content analysis for clarity and understanding",
   generator: "v0.dev",
   manifest: "/manifest.json",
   icons: {
-    icon: "/favicon.svg",
-    apple: [
-      { url: "/favicon.svg", sizes: "any", type: "image/svg+xml" },
-      { url: "/icon-192x192.svg", sizes: "192x192", type: "image/svg+xml" },
-    ],
+    icon: "/favicon.png",
+    apple: "/apple-touch-icon.png",
   },
   appleWebApp: {
     capable: true,
@@ -47,11 +52,11 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} dark bg-[#0a0e1a]`}>
+    <html lang="en" className={`${inter.variable} ${cormorant.variable} dark bg-[#0a0e1a]`}>
       <head>
         {/* Preconnect to critical external domains for faster resource loading */}
-        <link rel="preconnect" href="https://dxyfpehucygiughjmiek.supabase.co" />
-        <link rel="dns-prefetch" href="https://dxyfpehucygiughjmiek.supabase.co" />
+        <link rel="preconnect" href="https://srqmutgamvktxqmylied.supabase.co" />
+        <link rel="dns-prefetch" href="https://srqmutgamvktxqmylied.supabase.co" />
         <link rel="preconnect" href="https://www.youtube.com" />
         <link rel="dns-prefetch" href="https://www.youtube.com" />
         <link rel="dns-prefetch" href="https://i.ytimg.com" />

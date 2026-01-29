@@ -391,7 +391,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         <div className="text-center">
           <h2 className="text-lg font-medium text-white mb-4">{error || "Item not found"}</h2>
           <Link href="/">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white transition-all mx-auto">
+            <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white transition-all mx-auto">
               <ArrowLeft className="w-4 h-4" />
               Back to home
             </button>
@@ -424,7 +424,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
           <button
             onClick={() => handleRegenerate()}
             disabled={isRegenerating}
-            className="px-4 py-2 rounded-xl bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30 transition-all disabled:opacity-50 text-sm"
+            className="px-4 py-2 rounded-full bg-yellow-500/20 border border-yellow-500/30 text-yellow-300 hover:bg-yellow-500/30 transition-all disabled:opacity-50 text-sm"
           >
             {isRegenerating ? (
               <span className="flex items-center gap-2">
@@ -634,7 +634,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <button
                 onClick={() => handleRegenerate()}
                 disabled={isRegenerating}
-                className="px-4 py-2 rounded-xl bg-[#1d9bf0] text-white text-sm hover:bg-[#1a8cd8] transition-all disabled:opacity-50"
+                className="px-4 py-2 rounded-full bg-[#1d9bf0] text-white text-sm hover:bg-[#1a8cd8] transition-all disabled:opacity-50"
               >
                 Generate Summary
               </button>
@@ -1281,7 +1281,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                           <Button
                             onClick={() => setIsShareModalOpen(true)}
                             size="sm"
-                            className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 rounded-xl transition-all"
+                            className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 transition-all"
                           >
                             <Mail className="mr-2 h-4 w-4 shrink-0" />
                             <span className="truncate">Share</span>
@@ -1296,7 +1296,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                             <DropdownMenuTrigger asChild>
                               <Button
                                 size="sm"
-                                className="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 border border-purple-500/30 hover:border-purple-500/50 rounded-xl transition-all"
+                                className="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 border border-purple-500/30 hover:border-purple-500/50 transition-all"
                               >
                                 <Download className="mr-2 h-4 w-4 shrink-0" />
                                 <span className="truncate">Export</span>
@@ -1329,7 +1329,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                             onClick={() => handleRegenerate()}
                             disabled={isRegenerating}
                             size="sm"
-                            className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 rounded-xl transition-all disabled:opacity-50"
+                            className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 transition-all disabled:opacity-50"
                           >
                             {isRegenerating ? (
                               <>
