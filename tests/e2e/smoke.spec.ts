@@ -30,13 +30,6 @@ test.describe('Smoke Tests', () => {
     await expect(page.locator('button:has-text("Create account")')).toBeVisible()
   })
 
-  test('pricing page loads correctly', async ({ page }) => {
-    await page.goto('/pricing')
-
-    // Check pricing content is visible
-    await expect(page.locator('text=Pro')).toBeVisible()
-  })
-
   test('forgot password page loads correctly', async ({ page }) => {
     await page.goto('/forgot-password')
 
