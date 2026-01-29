@@ -5,13 +5,11 @@ on:
     branches: [main]
 
 # Cancel in-progress runs when new commits are pushed to the same PR
-# Saves CI minutes by not running stale checks
 concurrency:
   group: ci-${{ github.head_ref }}
   cancel-in-progress: true
 
 env:
-  # Placeholder env vars for build (not real secrets)
   NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
   NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
   SUPABASE_URL: https://placeholder.supabase.co
@@ -24,7 +22,7 @@ env:
   POLAR_ORGANIZATION_ID: placeholder-org-id
 
 jobs:
-  # Combined lint + typecheck (saves ~30s setup time vs separate jobs)
+  # Combined lint + typecheck (saves setup time)
   quality:
     name: Lint & Type Check
     runs-on: ubuntu-latest
@@ -51,7 +49,7 @@ jobs:
       - name: Type Check
         run: pnpm typecheck
 
-  # Security audit runs in parallel (non-blocking)
+  # Security audit (non-blocking)
   security:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -76,7 +74,7 @@ jobs:
         run: pnpm audit --audit-level=high
         continue-on-error: true
 
-  # Build runs after quality checks pass
+  # Build after quality checks pass
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -104,13 +102,11 @@ jobs:
       - name: Upload build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: build-output
-          path: |
-            .next
-            node_modules
+          name: nextjs-build
+          path: .next
           retention-days: 1
 
-  # E2E tests run after build
+  # E2E tests
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
@@ -129,11 +125,14 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: build-output
-          path: .
+          name: nextjs-build
+          path: .next
 
       - name: Cache Playwright browsers
         uses: actions/cache@v4
@@ -161,7 +160,7 @@ jobs:
           path: playwright-report/
           retention-days: 7
 
-  # Lighthouse audit runs in parallel with E2E
+  # Lighthouse audit
   lighthouse:
     name: Lighthouse Audit
     runs-on: ubuntu-latest
@@ -180,11 +179,14 @@ jobs:
           node-version: '20'
           cache: 'pnpm'
 
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
       - name: Download build artifacts
         uses: actions/download-artifact@v4
         with:
-          name: build-output
-          path: .
+          name: nextjs-build
+          path: .next
 
       - name: Run Lighthouse CI
         uses: treosh/lighthouse-ci-action@v12
