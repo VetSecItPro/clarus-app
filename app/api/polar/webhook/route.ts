@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   let event
   try {
     event = validateEvent(body, Object.fromEntries(request.headers), webhookSecret)
-  } catch (err) {
+  } catch (err: unknown) {
     if (err instanceof WebhookVerificationError) {
       console.error("[Polar Webhook] Webhook signature verification failed:", err.message)
       return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 400 })
