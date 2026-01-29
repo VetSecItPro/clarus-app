@@ -11,6 +11,18 @@ export const maxDuration = 300
 // Timeout for individual AI API calls (2 minutes per call)
 const AI_CALL_TIMEOUT_MS = 120000
 
+// Helper to safely extract error properties
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === "string") return error
+  return "Unknown error"
+}
+
+function getErrorName(error: unknown): string {
+  if (error instanceof Error) return error.name
+  return ""
+}
+
 const supabaseUrl = process.env.SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supadataApiKey = process.env.SUPADATA_API_KEY
@@ -37,6 +49,18 @@ interface WebSearchContext {
   searches: WebSearchResult[]
   formattedContext: string
   timestamp: string
+}
+
+// Tavily API response type
+interface TavilySearchResult {
+  title: string
+  url: string
+  content?: string
+}
+
+interface TavilyApiResponse {
+  answer?: string
+  results?: TavilySearchResult[]
 }
 
 // Extract key topics/claims that need verification
@@ -92,7 +116,7 @@ OUTPUT: Return a JSON object with a "queries" key containing an array of 3-5 con
     const topics = Array.isArray(parsed) ? parsed : parsed.queries || parsed.topics || []
 
     // Limit to 5 topics max
-    return topics.slice(0, 5).filter((t: any) => typeof t === 'string' && t.length > 2)
+    return topics.slice(0, 5).filter((t: unknown) => typeof t === 'string' && t.length > 2)
   } catch (error) {
     console.warn("API: Topic extraction error:", error)
     return []
@@ -143,7 +167,7 @@ async function searchTavily(query: string): Promise<WebSearchResult | null> {
     return {
       query,
       answer: data.answer,
-      results: (data.results || []).slice(0, 3).map((r: any) => ({
+      results: ((data as TavilyApiResponse).results || []).slice(0, 3).map((r) => ({
         title: r.title,
         url: r.url,
         content: r.content?.substring(0, 500) || "",
@@ -156,7 +180,7 @@ async function searchTavily(query: string): Promise<WebSearchResult | null> {
 }
 
 // Get web search context for content analysis
-async function getWebSearchContext(text: string, contentTitle?: string): Promise<WebSearchContext | null> {
+async function getWebSearchContext(text: string, _contentTitle?: string): Promise<WebSearchContext | null> {
   if (!tavilyApiKey) {
     console.log("API: Tavily API key not configured, skipping web search")
     return null
@@ -226,9 +250,6 @@ function formatWebContext(searches: WebSearchResult[]): string {
   return lines.join("\n")
 }
 
-// Cache for web context (per content processing)
-let webContextCache: WebSearchContext | null = null
-
 interface SupadataYouTubeResponse {
   id: string
   title: string
@@ -244,7 +265,6 @@ interface SupadataYouTubeResponse {
   viewCount: number
   likeCount: number
   transcriptLanguages: string[]
-  [key: string]: any
 }
 
 interface ProcessedYouTubeMetadata {
@@ -311,7 +331,7 @@ async function getYouTubeMetadata(url: string, apiKey: string, userId?: string |
           like_count: data.likeCount,
           channel_id: data.channel?.id,
           transcript_languages: data.transcriptLanguages,
-          raw_youtube_metadata: data as Json,
+          raw_youtube_metadata: data as unknown as Json,
         }
       }
 
@@ -330,12 +350,13 @@ async function getYouTubeMetadata(url: string, apiKey: string, userId?: string |
           delay / 1000
         }s...`,
       )
-    } catch (error: any) {
-      if (error.message.includes("Client Error")) {
+    } catch (error: unknown) {
+      const msg = getErrorMessage(error)
+      if (msg.includes("Client Error")) {
         throw error
       }
       console.warn(
-        `Error on attempt ${attempt} calling Supadata YouTube Metadata API for ${url}: ${error.message}. Retrying in ${
+        `Error on attempt ${attempt} calling Supadata YouTube Metadata API for ${url}: ${msg}. Retrying in ${
           delay / 1000
         }s...`,
       )
@@ -471,12 +492,13 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
           delay / 1000
         }s...`,
       )
-    } catch (error: any) {
-      if (error.message.includes("Client Error")) {
+    } catch (error: unknown) {
+      const msg = getErrorMessage(error)
+      if (msg.includes("Client Error")) {
         throw error
       }
       console.warn(
-        `Error on attempt ${attempt} calling Supadata YouTube Transcript API for ${url}: ${error.message}. Retrying in ${
+        `Error on attempt ${attempt} calling Supadata YouTube Transcript API for ${url}: ${msg}. Retrying in ${
           delay / 1000
         }s...`,
       )
@@ -569,12 +591,13 @@ async function scrapeArticle(url: string, apiKey: string, userId?: string | null
           delay / 1000
         }s...`,
       )
-    } catch (error: any) {
-      if (error.message.includes("Client Error")) {
+    } catch (error: unknown) {
+      const msg = getErrorMessage(error)
+      if (msg.includes("Client Error")) {
         throw error
       }
       console.warn(
-        `Error on attempt ${attempt} calling FireCrawl API for ${url}: ${error.message}. Retrying in ${
+        `Error on attempt ${attempt} calling FireCrawl API for ${url}: ${msg}. Retrying in ${
           delay / 1000
         }s...`,
       )
@@ -652,10 +675,10 @@ async function getModelSummary(
     textToSummarize,
   )
 
-  const requestBody: { [key: string]: any } = {
+  const requestBody: OpenRouterRequestBody = {
     model: openRouterModelId,
     messages: [
-      { role: "system", content: system_content },
+      { role: "system", content: system_content || "" },
       { role: "user", content: finalUserPrompt },
     ],
     response_format: { type: "json_object" },
@@ -706,18 +729,18 @@ async function getModelSummary(
       return { error: true, modelName: openRouterModelId, reason: "InvalidResponse", finalErrorMessage: errorMessage }
     }
 
-    let parsedContent: any
+    let parsedContent: ParsedModelSummaryResponse
     try {
       const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)\s*```/)
       if (jsonMatch && jsonMatch[1]) {
         console.log("API: Found JSON inside markdown block. Parsing...")
-        parsedContent = JSON.parse(jsonMatch[1])
+        parsedContent = JSON.parse(jsonMatch[1]) as ParsedModelSummaryResponse
       } else {
         console.log("API: No markdown block found. Attempting to parse entire content as JSON...")
-        parsedContent = JSON.parse(rawContent)
+        parsedContent = JSON.parse(rawContent) as ParsedModelSummaryResponse
       }
-    } catch (parseError: any) {
-      const errorMessage = `Failed to parse JSON from model response. Error: ${parseError.message}`
+    } catch (parseError: unknown) {
+      const errorMessage = `Failed to parse JSON from model response. Error: ${getErrorMessage(parseError)}`
       console.error(errorMessage, "Raw content was:", rawContent)
       return { error: true, modelName: openRouterModelId, reason: "JSONParseFailed", finalErrorMessage: errorMessage }
     }
@@ -733,14 +756,15 @@ async function getModelSummary(
 
     console.log("API: Summary generated successfully for model:", openRouterModelId)
     return summary
-  } catch (error: any) {
-    const isTimeout = error.name === "AbortError"
-    console.error(`Failed to process summary with OpenRouter: ${isTimeout ? "Request timed out" : error.message}`)
+  } catch (error: unknown) {
+    const isTimeout = getErrorName(error) === "AbortError"
+    const msg = getErrorMessage(error)
+    console.error(`Failed to process summary with OpenRouter: ${isTimeout ? "Request timed out" : msg}`)
     return {
       error: true,
       modelName: openRouterModelId,
       reason: isTimeout ? "Timeout" : "RequestFailed",
-      finalErrorMessage: isTimeout ? "Request timed out after 2 minutes" : error.message,
+      finalErrorMessage: isTimeout ? "Request timed out after 2 minutes" : msg,
     }
   }
 }
@@ -751,6 +775,28 @@ async function getModelSummary(
 // ============================================
 
 type AnalysisPrompt = Tables<"analysis_prompts">
+
+// OpenRouter request body type
+interface OpenRouterRequestBody {
+  model: string
+  messages: Array<{ role: string; content: string }>
+  response_format?: { type: string }
+  temperature?: number
+  top_p?: number
+  max_tokens?: number
+}
+
+// Parsed model summary response
+interface ParsedModelSummaryResponse {
+  mid_length_summary?: string
+  title?: string
+}
+
+// Section generation result type
+interface SectionGenerationResult {
+  content: unknown
+  error?: string
+}
 
 // Cache for prompts (refreshed on each request batch)
 let promptsCache: Map<string, AnalysisPrompt> | null = null
@@ -800,7 +846,7 @@ async function generateSectionWithAI(
   userId?: string | null,
   contentId?: string | null,
   webContext?: string | null,
-): Promise<{ content: any; error?: string }> {
+): Promise<SectionGenerationResult> {
   if (!openRouterApiKey) {
     return { content: null, error: "OpenRouter API key not configured" }
   }
@@ -817,7 +863,7 @@ async function generateSectionWithAI(
     .replace("{{TYPE}}", contentType || "article")
 
   // Inject web search context if available AND enabled for this prompt
-  const useWebSearch = (prompt as any).use_web_search !== false // Default to true if not set
+  const useWebSearch = prompt.use_web_search !== false // Default to true if not set
   if (webContext && useWebSearch) {
     userContent = userContent + webContext
     console.log(`API: [${promptType}] Web search context included`)
@@ -825,7 +871,7 @@ async function generateSectionWithAI(
     console.log(`API: [${promptType}] Web search disabled for this prompt`)
   }
 
-  const requestBody: { [key: string]: any } = {
+  const requestBody: OpenRouterRequestBody = {
     model: prompt.model_name,
     messages: [
       { role: "system", content: prompt.system_content },
@@ -968,9 +1014,9 @@ async function generateSectionWithAI(
       })
 
       return { content: rawContent }
-    } catch (error: any) {
-      const isTimeout = error.name === "AbortError"
-      lastError = isTimeout ? "Request timed out after 2 minutes" : error.message
+    } catch (error: unknown) {
+      const isTimeout = getErrorName(error) === "AbortError"
+      lastError = isTimeout ? "Request timed out after 2 minutes" : getErrorMessage(error)
       console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
       retryCount++
 
@@ -1016,7 +1062,7 @@ async function generateBriefOverview(fullText: string, userId?: string | null, c
     console.error(`API: Brief overview generation failed: ${result.error}`)
     return null
   }
-  return result.content
+  return typeof result.content === "string" ? result.content : null
 }
 
 async function generateTriage(fullText: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<TriageData | null> {
@@ -1044,10 +1090,11 @@ async function generateActionItems(fullText: string, contentType: string, userId
     return null
   }
   // The response has action_items array wrapped in an object
-  if (result.content?.action_items) {
-    return result.content.action_items as ActionItemsData
+  const content = result.content as { action_items?: ActionItemsData } | ActionItemsData | null
+  if (content && typeof content === "object" && "action_items" in content && content.action_items) {
+    return content.action_items
   }
-  return result.content as ActionItemsData
+  return content as ActionItemsData
 }
 
 async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<string | null> {
@@ -1057,7 +1104,7 @@ async function generateDetailedSummary(fullText: string, contentType: string, us
     console.error(`API: Detailed summary generation failed: ${result.error}`)
     return null
   }
-  return result.content
+  return typeof result.content === "string" ? result.content : null
 }
 
 // Helper to update summary in database
@@ -1108,15 +1155,6 @@ async function updateDomainStats(
 
   const qualityScore = triage?.quality_score || 0
   const rating = truthCheck?.overall_rating
-
-  // Build the update object
-  const ratingColumn = rating ? {
-    accurate_count: rating === "Accurate" ? 1 : 0,
-    mostly_accurate_count: rating === "Mostly Accurate" ? 1 : 0,
-    mixed_count: rating === "Mixed" ? 1 : 0,
-    questionable_count: rating === "Questionable" ? 1 : 0,
-    unreliable_count: rating === "Unreliable" ? 1 : 0,
-  } : {}
 
   // Try to upsert domain stats
   const { error } = await supabase.rpc("upsert_domain_stats", {
@@ -1186,7 +1224,7 @@ export async function POST(req: NextRequest) {
     if (!supabaseUrl || !supabaseKey || !supadataApiKey || !openRouterApiKey || !firecrawlApiKey) {
       return NextResponse.json({ error: "Server configuration error: Missing API keys." }, { status: 500 })
     }
-  } catch (e) {
+  } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 })
   }
 
@@ -1258,7 +1296,7 @@ export async function POST(req: NextRequest) {
             }
             urlToScrape = urlObject.toString()
             console.log(`API: Transformed X/Twitter URL to ${urlToScrape} for scraping.`)
-          } catch (e) {
+          } catch {
             console.error(`API: Could not parse URL for x_post: ${content.url}`)
           }
         }
@@ -1289,13 +1327,14 @@ export async function POST(req: NextRequest) {
         }
       }
     }
-  } catch (error: any) {
-    console.error(`API: Final text processing error for content ID ${content.id}:`, error.message)
-    const failure_reason = `PROCESSING_FAILED::${content.type?.toUpperCase() || "UNKNOWN"}::${error.message}`
+  } catch (error: unknown) {
+    const msg = getErrorMessage(error)
+    console.error(`API: Final text processing error for content ID ${content.id}:`, msg)
+    const failure_reason = `PROCESSING_FAILED::${content.type?.toUpperCase() || "UNKNOWN"}::${msg}`
     await supabase.from("content").update({ full_text: failure_reason }).eq("id", content.id)
 
     return NextResponse.json(
-      { success: false, message: `Content processing failed: ${error.message}`, content_id: content.id },
+      { success: false, message: `Content processing failed: ${msg}`, content_id: content.id },
       { status: 200 },
     )
   }

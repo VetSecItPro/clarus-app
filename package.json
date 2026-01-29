@@ -56,7 +56,7 @@
     "remark-gfm": "4.0.1",
     "resend": "^6.9.1",
     "sonner": "^1.7.1",
-    "stripe": "^20.3.0",
+    "@polar-sh/sdk": "^0.33.0",
     "swr": "^2.3.8",
     "tailwind-merge": "^2.5.5",
     "tailwindcss-animate": "1.0.7",
