@@ -28,7 +28,17 @@ import { FeatureAnnouncementEmail } from "@/emails/feature-announcement"
 import { ContactFormReceiptEmail } from "@/emails/contact-form-receipt"
 import { ShareAnalysisEmail } from "@/emails/share-analysis"
 
-const resend = new Resend(process.env.RESEND_API_KEY)
+// Lazy initialization to avoid build errors when API key is missing
+let resendClient: Resend | null = null
+function getResend(): Resend {
+  if (!resendClient) {
+    if (!process.env.RESEND_API_KEY) {
+      throw new Error("RESEND_API_KEY is not configured")
+    }
+    resendClient = new Resend(process.env.RESEND_API_KEY)
+  }
+  return resendClient
+}
 
 const FROM_EMAIL = "Clarus <noreply@clarusapp.io>"
 
@@ -44,6 +54,7 @@ async function sendEmail(
   html: string
 ): Promise<SendEmailResult> {
   try {
+    const resend = getResend()
     const { data, error } = await resend.emails.send({
       from: FROM_EMAIL,
       to,
