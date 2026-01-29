@@ -30,7 +30,7 @@ export default function MainHeader({ title, onQuickAddFromClipboard, isQuickAddi
     }
     try {
       await onQuickAddFromClipboard()
-    } catch (error) {
+    } catch {
       handleOpenAddUrlModal()
     }
   }

@@ -7,7 +7,6 @@ import { supabase } from "@/lib/supabase"
 import { setAuthCache } from "@/components/with-auth"
 import { toast } from "sonner"
 import { AlertCircle, Info, Shield, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react"
-import LoadingSpinner from "@/components/loading-spinner"
 import { motion } from "framer-motion"
 
 export default function LoginPage() {
@@ -16,7 +15,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  const [authLoading, setAuthLoading] = useState(false) // Don't block UI with loading state
   const router = useRouter()
   const searchParams = useSearchParams()
 

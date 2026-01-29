@@ -24,7 +24,7 @@ export default function ShazamAddButton({ onQuickAddFromClipboard, isQuickAdding
     }
     try {
       await onQuickAddFromClipboard()
-    } catch (error) {
+    } catch {
       handleOpenAddUrlModal()
     }
   }
