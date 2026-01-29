@@ -7,7 +7,7 @@ AI-powered content analysis for clarity and understanding.
 | Resource | URL | Status |
 |----------|-----|--------|
 | **Production** | https://clarusapp.io | Pending DNS setup |
-| **GitHub Repo** | https://github.com/VetSecItPro/clarusapp | ✅ Active |
+| **GitHub Repo** | https://github.com/VetSecItPro/clarus-app | ✅ Active |
 | **Vercel Project** | TBD - needs new project | ❌ Needs setup |
 | **Supabase Project** | TBD - needs new project | ❌ Needs setup |
 
@@ -21,7 +21,7 @@ AI-powered content analysis for clarity and understanding.
 - **Action**: Configure DNS to point to Vercel after project setup
 
 ### 2. GitHub
-- **Repo**: https://github.com/VetSecItPro/clarusapp
+- **Repo**: https://github.com/VetSecItPro/clarus-app
 - **Status**: ✅ Complete
 - **Env vars needed**: None (public repo)
 
@@ -29,7 +29,7 @@ AI-powered content analysis for clarity and understanding.
 - **Dashboard**: https://vercel.com/dashboard
 - **Status**: ❌ Needs new project
 - **Actions**:
-  1. Create new project linked to VetSecItPro/clarusapp
+  1. Create new project linked to VetSecItPro/clarus-app
   2. Add custom domain clarusapp.io
   3. Configure environment variables (see below)
 - **Env var**: None for Vercel itself
