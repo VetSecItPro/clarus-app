@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "File too large. Maximum 20MB." }, { status: 400 })
     }
 
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey)
+    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey, { db: { schema: "clarus" } })
 
     // Read file as ArrayBuffer
     const arrayBuffer = await file.arrayBuffer()

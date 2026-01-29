@@ -111,7 +111,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey)
+    const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey, { db: { schema: "clarus" } })
 
     const body = await req.json()
     const { messages, contentId }: { messages: UIMessage[]; contentId: string } = body

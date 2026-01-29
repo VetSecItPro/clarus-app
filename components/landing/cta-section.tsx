@@ -43,13 +43,13 @@ export function CTASection() {
               Join thousands using Clarus to understand content faster.
             </p>
             <Link href="/signup">
-              <button className="group inline-flex items-center gap-2 px-6 py-3 bg-white text-black hover:bg-white/90 font-semibold rounded-xl transition-all duration-200 shadow-lg text-sm">
+              <button className="group inline-flex items-center gap-2 px-6 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-full transition-all duration-200 shadow-lg shadow-[#1d9bf0]/25 hover:shadow-xl hover:shadow-[#1d9bf0]/40 hover:-translate-y-1 text-sm">
                 Start Free Trial
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
             </Link>
             <p className="mt-4 text-white/40 text-xs">
-              No credit card required
+              No credit card required to sign up
             </p>
           </div>
         </div>

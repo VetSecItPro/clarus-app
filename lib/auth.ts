@@ -36,6 +36,9 @@ export async function authenticateRequest(): Promise<AuthResult | AuthError> {
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
+        db: {
+          schema: "clarus",
+        },
         cookies: {
           getAll() {
             return cookieStore.getAll()
@@ -121,7 +124,7 @@ export async function verifyContentOwnership(
   supabase: SupabaseClient<Database>,
   userId: string,
   contentId: string
-): Promise<{ owned: true; content: Database["public"]["Tables"]["content"]["Row"] } | { owned: false; response: NextResponse }> {
+): Promise<{ owned: true; content: Database["clarus"]["Tables"]["content"]["Row"] } | { owned: false; response: NextResponse }> {
   const { data: content, error } = await supabase
     .from("content")
     .select("*")
@@ -158,7 +161,12 @@ export async function verifyContentOwnership(
 export function getAdminClient(): SupabaseClient<Database> {
   return createClient<Database>(
     process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    {
+      db: {
+        schema: "clarus",
+      },
+    }
   )
 }
 
