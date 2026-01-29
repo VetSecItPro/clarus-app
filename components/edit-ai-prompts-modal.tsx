@@ -50,16 +50,6 @@ const modelOptions = [
   "google/gemini-2.5-pro"
 ]
 
-// Order matches appearance on the analysis page
-const PROMPT_ORDER = [
-  "brief_overview",
-  "triage",
-  "short_summary",
-  "truth_check",
-  "action_items",
-  "detailed_summary",
-]
-
 const PROMPT_LABELS: Record<string, { label: string; icon: string; step: number }> = {
   brief_overview: { label: "Overview", icon: "1️⃣", step: 1 },
   triage: { label: "Quick Assessment", icon: "2️⃣", step: 2 },
@@ -105,8 +95,9 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
         setSelectedPrompt(sorted[0] as AnalysisPrompt)
         setEditedPrompt(sorted[0] as AnalysisPrompt)
       }
-    } catch (error: any) {
-      toast.error("Failed to fetch prompts", { description: error.message })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      toast.error("Failed to fetch prompts", { description: message })
     } finally {
       setIsLoading(false)
     }
@@ -153,8 +144,9 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
       setSelectedPrompt({ ...selectedPrompt, ...editedPrompt } as AnalysisPrompt)
       setHasChanges(false)
       toast.success(`${PROMPT_LABELS[editedPrompt.prompt_type || ""]?.label || "Prompt"} updated`)
-    } catch (error: any) {
-      toast.error("Failed to save", { description: error.message })
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Unknown error"
+      toast.error("Failed to save", { description: message })
     } finally {
       setIsSaving(false)
     }

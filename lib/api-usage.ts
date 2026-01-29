@@ -30,13 +30,13 @@ export const API_PRICING = {
   },
 }
 
-export type ApiName = "openrouter" | "supadata" | "firecrawl" | "tavily" | "stripe" | "supabase" | "vercel"
+export type ApiName = "openrouter" | "supadata" | "firecrawl" | "tavily" | "polar" | "supabase" | "vercel"
 export type ApiOperation =
   | "analyze" | "chat" | "summarize"  // openrouter
   | "transcript" | "metadata"          // supadata
   | "scrape"                           // firecrawl
   | "search"                           // tavily
-  | "mrr_fetch" | "checkout" | "webhook"  // stripe
+  | "mrr_fetch" | "checkout" | "webhook"  // polar
   | "query" | "insert" | "update" | "auth"  // supabase
   | "deploy" | "status"                // vercel
 

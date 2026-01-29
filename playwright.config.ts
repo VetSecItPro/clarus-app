@@ -34,9 +34,9 @@ export default defineConfig({
       OPENROUTER_API_KEY: 'placeholder-openrouter-key',
       SUPADATA_API_KEY: 'placeholder-supadata-key',
       FIRECRAWL_API_KEY: 'placeholder-firecrawl-key',
-      STRIPE_SECRET_KEY: 'placeholder-stripe-key',
-      STRIPE_WEBHOOK_SECRET: 'placeholder-webhook-secret',
-      NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: 'placeholder-stripe-pub-key',
+      POLAR_ACCESS_TOKEN: 'placeholder-polar-token',
+      POLAR_WEBHOOK_SECRET: 'placeholder-webhook-secret',
+      POLAR_ORGANIZATION_ID: 'placeholder-org-id',
     },
   },
 })

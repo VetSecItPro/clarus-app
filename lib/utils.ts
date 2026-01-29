@@ -41,7 +41,7 @@ export function getYouTubeVideoId(url: string): string | null {
         videoId = urlObj.searchParams.get("v")
       }
     }
-  } catch (error) {
+  } catch {
     // It's okay if parsing fails, it's just not a valid URL for this check
     return null
   }
@@ -53,7 +53,7 @@ export function isPdfUrl(url: string): boolean {
   try {
     const path = new URL(url).pathname
     return path.toLowerCase().endsWith(".pdf")
-  } catch (error) {
+  } catch {
     // Invalid URL, so it can't be a PDF URL
     return false
   }
@@ -64,7 +64,7 @@ export function isXUrl(url: string): boolean {
   try {
     const hostname = new URL(url).hostname
     return hostname === "x.com" || hostname === "twitter.com"
-  } catch (error) {
+  } catch {
     return false
   }
 }
@@ -73,7 +73,7 @@ export function getDomainFromUrl(url: string | null): string {
   if (!url) return "unknown.com"
   try {
     return new URL(url).hostname.replace("www.", "")
-  } catch (e) {
+  } catch {
     return "unknown.com"
   }
 }

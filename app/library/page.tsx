@@ -124,11 +124,9 @@ function LibraryPageContent({ session }: LibraryPageProps) {
   const [sortBy, setSortBy] = useState("date_desc")
   const [filterType, setFilterType] = useState("all")
   const [showFilters, setShowFilters] = useState(false)
-  const [deletingId, setDeletingId] = useState<string | null>(null)
   const [bookmarkOnly, setBookmarkOnly] = useState(
     () => searchParams.get("bookmarks") === "true"
   )
-  const [togglingBookmark, setTogglingBookmark] = useState<string | null>(null)
   const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showTagDropdown, setShowTagDropdown] = useState(false)
@@ -218,7 +216,6 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     if (!window.confirm("Delete this item? This cannot be undone.")) return
 
     setLocalItems((prev) => prev.filter((item) => item.id !== itemId))
-    setDeletingId(itemId)
 
     try {
       const { error } = await supabase.from("content").delete().eq("id", itemId)
@@ -228,8 +225,6 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     } catch {
       toast.error("Failed to delete item")
       refresh()
-    } finally {
-      setDeletingId(null)
     }
   }
 
@@ -239,7 +234,6 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     setLocalItems((prev) =>
       prev.map((i) => (i.id === item.id ? { ...i, is_bookmarked: newValue } : i))
     )
-    setTogglingBookmark(item.id)
 
     try {
       const response = await fetch(`/api/content/${item.id}/bookmark`, {
@@ -257,8 +251,6 @@ function LibraryPageContent({ session }: LibraryPageProps) {
           i.id === item.id ? { ...i, is_bookmarked: !newValue } : i
         )
       )
-    } finally {
-      setTogglingBookmark(null)
     }
   }
 
