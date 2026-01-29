@@ -2,6 +2,60 @@
 
 AI-powered content analysis for clarity and understanding.
 
+---
+
+## CRITICAL: Supabase Database Isolation Rules
+
+> **THIS IS MANDATORY. VIOLATING THESE RULES WILL BREAK OTHER PROJECTS.**
+
+### Supabase Project Info
+- **Project ID**: `srqmutgamvktxqmylied`
+- **Project URL**: `https://srqmutgamvktxqmylied.supabase.co`
+- **MCP**: Configured in `.mcp.json`
+
+### Isolation Rules
+
+**This Supabase project is SHARED with other applications.** Clarus is reusing an existing Supabase instance to avoid additional costs.
+
+| Rule | Description |
+|------|-------------|
+| **DO NOT TOUCH** | Any tables that already exist and are NOT listed in the Clarus schema below |
+| **DO NOT LINK** | Never create foreign keys to tables outside the Clarus schema |
+| **DO NOT QUERY** | Never SELECT, INSERT, UPDATE, or DELETE from non-Clarus tables |
+| **DO NOT DROP** | Never drop or alter tables that aren't part of Clarus |
+
+### Clarus Schema Tables
+
+All Clarus tables live in the **`clarus` schema** (not the `public` schema):
+
+```sql
+clarus.users
+clarus.content
+clarus.content_ratings
+clarus.chat_threads
+clarus.chat_messages
+clarus.summaries
+clarus.hidden_content
+clarus.domains
+clarus.api_usage
+clarus.processing_metrics
+clarus.active_chat_prompt
+clarus.active_summarizer_prompt
+clarus.analysis_prompts
+```
+
+**Code doesn't need prefixes** - the search_path is configured so `SELECT * FROM users` automatically resolves to `clarus.users`.
+
+### What To Do If You See Other Tables
+
+If you connect to this Supabase project and see tables like `users`, `content`, `sm_content`, `aws_course_memory`, or any other tables:
+1. **IGNORE THEM COMPLETELY**
+2. They belong to other projects
+3. Do not reference them in any code, queries, or migrations
+4. Pretend they don't exist
+
+---
+
 ## Links & Resources
 
 | Resource | URL | Status |
@@ -9,7 +63,7 @@ AI-powered content analysis for clarity and understanding.
 | **Production** | https://clarusapp.io | Pending DNS setup |
 | **GitHub Repo** | https://github.com/VetSecItPro/clarus-app | ✅ Active |
 | **Vercel Project** | TBD - needs new project | ❌ Needs setup |
-| **Supabase Project** | TBD - needs new project | ❌ Needs setup |
+| **Supabase Project** | https://supabase.com/dashboard/project/srqmutgamvktxqmylied | ✅ Shared instance |
 
 ---
 
@@ -35,19 +89,21 @@ AI-powered content analysis for clarity and understanding.
 - **Env var**: None for Vercel itself
 
 ### 4. Supabase (Database + Auth)
-- **Dashboard**: https://supabase.com/dashboard
-- **Status**: ❌ Needs new project
+- **Dashboard**: https://supabase.com/dashboard/project/srqmutgamvktxqmylied
+- **Project ID**: `srqmutgamvktxqmylied`
+- **Status**: ✅ Using shared instance
+- **⚠️ CRITICAL**: This is a SHARED Supabase project. See "Database Isolation Rules" at the top of this file.
 - **Actions**:
-  1. Create new Supabase project
-  2. Run `scripts/000-full-schema.sql` to create tables
+  1. ~~Create new Supabase project~~ (REUSING EXISTING - tables must use `clarus_` prefix)
+  2. Run `scripts/000-full-schema.sql` to create Clarus tables (with `clarus_` prefix)
   3. Run `scripts/000b-insert-prompts.sql` to seed AI prompts
   4. Run `scripts/023-add-fulltext-search.sql` for search
   5. Enable Google OAuth in Auth settings
   6. Configure email templates
 - **Env vars needed**:
-  - `NEXT_PUBLIC_SUPABASE_URL` - Project URL
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Anon key
-  - `SUPABASE_SERVICE_ROLE_KEY` - Service role key
+  - `NEXT_PUBLIC_SUPABASE_URL` - `https://srqmutgamvktxqmylied.supabase.co`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Anon key (from Supabase dashboard)
+  - `SUPABASE_SERVICE_ROLE_KEY` - Service role key (from Supabase dashboard)
 
 ### 5. OpenRouter (AI/LLM)
 - **Dashboard**: https://openrouter.ai/settings/keys
@@ -58,20 +114,21 @@ AI-powered content analysis for clarity and understanding.
   3. Generate API key
 - **Env var**: `OPENROUTER_API_KEY`
 
-### 6. Stripe (Payments)
-- **Dashboard**: https://dashboard.stripe.com
-- **Status**: ❌ Needs account
+### 6. Polar (Payments)
+- **Dashboard**: https://polar.sh/dashboard
+- **Status**: ❌ Needs account (NOT ACTIVE YET)
 - **Actions**:
-  1. Create Stripe account
-  2. Create product "Clarus Pro" with monthly/annual prices
-  3. Set up webhook endpoint: `https://clarusapp.io/api/stripe/webhook`
-  4. Get API keys
+  1. Create Polar account
+  2. Create organization
+  3. Create product "Clarus Pro" with monthly ($4) and annual ($29) variants
+  4. Set up webhook endpoint: `https://clarusapp.io/api/polar/webhook`
+  5. Get access token from Settings → Developers
 - **Env vars needed**:
-  - `STRIPE_SECRET_KEY` - Secret key
-  - `STRIPE_WEBHOOK_SECRET` - Webhook signing secret
-  - `NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY` - Publishable key
-  - `STRIPE_PRICE_MONTHLY` - Monthly price ID (price_xxx)
-  - `STRIPE_PRICE_ANNUAL` - Annual price ID (price_xxx)
+  - `POLAR_ACCESS_TOKEN` - Access token
+  - `POLAR_WEBHOOK_SECRET` - Webhook signing secret
+  - `POLAR_ORGANIZATION_ID` - Organization ID
+  - `POLAR_PRODUCT_MONTHLY` - Monthly product ID
+  - `POLAR_PRODUCT_ANNUAL` - Annual product ID
 
 ### 7. Firecrawl (Web Scraping)
 - **Dashboard**: https://www.firecrawl.dev/app
@@ -111,20 +168,20 @@ AI-powered content analysis for clarity and understanding.
 ## All Environment Variables
 
 ```env
-# Supabase
-NEXT_PUBLIC_SUPABASE_URL=https://[project-ref].supabase.co
+# Supabase (SHARED INSTANCE - only use clarus_ prefixed tables!)
+NEXT_PUBLIC_SUPABASE_URL=https://srqmutgamvktxqmylied.supabase.co
 NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
 SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 # OpenRouter (AI)
 OPENROUTER_API_KEY=sk-or-...
 
-# Stripe (Payments)
-STRIPE_SECRET_KEY=sk_live_...
-STRIPE_WEBHOOK_SECRET=whsec_...
-NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
-STRIPE_PRICE_MONTHLY=price_...
-STRIPE_PRICE_ANNUAL=price_...
+# Polar (Payments) - NOT ACTIVE YET
+POLAR_ACCESS_TOKEN=polar_at_...
+POLAR_WEBHOOK_SECRET=...
+POLAR_ORGANIZATION_ID=...
+POLAR_PRODUCT_MONTHLY=prod_...
+POLAR_PRODUCT_ANNUAL=prod_...
 
 # Firecrawl (Web Scraping)
 FIRECRAWL_API_KEY=fc-...
@@ -146,7 +203,7 @@ RESEND_API_KEY=re_...
 - **Framework**: Next.js 15 (App Router)
 - **Database**: Supabase/Postgres
 - **Auth**: Supabase Auth (Email + Google OAuth)
-- **Payments**: Stripe
+- **Payments**: Polar (not active yet)
 - **AI**: OpenRouter (Claude Sonnet 4, Haiku)
 - **Scraping**: Firecrawl (articles), Supadata (YouTube)
 - **Search**: Tavily (web search for AI context)
@@ -173,12 +230,31 @@ export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm build
 
 ## Database Tables
 
-users, content, content_ratings, chat_threads, chat_messages, summaries, active_chat_prompt, active_summarizer_prompt, analysis_prompts, domains
+**⚠️ All Clarus tables live in the `clarus` SCHEMA (not `public`) to avoid conflicts with other projects sharing this Supabase instance.**
 
-### Migration Scripts
-1. `scripts/000-full-schema.sql` - Complete schema (run first)
-2. `scripts/000b-insert-prompts.sql` - AI prompts data
-3. `scripts/023-add-fulltext-search.sql` - Full-text search indexes
+```
+users                    -- clarus.users (user profiles)
+content                  -- clarus.content (analyzed URLs)
+summaries                -- clarus.summaries (AI analysis results)
+content_ratings          -- clarus.content_ratings (user feedback)
+chat_threads             -- clarus.chat_threads (per-content chat)
+chat_messages            -- clarus.chat_messages (chat history)
+hidden_content           -- clarus.hidden_content (user-hidden items)
+domains                  -- clarus.domains (domain statistics)
+api_usage                -- clarus.api_usage (API tracking)
+processing_metrics       -- clarus.processing_metrics (performance)
+active_chat_prompt       -- clarus.active_chat_prompt (chat config)
+active_summarizer_prompt -- clarus.active_summarizer_prompt (summarizer config)
+analysis_prompts         -- clarus.analysis_prompts (AI prompts)
+```
+
+### Migration Scripts (Run in Order)
+1. `scripts/100-create-clarus-schema.sql` - **RUN FIRST** - Creates `clarus` schema and sets search_path
+2. `scripts/000-full-schema.sql` - Creates all tables in the `clarus` schema
+3. `scripts/000b-insert-prompts.sql` - AI prompts data
+4. `scripts/023-add-fulltext-search.sql` - Full-text search indexes
+
+**Tables are created in the `clarus` schema. Code references them without prefix (e.g., `users` not `clarus.users`).**
 
 ---
 
@@ -199,4 +275,21 @@ users, content, content_ratings, chat_threads, chat_messages, summaries, active_
 - **Always explain what you're doing before doing it**
 - **Always create a todo list for any task**
 - Delete dead/unused code when found
-- Run typecheck before committing
+- Run typecheck AND lint before committing
+- **Fix ALL lint warnings** - no technical debt, whether new or pre-existing
+- When you find something broken, fix it immediately
+- **Fix lint AND TypeScript errors AND logic errors** - all code must fit together properly
+- **Never introduce logic holes or vulnerabilities** - create code that works correctly as a system
+- **No `any` types** - use proper TypeScript types always
+
+---
+
+## Payment Integration (Polar)
+
+Polar replaced Stripe on 2026-01-28. Key files:
+- `lib/polar.ts` - SDK setup with placeholder product IDs
+- `app/api/polar/checkout/route.ts` - Checkout session creation
+- `app/api/polar/webhook/route.ts` - Webhook event handling
+- `app/api/polar/portal/route.ts` - Customer portal access
+
+Database column: `users.polar_customer_id` (not stripe_customer_id)

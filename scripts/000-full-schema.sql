@@ -1,8 +1,17 @@
 -- Clarus - Full Database Schema
 -- This file contains everything needed to set up a fresh Supabase database
--- Run this ONCE on a new database, then run the numbered migrations in order
+--
+-- IMPORTANT: Run scripts/100-create-clarus-schema.sql FIRST to create the schema
+-- Then run this file. Tables will be created in the 'clarus' schema automatically.
+--
+-- This Supabase project is SHARED with other applications.
+-- All Clarus tables live in the 'clarus' schema to avoid conflicts.
+-- DO NOT modify or reference tables in the 'public' schema.
 
--- Enable required extensions
+-- Set search_path to ensure tables are created in clarus schema
+SET search_path TO clarus, public, extensions;
+
+-- Enable required extensions (these go in the extensions schema)
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp" WITH SCHEMA extensions;
 
 -- =============================================================================
@@ -462,7 +471,8 @@ GRANT EXECUTE ON FUNCTION remove_tag_from_content TO authenticated;
 CREATE OR REPLACE FUNCTION handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-    INSERT INTO public.users (id, email)
+    -- Insert into clarus.users (not public.users)
+    INSERT INTO clarus.users (id, email)
     VALUES (NEW.id, NEW.email)
     ON CONFLICT (id) DO NOTHING;
     RETURN NEW;
