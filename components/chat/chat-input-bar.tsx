@@ -376,7 +376,7 @@ export function ChatInputBar({
             "flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/[0.06] border transition-all",
             isFocused
               ? "border-[#1d9bf0]/50 ring-1 ring-[#1d9bf0]/20"
-              : "border-white/[0.1] hover:border-white/[0.3]",
+              : "border-white/[0.1] hover:border-white/50",
             isListening && "border-red-500/50 ring-1 ring-red-500/30"
           )}
         >
