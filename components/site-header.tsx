@@ -1,8 +1,9 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Shield, Home, Clock, Users } from "lucide-react"
+import { Home, Clock, Users } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 
@@ -27,13 +28,17 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
           {/* Logo/Brand - minimal and elegant */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
-              <div className="w-8 h-8 bg-gradient-to-br from-[#1d9bf0] via-[#0ea5e9] to-[#06b6d4] rounded-lg flex items-center justify-center shadow-lg shadow-[#1d9bf0]/25 group-hover:shadow-[#1d9bf0]/40 transition-all duration-300 group-hover:scale-105">
-                <Shield className="w-4 h-4 text-white" />
-              </div>
+              <Image
+                src="/clarus-logo.png"
+                alt="Clarus"
+                width={40}
+                height={40}
+                className="w-10 h-10 transition-all duration-300 group-hover:scale-105"
+              />
               {/* Subtle glow effect */}
-              <div className="absolute inset-0 bg-[#1d9bf0]/20 rounded-lg blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-[#1d9bf0]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
-            <span className="text-white/90 font-medium text-[15px] tracking-tight group-hover:text-white transition-colors duration-200">
+            <span className="text-white/90 font-bold text-3xl italic tracking-wide group-hover:text-white transition-colors duration-200" style={{ fontFamily: 'var(--font-cormorant)' }}>
               Clarus
             </span>
           </Link>

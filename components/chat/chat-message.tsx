@@ -1,7 +1,8 @@
 "use client"
 
 import { memo } from "react"
-import { Shield, User, Link2, ExternalLink } from "lucide-react"
+import Image from "next/image"
+import { User, Link2, ExternalLink } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
 import type { TriageData, TruthCheckData } from "@/types/database.types"
@@ -107,9 +108,13 @@ function UserTextMessage({ message }: { message: ChatMessageData }) {
 function AssistantWrapper({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex gap-2 justify-start" style={{ maxWidth: "600px" }}>
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg shadow-blue-500/20">
-        <Shield className="w-4 h-4 text-white" />
-      </div>
+      <Image
+        src="/clarus-logo.png"
+        alt="Clarus"
+        width={28}
+        height={28}
+        className="flex-shrink-0 w-7 h-7 rounded-full"
+      />
       <div className="flex-1 min-w-0">{children}</div>
     </div>
   )

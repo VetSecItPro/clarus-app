@@ -5,7 +5,7 @@ import useSWRInfinite from "swr/infinite"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/types/database.types"
 
-type ContentItem = Database["public"]["Tables"]["content"]["Row"]
+type ContentItem = Database["clarus"]["Tables"]["content"]["Row"]
 
 type SummaryData = {
   brief_overview: string | null

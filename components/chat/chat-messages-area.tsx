@@ -1,9 +1,10 @@
 "use client"
 
 import { useRef, useEffect, useMemo } from "react"
+import Image from "next/image"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { ChatMessage, type ChatMessageData } from "./chat-message"
-import { Loader2, Shield } from "lucide-react"
+import { Loader2 } from "lucide-react"
 
 interface ChatMessagesAreaProps {
   messages: ChatMessageData[]
@@ -61,9 +62,13 @@ export function ChatMessagesArea({
         {/* Loading indicator - only show when not streaming */}
         {showLoadingIndicator && (
           <div className="flex gap-2 justify-start">
-            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg shadow-blue-500/20">
-              <Shield className="w-4 h-4 text-white" />
-            </div>
+            <Image
+              src="/clarus-logo.png"
+              alt="Clarus"
+              width={28}
+              height={28}
+              className="flex-shrink-0 w-7 h-7 rounded-full"
+            />
             <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl">
               <Loader2 className="w-4 h-4 animate-spin text-[#1d9bf0]" />
               <span className="text-xs text-gray-400">{loadingText}</span>
