@@ -83,10 +83,14 @@ function groupByDate(
     } else if (isYesterday(date)) {
       key = "yesterday"
     } else if (daysAgo >= 2 && daysAgo <= 6) {
-      key = "this_week"
+      key = `${daysAgo}_days`
     } else if (weeksAgo === 1) {
       key = "last_week"
-    } else if (monthsAgo === 1) {
+    } else if (weeksAgo === 2) {
+      key = "2_weeks"
+    } else if (weeksAgo === 3) {
+      key = "3_weeks"
+    } else if (monthsAgo >= 1) {
       key = "last_month"
     } else {
       key = "older"
@@ -99,9 +103,15 @@ function groupByDate(
   const groupOrder: { key: string; label: string }[] = [
     { key: "today", label: "Today" },
     { key: "yesterday", label: "Yesterday" },
-    { key: "this_week", label: "This Week" },
-    { key: "last_week", label: "Last Week" },
-    { key: "last_month", label: "Last Month" },
+    { key: "2_days", label: "Two days ago" },
+    { key: "3_days", label: "Three days ago" },
+    { key: "4_days", label: "Four days ago" },
+    { key: "5_days", label: "Five days ago" },
+    { key: "6_days", label: "Six days ago" },
+    { key: "last_week", label: "Last week" },
+    { key: "2_weeks", label: "Two weeks ago" },
+    { key: "3_weeks", label: "Three weeks ago" },
+    { key: "last_month", label: "Last month" },
     { key: "older", label: "Older" },
   ]
 
@@ -255,7 +265,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
   }
 
   const handleItemClick = (itemId: string) => {
-    router.push(`/chat/${itemId}`)
+    router.push(`/item/${itemId}`)
   }
 
   const groupedItems = groupByDate(items)

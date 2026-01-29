@@ -199,7 +199,7 @@ export async function POST(request: Request) {
               user.name,
               "Clarus Pro",
               endDate,
-              "https://clarusapp.io/pricing"
+              "https://clarusapp.io/signup"
             )
           }
         }

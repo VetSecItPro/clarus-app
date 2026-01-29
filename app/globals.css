@@ -353,10 +353,6 @@ html, body {
   overflow-x: auto;
 }
 
-/* Ensure all containers respect boundaries */
-main, aside, article, section, div {
-  max-width: 100%;
-}
 
 /* YouTube player mobile optimization */
 iframe[src*="youtube"] {
