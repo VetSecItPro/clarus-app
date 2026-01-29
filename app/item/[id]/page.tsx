@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, MessageSquare } from "lucide-react"
+import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, MessageSquare, Bookmark, BookmarkCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback, useRef, use } from "react"
 import { supabase } from "@/lib/supabase"
@@ -20,7 +20,7 @@ import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
 import { TriageCard } from "@/components/ui/triage-card"
-import { TruthCheckCard } from "@/components/ui/truth-check-card"
+import { TruthCheckCard, type CrossReference } from "@/components/ui/truth-check-card"
 import { ActionItemsCard } from "@/components/ui/action-items-card"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
@@ -114,6 +114,10 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const [showTagInput, setShowTagInput] = useState(false)
   const [isAddingTag, setIsAddingTag] = useState(false)
 
+  const [isBookmarked, setIsBookmarked] = useState(false)
+  const [isTogglingBookmark, setIsTogglingBookmark] = useState(false)
+  const [crossReferences, setCrossReferences] = useState<CrossReference[]>([])
+
   const isDesktop = useIsDesktop()
 
   const isContentProcessing = useCallback((content: ContentWithSummary | null): boolean => {
@@ -153,6 +157,32 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
     setIsPolling(true)
   }, [item])
+
+  const handleToggleBookmark = useCallback(async () => {
+    if (!item || isTogglingBookmark) return
+    const newState = !isBookmarked
+    setIsBookmarked(newState) // Optimistic
+    setIsTogglingBookmark(true)
+    try {
+      const response = await fetch(`/api/content/${item.id}/bookmark`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ is_bookmarked: newState }),
+      })
+      const data = await response.json()
+      if (!data.success) {
+        setIsBookmarked(!newState) // Revert
+        toast.error("Failed to update bookmark")
+      } else {
+        toast.success(newState ? "Added to Reading List" : "Removed from Reading List")
+      }
+    } catch {
+      setIsBookmarked(!newState) // Revert
+      toast.error("Failed to update bookmark")
+    } finally {
+      setIsTogglingBookmark(false)
+    }
+  }, [item, isBookmarked, isTogglingBookmark])
 
   const fetchContentData = useCallback(async (showLoadingState = true) => {
     if (showLoadingState) setLoading(true)
@@ -305,6 +335,12 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   }, [item?.url])
 
   useEffect(() => {
+    if (item) {
+      setIsBookmarked(item.is_bookmarked ?? false)
+    }
+  }, [item])
+
+  useEffect(() => {
     if (item?.tags) {
       setTags(item.tags as string[] || [])
     }
@@ -320,6 +356,24 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     }
     fetchAllTags()
   }, [])
+
+  // Fetch cross-references when truth_check is available
+  const hasTruthCheck = Boolean(item?.summary?.truth_check)
+  useEffect(() => {
+    if (!hasTruthCheck || !item?.id) return
+    const fetchCrossRefs = async () => {
+      try {
+        const response = await fetch(`/api/content/${item.id}/cross-references`)
+        const data = await response.json()
+        if (data.success && data.crossReferences) {
+          setCrossReferences(data.crossReferences)
+        }
+      } catch {
+        // Non-fatal — cross-references are supplementary
+      }
+    }
+    fetchCrossRefs()
+  }, [item?.id, hasTruthCheck])
 
   const handleAddTag = async (tagToAdd: string) => {
     if (!item || !tagToAdd.trim()) return
@@ -549,7 +603,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 minContentHeight="650px"
               >
                 {summary?.truth_check ? (
-                  <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} />
+                  <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} crossReferences={crossReferences} />
                 ) : (
                   <div className="space-y-4" style={{ minHeight: "650px" }}>
                     <div>
@@ -872,6 +926,19 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
             {/* Right side: action buttons (mobile only) */}
             <div className="flex sm:hidden items-center gap-1.5">
+              <button
+                onClick={handleToggleBookmark}
+                disabled={isTogglingBookmark}
+                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
+                  isBookmarked
+                    ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
+                    : "bg-white/[0.06] text-white/50 border border-white/[0.1]"
+                }`}
+                aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
+              >
+                {isBookmarked ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
+              </button>
+
               <button
                 onClick={() => setIsShareModalOpen(true)}
                 className="h-8 w-8 flex items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 active:bg-emerald-500/30 transition-all"
@@ -1275,7 +1342,30 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
                   {/* Action buttons */}
                   <TooltipProvider delayDuration={300}>
-                    <div className="hidden sm:grid grid-cols-3 gap-2">
+                    <div className="hidden sm:grid grid-cols-4 gap-2">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleToggleBookmark}
+                            disabled={isTogglingBookmark}
+                            size="sm"
+                            className={`w-full transition-all ${
+                              isBookmarked
+                                ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-500/50"
+                                : "bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.08] hover:border-white/[0.15]"
+                            }`}
+                          >
+                            {isBookmarked ? (
+                              <BookmarkCheck className="mr-2 h-4 w-4 shrink-0" />
+                            ) : (
+                              <Bookmark className="mr-2 h-4 w-4 shrink-0" />
+                            )}
+                            <span className="truncate">{isBookmarked ? "Saved" : "Save"}</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{isBookmarked ? "Remove from Reading List" : "Add to Reading List"}</TooltipContent>
+                      </Tooltip>
+
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -1287,7 +1377,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                             <span className="truncate">Share</span>
                           </Button>
                         </TooltipTrigger>
-                        <TooltipContent>Share analysis via email</TooltipContent>
+                        <TooltipContent>Share analysis via email or link</TooltipContent>
                       </Tooltip>
 
                       <DropdownMenu>
@@ -1525,6 +1615,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         contentTitle={item.title || "Content Analysis"}
         contentUrl={item.url}
         briefOverview={summary?.brief_overview || undefined}
+        contentId={item.id}
       />
 
       <MobileBottomNav />

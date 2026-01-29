@@ -253,6 +253,7 @@ export interface Database {
           user_id: string | null
           view_count: number | null
           tags: string[] | null
+          share_token: string | null
         }
         Insert: {
           author?: string | null
@@ -274,6 +275,7 @@ export interface Database {
           user_id?: string | null
           view_count?: number | null
           tags?: string[] | null
+          share_token?: string | null
         }
         Update: {
           author?: string | null
@@ -295,6 +297,7 @@ export interface Database {
           user_id?: string | null
           view_count?: number | null
           tags?: string[] | null
+          share_token?: string | null
         }
         Relationships: [
           {
@@ -557,6 +560,8 @@ export interface Database {
           subscription_status: string | null
           subscription_id: string | null
           subscription_ends_at: string | null
+          digest_enabled: boolean | null
+          last_digest_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -571,6 +576,8 @@ export interface Database {
           subscription_status?: string | null
           subscription_id?: string | null
           subscription_ends_at?: string | null
+          digest_enabled?: boolean | null
+          last_digest_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -585,6 +592,8 @@ export interface Database {
           subscription_status?: string | null
           subscription_id?: string | null
           subscription_ends_at?: string | null
+          digest_enabled?: boolean | null
+          last_digest_at?: string | null
         }
         Relationships: [
           {
@@ -691,9 +700,75 @@ export interface Database {
         }
         Relationships: []
       }
+      claims: {
+        Row: {
+          id: string
+          content_id: string
+          user_id: string
+          claim_text: string
+          normalized_text: string
+          status: string
+          severity: string | null
+          sources: Json | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          content_id: string
+          user_id: string
+          claim_text: string
+          normalized_text: string
+          status: string
+          severity?: string | null
+          sources?: Json | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          content_id?: string
+          user_id?: string
+          claim_text?: string
+          normalized_text?: string
+          status?: string
+          severity?: string | null
+          sources?: Json | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "claims_content_id_fkey"
+            columns: ["content_id"]
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "claims_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
+      find_similar_claims: {
+        Args: {
+          p_user_id: string
+          p_claim_text: string
+          p_content_id: string
+          p_threshold?: number
+          p_limit?: number
+        }
+        Returns: Array<{
+          claim_id: string
+          content_id: string
+          content_title: string
+          claim_text: string
+          status: string
+          similarity_score: number
+        }>
+      }
       upsert_domain_stats: {
         Args: {
           p_domain: string
