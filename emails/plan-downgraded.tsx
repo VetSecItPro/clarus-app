@@ -61,8 +61,8 @@ export const PlanDowngradedEmail = ({
       </Text>
 
       <Section style={baseStyles.buttonSection}>
-        <Link href="https://clarusapp.io/pricing" style={baseStyles.buttonSecondary}>
-          View Plans
+        <Link href="https://clarusapp.io/signup" style={baseStyles.buttonSecondary}>
+          Upgrade Again
         </Link>
       </Section>
 

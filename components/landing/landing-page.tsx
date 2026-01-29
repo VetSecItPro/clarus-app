@@ -2,8 +2,8 @@
 
 import { LandingHeader } from "./landing-header"
 import { HeroSection } from "./hero-section"
+import { HowItWorks } from "./how-it-works"
 import { FeatureGrid } from "./feature-grid"
-import { SocialProof } from "./social-proof"
 import { CTASection } from "./cta-section"
 import { LandingFooter } from "./landing-footer"
 
@@ -14,8 +14,8 @@ export function LandingPage() {
 
       <main className="pt-16 flex-1">
         <HeroSection />
+        <HowItWorks />
         <FeatureGrid />
-        <SocialProof />
         <CTASection />
       </main>
 

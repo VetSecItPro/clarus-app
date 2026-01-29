@@ -23,9 +23,9 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
 
   return (
     <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-white/[0.06] hidden sm:block">
-      <div className="max-w-6xl mx-auto px-4 lg:px-6">
-        <div className="flex items-center justify-between h-14">
-          {/* Logo/Brand - minimal and elegant */}
+      <div className="px-4 lg:px-6">
+        <div className="relative flex items-center h-14">
+          {/* Logo/Brand - pushed to left */}
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
               <Image
@@ -43,9 +43,9 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
             </span>
           </Link>
 
-          {/* Navigation - centered, minimal with underline effect */}
+          {/* Navigation - absolutely centered */}
           {showNav && (
-            <nav className="hidden sm:flex items-center gap-1">
+            <nav className="absolute left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-1">
               {navItems.map((item) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon
@@ -77,15 +77,15 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
             </nav>
           )}
 
-          {/* Settings - refined */}
+          {/* Settings - pushed to right */}
           {showSettings && (
-            <div className="flex items-center">
+            <div className="ml-auto flex items-center">
               <GlasmorphicSettingsButton />
             </div>
           )}
 
           {/* Spacer when no settings */}
-          {!showSettings && <div className="w-10" />}
+          {!showSettings && <div className="ml-auto w-10" />}
         </div>
       </div>
     </header>

@@ -1,7 +1,7 @@
 # Vajra Truth Checker — Master Implementation Plan
 
 **Started**: Jan 26, 2026
-**Last Updated**: Jan 27, 2026
+**Last Updated**: Jan 29, 2026
 **Business Model**: B2C — Individual content consumers who want to quickly assess and understand content
 
 ---
@@ -16,6 +16,7 @@
 | 2C.1: PWA Setup | COMPLETED | 5/5 steps done |
 | 2C.3: Knowledge Library | COMPLETED | 4/4 steps done |
 | 3: Infrastructure Migration | PLANNED (LATER) | 0/? steps |
+| 4: AI Auto-Tagging | COMPLETED | 2/2 steps done |
 
 ---
 
@@ -742,6 +743,35 @@ ActionItemData[]
 music | podcast | news | opinion | educational | entertainment |
 documentary | product_review | tech | finance | health | other
 ```
+
+---
+
+## Workstream 4: AI Auto-Tagging (COMPLETED)
+
+### Goal
+Automatically generate 3-5 topic tags when content is processed, eliminating manual-only tagging. Tags populate the existing `content.tags` column (`text[]`) and appear in the item page sidebar and Library tag filters with zero UI changes.
+
+### Implementation
+
+| # | Step | Status |
+|---|------|--------|
+| 1 | Insert `auto_tags` prompt into `clarus.analysis_prompts` | DONE — via Supabase MCP |
+| 2 | Add `generateAutoTags()` + Phase 1 parallel integration | DONE — `app/api/process-content/route.ts` |
+
+### Details
+
+- **Prompt**: `auto_tags` type in `analysis_prompts` — uses `google/gemini-2.5-flash`, temp 0.2, max 200 tokens, expects JSON `{ "tags": [...] }`, web search disabled
+- **Function**: `generateAutoTags()` — calls `generateSectionWithAI` with 2 retries (non-critical), lowercases/trims/validates (max 50 chars, max 5 tags)
+- **Integration**: Runs as `autoTagPromise` in Phase 1 `Promise.all` alongside overview, triage, mid-summary, and detailed summary
+- **No schema changes**: `content.tags` already exists as `text[]` with `add_tag_to_content()` / `remove_tag_from_content()` helpers
+- **No UI changes**: Tag display, filtering, and manual add/remove already work end-to-end
+
+### Files Modified
+
+| File | Change |
+|------|--------|
+| `app/api/process-content/route.ts` | Added `generateAutoTags()` function + `autoTagPromise` in Phase 1 |
+| Database: `clarus.analysis_prompts` | Inserted `auto_tags` prompt row |
 
 ---
 
