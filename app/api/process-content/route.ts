@@ -1570,6 +1570,67 @@ export async function POST(req: NextRequest) {
   }
 
   // ============================================
+  // CLAIM TRACKING: Extract claims for cross-referencing
+  // Non-fatal — wrapped in try/catch
+  // ============================================
+  if (truthCheck && userId) {
+    try {
+      // Delete old claims for this content (in case of regeneration)
+      await supabase.from("claims").delete().eq("content_id", contentId)
+
+      // Extract claims from truth_check data
+      const claimsToInsert: Array<{
+        content_id: string
+        user_id: string
+        claim_text: string
+        normalized_text: string
+        status: string
+        severity: string | null
+        sources: Json | null
+      }> = []
+
+      // Extract from claims array (inline highlights)
+      if (truthCheck.claims && truthCheck.claims.length > 0) {
+        for (const claim of truthCheck.claims) {
+          if (!claim.exact_text) continue
+          claimsToInsert.push({
+            content_id: contentId,
+            user_id: userId,
+            claim_text: claim.exact_text,
+            normalized_text: claim.exact_text.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim(),
+            status: claim.status,
+            severity: claim.severity ?? null,
+            sources: (claim.sources ?? null) as Json,
+          })
+        }
+      }
+
+      // Extract from issues array
+      if (truthCheck.issues && truthCheck.issues.length > 0) {
+        for (const issue of truthCheck.issues) {
+          if (!issue.claim_or_issue) continue
+          claimsToInsert.push({
+            content_id: contentId,
+            user_id: userId,
+            claim_text: issue.claim_or_issue,
+            normalized_text: issue.claim_or_issue.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim(),
+            status: issue.type,
+            severity: issue.severity ?? null,
+            sources: null,
+          })
+        }
+      }
+
+      if (claimsToInsert.length > 0) {
+        await supabase.from("claims").insert(claimsToInsert)
+        console.log(`API: Inserted ${claimsToInsert.length} claims for cross-referencing`)
+      }
+    } catch (claimErr) {
+      console.warn("API: Failed to extract claims (non-fatal):", claimErr)
+    }
+  }
+
+  // ============================================
   // SELF-HEALING: Retry critical failures once
   // ============================================
   const criticalSections = ["brief_overview", "triage", "detailed_summary"]
