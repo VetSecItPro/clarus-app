@@ -56,10 +56,13 @@ function UserUrlMessage({ message }: { message: ChatMessageData }) {
           {urlMeta && (
             <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-white/10">
               {urlMeta.favicon && (
-                <img
+                <Image
                   src={urlMeta.favicon}
                   alt=""
+                  width={16}
+                  height={16}
                   className="w-4 h-4"
+                  unoptimized
                   onError={(e) => {
                     e.currentTarget.style.display = "none"
                   }}

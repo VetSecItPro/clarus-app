@@ -171,6 +171,7 @@ export const contentTypeSchema = z.enum([
   "youtube",
   "article",
   "pdf",
+  "document",
   "x_post",
 ])
 

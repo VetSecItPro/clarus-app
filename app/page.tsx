@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
-import { Loader2, MessageSquare } from "lucide-react"
+import { Loader2, MessageSquare, Youtube, FileText, FileUp, Twitter } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import SiteHeader from "@/components/site-header"
@@ -20,18 +20,26 @@ import {
 import { useChatSession } from "@/lib/hooks/use-chat-session"
 
 const rotatingPrompts = [
-  "What do you want to explore?",
-  "Drop a link and let's dive in",
+  "What do you want to explore today?",
+  "Drop a link and let's dive in.",
   "What are we learning about today?",
   "Ready to break down some content?",
   "What caught your attention?",
-  "Let's unpack something together",
+  "Let's unpack something together.",
   "What would you like to understand?",
-  "Share a link, start a conversation",
+  "Share a link, start a conversation.",
   "What's on your mind?",
-  "Let's chat about something interesting",
-  "Paste a video or article to get started",
+  "Paste a video or article to get started.",
   "What should we dig into?",
+  "Got something interesting to analyze?",
+  "What are you curious about?",
+  "Let's make sense of something.",
+  "Found something worth exploring?",
+  "What do you want to learn more about?",
+  "Ready when you are.",
+  "What can I help you understand?",
+  "Let's turn content into clarity.",
+  "What's next on your reading list?",
 ]
 
 interface HomePageProps {
@@ -43,6 +51,9 @@ function HomePageContent({ session }: HomePageProps) {
 
   // Username state
   const [username, setUsername] = useState<string | null>(null)
+
+  // Track when we're navigating to /item/[id] to prevent chat view flash
+  const [isNavigating, setIsNavigating] = useState(false)
 
   // Chat session hook
   const {
@@ -61,22 +72,43 @@ function HomePageContent({ session }: HomePageProps) {
   } = useChatSession({
     userId,
     onContentCreated: (id) => {
-      // Update URL without full navigation (for back button support)
-      window.history.replaceState({}, "", `/chat/${id}`)
+      // Navigate to the split-screen card layout page
+      window.location.href = `/item/${id}`
     },
   })
 
-  // Fetch username
+  // Fetch username - try DB name first, fall back to auth metadata
   useEffect(() => {
     const fetchUsername = async () => {
       if (!session?.user) return
+
+      // 1. Check the users table for a custom display name
       const { data } = await supabase
         .from("users")
         .select("name")
         .eq("id", session.user.id)
         .single()
+
       if (data?.name) {
         setUsername(data.name)
+        return
+      }
+
+      // 2. Fall back to auth metadata (Google OAuth provides full_name)
+      const meta = session.user.user_metadata
+      const authName = meta?.full_name || meta?.name || null
+      if (authName && typeof authName === "string") {
+        // Use first name only for a friendlier greeting
+        const firstName = authName.split(" ")[0]
+        setUsername(firstName)
+        return
+      }
+
+      // 3. Last resort: use the part before @ in the email
+      const email = session.user.email
+      if (email) {
+        const localPart = email.split("@")[0]
+        setUsername(localPart)
       }
     }
     fetchUsername()
@@ -87,16 +119,25 @@ function HomePageContent({ session }: HomePageProps) {
     return rotatingPrompts[Math.floor(Math.random() * rotatingPrompts.length)]
   }, [])
 
+  // Time-based greeting
+  const greeting = useMemo(() => {
+    const hour = new Date().getHours()
+    if (hour < 12) return "Good morning"
+    if (hour < 17) return "Good afternoon"
+    return "Good evening"
+  }, [])
+
   // Handle suggestion selection
   const onSuggestionSelect = (action: SuggestionAction) => {
     handleSuggestion(action)
   }
 
-  // Handle URL submission
+  // Handle URL submission — set navigating flag to prevent chat view flash
   const onSubmitUrl = (
     url: string,
     urlMeta: { url: string; domain: string; type: "youtube" | "article" | "x_post"; favicon: string }
   ) => {
+    setIsNavigating(true)
     submitUrl(url, urlMeta)
   }
 
@@ -133,8 +174,8 @@ function HomePageContent({ session }: HomePageProps) {
       </motion.div>
 
       <main className="flex-1 flex flex-col pb-20 sm:pb-4">
-        {/* Chat area or welcome state */}
-        {state === "idle" ? (
+        {/* Chat area or welcome state — stay in welcome view while navigating to /item */}
+        {state === "idle" || isNavigating ? (
           // Welcome state - centered
           <div className="flex-1 flex flex-col items-center justify-center px-3 sm:px-6">
             <motion.div
@@ -143,17 +184,13 @@ function HomePageContent({ session }: HomePageProps) {
               transition={{ duration: 0.5 }}
               className="text-center mb-8"
             >
-              {username ? (
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-medium text-white mb-2 sm:mb-3">
-                  Welcome back,{" "}
-                  <span className="text-[#1d9bf0]">{username}</span>
-                </h1>
-              ) : (
-                <h1 className="text-xl sm:text-2xl lg:text-3xl font-medium text-white mb-2 sm:mb-3">
-                  Welcome back
-                </h1>
-              )}
-              <p className="text-white/70 text-base sm:text-lg font-medium">
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-white mb-3 sm:mb-4">
+                {greeting}
+                {username && (
+                  <>, <span className="text-[#1d9bf0]">{username}</span></>
+                )}
+              </h1>
+              <p className="text-white/50 text-base sm:text-lg">
                 {randomPrompt}
               </p>
             </motion.div>
@@ -168,12 +205,32 @@ function HomePageContent({ session }: HomePageProps) {
               <ChatInputBar
                 onSubmitUrl={onSubmitUrl}
                 onSubmitMessage={onSubmitMessage}
-                onSubmitPdf={submitPdf}
+                onSubmitFile={(file: File) => { setIsNavigating(true); submitPdf(file) }}
                 mode="url-only"
                 placeholder="Paste any URL or upload a PDF..."
                 disabled={!userId}
                 isProcessing={isLoading}
               />
+            </motion.div>
+
+            {/* Content type hints */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="flex items-center justify-center gap-5 sm:gap-6 mt-5"
+            >
+              {[
+                { icon: Youtube, label: "YouTube" },
+                { icon: FileText, label: "Articles" },
+                { icon: FileUp, label: "PDF" },
+                { icon: Twitter, label: "X Posts" },
+              ].map(({ icon: Icon, label }) => (
+                <div key={label} className="flex items-center gap-1.5 text-white/25">
+                  <Icon className="w-3.5 h-3.5" />
+                  <span className="text-xs">{label}</span>
+                </div>
+              ))}
             </motion.div>
 
           </div>
@@ -226,7 +283,7 @@ function HomePageContent({ session }: HomePageProps) {
             <ChatInputBar
               onSubmitUrl={onSubmitUrl}
               onSubmitMessage={onSubmitMessage}
-              onSubmitPdf={submitPdf}
+              onSubmitFile={submitPdf}
               mode={inputMode}
               placeholder={
                 state === "initial_complete"
@@ -235,7 +292,7 @@ function HomePageContent({ session }: HomePageProps) {
               }
               disabled={!userId}
               isProcessing={isLoading}
-              showPdfUpload={false}
+              showFileUpload={false}
             />
           </div>
         )}

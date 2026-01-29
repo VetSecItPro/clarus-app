@@ -256,7 +256,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         setIsPolling(false)
         toast.success("Analysis complete!")
       }
-    }, 2000)
+    }, 1000)
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState === "visible" && isPolling) {
@@ -437,7 +437,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         </div>
       ) : (
         <>
-          {/* 1. OVERVIEW */}
+          {/* 1. OVERVIEW — always visible while polling */}
           <AnimatePresence mode="wait">
             {(summary?.brief_overview || isPolling) && (
               <SectionCard
@@ -623,8 +623,8 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
             )}
           </AnimatePresence>
 
-          {/* No summary prompt */}
-          {!summary?.mid_length_summary && !isPolling && !isRegenerating && (
+          {/* No summary prompt — only show when processing is truly complete with no results */}
+          {!summary?.brief_overview && !summary?.mid_length_summary && !isPolling && !isRegenerating && !loading && item?.full_text && !item.full_text.startsWith("PROCESSING_FAILED::") && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

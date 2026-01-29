@@ -93,7 +93,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
 
   // Prefetch both the route and content data on hover for instant navigation
   const handleMouseEnter = useCallback(() => {
-    router.prefetch(`/chat/${id}`)
+    router.prefetch(`/item/${id}`)
     prefetchContent(id)
   }, [router, id])
 
@@ -104,9 +104,17 @@ export const ChatThreadCard = memo(function ChatThreadCard({
       className="group relative"
       onMouseEnter={handleMouseEnter}
     >
-      <button
+      <div
+        role="button"
+        tabIndex={0}
         onClick={onClick}
-        className="w-full text-left p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.1] transition-all"
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") {
+            e.preventDefault()
+            onClick()
+          }
+        }}
+        className="w-full text-left p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.1] transition-all cursor-pointer"
       >
         {/* Analyzer info (community feed) */}
         {analyzer && (
@@ -166,8 +174,38 @@ export const ChatThreadCard = memo(function ChatThreadCard({
             )}
           </div>
 
-          {/* Right side: scores and message count */}
+          {/* Right side: actions + scores */}
           <div className="shrink-0 flex flex-col items-end gap-1.5">
+            {/* Action buttons (show on hover) */}
+            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {onBookmark && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onBookmark()
+                  }}
+                  className="w-7 h-7 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                >
+                  {is_bookmarked ? (
+                    <BookmarkCheck className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                  ) : (
+                    <Bookmark className="w-3.5 h-3.5" />
+                  )}
+                </button>
+              )}
+              {onDelete && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    onDelete()
+                  }}
+                  className="w-7 h-7 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-red-400 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
             {/* Quality score */}
             {triage && (
               <div className="px-2 py-0.5 rounded-full bg-[#1d9bf0]/20 text-[10px] font-semibold text-[#1d9bf0]">
@@ -193,37 +231,8 @@ export const ChatThreadCard = memo(function ChatThreadCard({
             )}
           </div>
         </div>
-      </button>
-
-      {/* Action buttons (show on hover) */}
-      <div className="absolute top-2 right-2 flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        {onBookmark && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onBookmark()
-            }}
-            className="w-7 h-7 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-white transition-colors"
-          >
-            {is_bookmarked ? (
-              <BookmarkCheck className="w-3.5 h-3.5 text-[#1d9bf0]" />
-            ) : (
-              <Bookmark className="w-3.5 h-3.5" />
-            )}
-          </button>
-        )}
-        {onDelete && (
-          <button
-            onClick={(e) => {
-              e.stopPropagation()
-              onDelete()
-            }}
-            className="w-7 h-7 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-red-400 transition-colors"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        )}
       </div>
+
     </motion.div>
   )
 })

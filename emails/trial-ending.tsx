@@ -65,13 +65,9 @@ export const TrialEndingEmail = ({
       <Section style={baseStyles.divider} />
 
       <Text style={baseStyles.textMuted}>
-        Have questions about our plans?{" "}
-        <Link href="https://clarusapp.io/pricing" style={baseStyles.link}>
-          View pricing details
-        </Link>{" "}
-        or{" "}
+        Have questions?{" "}
         <Link href="https://clarusapp.io/support" style={baseStyles.link}>
-          contact us
+          Contact us
         </Link>
         .
       </Text>

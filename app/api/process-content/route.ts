@@ -23,7 +23,7 @@ function getErrorName(error: unknown): string {
   return ""
 }
 
-const supabaseUrl = process.env.SUPABASE_URL
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supadataApiKey = process.env.SUPADATA_API_KEY
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
@@ -1107,6 +1107,33 @@ async function generateDetailedSummary(fullText: string, contentType: string, us
   return typeof result.content === "string" ? result.content : null
 }
 
+async function generateAutoTags(
+  fullText: string,
+  userId?: string | null,
+  contentId?: string | null,
+): Promise<string[] | null> {
+  const result = await generateSectionWithAI(
+    fullText.substring(0, 10000),
+    "auto_tags",
+    undefined,
+    2, // only 2 retries — tags are not critical
+    userId,
+    contentId,
+  )
+  if (result.error) {
+    console.error(`API: Auto-tag generation failed: ${result.error}`)
+    return null
+  }
+  const content = result.content as { tags?: string[] } | null
+  if (content && Array.isArray(content.tags)) {
+    return content.tags
+      .map((t: string) => t.toLowerCase().trim())
+      .filter((t: string) => t.length > 0 && t.length <= 50)
+      .slice(0, 5)
+  }
+  return null
+}
+
 // Helper to update summary in database
 async function updateSummarySection(
   supabase: ReturnType<typeof createClient<Database>>,
@@ -1205,7 +1232,7 @@ export async function POST(req: NextRequest) {
   // Clear prompts cache for fresh prompts each processing batch
   clearPromptsCache()
 
-  const supabase = createClient<Database>(supabaseUrl!, supabaseKey!)
+  const supabase = createClient<Database>(supabaseUrl!, supabaseKey!, { db: { schema: "clarus" } })
 
   let content_id: string
   let force_regenerate: boolean
@@ -1282,7 +1309,7 @@ export async function POST(req: NextRequest) {
           else content.full_text = full_text
         }
       }
-    } else if (content.type === "article" || content.type === "pdf" || content.type === "x_post") {
+    } else if (content.type === "article" || content.type === "pdf" || content.type === "document" || content.type === "x_post") {
       const shouldScrape = force_regenerate || !content.full_text || content.full_text.startsWith("PROCESSING_FAILED::")
       if (shouldScrape) {
         let urlToScrape = content.url
@@ -1370,215 +1397,216 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Capture non-null user_id for use in async closures
+  const userId = content.user_id
+  const contentId = content.id
+  const contentUrl = content.url
+  const contentType = content.type || "article"
+  const fullText = content.full_text
+
   // Fix title if needed (using existing logic)
-  let titleNeedsFixing = !content.title || content.title.startsWith("Processing:") || content.title.startsWith("Analyzing:")
+  const titleNeedsFixing = !content.title || content.title.startsWith("Processing:") || content.title.startsWith("Analyzing:")
 
   // ============================================
-  // BULLETPROOF SEQUENTIAL SECTION GENERATION
-  // Each section is saved immediately after generation
-  // Failed sections are tracked and retried at the end
+  // PARALLEL SECTION GENERATION
+  // Phase 1: 4 independent sections run simultaneously
+  // Phase 2: 2 triage-dependent sections run in parallel
+  // Each section saves to DB the instant it finishes
   // ============================================
 
-  console.log(`API: Starting bulletproof section generation for content_id: ${content.id}`)
+  console.log(`API: Starting parallel section generation for content_id: ${contentId}`)
 
-  // Track failed sections for final retry
   const failedSections: string[] = []
 
-  // ============================================
-  // WEB SEARCH CONTEXT (run once, share across sections)
-  // ============================================
-  console.log(`API: [0/6] Getting web search context for fact-checking...`)
-  const webSearchContext = await getWebSearchContext(content.full_text.substring(0, 10000), content.title || undefined)
+  // Web search context (run once, shared across all sections)
+  console.log(`API: [0/6] Getting web search context...`)
+  const webSearchContext = await getWebSearchContext(fullText.substring(0, 10000), content.title || undefined)
   const webContext = webSearchContext?.formattedContext || null
   if (webContext) {
     console.log(`API: Web search context ready (${webSearchContext?.searches.length} searches)`)
   } else {
-    console.log(`API: No web search context available (Tavily not configured or no topics found)`)
-  }
-
-  // 1. BRIEF OVERVIEW (fastest, first to appear) - CRITICAL
-  console.log(`API: [1/6] Generating brief overview...`)
-  let briefOverview = await generateBriefOverview(content.full_text, content.user_id, content.id, webContext)
-  if (briefOverview) {
-    await updateSummarySection(supabase, content.id, content.user_id, {
-      brief_overview: briefOverview,
-      processing_status: "overview_complete",
-    })
-    responsePayload.sections_generated.push("brief_overview")
-    console.log(`API: Brief overview saved.`)
-  } else {
-    failedSections.push("brief_overview")
-    console.warn(`API: Brief overview failed, will retry later...`)
-  }
-
-  // 2. TRIAGE (quality score, audience, worth-it) - CRITICAL
-  console.log(`API: [2/6] Generating triage...`)
-  let triage = await generateTriage(content.full_text, content.user_id, content.id, webContext)
-  if (triage) {
-    await updateSummarySection(supabase, content.id, content.user_id, {
-      triage: triage as unknown as Json,
-      processing_status: "triage_complete",
-    })
-    responsePayload.sections_generated.push("triage")
-    console.log(`API: Triage saved.`)
-  } else {
-    failedSections.push("triage")
-    console.warn(`API: Triage failed, will retry later...`)
-  }
-
-  // 3. TRUTH CHECK (bias, accuracy analysis) - WEB CONTEXT CRITICAL HERE
-  // Skip for content categories without verifiable claims
-  const skipTruthCheckCategories = ["music", "entertainment"]
-  const triageCategory = triage?.content_category
-  const shouldSkipTruthCheck = triageCategory && skipTruthCheckCategories.includes(triageCategory)
-
-  let truthCheck: TruthCheckData | null = null
-  if (shouldSkipTruthCheck) {
-    console.log(`API: [3/6] Skipping truth check for ${triageCategory} content (no verifiable claims)`)
-  } else {
-    console.log(`API: [3/6] Generating truth check...`)
-    truthCheck = await generateTruthCheck(content.full_text, content.user_id, content.id, webContext)
-    if (truthCheck) {
-      await updateSummarySection(supabase, content.id, content.user_id, {
-        truth_check: truthCheck as unknown as Json,
-        processing_status: "truth_check_complete",
-      })
-      responsePayload.sections_generated.push("truth_check")
-      console.log(`API: Truth check saved.`)
-    } else {
-      failedSections.push("truth_check")
-      console.warn(`API: Truth check failed, will retry later...`)
-    }
-  }
-
-  // Update domain credibility stats
-  if (content.url && triage) {
-    await updateDomainStats(supabase, content.url, triage, truthCheck)
-    console.log(`API: Domain stats updated for ${content.url}`)
-  }
-
-  // 4. ACTION ITEMS (actionable takeaways)
-  // Skip for content categories that don't have actionable items
-  const skipActionItemsCategories = ["music", "entertainment"]
-  const contentCategory = triage?.content_category
-  const shouldSkipActionItems = contentCategory && skipActionItemsCategories.includes(contentCategory)
-
-  let actionItems: ActionItemsData | null = null
-  if (shouldSkipActionItems) {
-    console.log(`API: [4/6] Skipping action items for ${contentCategory} content`)
-  } else {
-    console.log(`API: [4/6] Generating action items...`)
-    actionItems = await generateActionItems(content.full_text, content.type || "article", content.user_id, content.id, webContext)
-    if (actionItems) {
-      await updateSummarySection(supabase, content.id, content.user_id, {
-        action_items: actionItems as unknown as Json,
-        processing_status: "action_items_complete",
-      })
-      responsePayload.sections_generated.push("action_items")
-      console.log(`API: Action items saved.`)
-    } else {
-      // Don't add to failed sections for non-actionable content types
-      console.warn(`API: Action items generation failed, skipping...`)
-    }
-  }
-
-  // 5. MID-LENGTH SUMMARY (existing behavior, kept for compatibility)
-  console.log(`API: [5/6] Generating mid-length summary...`)
-  const summaryResult = await getModelSummary(content.full_text, {
-    shouldExtractTitle: titleNeedsFixing,
-  })
-
-  if (summaryResult && !("error" in summaryResult)) {
-    const validSummary = summaryResult as ModelSummary
-
-    // Update title if extracted
-    if (titleNeedsFixing && validSummary.title) {
-      await supabase.from("content").update({ title: validSummary.title }).eq("id", content.id)
-      console.log(`API: Title updated from summary.`)
-    }
-
-    if (validSummary.mid_length_summary) {
-      await updateSummarySection(supabase, content.id, content.user_id, {
-        mid_length_summary: validSummary.mid_length_summary,
-        processing_status: "short_summary_complete",
-      })
-      responsePayload.sections_generated.push("mid_length_summary")
-      console.log(`API: Mid-length summary saved.`)
-    }
-  } else {
-    failedSections.push("mid_length_summary")
-    console.warn(`API: Mid-length summary generation failed, will retry later...`)
-  }
-
-  // 6. DETAILED SUMMARY (most comprehensive, slowest) - CRITICAL
-  console.log(`API: [6/6] Generating detailed summary...`)
-  let detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article", content.user_id, content.id, webContext)
-  if (detailedSummary) {
-    await updateSummarySection(supabase, content.id, content.user_id, {
-      detailed_summary: detailedSummary,
-      processing_status: "complete",
-    })
-    responsePayload.sections_generated.push("detailed_summary")
-    console.log(`API: Detailed summary saved.`)
-  } else {
-    failedSections.push("detailed_summary")
-    console.warn(`API: Detailed summary failed, will retry later...`)
+    console.log(`API: No web search context available`)
   }
 
   // ============================================
-  // SELF-HEALING: FINAL RETRY PASS FOR CRITICAL SECTIONS
-  // Retry any failed critical sections one more time
+  // PHASE 1: 4 independent sections in parallel
+  // overview, triage, key takeaways, detailed analysis
+  // ============================================
+  console.log(`API: [Phase 1] Starting overview, triage, key takeaways, detailed analysis in parallel...`)
+
+  const overviewPromise = (async () => {
+    console.log(`API: [1/6] Generating brief overview...`)
+    const result = await generateBriefOverview(fullText, userId, contentId, webContext)
+    if (result) {
+      await updateSummarySection(supabase, contentId, userId, { brief_overview: result })
+      responsePayload.sections_generated.push("brief_overview")
+      console.log(`API: [1/6] Brief overview saved.`)
+    } else {
+      failedSections.push("brief_overview")
+      console.warn(`API: [1/6] Brief overview failed.`)
+    }
+    return result
+  })()
+
+  const triagePromise = (async () => {
+    console.log(`API: [2/6] Generating triage...`)
+    const result = await generateTriage(fullText, userId, contentId, webContext)
+    if (result) {
+      await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json })
+      responsePayload.sections_generated.push("triage")
+      console.log(`API: [2/6] Triage saved.`)
+    } else {
+      failedSections.push("triage")
+      console.warn(`API: [2/6] Triage failed.`)
+    }
+    return result
+  })()
+
+  const midSummaryPromise = (async () => {
+    console.log(`API: [5/6] Generating mid-length summary...`)
+    const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing })
+    if (summaryResult && !("error" in summaryResult)) {
+      const validSummary = summaryResult as ModelSummary
+      if (titleNeedsFixing && validSummary.title) {
+        await supabase.from("content").update({ title: validSummary.title }).eq("id", contentId)
+        console.log(`API: [5/6] Title updated from summary.`)
+      }
+      if (validSummary.mid_length_summary) {
+        await updateSummarySection(supabase, contentId, userId, { mid_length_summary: validSummary.mid_length_summary })
+        responsePayload.sections_generated.push("mid_length_summary")
+        console.log(`API: [5/6] Mid-length summary saved.`)
+      }
+    } else {
+      failedSections.push("mid_length_summary")
+      console.warn(`API: [5/6] Mid-length summary failed.`)
+    }
+    return summaryResult
+  })()
+
+  const detailedPromise = (async () => {
+    console.log(`API: [6/6] Generating detailed summary...`)
+    const result = await generateDetailedSummary(fullText, contentType, userId, contentId, webContext)
+    if (result) {
+      await updateSummarySection(supabase, contentId, userId, { detailed_summary: result })
+      responsePayload.sections_generated.push("detailed_summary")
+      console.log(`API: [6/6] Detailed summary saved.`)
+    } else {
+      failedSections.push("detailed_summary")
+      console.warn(`API: [6/6] Detailed summary failed.`)
+    }
+    return result
+  })()
+
+  const autoTagPromise = (async () => {
+    console.log(`API: [tags] Generating auto-tags...`)
+    const tags = await generateAutoTags(fullText, userId, contentId)
+    if (tags && tags.length > 0) {
+      await supabase
+        .from("content")
+        .update({ tags })
+        .eq("id", contentId)
+      console.log(`API: [tags] Auto-tags saved: ${tags.join(", ")}`)
+    } else {
+      console.warn(`API: [tags] Auto-tag generation failed or empty.`)
+    }
+    return tags
+  })()
+
+  // Wait for all Phase 1 sections
+  const [briefOverview, triage, , detailedSummary] = await Promise.all([
+    overviewPromise, triagePromise, midSummaryPromise, detailedPromise, autoTagPromise,
+  ])
+
+  // ============================================
+  // PHASE 2: Triage-dependent sections in parallel
+  // truth check + action items (skip for music/entertainment)
+  // ============================================
+  const skipCategories = ["music", "entertainment"]
+  const triageCategory = triage?.content_category
+  const shouldSkipPhase2 = triageCategory && skipCategories.includes(triageCategory)
+
+  let truthCheck: TruthCheckData | null = null
+
+  if (shouldSkipPhase2) {
+    console.log(`API: [Phase 2] Skipping truth check + action items for ${triageCategory} content`)
+  } else {
+    console.log(`API: [Phase 2] Starting truth check + action items in parallel...`)
+
+    const [truthResult] = await Promise.all([
+      (async () => {
+        console.log(`API: [3/6] Generating truth check...`)
+        const result = await generateTruthCheck(fullText, userId, contentId, webContext)
+        if (result) {
+          await updateSummarySection(supabase, contentId, userId, { truth_check: result as unknown as Json })
+          responsePayload.sections_generated.push("truth_check")
+          console.log(`API: [3/6] Truth check saved.`)
+        } else {
+          failedSections.push("truth_check")
+          console.warn(`API: [3/6] Truth check failed.`)
+        }
+        return result
+      })(),
+      (async () => {
+        console.log(`API: [4/6] Generating action items...`)
+        const result = await generateActionItems(fullText, contentType, userId, contentId, webContext)
+        if (result) {
+          await updateSummarySection(supabase, contentId, userId, { action_items: result as unknown as Json })
+          responsePayload.sections_generated.push("action_items")
+          console.log(`API: [4/6] Action items saved.`)
+        } else {
+          console.warn(`API: [4/6] Action items failed.`)
+        }
+        return result
+      })(),
+    ])
+
+    truthCheck = truthResult
+  }
+
+  // Update domain credibility stats
+  if (contentUrl && triage) {
+    await updateDomainStats(supabase, contentUrl, triage, truthCheck)
+    console.log(`API: Domain stats updated for ${contentUrl}`)
+  }
+
+  // ============================================
+  // SELF-HEALING: Retry critical failures once
   // ============================================
   const criticalSections = ["brief_overview", "triage", "detailed_summary"]
   const criticalFailures = failedSections.filter((s) => criticalSections.includes(s))
 
   if (criticalFailures.length > 0) {
-    console.log(`API: SELF-HEALING - Retrying ${criticalFailures.length} critical failed sections: ${criticalFailures.join(", ")}`)
+    console.log(`API: RETRY - Retrying ${criticalFailures.length} critical sections: ${criticalFailures.join(", ")}`)
 
-    for (const section of criticalFailures) {
-      console.log(`API: RETRY - Attempting ${section}...`)
-
-      if (section === "brief_overview" && !briefOverview) {
-        briefOverview = await generateBriefOverview(content.full_text, content.user_id, content.id)
-        if (briefOverview) {
-          await updateSummarySection(supabase, content.id, content.user_id, { brief_overview: briefOverview })
+    await Promise.all(criticalFailures.map(async (section) => {
+      if (section === "brief_overview") {
+        const result = await generateBriefOverview(fullText, userId, contentId)
+        if (result) {
+          await updateSummarySection(supabase, contentId, userId, { brief_overview: result })
           responsePayload.sections_generated.push("brief_overview")
           console.log(`API: RETRY SUCCESS - Brief overview saved.`)
-        } else {
-          console.error(`API: RETRY FAILED - Brief overview still failed after retry.`)
         }
-      }
-
-      if (section === "triage" && !triage) {
-        triage = await generateTriage(content.full_text, content.user_id, content.id)
-        if (triage) {
-          await updateSummarySection(supabase, content.id, content.user_id, { triage: triage as unknown as Json })
+      } else if (section === "triage") {
+        const result = await generateTriage(fullText, userId, contentId)
+        if (result) {
+          await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json })
           responsePayload.sections_generated.push("triage")
           console.log(`API: RETRY SUCCESS - Triage saved.`)
-          // Update domain stats now that we have triage
-          if (content.url) {
-            await updateDomainStats(supabase, content.url, triage, truthCheck)
-          }
-        } else {
-          console.error(`API: RETRY FAILED - Triage still failed after retry.`)
+          if (contentUrl) await updateDomainStats(supabase, contentUrl, result, truthCheck)
         }
-      }
-
-      if (section === "detailed_summary" && !detailedSummary) {
-        detailedSummary = await generateDetailedSummary(content.full_text, content.type || "article", content.user_id, content.id)
-        if (detailedSummary) {
-          await updateSummarySection(supabase, content.id, content.user_id, { detailed_summary: detailedSummary })
+      } else if (section === "detailed_summary") {
+        const result = await generateDetailedSummary(fullText, contentType, userId, contentId)
+        if (result) {
+          await updateSummarySection(supabase, contentId, userId, { detailed_summary: result })
           responsePayload.sections_generated.push("detailed_summary")
           console.log(`API: RETRY SUCCESS - Detailed summary saved.`)
-        } else {
-          console.error(`API: RETRY FAILED - Detailed summary still failed after retry.`)
         }
       }
-    }
+    }))
   }
 
-  // Always mark as complete
-  await updateSummarySection(supabase, content.id, content.user_id, {
+  // Mark processing complete
+  await updateSummarySection(supabase, contentId, userId, {
     processing_status: "complete",
   })
 

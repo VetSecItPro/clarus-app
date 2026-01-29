@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
+import NextImage from "next/image"
 import {
   Send,
   Link2,
@@ -21,6 +22,37 @@ import { useSpeechToText } from "@/lib/hooks/use-speech"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 
+/** Allowed file upload types: extension → MIME types */
+const ALLOWED_FILE_TYPES: Record<string, string[]> = {
+  ".pdf": ["application/pdf"],
+  ".doc": ["application/msword"],
+  ".docx": ["application/vnd.openxmlformats-officedocument.wordprocessingml.document"],
+  ".xls": ["application/vnd.ms-excel"],
+  ".xlsx": ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"],
+  ".ppt": ["application/vnd.ms-powerpoint"],
+  ".pptx": ["application/vnd.openxmlformats-officedocument.presentationml.presentation"],
+  ".txt": ["text/plain"],
+  ".csv": ["text/csv", "application/csv"],
+}
+
+const ALLOWED_MIME_TYPES = new Set(Object.values(ALLOWED_FILE_TYPES).flat())
+const ACCEPTED_EXTENSIONS = Object.keys(ALLOWED_FILE_TYPES).join(",")
+const MAX_FILE_SIZE = 20 * 1024 * 1024 // 20MB
+const MAX_MESSAGE_LENGTH = 10_000
+
+/** Sanitize a file name for safe display: strip HTML-like chars and truncate */
+function sanitizeFileName(name: string, maxLength = 40): string {
+  const cleaned = name.replace(/[<>"'&]/g, "")
+  if (cleaned.length <= maxLength) return cleaned
+  const ext = cleaned.lastIndexOf(".")
+  if (ext > 0) {
+    const extension = cleaned.slice(ext)
+    const base = cleaned.slice(0, maxLength - extension.length - 3)
+    return `${base}...${extension}`
+  }
+  return cleaned.slice(0, maxLength - 3) + "..."
+}
+
 interface UrlPreview {
   url: string
   domain: string
@@ -31,28 +63,28 @@ interface UrlPreview {
 interface ChatInputBarProps {
   onSubmitUrl: (url: string, urlMeta: UrlPreview) => void
   onSubmitMessage: (message: string) => void
-  onSubmitPdf?: (file: File) => void
+  onSubmitFile?: (file: File) => void
   mode?: "url-only" | "chat-only" | "auto"
   placeholder?: string
   disabled?: boolean
   isProcessing?: boolean
-  showPdfUpload?: boolean
+  showFileUpload?: boolean
 }
 
 export function ChatInputBar({
   onSubmitUrl,
   onSubmitMessage,
-  onSubmitPdf,
+  onSubmitFile,
   mode = "auto",
   placeholder = "Paste a URL or ask a question...",
   disabled = false,
   isProcessing = false,
-  showPdfUpload = true,
+  showFileUpload = true,
 }: ChatInputBarProps) {
   const [inputValue, setInputValue] = useState("")
   const [urlPreview, setUrlPreview] = useState<UrlPreview | null>(null)
   const [isFocused, setIsFocused] = useState(false)
-  const [selectedPdf, setSelectedPdf] = useState<File | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -119,9 +151,9 @@ export function ChatInputBar({
   }, [inputValue, detectUrl, mode])
 
   const handleSubmit = () => {
-    // Handle PDF submission
-    if (selectedPdf && onSubmitPdf) {
-      handlePdfSubmit()
+    // Handle file submission
+    if (selectedFile && onSubmitFile) {
+      handleFileSubmit()
       return
     }
 
@@ -162,9 +194,7 @@ export function ChatInputBar({
     if (!validation.isValid || !validation.sanitized) return
 
     e.preventDefault()
-    setInputValue(pastedText)
 
-    // Auto-detect and submit
     const validUrl = validation.sanitized
     const domain = getDomainFromUrl(validUrl)
     let type: "youtube" | "article" | "x_post" = "article"
@@ -172,15 +202,21 @@ export function ChatInputBar({
     else if (isXUrl(validUrl)) type = "x_post"
     const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
 
-    toast.success("URL detected - starting analysis...")
-    onSubmitUrl(validUrl, { url: validUrl, domain, type, favicon })
-    setInputValue("")
+    // Show URL in input with preview chip so the user sees visual confirmation
+    setInputValue(pastedText)
+    setUrlPreview({ url: validUrl, domain, type, favicon })
+
+    // Brief pause for visual feedback, then auto-submit
+    setTimeout(() => {
+      toast.success("URL detected — starting analysis...")
+      onSubmitUrl(validUrl, { url: validUrl, domain, type, favicon })
+    }, 400)
   }
 
   const clearInput = () => {
     setInputValue("")
     setUrlPreview(null)
-    setSelectedPdf(null)
+    setSelectedFile(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -191,20 +227,32 @@ export function ChatInputBar({
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (file.type !== "application/pdf") {
-      toast.error("Please select a PDF file")
+    // Validate file is not empty
+    if (file.size === 0) {
+      toast.error("File is empty", { description: "Please select a file with content." })
       return
     }
 
-    if (file.size > 20 * 1024 * 1024) { // 20MB limit
-      toast.error("PDF must be under 20MB")
+    // Validate MIME type
+    if (!ALLOWED_MIME_TYPES.has(file.type)) {
+      toast.error("Unsupported file type", {
+        description: "Supported: PDF, Word, Excel, PowerPoint, TXT, CSV.",
+      })
       return
     }
 
-    // Auto-submit PDF immediately (no user interaction needed)
-    if (onSubmitPdf) {
-      toast.success("PDF detected - starting analysis...")
-      onSubmitPdf(file)
+    // Validate file size
+    if (file.size > MAX_FILE_SIZE) {
+      toast.error("File too large", {
+        description: `Maximum file size is 20MB. Your file is ${(file.size / 1024 / 1024).toFixed(1)}MB.`,
+      })
+      return
+    }
+
+    // Auto-submit file immediately (no user interaction needed)
+    if (onSubmitFile) {
+      toast.success("File detected - starting analysis...")
+      onSubmitFile(file)
       if (fileInputRef.current) {
         fileInputRef.current.value = ""
       }
@@ -212,16 +260,16 @@ export function ChatInputBar({
     }
 
     // Fallback if no submit handler
-    setSelectedPdf(file)
+    setSelectedFile(file)
     setInputValue("")
     setUrlPreview(null)
   }
 
-  const handlePdfSubmit = () => {
-    if (!selectedPdf || !onSubmitPdf) return
-    toast.success("PDF uploaded - starting analysis...")
-    onSubmitPdf(selectedPdf)
-    setSelectedPdf(null)
+  const handleFileSubmit = () => {
+    if (!selectedFile || !onSubmitFile) return
+    toast.success("File uploaded - starting analysis...")
+    onSubmitFile(selectedFile)
+    setSelectedFile(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
     }
@@ -239,8 +287,11 @@ export function ChatInputBar({
   }
 
   const isUrlMode = urlPreview && mode !== "chat-only"
-  const isPdfMode = selectedPdf && onSubmitPdf
-  const canSubmit = (inputValue.trim() || selectedPdf) && !disabled && !isProcessing
+  const isFileMode = selectedFile && onSubmitFile
+  const canSubmit = (inputValue.trim() || selectedFile) && !disabled && !isProcessing
+  const charCount = inputValue.length
+  const isNearLimit = charCount >= MAX_MESSAGE_LENGTH * 0.9
+  const isAtLimit = charCount >= MAX_MESSAGE_LENGTH
 
   return (
     <div className="w-full flex justify-center px-4 py-3">
@@ -256,10 +307,13 @@ export function ChatInputBar({
             >
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
-                <img
+                <NextImage
                   src={urlPreview.favicon}
                   alt=""
+                  width={16}
+                  height={16}
                   className="w-4 h-4"
+                  unoptimized
                   onError={(e) => {
                     e.currentTarget.style.display = "none"
                   }}
@@ -279,9 +333,9 @@ export function ChatInputBar({
           )}
         </AnimatePresence>
 
-        {/* PDF Preview */}
+        {/* File Preview */}
         <AnimatePresence>
-          {isPdfMode && (
+          {isFileMode && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: "auto" }}
@@ -291,10 +345,10 @@ export function ChatInputBar({
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
                 <FileUp className="w-4 h-4 text-orange-400" />
                 <span className="text-xs text-white/80 truncate flex-1">
-                  {selectedPdf.name}
+                  {sanitizeFileName(selectedFile.name)}
                 </span>
                 <span className="text-xs text-white/50">
-                  {(selectedPdf.size / 1024 / 1024).toFixed(1)}MB
+                  {(selectedFile.size / 1024 / 1024).toFixed(1)}MB
                 </span>
                 <button
                   onClick={clearInput}
@@ -311,7 +365,7 @@ export function ChatInputBar({
         <input
           ref={fileInputRef}
           type="file"
-          accept="application/pdf"
+          accept={ACCEPTED_EXTENSIONS}
           onChange={handleFileSelect}
           className="hidden"
         />
@@ -326,52 +380,9 @@ export function ChatInputBar({
             isListening && "border-red-500/50 ring-1 ring-red-500/30"
           )}
         >
-          {/* Microphone button */}
-          {sttSupported && (
-            <button
-              type="button"
-              onClick={isListening ? stopListening : startListening}
-              disabled={disabled || isProcessing}
-              className={cn(
-                "h-9 w-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0 relative",
-                isListening
-                  ? "bg-red-500 hover:bg-red-600 text-white"
-                  : "text-gray-400 hover:text-white hover:bg-white/[0.08]"
-              )}
-              aria-label={isListening ? "Stop recording" : "Start voice input"}
-            >
-              {isListening ? (
-                <>
-                  <span className="absolute inset-0 rounded-xl bg-red-500 animate-ping opacity-30" />
-                  <Square className="w-4 h-4 relative z-10 fill-white" />
-                </>
-              ) : (
-                <Mic className="w-4 h-4" />
-              )}
-            </button>
-          )}
-
-          {/* PDF upload button */}
-          {showPdfUpload && onSubmitPdf && mode !== "chat-only" && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={disabled || isProcessing}
-              className={cn(
-                "h-9 w-9 rounded-xl flex items-center justify-center transition-all flex-shrink-0",
-                selectedPdf
-                  ? "bg-orange-500/20 text-orange-400"
-                  : "text-gray-400 hover:text-white hover:bg-white/[0.08]"
-              )}
-              aria-label="Upload PDF"
-            >
-              <FileUp className="w-4 h-4" />
-            </button>
-          )}
-
           {/* Link icon */}
           <div className="flex-shrink-0">
-            {isPdfMode ? (
+            {isFileMode ? (
               <FileUp className="w-4 h-4 text-orange-400" />
             ) : isUrlMode ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
@@ -395,13 +406,14 @@ export function ChatInputBar({
               onBlur={() => setIsFocused(false)}
               onKeyDown={handleKeyDown}
               onPaste={handlePaste}
+              maxLength={MAX_MESSAGE_LENGTH}
               placeholder={
                 isListening
                   ? ""
-                  : selectedPdf
-                  ? `${selectedPdf.name} ready to analyze`
+                  : selectedFile
+                  ? `${sanitizeFileName(selectedFile.name)} ready to analyze`
                   : mode === "url-only"
-                  ? "Paste a URL or upload a PDF..."
+                  ? "Paste a URL or upload a file..."
                   : mode === "chat-only"
                   ? "Ask anything..."
                   : placeholder
@@ -452,12 +464,55 @@ export function ChatInputBar({
             </button>
           )}
 
+          {/* File upload button - before send */}
+          {showFileUpload && onSubmitFile && mode !== "chat-only" && (
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={disabled || isProcessing}
+              className={cn(
+                "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0",
+                selectedFile
+                  ? "bg-orange-500/20 text-orange-400"
+                  : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+              )}
+              aria-label="Upload file"
+            >
+              <FileUp className="w-4 h-4" />
+            </button>
+          )}
+
+          {/* Microphone button - before send */}
+          {sttSupported && (
+            <button
+              type="button"
+              onClick={isListening ? stopListening : startListening}
+              disabled={disabled || isProcessing}
+              className={cn(
+                "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 relative",
+                isListening
+                  ? "bg-red-500 hover:bg-red-600 text-white"
+                  : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+              )}
+              aria-label={isListening ? "Stop recording" : "Start voice input"}
+            >
+              {isListening ? (
+                <>
+                  <span className="absolute inset-0 rounded-lg bg-red-500 animate-ping opacity-30" />
+                  <Square className="w-3.5 h-3.5 relative z-10 fill-white" />
+                </>
+              ) : (
+                <Mic className="w-4 h-4" />
+              )}
+            </button>
+          )}
+
           {/* Send button */}
           <button
             onClick={handleSubmit}
             disabled={!canSubmit}
             className={cn(
-              "h-9 w-9 rounded-xl flex items-center justify-center flex-shrink-0 transition-all",
+              "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
               canSubmit
                 ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
                 : "text-white/30"
@@ -471,10 +526,22 @@ export function ChatInputBar({
           </button>
         </div>
 
-        {/* AI Disclaimer */}
-        <p className="text-center text-[10px] text-white/30 mt-2">
-          Clarus uses AI and may make mistakes. Always verify important information.
-        </p>
+        {/* Helper text and character count */}
+        <div className="flex items-center justify-between mt-2 px-1">
+          <p className="text-[10px] text-white/30">
+            Supports PDF, Word, Excel, PowerPoint, TXT, and CSV. Max 20MB. AI may make mistakes.
+          </p>
+          {isNearLimit && (
+            <span
+              className={cn(
+                "text-[10px] tabular-nums flex-shrink-0 ml-2",
+                isAtLimit ? "text-red-400" : "text-yellow-400/70"
+              )}
+            >
+              {charCount.toLocaleString()}/{MAX_MESSAGE_LENGTH.toLocaleString()}
+            </span>
+          )}
+        </div>
       </div>
     </div>
   )

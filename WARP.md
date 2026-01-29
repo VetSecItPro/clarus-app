@@ -86,8 +86,8 @@ User Action → Client Component → API Route → Supabase/External APIs → Da
 - `components/with-auth.tsx` wraps all protected pages
 - Checks Supabase session on component mount
 - Verifies subscription status (`active`, `trialing`, or `grandfathered` required)
-- Redirects to `/login` if unauthenticated, `/pricing` if no valid subscription
-- Public paths: `/login`, `/signup`, `/forgot-password`, `/update-password`, `/pricing`
+- Redirects to `/login` if unauthenticated
+- Public paths: `/login`, `/signup`, `/forgot-password`, `/update-password`
 
 ### Key Component Patterns
 
@@ -166,7 +166,7 @@ Content type is determined from URL during clipboard processing:
 Prompts are stored in database tables (`active_summarizer_prompt`, `active_chat_prompt`) with single row (id=1). This allows runtime prompt modification without code changes. Edit via settings modal in UI.
 
 ### Subscription Gate
-All main features require active subscription. Check `withAuth.tsx` for subscription status enforcement logic. Free users redirected to `/pricing`.
+All main features require active subscription. Check `withAuth.tsx` for subscription status enforcement logic.
 
 ### Styling
 - **Framework**: Tailwind CSS 4.x with custom dark theme
