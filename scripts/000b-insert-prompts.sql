@@ -1,3 +1,9 @@
+-- Clarus Prompt Data
+-- Run AFTER 100-create-clarus-schema.sql and 000-full-schema.sql
+-- These inserts go into the clarus.analysis_prompts table
+
+SET search_path TO clarus, public, extensions;
+
 INSERT INTO analysis_prompts (id, prompt_type, name, description, system_content, user_content_template, model_name, temperature, max_tokens, expect_json, is_active, use_web_search) VALUES ('6181b4e3-4aa9-46de-9a24-bf7a8e02bf57', 'action_items', 'Action Items Extractor', 'Extracts 5-10 actionable takeaways from content that users can implement', 'You are a strategic intelligence analyst who extracts actionable recommendations from content. Your goal is to convert information into specific, implementable actions.
 
 EXTRACTION PROTOCOL:
