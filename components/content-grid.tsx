@@ -3,25 +3,19 @@
 import type React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Play, FileText, ExternalLink, Loader2, PlusCircle, User, Star, CalendarDays } from "lucide-react"
+import { Play, FileText, ExternalLink, Loader2, PlusCircle } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { Database } from "@/types/database.types"
-import { formatDistanceToNow } from "date-fns"
-import { formatDuration } from "@/lib/utils"
 
 type ContentItem = Database["clarus"]["Tables"]["content"]["Row"]
 
-// Extended DisplayItem to include rater info for the feed
 export type DisplayItem = ContentItem & {
   domain: string
-  savedAt: string // Original content savedAt
+  savedAt: string
   displayDuration: string
   isProcessing: boolean
-  raterUsername?: string | null // For feed: username/email of the rater
-  ratingScore?: number | null // For feed: the score given by the rater
-  ratingGivenAt?: string | null // For feed: when the rating was given
-  overview?: string | null // For brain view experiment
+  overview?: string | null
 }
 
 interface ContentGridProps {
@@ -33,33 +27,6 @@ interface ContentGridProps {
   emptyStateMessage: string
   onQuickAddFromClipboard?: () => Promise<void>
   isQuickAdding?: boolean
-  isFeedView?: boolean // To conditionally show rater info
-}
-
-const getDomainFromUrl = (url: string | null): string => {
-  if (!url) return "unknown.com"
-  try {
-    return new URL(url).hostname.replace("www.", "")
-  } catch {
-    return "unknown.com"
-  }
-}
-
-// This function processes a raw ContentItem from DB into a basic DisplayItem
-export const processItemForDisplay = (
-  item: ContentItem,
-): Omit<DisplayItem, "raterUsername" | "ratingScore" | "ratingGivenAt"> => ({
-  ...item,
-  domain: getDomainFromUrl(item.url),
-  savedAt: item.date_added ? formatDistanceToNow(new Date(item.date_added), { addSuffix: true }) : "unknown",
-  displayDuration: formatDuration(item.duration),
-  isProcessing: !item.full_text,
-})
-
-const RATING_EMOJIS: { [key: number]: React.ReactNode } = {
-  1: "⚡",
-  2: "⚡⚡",
-  3: "⚡⚡⚡",
 }
 
 export default function ContentGrid({
@@ -71,7 +38,6 @@ export default function ContentGrid({
   emptyStateMessage,
   onQuickAddFromClipboard,
   isQuickAdding,
-  isFeedView = false,
 }: ContentGridProps) {
   const handleOpenOriginal = (e: React.MouseEvent<HTMLButtonElement>, url: string | null) => {
     e.stopPropagation()
@@ -133,27 +99,8 @@ export default function ContentGrid({
   return (
     <div className="space-y-16">
       {items.map((item) => (
-        <Link key={item.id + (item.raterUsername || "")} href={`/item/${item.id}`} passHref legacyBehavior={false}>
+        <Link key={item.id} href={`/item/${item.id}`} passHref legacyBehavior={false}>
           <article className="group cursor-pointer block">
-            {isFeedView && item.raterUsername && item.ratingScore && (
-              <div className="mb-3 flex items-center gap-2 text-xs text-gray-400 border border-gray-700 bg-gray-800/30 p-2 rounded-lg">
-                <User className="w-3.5 h-3.5 text-sky-400 flex-shrink-0" />
-                <span className="font-medium text-gray-300 truncate" title={item.raterUsername}>
-                  {item.raterUsername.split("@")[0]}
-                </span>
-                <span>rated it</span>
-                <div className="text-lg h-5 flex items-center" title={`Score: ${item.ratingScore}`}>
-                  {RATING_EMOJIS[item.ratingScore] || <Star className="w-3.5 h-3.5 text-yellow-400" />}
-                </div>
-                {item.ratingGivenAt && (
-                  <>
-                    <span>•</span>
-                    <CalendarDays className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
-                    <span>{item.ratingGivenAt}</span>
-                  </>
-                )}
-              </div>
-            )}
             <div className="relative mb-4 overflow-hidden rounded-xl">
               <Image
                 src={
@@ -184,13 +131,12 @@ export default function ContentGrid({
                   )}
                 </Badge>
               </div>
-              {item.isProcessing &&
-                !isFeedView && ( // Don't show processing overlay for feed items if they are already rated
-                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                    <Loader2 className="w-8 h-8 text-white animate-spin" />
-                    <p className="ml-2 text-white text-sm">Processing...</p>
-                  </div>
-                )}
+              {item.isProcessing && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                  <Loader2 className="w-8 h-8 text-white animate-spin" />
+                  <p className="ml-2 text-white text-sm">Processing...</p>
+                </div>
+              )}
             </div>
             <div className="space-y-4">
               <h2 className="text-xl font-medium text-[#F0F0F0] leading-tight group-hover:text-gray-200 transition-colors">
