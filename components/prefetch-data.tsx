@@ -4,13 +4,6 @@ import { useEffect } from "react"
 import { preload } from "swr"
 import { supabase } from "@/lib/supabase"
 
-// Type for community feed items from Supabase join query
-interface CommunityFeedItem {
-  id: string
-  summaries: { brief_overview: string | null; triage: { quality_score?: number } | null } | Array<{ brief_overview: string | null; triage: { quality_score?: number } | null }> | null
-  [key: string]: unknown
-}
-
 // Helper to add timeout to promises
 const withTimeout = <T,>(promise: Promise<T>, ms: number): Promise<T> => {
   const timeout = new Promise<never>((_, reject) => {
@@ -26,7 +19,7 @@ export function PrefetchData({ userId }: { userId: string | undefined }) {
 
     // Delay prefetching slightly to not block initial render
     const timer = setTimeout(async () => {
-      // Prefetch library data (first page) - errors caught inside fetcher
+      // Prefetch library data (first page)
       const libraryKey = `library:${userId}::all:date_desc::0`
       preload(libraryKey, async () => {
         try {
@@ -40,55 +33,11 @@ export function PrefetchData({ userId }: { userId: string | undefined }) {
           const { data } = await withTimeout(Promise.resolve(query), 5000)
           return { items: data || [], hasMore: (data?.length || 0) > 20 }
         } catch (err) {
-          // Silently fail - prefetch is optional
           console.debug("Library prefetch failed:", err)
           return { items: [], hasMore: false }
         }
       })
-
-      // Prefetch community feed - errors caught inside fetcher
-      const communityKey = `community:${userId}::all:date_added_desc`
-      preload(communityKey, async () => {
-        try {
-          const hiddenQuery = supabase
-            .from("hidden_content")
-            .select("content_id")
-            .eq("user_id", userId)
-
-          const contentQuery = supabase
-            .from("content")
-            .select(`*, users:user_id(name, email), content_ratings(signal_score, user_id, created_at), summaries(brief_overview, triage)`)
-            .not("user_id", "eq", userId)
-            .not("summaries", "is", "null")
-            .order("date_added", { ascending: false })
-
-          const [hiddenResult, contentResult] = await withTimeout(
-            Promise.all([Promise.resolve(hiddenQuery), Promise.resolve(contentQuery)]),
-            5000
-          )
-
-          const hiddenIds = new Set((hiddenResult.data || []).map((h) => h.content_id))
-          const data = contentResult.data || []
-
-          return (data as CommunityFeedItem[])
-            .filter((item) => !hiddenIds.has(item.id))
-            .map((item) => {
-              const summaryData = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
-              const triage = summaryData?.triage as { quality_score?: number } | null
-              const qualityScore = triage?.quality_score ?? null
-              return {
-                ...item,
-                ratingScore: qualityScore ?? 0,
-                ratingSource: "ai" as const,
-              }
-            })
-        } catch (err) {
-          // Silently fail - prefetch is optional
-          console.debug("Community prefetch failed:", err)
-          return []
-        }
-      })
-    }, 500) // Wait 500ms after mount to prefetch
+    }, 500)
 
     return () => clearTimeout(timer)
   }, [userId])
