@@ -5,6 +5,7 @@ import type { Database } from "@/types/database.types"
 import { type NextRequest, NextResponse } from "next/server"
 import { validateContentId, validateChatMessage, checkRateLimit } from "@/lib/validation"
 import { z } from "zod"
+import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -173,13 +174,26 @@ export async function POST(req: NextRequest) {
     // Fetch content with title and URL
     const { data: contentData, error: contentError } = await supabaseAdmin
       .from("content")
-      .select("title, url, full_text, type, author")
+      .select("title, url, full_text, type, author, user_id")
       .eq("id", contentIdValidation.sanitized!)
       .single()
 
     if (contentError || !contentData) {
       console.error("Chat API: Error fetching content from DB.", contentError)
       return NextResponse.json({ error: "Could not load content to chat with." }, { status: 500 })
+    }
+
+    // Tier-based usage limit check for chat messages
+    if (contentData.user_id) {
+      const usageCheck = await enforceUsageLimit(supabaseAdmin, contentData.user_id, "chat_messages_count")
+      if (!usageCheck.allowed) {
+        return NextResponse.json(
+          { error: `Monthly chat message limit reached (${usageCheck.limit}). Upgrade your plan for more.`, upgrade_required: true, tier: usageCheck.tier },
+          { status: 403 }
+        )
+      }
+      // Increment before streaming (can't increment after stream completes)
+      await incrementUsage(supabaseAdmin, contentData.user_id, "chat_messages_count")
     }
 
     // Fetch summary data (including action_items for grounded chat)

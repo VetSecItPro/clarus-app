@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { uuidSchema, bookmarkUpdateSchema, parseBody } from "@/lib/schemas"
 import { checkRateLimit } from "@/lib/validation"
+import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
 
 export async function PATCH(
   request: Request,
@@ -42,6 +43,17 @@ export async function PATCH(
       return AuthErrors.badRequest(validation.error)
     }
 
+    // Check usage limit only when adding a bookmark (not removing)
+    if (validation.data.is_bookmarked) {
+      const usageCheck = await enforceUsageLimit(auth.supabase, auth.user.id, "bookmarks_count")
+      if (!usageCheck.allowed) {
+        return NextResponse.json(
+          { success: false, error: `Monthly bookmark limit reached (${usageCheck.limit}). Upgrade for more.`, upgrade_required: true, tier: usageCheck.tier },
+          { status: 403 }
+        )
+      }
+    }
+
     // Update bookmark status
     const { data, error } = await auth.supabase
       .from("content")
@@ -53,6 +65,11 @@ export async function PATCH(
     if (error) {
       console.error("Bookmark update error:", error)
       return NextResponse.json({ success: false, error: "Failed to update bookmark. Please try again." }, { status: 500 })
+    }
+
+    // Track bookmark usage on add
+    if (validation.data.is_bookmarked) {
+      await incrementUsage(auth.supabase, auth.user.id, "bookmarks_count")
     }
 
     return NextResponse.json({ success: true, data })

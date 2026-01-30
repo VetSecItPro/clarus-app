@@ -248,7 +248,15 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
       inputRef.current?.focus()
     },
     onError: (error) => {
-      toast.error("Chat error", { description: error.message })
+      const msg = error.message ?? ""
+      if (msg.includes("limit reached") || msg.includes("Upgrade")) {
+        toast.error("Chat limit reached", {
+          description: "Upgrade your plan for unlimited chat messages.",
+          action: { label: "View Plans", onClick: () => window.open("/pricing", "_blank") },
+        })
+      } else {
+        toast.error("Chat error", { description: msg })
+      }
     },
   })
 
