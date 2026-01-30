@@ -25,6 +25,8 @@ import { ActionItemsCard } from "@/components/ui/action-items-card"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { ShareModal } from "@/components/share-modal"
+import { UpgradeModal } from "@/components/upgrade-modal"
+import { useUpgradeModal } from "@/lib/hooks/use-upgrade-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   DropdownMenu,
@@ -117,6 +119,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [isTogglingBookmark, setIsTogglingBookmark] = useState(false)
   const [crossReferences, setCrossReferences] = useState<CrossReference[]>([])
+  const upgradeModal = useUpgradeModal()
 
   const isDesktop = useIsDesktop()
 
@@ -172,7 +175,16 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       const data = await response.json()
       if (!data.success) {
         setIsBookmarked(!newState) // Revert
-        toast.error("Failed to update bookmark")
+        if (data.upgrade_required) {
+          upgradeModal.showUpgrade({
+            feature: "Bookmarks",
+            currentTier: data.tier ?? "free",
+            currentCount: data.limit,
+            limit: data.limit,
+          })
+        } else {
+          toast.error("Failed to update bookmark")
+        }
       } else {
         toast.success(newState ? "Added to Reading List" : "Removed from Reading List")
       }
@@ -182,7 +194,43 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     } finally {
       setIsTogglingBookmark(false)
     }
-  }, [item, isBookmarked, isTogglingBookmark])
+  }, [item, isBookmarked, isTogglingBookmark, upgradeModal])
+
+  const handleExport = useCallback(async (format: "pdf" | "markdown") => {
+    if (!item) return
+    try {
+      const response = await fetch(`/api/export/${format}?id=${item.id}`)
+      if (response.status === 403) {
+        const data = await response.json()
+        if (data.upgrade_required) {
+          upgradeModal.showUpgrade({
+            feature: "Exports",
+            currentTier: data.tier ?? "free",
+            requiredTier: "starter",
+          })
+          return
+        }
+      }
+      if (!response.ok) {
+        toast.error("Export failed")
+        return
+      }
+      // Download the file
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      const ext = format === "pdf" ? "pdf" : "md"
+      const safeTitle = (item.title || "report").replace(/[^a-zA-Z0-9]/g, "_").substring(0, 50)
+      a.download = `clarus-${safeTitle}.${ext}`
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      URL.revokeObjectURL(url)
+    } catch {
+      toast.error("Export failed")
+    }
+  }, [item, upgradeModal])
 
   const fetchContentData = useCallback(async (showLoadingState = true) => {
     if (showLoadingState) setLoading(true)
@@ -958,14 +1006,14 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10">
                   <DropdownMenuItem
-                    onClick={() => window.open(`/api/export/pdf?id=${item?.id}`, "_blank")}
+                    onClick={() => handleExport("pdf")}
                     className="cursor-pointer hover:bg-white/10 text-white/80"
                   >
                     <FileText className="mr-2 h-4 w-4" />
                     PDF Report
                   </DropdownMenuItem>
                   <DropdownMenuItem
-                    onClick={() => window.open(`/api/export/markdown?id=${item?.id}`, "_blank")}
+                    onClick={() => handleExport("markdown")}
                     className="cursor-pointer hover:bg-white/10 text-white/80"
                   >
                     <FileText className="mr-2 h-4 w-4" />
@@ -1397,14 +1445,14 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                         </Tooltip>
                         <DropdownMenuContent align="center" className="bg-[#1a1a1a] border-white/10">
                           <DropdownMenuItem
-                            onClick={() => window.open(`/api/export/pdf?id=${item?.id}`, "_blank")}
+                            onClick={() => handleExport("pdf")}
                             className="cursor-pointer hover:bg-white/10 text-white/80"
                           >
                             <FileText className="mr-2 h-4 w-4" />
                             PDF Report
                           </DropdownMenuItem>
                           <DropdownMenuItem
-                            onClick={() => window.open(`/api/export/markdown?id=${item?.id}`, "_blank")}
+                            onClick={() => handleExport("markdown")}
                             className="cursor-pointer hover:bg-white/10 text-white/80"
                           >
                             <FileText className="mr-2 h-4 w-4" />
@@ -1616,6 +1664,15 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         contentUrl={item.url}
         briefOverview={summary?.brief_overview || undefined}
         contentId={item.id}
+      />
+      <UpgradeModal
+        isOpen={upgradeModal.isOpen}
+        onClose={upgradeModal.close}
+        feature={upgradeModal.feature}
+        currentTier={upgradeModal.currentTier}
+        requiredTier={upgradeModal.requiredTier}
+        currentCount={upgradeModal.currentCount}
+        limit={upgradeModal.limit}
       />
 
       <MobileBottomNav />

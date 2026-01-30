@@ -3,6 +3,8 @@ import type { TruthCheckData, TriageData, ActionItemsData, ClaimHighlight } from
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { exportSchema, parseQuery } from "@/lib/schemas"
 import { checkRateLimit } from "@/lib/validation"
+import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 
 // Color palette
 const COLORS = {
@@ -39,6 +41,29 @@ export async function GET(request: Request) {
 
     const contentId = validation.data.id
 
+    // Tier feature check: exports require starter+
+    const { data: userData } = await auth.supabase
+      .from("users")
+      .select("tier")
+      .eq("id", auth.user.id)
+      .single()
+    const tier = normalizeTier(userData?.tier)
+    if (!TIER_FEATURES[tier].exports) {
+      return new Response(
+        JSON.stringify({ error: "Exports require a Starter or Pro plan.", upgrade_required: true, tier }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
+    // Usage limit check
+    const usageCheck = await enforceUsageLimit(auth.supabase, auth.user.id, "exports_count")
+    if (!usageCheck.allowed) {
+      return new Response(
+        JSON.stringify({ error: `Monthly export limit reached (${usageCheck.limit}).`, upgrade_required: true, tier: usageCheck.tier }),
+        { status: 403, headers: { "Content-Type": "application/json" } }
+      )
+    }
+
     // Verify ownership
     const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, contentId)
     if (!ownership.owned) {
@@ -64,6 +89,9 @@ export async function GET(request: Request) {
       .replace(/[^a-zA-Z0-9]/g, "_")
       .substring(0, 50)
     const filename = `clarus-${safeTitle}.pdf`
+
+    // Track export usage
+    await incrementUsage(auth.supabase, auth.user.id, "exports_count")
 
     return new Response(pdfBytes, {
       headers: {

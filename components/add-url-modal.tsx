@@ -109,7 +109,14 @@ export function AddUrlModal({ isOpen, onOpenChange }: AddUrlModalProps) {
           if (!apiResponse.ok) {
             const errorData = await apiResponse.json().catch(() => ({ error: "Unknown API error" }))
             console.error("Error processing content via API:", errorData.error)
-            toast.error(`Background processing failed: ${errorData.error || "Unknown API error"}`)
+            if (errorData.upgrade_required) {
+              toast.error("Analysis limit reached", {
+                description: errorData.error || "Upgrade your plan for more analyses.",
+                action: { label: "View Plans", onClick: () => window.open("/pricing", "_blank") },
+              })
+            } else {
+              toast.error(`Background processing failed: ${errorData.error || "Unknown API error"}`)
+            }
           } else {
             const result = await apiResponse.json().catch(() => ({ message: "Content processing complete!" }))
             toast.success(result.message || "Content processing complete!")
