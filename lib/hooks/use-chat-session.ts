@@ -181,6 +181,16 @@ export function useChatSession({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content_id: newContent.id }),
+        }).then(async (res) => {
+          if (res.status === 403) {
+            const data = await res.json().catch(() => ({}))
+            if (data.upgrade_required) {
+              toast.error("Analysis limit reached", {
+                description: data.error || "Upgrade your plan for more analyses.",
+                action: { label: "View Plans", onClick: () => window.open("/pricing", "_blank") },
+              })
+            }
+          }
         }).catch(console.error)
 
         // Start polling for status

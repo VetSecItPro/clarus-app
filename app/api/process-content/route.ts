@@ -3,6 +3,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import type { Database, Json, Tables, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
 import { validateContentId, checkRateLimit } from "@/lib/validation"
 import { logApiUsage, logProcessingMetrics, createTimer } from "@/lib/api-usage"
+import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -1266,6 +1267,17 @@ export async function POST(req: NextRequest) {
 
   console.log(`API: Found content: ${content.url}, type: ${content.type}`)
 
+  // Tier-based usage limit check (skip for regeneration — already counted)
+  if (!force_regenerate && content.user_id) {
+    const usageCheck = await enforceUsageLimit(supabase, content.user_id, "analyses_count")
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        { error: `Monthly analysis limit reached (${usageCheck.limit}). Upgrade your plan for more.`, upgrade_required: true, tier: usageCheck.tier },
+        { status: 403 }
+      )
+    }
+  }
+
   try {
     if (content.type === "youtube") {
       const shouldFetchYouTubeMetadata =
@@ -1682,5 +1694,15 @@ export async function POST(req: NextRequest) {
   }
 
   console.log(`API: Processing complete for content_id: ${content_id}. Sections generated: ${responsePayload.sections_generated.join(", ")}`)
+
+  // Track analysis usage (non-fatal)
+  if (!force_regenerate && content.user_id) {
+    try {
+      await incrementUsage(supabase, content.user_id, "analyses_count")
+    } catch (e) {
+      console.error("[usage] Failed to track analysis usage:", e)
+    }
+  }
+
   return NextResponse.json(responsePayload, { status: 200 })
 }

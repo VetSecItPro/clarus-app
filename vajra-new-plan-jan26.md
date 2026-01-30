@@ -819,3 +819,294 @@ export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm typecheck
 export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm lint
 export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm build
 ```
+
+---
+
+## Workstream 5: Features Shipped (Jan 29, 2026) — PR #9
+
+| Feature | Description | Migration |
+|---------|-------------|-----------|
+| Shareable Analysis Links | Public `/share/[token]` pages, share modal Link+Email tabs, 12-char base62 tokens | `200-add-share-token.sql` |
+| Reading List | Bookmark button on item page (desktop+mobile), settings gear "Reading List" label | None (uses existing `is_bookmarked`) |
+| Weekly Digest Email | Vercel cron Sunday 2pm UTC, sends to `digest_enabled=true` users, digest preferences API | `201-add-digest-columns.sql` |
+| Claim Tracking | Claims extracted during processing, pg_trgm similarity, cross-references API, purple badges | `202-create-claims-table.sql` |
+
+---
+
+## Workstream 6: Monetization — Competitive Analysis & Tier Design
+
+**Date**: Jan 29, 2026
+
+### Competitive Landscape: What They Offer vs. What Clarus Offers
+
+#### Category A: AI Content Summarizers
+
+| Feature | Glasp ($7/mo) | TLDR This | Scholarcy ($5/mo) | NoteGPT | Recall ($10/mo) | Summarize.tech | **Clarus** |
+|---------|--------------|-----------|-------------------|---------|----------------|----------------|------------|
+| Article summarization | Yes | Yes | Yes (academic) | Yes | Yes | No | **Yes** |
+| YouTube summarization | Yes (3/day free) | No | No | Yes | Yes | Yes | **Yes** |
+| X post analysis | No | No | No | No | No | No | **Yes** |
+| Quality scoring (1-10) | No | No | No | No | No | No | **Yes** |
+| Signal-to-noise rating | No | No | No | No | No | No | **Yes** |
+| Fact-checking / truth check | No | No | No | No | No | No | **Yes** |
+| Claim tracking across content | No | No | No | No | No | No | **Yes** |
+| Chat with content | No | No | No | Limited | No | No | **Yes (voice+text)** |
+| Action items extraction | No | No | No | No | No | No | **Yes** |
+| Shareable analysis links | No | No | No | No | No | No | **Yes** |
+| Weekly digest email | No | No | No | No | No | No | **Yes** |
+| Community feed | Social highlights | No | No | No | No | No | **Yes** |
+| Tags/organization | No | No | No | No | Auto-linking | No | **Yes (auto+manual)** |
+| Domain credibility stats | No | No | No | No | No | No | **Yes** |
+| Export (Markdown/PDF) | No | No | Word/PPT | No | No | No | **Yes** |
+
+#### Category B: Fact-Checking Tools
+
+| Feature | ClaimBuster | Full Fact | Logically | **Clarus** |
+|---------|-------------|-----------|-----------|------------|
+| Consumer-facing | No (research) | No (B2B) | No (enterprise) | **Yes** |
+| URL-based analysis | No | No | No | **Yes** |
+| Claim verification | Yes (automated) | Yes (professional) | Yes (enterprise) | **Yes (AI + web search)** |
+| Cross-reference claims | No | No | No | **Yes (pg_trgm)** |
+| Content summarization | No | No | No | **Yes (6 sections)** |
+| Chat about claims | No | No | No | **Yes** |
+| Pricing | Free (research) | B2B | Enterprise | **$0-16/mo** |
+
+#### Category C: Document/Research Chat Tools
+
+| Feature | ChatPDF ($20/mo) | Humata ($10-50/mo) | Perplexity ($20/mo) | Readwise ($10/mo) | **Clarus** |
+|---------|------------------|-------------------|--------------------|-------------------|------------|
+| Chat with content | Yes (PDF only) | Yes (uploaded files) | Yes (search-based) | No | **Yes (any URL)** |
+| URL-based analysis | No | No | No | Yes (save) | **Yes (deep analysis)** |
+| Quality scoring | No | No | No | No | **Yes** |
+| Fact-checking | No | No | Partial (search) | No | **Yes (structured)** |
+| Action items | No | No | No | No | **Yes** |
+| Community/social | No | No | No | No | **Yes** |
+| Export | Yes | Yes | No | Yes | **Yes** |
+
+#### Key Pricing Data Points from Competitors
+
+| Tool | Free Tier | Entry Paid | Standard | Pro/Team |
+|------|-----------|------------|----------|----------|
+| Glasp | 3 summaries/day | $7/mo | - | - |
+| Recall | 10 total summaries | $10/mo | - | - |
+| Humata | 60 pages/month | $1.99/mo (student) | $9.99/mo | $49/user/mo |
+| ChatPDF | 2 docs/day | $19.99/mo | - | - |
+| Perplexity | Limited queries | $20/mo | - | $200/mo |
+| Otter.ai | 300 min/month | $8.33/mo | $20/mo | $30/user/mo |
+| Elicit | 5,000 one-time credits | $12/mo | $49/mo | Custom |
+| Readwise | - | $5.59/mo | $9.99/mo | - |
+| Monica AI | 40 daily basic | $8.30/mo | $24.90/mo | - |
+
+### The Claude/ChatGPT Question: Can Clarus Compete?
+
+**The honest answer: No, Clarus cannot compete head-to-head with ChatGPT/Claude on raw summarization.** Any user can paste a URL into ChatGPT and get a summary. That's table stakes now.
+
+**But Clarus doesn't need to compete on summarization. Here's why Clarus wins on a different axis:**
+
+| Dimension | ChatGPT / Claude | Clarus |
+|-----------|-----------------|--------|
+| **Input** | User pastes URL, asks a question | User submits URL, gets structured analysis automatically |
+| **Output** | One-shot text blob | 6 structured sections with scores, ratings, claims |
+| **Persistence** | Gone after chat session | Saved to library permanently |
+| **Quality scoring** | None | 1-10 score + signal-to-noise + worth-your-time |
+| **Fact-checking** | Only if you ask | Automatic with claim verification + web search |
+| **Claim tracking** | None | Cross-references across all your content |
+| **History** | None (conversation-based) | Searchable library with tags, filters, sort |
+| **Sharing** | Copy-paste chat | Public share links with full analysis |
+| **Community** | None | Community feed to discover analyses |
+| **Digest** | None | Weekly email summarizing your week |
+| **Export** | Manual copy | Structured Markdown/PDF export |
+| **Mobile** | App (general purpose) | PWA optimized for content analysis |
+| **Chrome extension** | ChatGPT extension (general) | Side panel built for analyze-on-the-spot |
+
+**Clarus's positioning is NOT "better AI summarizer" — it's "your personal content intelligence system."**
+
+ChatGPT is a conversation tool. Clarus is a **workflow** — submit, analyze, save, track, share, discover. The moat is:
+1. **Structured output** (scores, ratings, claims) vs. prose blobs
+2. **Persistence** (library, tags, search) vs. ephemeral chat
+3. **Cross-content intelligence** (claim tracking, domain credibility) vs. one-off answers
+4. **Automated workflow** (one URL, 6 sections, no prompting) vs. manual prompt crafting
+
+### Solo Dev ROI Analysis
+
+#### Cost Structure (Monthly)
+
+| Service | Cost | Notes |
+|---------|------|-------|
+| Vercel (Pro) | $20/mo | Needed for cron jobs + 5min function timeout |
+| Supabase (Free) | $0 | Free tier: 500MB DB, 50K MAU auth, 1GB storage |
+| Supabase (Pro) | $25/mo | If you exceed free tier (likely at ~200+ users) |
+| OpenRouter (AI) | Variable | ~$0.03-0.10 per analysis (6 AI calls) |
+| Firecrawl | $0-19/mo | Free: 500 credits. Pro: $19/mo for 3K credits |
+| Supadata | $0-15/mo | Free: limited. Paid for YouTube transcripts |
+| Tavily | $0 | Free: 1,000 searches/month |
+| Resend | $0 | Free: 100 emails/day (3,000/mo) |
+| Domain | $12/yr | clarusapp.io |
+| **Total fixed** | **$20-60/mo** | **Before AI costs** |
+
+#### AI Cost Per Analysis (Estimated)
+
+| Section | Model | Est. Cost |
+|---------|-------|-----------|
+| Brief overview | Claude Sonnet 4 | $0.005 |
+| Triage | Claude Sonnet 4 | $0.008 |
+| Key Takeaways | Claude Sonnet 4 | $0.010 |
+| Truth Check | Claude Sonnet 4 | $0.015 |
+| Action Items | Claude Sonnet 4 | $0.008 |
+| Detailed Summary | Claude Sonnet 4 | $0.015 |
+| Auto-tags | Gemini Flash | $0.001 |
+| Web search (Tavily) | Tavily | $0 (free tier) |
+| **Total per analysis** | | **~$0.06** |
+
+#### Revenue Model
+
+| Tier | Price | Users Needed for $1K MRR | Users Needed for $5K MRR |
+|------|-------|--------------------------|--------------------------|
+| Starter ($8/mo) | $8 | 125 | 625 |
+| Pro ($16/mo) | $16 | 63 | 313 |
+| **Blended (60% Starter, 40% Pro)** | ~$11.20 avg | **90** | **447** |
+
+#### Break-Even Analysis
+
+| Scenario | Fixed Costs | AI Cost (per user avg) | Break-Even Users |
+|----------|-------------|----------------------|------------------|
+| Early (Vercel Pro only) | $20/mo | ~$1.50/mo (25 analyses) | 2-3 paid users |
+| Growth (Supa Pro + Firecrawl) | $64/mo | ~$1.50/mo | 7 paid users |
+| Scale (500 users) | $64/mo + ~$750 AI | ~$1.50/mo | Already profitable at ~7 paid |
+
+**Key insight**: With ~$0.06 per analysis and users averaging 25 analyses/month, AI costs per user are ~$1.50/mo. A Starter user at $8/mo leaves $6.50 margin. A Pro user at $16/mo leaves $14.50 margin. **You're profitable at 7 paying users.**
+
+#### Realistic Revenue Timeline (Solo Dev)
+
+| Month | Free Users | Paid Users | MRR | Notes |
+|-------|-----------|------------|-----|-------|
+| 1-2 | 50-100 | 0-3 | $0-24 | Launch, friends, ProductHunt |
+| 3-4 | 200-500 | 10-25 | $80-280 | SEO starts ranking, word of mouth |
+| 5-6 | 500-1K | 30-60 | $240-672 | Chrome extension drives signups |
+| 7-12 | 1K-3K | 80-200 | $640-2,240 | Organic growth, content marketing |
+| 12+ | 3K-10K | 200-500 | $2,240-5,600 | Established, SEO+AEO traffic |
+
+**Realistic solo dev first-year target: $500-2,000 MRR by month 12.** Not life-changing, but it covers all costs and validates the product. The path to $5K+ MRR requires either viral growth, SEO dominance in the niche, or a B2B pivot.
+
+### SEO/AEO Page Strategy
+
+#### Pages to Create
+
+| Page | Target Query | Content |
+|------|-------------|---------|
+| `/` (homepage) | "ai content analyzer" "ai article analysis" | Hero + features + CTA |
+| `/features` | "ai fact checker for articles" "youtube video quality checker" | Deep feature showcase |
+| `/use-cases/students` | "check if article is reliable for research" | Student-focused landing |
+| `/use-cases/journalists` | "fact check article claims" "verify news sources" | Journalist-focused landing |
+| `/use-cases/researchers` | "analyze research paper quality" | Researcher-focused landing |
+| `/compare/chatgpt` | "chatgpt vs clarus" "better than chatgpt for articles" | Direct comparison |
+| `/compare/glasp` | "glasp alternative" | Competitor comparison |
+| `/compare/perplexity` | "perplexity alternative for content analysis" | Competitor comparison |
+| `/blog/how-to-fact-check` | "how to fact check an article" "is this article reliable" | Educational content |
+| `/blog/ai-content-analysis` | "ai content analysis tools 2026" | Listicle (Clarus featured) |
+| `/tools/quality-score` | "check article quality score" "content quality analyzer" | Free tool (limited, drives signup) |
+| `/tools/truth-check` | "fact check this article" "is this article true" | Free tool (limited, drives signup) |
+
+#### AEO (Answer Engine Optimization) Strategy
+
+For AI search engines (Perplexity, ChatGPT Search, Google AI Overviews):
+
+1. **Structured data** — Add JSON-LD schema (SoftwareApplication, FAQPage, HowTo)
+2. **FAQ sections** — Every landing page gets a FAQ that AI can quote
+3. **Comparison tables** — Markdown tables that AI search engines parse well
+4. **"Best X" positioning** — Blog posts targeting "best ai fact checker 2026" etc.
+
+#### SEO Competitive Reality Check
+
+**Can you rank for these terms as a solo dev?**
+
+- "ai content analyzer" — **Medium difficulty**. Not dominated by giants. Clarus can rank on page 1 with good content.
+- "fact check article" — **Hard**. Snopes, PolitiFact, Full Fact dominate. But "ai fact check article" is open.
+- "youtube video summary" — **Hard**. Glasp, NoteGPT, Summarize.tech have head starts. Differentiate with "youtube video quality analysis" instead.
+- "chatgpt alternative for article analysis" — **Low competition**. Long-tail, high intent. Easy win.
+- "is this article reliable" — **Medium**. Mostly editorial content, not tools. Clarus could rank with a free tool page.
+
+**Bottom line**: Target long-tail queries where "AI + analysis + quality + fact-check" intersect. Avoid head terms owned by big players. The comparison pages (`/compare/chatgpt`, `/compare/glasp`) are your highest-ROI SEO pages because they capture users already looking for alternatives.
+
+### Clarus Tier Design (Final)
+
+| Feature | Free | Starter ($8/mo) | Pro ($16/mo) |
+|---------|------|-----------------|--------------|
+| **Analyses per month** | 5 | 50 | Unlimited |
+| **Analysis sections** | All 6 | All 6 | All 6 |
+| **Chat messages per content** | 10 | Unlimited | Unlimited |
+| **Library storage** | 25 items | 500 items | Unlimited |
+| **Reading list (bookmarks)** | 5 items | 50 items | Unlimited |
+| **Shareable links** | No | 10/month | Unlimited |
+| **Claim tracking** | No | No | Full cross-referencing |
+| **Weekly digest email** | No | Yes | Yes |
+| **Community feed** | View only | View + post | View + post |
+| **Tags / organization** | 3 tags max | Unlimited | Unlimited |
+| **Export (Markdown/JSON)** | No | Yes | Yes |
+| **Export (PDF)** | No | No | Yes |
+| **Content types** | Articles + YouTube | + X posts, PDFs | All types |
+| **Processing priority** | Standard | Standard | Priority queue |
+| **Domain credibility stats** | No | Basic | Detailed |
+| **Chrome extension** | 3 analyses/month | 50/month | Unlimited |
+| **Support** | Community | Email | Priority email |
+| **API access** | No | No | Yes (future) |
+
+#### Annual Pricing
+- **Starter**: $80/year ($6.67/mo — 17% off)
+- **Pro**: $160/year ($13.33/mo — 17% off)
+
+### Feature Gating Implementation Plan
+
+#### Database Changes
+
+```sql
+-- Add tier column to users table
+ALTER TABLE users ADD COLUMN IF NOT EXISTS tier varchar(20) DEFAULT 'free';
+-- Values: 'free', 'starter', 'pro'
+
+-- Add monthly usage tracking
+CREATE TABLE IF NOT EXISTS usage_tracking (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    period varchar(7) NOT NULL, -- '2026-01' format
+    analyses_count integer DEFAULT 0,
+    chat_messages_count integer DEFAULT 0,
+    share_links_count integer DEFAULT 0,
+    exports_count integer DEFAULT 0,
+    created_at timestamptz DEFAULT now(),
+    updated_at timestamptz DEFAULT now(),
+    UNIQUE(user_id, period)
+);
+```
+
+#### Code Changes
+
+| File | Change |
+|------|--------|
+| `lib/tier-limits.ts` | **CREATE** — Tier config: limits per tier, check functions |
+| `lib/usage.ts` | **CREATE** — Usage tracking: increment, check, reset |
+| `app/api/process-content/route.ts` | Add tier check before processing |
+| `app/api/content/[id]/share-link/route.ts` | Add share link limit check |
+| `app/api/chat/route.ts` | Add chat message limit check |
+| `app/api/export/*/route.ts` | Add export permission check |
+| `components/upgrade-prompt.tsx` | **CREATE** — Reusable upgrade modal |
+| `types/database.types.ts` | Add `tier`, `usage_tracking` table types |
+| `lib/schemas.ts` | Add tier validation |
+
+#### Gating Middleware Pattern
+
+```typescript
+// lib/tier-limits.ts
+const TIER_LIMITS = {
+  free: { analyses: 5, chatMessages: 10, shareLinks: 0, bookmarks: 5, tags: 3, library: 25 },
+  starter: { analyses: 50, chatMessages: Infinity, shareLinks: 10, bookmarks: 50, tags: Infinity, library: 500 },
+  pro: { analyses: Infinity, chatMessages: Infinity, shareLinks: Infinity, bookmarks: Infinity, tags: Infinity, library: Infinity },
+}
+
+// Usage check in API routes:
+const usage = await getUserUsage(userId, currentPeriod)
+const limits = TIER_LIMITS[userTier]
+if (usage.analyses_count >= limits.analyses) {
+  return NextResponse.json({ error: "limit_reached", tier: userTier, limit: limits.analyses }, { status: 403 })
+}
+```
