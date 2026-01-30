@@ -10,7 +10,7 @@ import type { Database } from "@/types/database.types"
 
 type ContentItem = Database["clarus"]["Tables"]["content"]["Row"]
 
-export type DisplayItem = ContentItem & {
+type DisplayItem = ContentItem & {
   domain: string
   savedAt: string
   displayDuration: string

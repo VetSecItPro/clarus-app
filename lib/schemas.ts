@@ -154,7 +154,7 @@ export const safeTextSchema = z
 /**
  * HTML-safe text for display (encodes HTML entities)
  */
-export const htmlSafeSchema = z.string().transform((text) =>
+const htmlSafeSchema = z.string().transform((text) =>
   text
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
@@ -163,41 +163,16 @@ export const htmlSafeSchema = z.string().transform((text) =>
     .replace(/'/g, "&#x27;")
 )
 
-/**
- * Share token schema (10-16 alphanumeric chars)
- */
-export const shareTokenSchema = z
-  .string()
-  .trim()
-  .min(10, "Invalid share token")
-  .max(16, "Invalid share token")
-  .regex(/^[a-zA-Z0-9]+$/, "Invalid share token")
-
 // ===========================================
 // CONTENT TYPE SCHEMAS
 // ===========================================
 
-export const contentTypeSchema = z.enum([
+const contentTypeSchema = z.enum([
   "youtube",
   "article",
   "pdf",
   "document",
   "x_post",
-])
-
-export const contentCategorySchema = z.enum([
-  "music",
-  "podcast",
-  "news",
-  "opinion",
-  "educational",
-  "entertainment",
-  "documentary",
-  "product_review",
-  "tech",
-  "finance",
-  "health",
-  "other",
 ])
 
 // ===========================================
@@ -210,14 +185,6 @@ export const contentCategorySchema = z.enum([
 export const processContentSchema = z.object({
   content_id: uuidSchema,
   force_regenerate: z.boolean().optional().default(false),
-})
-
-/**
- * Process PDF request (form data fields)
- */
-export const processPdfSchema = z.object({
-  user_id: uuidSchema,
-  title: z.string().trim().min(1).max(500).optional(),
 })
 
 /**
@@ -294,27 +261,6 @@ export const digestPreferencesSchema = z.object({
 export const exportSchema = z.object({
   id: uuidSchema,
 })
-
-/**
- * Admin metrics request
- */
-export const adminMetricsSchema = z.object({
-  days: z.coerce.number().int().min(1).max(365).optional().default(30),
-})
-
-// ===========================================
-// TYPE EXPORTS
-// ===========================================
-
-export type ProcessContentInput = z.infer<typeof processContentSchema>
-export type SearchInput = z.infer<typeof searchSchema>
-export type ChatRequestInput = z.infer<typeof chatRequestSchema>
-export type TagsUpdateInput = z.infer<typeof tagsUpdateSchema>
-export type BookmarkUpdateInput = z.infer<typeof bookmarkUpdateSchema>
-export type ShareContentInput = z.infer<typeof shareContentSchema>
-export type UpdateNameInput = z.infer<typeof updateNameSchema>
-export type CheckoutInput = z.infer<typeof checkoutSchema>
-export type ExportInput = z.infer<typeof exportSchema>
 
 // ===========================================
 // HELPER FUNCTIONS
