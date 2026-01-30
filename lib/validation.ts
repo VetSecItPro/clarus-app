@@ -6,34 +6,8 @@
 // UUID v4 regex pattern
 const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i
 
-// Username: 3-20 chars, alphanumeric + underscore only
-const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/
-
 // Dangerous URL schemes that could execute code
 const DANGEROUS_SCHEMES = ['javascript:', 'data:', 'vbscript:', 'file:']
-
-// SQL injection patterns to detect
-const SQL_INJECTION_PATTERNS = [
-  /(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|TRUNCATE|EXEC|EXECUTE|UNION|DECLARE)\b)/i,
-  /(--|;|\/\*|\*\/|@@|@)/,
-  /(\bOR\b|\bAND\b)\s*[\d'"]/i,
-  /['"](\s*)(OR|AND)(\s*)['"]?\s*[=><]/i,
-  /(\bEXEC\b|\bEXECUTE\b)(\s+)(\bXP_)/i,
-]
-
-// XSS patterns to detect
-const XSS_PATTERNS = [
-  /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-  /javascript:/gi,
-  /on\w+\s*=/gi,
-  /<iframe/gi,
-  /<object/gi,
-  /<embed/gi,
-  /<link/gi,
-  /<meta/gi,
-  /expression\s*\(/gi,
-  /url\s*\(/gi,
-]
 
 export interface ValidationResult {
   isValid: boolean
@@ -111,122 +85,10 @@ export function validateUUID(id: string): ValidationResult {
 }
 
 /**
- * Validates a username
- */
-export function validateUsername(username: string): ValidationResult {
-  if (!username || typeof username !== 'string') {
-    return { isValid: false, error: 'Username is required' }
-  }
-
-  const trimmed = username.trim()
-
-  if (trimmed.length < 3) {
-    return { isValid: false, error: 'Username must be at least 3 characters' }
-  }
-
-  if (trimmed.length > 20) {
-    return { isValid: false, error: 'Username must be at most 20 characters' }
-  }
-
-  if (!USERNAME_REGEX.test(trimmed)) {
-    return { isValid: false, error: 'Username can only contain letters, numbers, and underscores' }
-  }
-
-  // Check for SQL injection attempts
-  if (containsSqlInjection(trimmed)) {
-    return { isValid: false, error: 'Invalid characters in username' }
-  }
-
-  return { isValid: true, sanitized: trimmed }
-}
-
-/**
- * Checks if a string contains SQL injection patterns
- */
-export function containsSqlInjection(input: string): boolean {
-  if (!input || typeof input !== 'string') return false
-
-  for (const pattern of SQL_INJECTION_PATTERNS) {
-    if (pattern.test(input)) {
-      return true
-    }
-  }
-  return false
-}
-
-/**
- * Checks if a string contains XSS patterns
- */
-export function containsXss(input: string): boolean {
-  if (!input || typeof input !== 'string') return false
-
-  for (const pattern of XSS_PATTERNS) {
-    if (pattern.test(input)) {
-      return true
-    }
-  }
-  return false
-}
-
-/**
- * Sanitizes a string for safe display (HTML entity encoding)
- */
-export function sanitizeForDisplay(input: string): string {
-  if (!input || typeof input !== 'string') return ''
-
-  return input
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .replace(/\//g, '&#x2F;')
-}
-
-/**
- * Sanitizes user input for database storage
- * Removes dangerous patterns while preserving legitimate content
- */
-export function sanitizeInput(input: string, options: { maxLength?: number } = {}): ValidationResult {
-  if (!input || typeof input !== 'string') {
-    return { isValid: false, error: 'Input is required' }
-  }
-
-  const { maxLength = 10000 } = options
-  let sanitized = input.trim()
-
-  if (sanitized.length > maxLength) {
-    return { isValid: false, error: `Input exceeds maximum length of ${maxLength} characters` }
-  }
-
-  // Check for SQL injection
-  if (containsSqlInjection(sanitized)) {
-    return { isValid: false, error: 'Input contains invalid characters' }
-  }
-
-  // Check for XSS
-  if (containsXss(sanitized)) {
-    // Remove XSS patterns instead of rejecting
-    for (const pattern of XSS_PATTERNS) {
-      sanitized = sanitized.replace(pattern, '')
-    }
-  }
-
-  return { isValid: true, sanitized }
-}
-
-/**
  * Validates and sanitizes a content ID
  */
 export function validateContentId(contentId: string): ValidationResult {
   return validateUUID(contentId)
-}
-
-/**
- * Validates and sanitizes a user ID
- */
-export function validateUserId(userId: string): ValidationResult {
-  return validateUUID(userId)
 }
 
 /**
@@ -282,16 +144,4 @@ export function checkRateLimit(
 
   record.count++
   return { allowed: true, remaining: maxRequests - record.count, resetIn: record.resetTime - now }
-}
-
-/**
- * Cleans up expired rate limit records (call periodically)
- */
-export function cleanupRateLimits(): void {
-  const now = Date.now()
-  for (const [key, value] of rateLimitMap.entries()) {
-    if (now > value.resetTime) {
-      rateLimitMap.delete(key)
-    }
-  }
 }
