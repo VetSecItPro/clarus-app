@@ -1128,7 +1128,7 @@ async function generateAutoTags(
   const content = result.content as { tags?: string[] } | null
   if (content && Array.isArray(content.tags)) {
     return content.tags
-      .map((t: string) => t.toLowerCase().trim())
+      .map((t: string) => t.toLowerCase().trim().replace(/-/g, " "))
       .filter((t: string) => t.length > 0 && t.length <= 50)
       .slice(0, 5)
   }
