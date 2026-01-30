@@ -99,15 +99,6 @@ function CommunityPageContent({ session }: WithAuthInjectedProps) {
     return summaries as { brief_overview: string | null; triage: { quality_score?: number; signal_noise_score?: number } | null } | null
   }
 
-  const getAnalyzerInfo = (item: FeedItem) => {
-    const rater = item.users
-    const name = rater?.name || rater?.email?.split("@")[0] || "Anonymous"
-    return {
-      name,
-      avatar_url: undefined, // Could add avatar support later
-    }
-  }
-
   return (
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
@@ -216,14 +207,13 @@ function CommunityPageContent({ session }: WithAuthInjectedProps) {
             </div>
             <h3 className="text-white text-lg font-medium mb-2">No community content yet</h3>
             <p className="text-white/50 text-sm mb-6 max-w-xs mx-auto">
-              When other users rate content, it will appear here for you to discover.
+              When users publish their analyses, they&apos;ll appear here for you to discover.
             </p>
           </div>
         ) : (
           <div className="space-y-3">
             {rawItems.map((item) => {
               const summaryData = getSummaryData(item)
-              const analyzer = getAnalyzerInfo(item)
 
               return (
                 <ChatThreadCard
@@ -237,7 +227,6 @@ function CommunityPageContent({ session }: WithAuthInjectedProps) {
                   triage={summaryData?.triage as TriageData | null | undefined}
                   date_added={item.date_added || new Date().toISOString()}
                   is_bookmarked={isBookmarked(item.id)}
-                  analyzer={analyzer}
                   onClick={() => router.push(`/item/${item.id}`)}
                   onBookmark={() => handleToggleBookmark(item)}
                   onDelete={() => handleHide(item.id)}
