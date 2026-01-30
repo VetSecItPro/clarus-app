@@ -6,6 +6,5 @@ export {
   SuggestionChips,
   type SuggestionAction,
 } from "./suggestion-buttons"
-export { ContentSummaryCard } from "./content-summary-card"
 export { ChatThreadCard } from "./chat-thread-card"
 export { AnalysisError } from "./analysis-error"
