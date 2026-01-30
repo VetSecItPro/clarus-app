@@ -14,7 +14,6 @@ type SummaryData = {
 }
 
 type FeedItemFromDb = Database["clarus"]["Tables"]["content"]["Row"] & {
-  users: { name: string | null; email: string | null } | null
   content_ratings: { signal_score: number | null; user_id: string; created_at: string }[]
   summaries: SummaryData | SummaryData[]
 }
@@ -34,12 +33,13 @@ interface UseCommunityFeedOptions {
 const fetcher = async (options: UseCommunityFeedOptions): Promise<FeedItem[]> => {
   if (!options.userId) return []
 
-  // Build content query
+  // Build content query — only show explicitly published content
   let contentQuery = supabase
     .from("content")
     .select(
-      `*, users:user_id(name, email), content_ratings(signal_score, user_id, created_at), summaries(brief_overview, triage)`,
+      `*, content_ratings(signal_score, user_id, created_at), summaries(brief_overview, triage)`,
     )
+    .eq("is_public", true)
     .not("user_id", "eq", options.userId)
     .not("summaries", "is", "null")
 

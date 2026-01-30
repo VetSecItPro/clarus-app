@@ -257,6 +257,8 @@ export interface Database {
           view_count: number | null
           tags: string[] | null
           share_token: string | null
+          is_public: boolean | null
+          regeneration_count: number | null
         }
         Insert: {
           author?: string | null
@@ -279,6 +281,8 @@ export interface Database {
           view_count?: number | null
           tags?: string[] | null
           share_token?: string | null
+          is_public?: boolean | null
+          regeneration_count?: number | null
         }
         Update: {
           author?: string | null
@@ -301,6 +305,8 @@ export interface Database {
           view_count?: number | null
           tags?: string[] | null
           share_token?: string | null
+          is_public?: boolean | null
+          regeneration_count?: number | null
         }
         Relationships: [
           {
