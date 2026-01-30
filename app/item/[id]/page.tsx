@@ -137,10 +137,24 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     }
   }, [])
 
+  const regenerationCount = item?.regeneration_count ?? 0
+  const maxRegenerations = 3
+
   const handleRegenerate = useCallback(async () => {
     if (!item) return
+    if (regenerationCount >= maxRegenerations) {
+      toast.error(`Regeneration limit reached (${maxRegenerations}/${maxRegenerations})`)
+      return
+    }
     setIsRegenerating(true)
-    setItem(prev => prev ? { ...prev, summary: null } : null)
+    setItem(prev => prev ? { ...prev, summary: null, regeneration_count: (prev.regeneration_count ?? 0) + 1 } : null)
+
+    // Increment regeneration_count in the database
+    supabase
+      .from("content")
+      .update({ regeneration_count: regenerationCount + 1 })
+      .eq("id", item.id)
+      .then()
 
     fetch("/api/process-content", {
       method: "POST",
@@ -159,7 +173,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       })
 
     setIsPolling(true)
-  }, [item])
+  }, [item, regenerationCount])
 
   const handleToggleBookmark = useCallback(async () => {
     if (!item || isTogglingBookmark) return
@@ -914,32 +928,63 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Desktop: Summary/Full Text tabs */}
+              {/* Desktop: Summary/Full Text tabs + Regenerate + Publish */}
               {isDesktop && (
-                <div className="flex items-center gap-0.5 sm:gap-1 bg-white/[0.06] backdrop-blur-xl p-0.5 sm:p-1 rounded-full border border-white/[0.08]">
-                  <button
-                    onClick={() => handleTabChange("summary")}
-                    style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                    className={`px-3 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 ${
-                      activeMainTab === "summary"
-                        ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
-                        : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
-                    }`}
-                  >
-                    Summary
-                  </button>
-                  <button
-                    onClick={() => handleTabChange("fulltext")}
-                    style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                    className={`px-3 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
-                      activeMainTab === "fulltext"
-                        ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
-                        : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
-                    }`}
-                  >
-                    Full Text
-                  </button>
-                </div>
+                <>
+                  <div className="flex items-center gap-0.5 sm:gap-1 bg-white/[0.06] backdrop-blur-xl p-0.5 sm:p-1 rounded-full border border-white/[0.08]">
+                    <button
+                      onClick={() => handleTabChange("summary")}
+                      style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                      className={`px-3 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 ${
+                        activeMainTab === "summary"
+                          ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
+                          : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
+                      }`}
+                    >
+                      Summary
+                    </button>
+                    <button
+                      onClick={() => handleTabChange("fulltext")}
+                      style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
+                      className={`px-3 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
+                        activeMainTab === "fulltext"
+                          ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
+                          : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
+                      }`}
+                    >
+                      Full Text
+                    </button>
+                  </div>
+
+                  <TooltipProvider delayDuration={300}>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <button
+                          onClick={() => handleRegenerate()}
+                          disabled={isRegenerating || regenerationCount >= maxRegenerations}
+                          className={`h-9 px-3 flex items-center gap-1.5 rounded-full text-xs font-medium transition-all disabled:opacity-50 ${
+                            regenerationCount >= maxRegenerations
+                              ? "bg-white/[0.04] text-white/30 border border-white/[0.06] cursor-not-allowed"
+                              : "bg-blue-500/20 text-blue-300 border border-blue-500/30 hover:bg-blue-500/30 hover:text-blue-200"
+                          }`}
+                        >
+                          {isRegenerating ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                          ) : (
+                            <RefreshCw className="w-3.5 h-3.5" />
+                          )}
+                          <span>{regenerationCount >= maxRegenerations ? `${maxRegenerations}/${maxRegenerations}` : `Regenerate`}</span>
+                        </button>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        {regenerationCount >= maxRegenerations
+                          ? `Regeneration limit reached (${maxRegenerations}/${maxRegenerations})`
+                          : `Re-analyze this content (${regenerationCount}/${maxRegenerations} used)`}
+                      </TooltipContent>
+                    </Tooltip>
+
+                  </TooltipProvider>
+                </>
               )}
 
               {/* Mobile: Analysis/Chat tab switcher */}
@@ -1024,9 +1069,13 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
               <button
                 onClick={() => handleRegenerate()}
-                disabled={isRegenerating}
-                className="h-8 w-8 flex items-center justify-center rounded-lg bg-blue-500/20 text-blue-300 border border-blue-500/30 active:bg-blue-500/30 transition-all disabled:opacity-50"
-                aria-label="Regenerate"
+                disabled={isRegenerating || regenerationCount >= maxRegenerations}
+                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
+                  regenerationCount >= maxRegenerations
+                    ? "bg-white/[0.04] text-white/30 border border-white/[0.06] cursor-not-allowed"
+                    : "bg-blue-500/20 text-blue-300 border border-blue-500/30 active:bg-blue-500/30"
+                }`}
+                aria-label={regenerationCount >= maxRegenerations ? `Regeneration limit reached` : "Regenerate"}
               >
                 {isRegenerating ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -1034,6 +1083,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                   <RefreshCw className="w-4 h-4" />
                 )}
               </button>
+
             </div>
           </div>
         </div>
@@ -1390,7 +1440,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
                   {/* Action buttons */}
                   <TooltipProvider delayDuration={300}>
-                    <div className="hidden sm:grid grid-cols-4 gap-2">
+                    <div className="hidden sm:grid grid-cols-3 gap-2">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button
@@ -1460,30 +1510,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={() => handleRegenerate()}
-                            disabled={isRegenerating}
-                            size="sm"
-                            className="w-full bg-blue-500/20 hover:bg-blue-500/30 text-blue-300 hover:text-blue-200 border border-blue-500/30 hover:border-blue-500/50 transition-all disabled:opacity-50"
-                          >
-                            {isRegenerating ? (
-                              <>
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin shrink-0" />
-                                <span className="truncate">Regenerating</span>
-                              </>
-                            ) : (
-                              <>
-                                <RefreshCw className="mr-2 h-4 w-4 shrink-0" />
-                                <span className="truncate">Regenerate</span>
-                              </>
-                            )}
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Re-analyze this content</TooltipContent>
-                      </Tooltip>
                     </div>
                   </TooltipProvider>
 

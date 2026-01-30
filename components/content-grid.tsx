@@ -46,8 +46,6 @@ const getDomainFromUrl = (url: string | null): string => {
 }
 
 // This function processes a raw ContentItem from DB into a basic DisplayItem
-// For the feed, additional properties (raterUsername, ratingScore, ratingGivenAt)
-// will be added in the app/feed/page.tsx fetch logic.
 export const processItemForDisplay = (
   item: ContentItem,
 ): Omit<DisplayItem, "raterUsername" | "ratingScore" | "ratingGivenAt"> => ({
