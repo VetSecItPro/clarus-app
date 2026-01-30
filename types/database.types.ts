@@ -257,6 +257,8 @@ export interface Database {
           view_count: number | null
           tags: string[] | null
           share_token: string | null
+
+          regeneration_count: number | null
         }
         Insert: {
           author?: string | null
@@ -279,6 +281,8 @@ export interface Database {
           view_count?: number | null
           tags?: string[] | null
           share_token?: string | null
+
+          regeneration_count?: number | null
         }
         Update: {
           author?: string | null
@@ -301,6 +305,8 @@ export interface Database {
           view_count?: number | null
           tags?: string[] | null
           share_token?: string | null
+
+          regeneration_count?: number | null
         }
         Relationships: [
           {
@@ -350,40 +356,6 @@ export interface Database {
           last_seen?: string
         }
         Relationships: []
-      }
-      hidden_content: {
-        Row: {
-          id: string
-          user_id: string
-          content_id: string
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          content_id: string
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          content_id?: string
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "hidden_content_content_id_fkey"
-            columns: ["content_id"]
-            referencedRelation: "content"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "hidden_content_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
       }
       content_ratings: {
         Row: {
