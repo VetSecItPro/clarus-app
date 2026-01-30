@@ -42,7 +42,7 @@ function TierCard({ tier, isRecommended }: { tier: "starter" | "pro"; isRecommen
   const colors = TIER_COLORS[tier]
   const limits = TIER_LIMITS[tier]
   const features = TIER_FEATURES[tier]
-  const price = tier === "starter" ? "$4/mo" : "$9/mo"
+  const price = tier === "starter" ? "$8/mo" : "$16/mo"
 
   return (
     <div className={`relative rounded-xl border p-4 ${colors.bg} ${colors.border} ${isRecommended ? "ring-1 ring-blue-500/40" : ""}`}>
