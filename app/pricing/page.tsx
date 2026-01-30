@@ -149,15 +149,13 @@ function PricingToggle({ interval, onChange }: { interval: BillingInterval; onCh
       <span className={`text-sm transition-colors ${interval === "annual" ? "text-white" : "text-white/40"}`}>
         Annual
       </span>
-      {interval === "annual" && (
-        <motion.span
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30"
-        >
-          Save 17%
-        </motion.span>
-      )}
+      <span
+        className={`text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-opacity duration-200 ${
+          interval === "annual" ? "opacity-100" : "opacity-0"
+        }`}
+      >
+        Save 17%
+      </span>
     </div>
   )
 }
@@ -199,8 +197,8 @@ function PlanCard({
       </div>
       <p className="text-sm text-white/50 mb-5">{plan.description}</p>
 
-      {/* Price */}
-      <div className="mb-6">
+      {/* Price — fixed height to prevent layout shift on toggle */}
+      <div className="mb-6 h-[72px] flex flex-col justify-center">
         {price === 0 ? (
           <div className="text-4xl font-bold text-white">Free</div>
         ) : (
@@ -211,11 +209,9 @@ function PlanCard({
               </span>
               <span className="text-white/40 text-sm">/month</span>
             </div>
-            {interval === "annual" && (
-              <div className="text-xs text-white/30 mt-1">
-                ${price}/year &middot; billed annually
-              </div>
-            )}
+            <div className={`text-xs mt-1 transition-opacity duration-200 ${interval === "annual" ? "text-white/30 opacity-100" : "opacity-0"}`}>
+              ${plan.annualPrice}/year &middot; billed annually
+            </div>
           </>
         )}
       </div>
