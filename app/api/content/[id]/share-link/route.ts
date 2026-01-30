@@ -3,6 +3,8 @@ import { authenticateRequest, verifyContentOwnership } from "@/lib/auth"
 import { uuidSchema } from "@/lib/schemas"
 import { generateShareToken } from "@/lib/share-token"
 import { checkRateLimit } from "@/lib/validation"
+import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 
 /**
  * GET /api/content/[id]/share-link
@@ -61,6 +63,20 @@ export async function POST(
   const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, parsed.data)
   if (!ownership.owned) return ownership.response
 
+  // Tier feature check: share links require starter+
+  const { data: userData } = await auth.supabase
+    .from("users")
+    .select("tier")
+    .eq("id", auth.user.id)
+    .single()
+  const tier = normalizeTier(userData?.tier)
+  if (!TIER_FEATURES[tier].shareLinks) {
+    return NextResponse.json(
+      { error: "Share links require a Starter or Pro plan.", upgrade_required: true, tier },
+      { status: 403 }
+    )
+  }
+
   // Return existing token if already generated
   if (ownership.content.share_token) {
     return NextResponse.json({
@@ -68,6 +84,15 @@ export async function POST(
       share_token: ownership.content.share_token,
       share_url: `${getBaseUrl()}/share/${ownership.content.share_token}`,
     })
+  }
+
+  // Usage limit check
+  const usageCheck = await enforceUsageLimit(auth.supabase, auth.user.id, "share_links_count")
+  if (!usageCheck.allowed) {
+    return NextResponse.json(
+      { error: `Monthly share link limit reached (${usageCheck.limit}).`, upgrade_required: true, tier: usageCheck.tier },
+      { status: 403 }
+    )
   }
 
   // Generate new token with retry for uniqueness
@@ -91,6 +116,9 @@ export async function POST(
   if (!token) {
     return NextResponse.json({ error: "Failed to generate unique share link" }, { status: 500 })
   }
+
+  // Track usage
+  await incrementUsage(auth.supabase, auth.user.id, "share_links_count")
 
   // Suppress unused variable warning - request is required by Next.js route signature
   void request

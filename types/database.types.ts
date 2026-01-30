@@ -1,5 +1,8 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
+// User tiers for feature gating
+export type UserTier = "free" | "starter" | "pro"
+
 // Content categories for contextual UI
 export type ContentCategory =
   | "music"           // Music videos, songs, performances
@@ -562,6 +565,7 @@ export interface Database {
           subscription_ends_at: string | null
           digest_enabled: boolean | null
           last_digest_at: string | null
+          tier: string | null
         }
         Insert: {
           created_at?: string | null
@@ -578,6 +582,7 @@ export interface Database {
           subscription_ends_at?: string | null
           digest_enabled?: boolean | null
           last_digest_at?: string | null
+          tier?: string | null
         }
         Update: {
           created_at?: string | null
@@ -594,6 +599,7 @@ export interface Database {
           subscription_ends_at?: string | null
           digest_enabled?: boolean | null
           last_digest_at?: string | null
+          tier?: string | null
         }
         Relationships: [
           {
@@ -700,6 +706,52 @@ export interface Database {
         }
         Relationships: []
       }
+      usage_tracking: {
+        Row: {
+          id: string
+          user_id: string
+          period: string
+          analyses_count: number
+          chat_messages_count: number
+          share_links_count: number
+          exports_count: number
+          bookmarks_count: number
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          period: string
+          analyses_count?: number
+          chat_messages_count?: number
+          share_links_count?: number
+          exports_count?: number
+          bookmarks_count?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          period?: string
+          analyses_count?: number
+          chat_messages_count?: number
+          share_links_count?: number
+          exports_count?: number
+          bookmarks_count?: number
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "usage_tracking_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       claims: {
         Row: {
           id: string
@@ -752,6 +804,14 @@ export interface Database {
     }
     Views: { [_ in never]: never }
     Functions: {
+      increment_usage: {
+        Args: {
+          p_user_id: string
+          p_period: string
+          p_field: string
+        }
+        Returns: number
+      }
       find_similar_claims: {
         Args: {
           p_user_id: string
