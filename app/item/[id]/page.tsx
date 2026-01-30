@@ -1,7 +1,7 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
-import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, MessageSquare, Bookmark, BookmarkCheck, Globe } from "lucide-react"
+import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, MessageSquare, Bookmark, BookmarkCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback, useRef, use } from "react"
 import { supabase } from "@/lib/supabase"
@@ -118,8 +118,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [isTogglingBookmark, setIsTogglingBookmark] = useState(false)
-  const [isPublic, setIsPublic] = useState(false)
-  const [isTogglingPublish, setIsTogglingPublish] = useState(false)
   const [crossReferences, setCrossReferences] = useState<CrossReference[]>([])
   const upgradeModal = useUpgradeModal()
 
@@ -247,32 +245,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       toast.error("Export failed")
     }
   }, [item, upgradeModal])
-
-  const handleTogglePublish = useCallback(async () => {
-    if (!item || isTogglingPublish) return
-    const newState = !isPublic
-    setIsPublic(newState)
-    setIsTogglingPublish(true)
-    try {
-      const response = await fetch(`/api/content/${item.id}/publish`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ is_public: newState }),
-      })
-      const data = await response.json()
-      if (!data.success) {
-        setIsPublic(!newState)
-        toast.error("Failed to update publish status")
-      } else {
-        toast.success(newState ? "Published to community feed" : "Removed from community feed")
-      }
-    } catch {
-      setIsPublic(!newState)
-      toast.error("Failed to update publish status")
-    } finally {
-      setIsTogglingPublish(false)
-    }
-  }, [item, isPublic, isTogglingPublish])
 
   const fetchContentData = useCallback(async (showLoadingState = true) => {
     if (showLoadingState) setLoading(true)
@@ -427,7 +399,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   useEffect(() => {
     if (item) {
       setIsBookmarked(item.is_bookmarked ?? false)
-      setIsPublic(item.is_public ?? false)
     }
   }, [item])
 
@@ -1012,23 +983,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                       </TooltipContent>
                     </Tooltip>
 
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <button
-                          onClick={handleTogglePublish}
-                          disabled={isTogglingPublish}
-                          className={`h-9 px-3 flex items-center gap-1.5 rounded-full text-xs font-medium transition-all disabled:opacity-50 ${
-                            isPublic
-                              ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30"
-                              : "bg-white/[0.04] text-white/50 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white/70"
-                          }`}
-                        >
-                          <Globe className="w-3.5 h-3.5" />
-                          <span>{isPublic ? "Published" : "Publish"}</span>
-                        </button>
-                      </TooltipTrigger>
-                      <TooltipContent>{isPublic ? "Remove from community feed" : "Publish to community feed"}</TooltipContent>
-                    </Tooltip>
                   </TooltipProvider>
                 </>
               )}
@@ -1130,18 +1084,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 )}
               </button>
 
-              <button
-                onClick={handleTogglePublish}
-                disabled={isTogglingPublish}
-                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
-                  isPublic
-                    ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                    : "bg-white/[0.06] text-white/50 border border-white/[0.1]"
-                }`}
-                aria-label={isPublic ? "Remove from community feed" : "Publish to community feed"}
-              >
-                <Globe className="w-4 h-4" />
-              </button>
             </div>
           </div>
         </div>

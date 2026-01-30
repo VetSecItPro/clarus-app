@@ -12,7 +12,6 @@ import {
   Bookmark,
   BookmarkCheck,
   Trash2,
-  User,
 } from "lucide-react"
 import Image from "next/image"
 import { formatDistanceToNow } from "date-fns"
@@ -29,11 +28,6 @@ interface ChatThreadCardProps {
   date_added: string
   message_count?: number
   is_bookmarked?: boolean
-  // For community feed
-  analyzer?: {
-    name: string
-    avatar_url?: string
-  }
   onClick: () => void
   onBookmark?: () => void
   onDelete?: () => void
@@ -77,7 +71,6 @@ export const ChatThreadCard = memo(function ChatThreadCard({
   date_added,
   message_count = 0,
   is_bookmarked = false,
-  analyzer,
   onClick,
   onBookmark,
   onDelete,
@@ -116,27 +109,6 @@ export const ChatThreadCard = memo(function ChatThreadCard({
         }}
         className="w-full text-left p-3 rounded-xl bg-white/[0.02] hover:bg-white/[0.04] border border-white/[0.06] hover:border-white/[0.1] transition-all cursor-pointer"
       >
-        {/* Analyzer info (community feed) */}
-        {analyzer && (
-          <div className="flex items-center gap-2 mb-2 pb-2 border-b border-white/[0.06]">
-            <div className="w-5 h-5 rounded-full bg-[#1d9bf0]/20 flex items-center justify-center overflow-hidden">
-              {analyzer.avatar_url ? (
-                <Image
-                  src={analyzer.avatar_url}
-                  alt=""
-                  width={20}
-                  height={20}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <User className="w-3 h-3 text-[#1d9bf0]" />
-              )}
-            </div>
-            <span className="text-xs text-white/60">{analyzer.name}</span>
-            <span className="text-xs text-white/30">analyzed</span>
-          </div>
-        )}
-
         <div className="flex gap-3">
           {/* Thumbnail */}
           {thumbnail_url && (
