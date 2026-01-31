@@ -11,55 +11,65 @@ export type UsageField =
   | "share_links_count"
   | "exports_count"
   | "bookmarks_count"
+  | "podcast_analyses_count"
 
 export interface TierLimits {
   analyses: number
-  chatMessages: number
+  chatMessagesMonthly: number
+  chatMessagesPerContent: number
   shareLinks: number
   exports: number
   bookmarks: number
   tags: number
   library: number
+  podcastAnalyses: number
 }
 
 /** Monthly limits per tier. All tiers have hard caps to prevent abuse. */
 export const TIER_LIMITS: Record<UserTier, TierLimits> = {
   free: {
     analyses: 5,
-    chatMessages: 10,
+    chatMessagesMonthly: 50,
+    chatMessagesPerContent: 10,
     shareLinks: 0,
     exports: 0,
     bookmarks: 5,
     tags: 3,
     library: 25,
+    podcastAnalyses: 0,
   },
   starter: {
     analyses: 50,
-    chatMessages: 30,
+    chatMessagesMonthly: 300,
+    chatMessagesPerContent: 25,
     shareLinks: 10,
     exports: 50,
     bookmarks: 50,
     tags: 50,
     library: 500,
+    podcastAnalyses: 10,
   },
   pro: {
-    analyses: 300,
-    chatMessages: 100,
+    analyses: 150,
+    chatMessagesMonthly: 1000,
+    chatMessagesPerContent: 50,
     shareLinks: 100,
     exports: 100,
     bookmarks: 500,
     tags: 100,
     library: 5000,
+    podcastAnalyses: 30,
   },
 }
 
 /** Map a usage database field to its corresponding tier limit key */
 const FIELD_TO_LIMIT: Record<UsageField, keyof TierLimits> = {
   analyses_count: "analyses",
-  chat_messages_count: "chatMessages",
+  chat_messages_count: "chatMessagesMonthly",
   share_links_count: "shareLinks",
   exports_count: "exports",
   bookmarks_count: "bookmarks",
+  podcast_analyses_count: "podcastAnalyses",
 }
 
 /** Get the limit value for a specific usage field and tier */

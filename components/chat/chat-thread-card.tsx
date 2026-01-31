@@ -8,6 +8,7 @@ import {
   Youtube,
   FileText,
   Twitter,
+  Headphones,
   MessageSquare,
   Bookmark,
   BookmarkCheck,
@@ -21,7 +22,7 @@ interface ChatThreadCardProps {
   id: string
   title: string
   url: string
-  type: "youtube" | "article" | "x_post"
+  type: "youtube" | "article" | "x_post" | "podcast"
   thumbnail_url?: string | null
   brief_overview?: string | null
   triage?: TriageData | null
@@ -49,12 +50,14 @@ function getDomainFromUrl(url: string): string {
   }
 }
 
-function getTypeIcon(type: "youtube" | "article" | "x_post") {
+function getTypeIcon(type: "youtube" | "article" | "x_post" | "podcast") {
   switch (type) {
     case "youtube":
       return <Youtube className="w-3.5 h-3.5 text-red-400" />
     case "x_post":
       return <Twitter className="w-3.5 h-3.5 text-white" />
+    case "podcast":
+      return <Headphones className="w-3.5 h-3.5 text-purple-400" />
     default:
       return <FileText className="w-3.5 h-3.5 text-blue-400" />
   }
