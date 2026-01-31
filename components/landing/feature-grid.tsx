@@ -2,21 +2,18 @@
 
 import { motion } from "framer-motion"
 import {
-  Youtube, FileText, FileUp, Brain, Headphones, Mail,
-  BookOpen, GraduationCap, Globe,
+  Youtube, FileText, FileUp, Brain, Headphones,
+  GraduationCap,
   Zap, CheckCircle, MessageSquare, Library, Download, MailIcon,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const contentTypes = [
   { icon: Youtube, title: "YouTube", color: "text-red-400", bg: "bg-red-500/10", status: "live" as const },
-  { icon: FileText, title: "Articles", color: "text-blue-400", bg: "bg-blue-500/10", status: "live" as const },
-  { icon: FileUp, title: "PDFs", color: "text-orange-400", bg: "bg-orange-500/10", status: "live" as const },
+  { icon: FileText, title: "Articles & Blogs", color: "text-blue-400", bg: "bg-blue-500/10", status: "live" as const },
+  { icon: FileUp, title: "PDFs & Documents", color: "text-orange-400", bg: "bg-orange-500/10", status: "live" as const },
   { icon: Brain, title: "X Posts", color: "text-teal-400", bg: "bg-teal-500/10", status: "live" as const },
-  { icon: Headphones, title: "Podcasts", color: "text-purple-400", bg: "bg-purple-500/10", status: "live" as const },
-  { icon: Mail, title: "Substack", color: "text-orange-300", bg: "bg-orange-400/10", status: "live" as const },
-  { icon: BookOpen, title: "Medium", color: "text-green-400", bg: "bg-green-500/10", status: "live" as const },
-  { icon: Globe, title: "News Sites", color: "text-sky-400", bg: "bg-sky-500/10", status: "live" as const },
+  { icon: Headphones, title: "Podcasts", color: "text-purple-400", bg: "bg-purple-500/10", status: "coming" as const },
   { icon: GraduationCap, title: "Research Papers", color: "text-amber-400", bg: "bg-amber-500/10", status: "coming" as const },
 ]
 

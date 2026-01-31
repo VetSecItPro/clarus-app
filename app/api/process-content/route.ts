@@ -78,7 +78,7 @@ async function extractKeyTopics(text: string): Promise<string[]> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3-haiku", // Fast and cheap
+        model: "google/gemini-2.5-flash-lite", // Fast and cheap
         messages: [
           {
             role: "system",
@@ -670,7 +670,7 @@ async function getModelSummary(
 
   const { system_content, user_content_template, temperature, top_p, max_tokens, model_name } = promptData
 
-  const openRouterModelId = model_name || "anthropic/claude-3.5-sonnet"
+  const openRouterModelId = model_name || "google/gemini-2.5-flash"
   const finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}").replace(
     "{{TEXT_TO_SUMMARIZE}}",
     textToSummarize,
