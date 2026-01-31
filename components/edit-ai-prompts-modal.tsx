@@ -42,12 +42,11 @@ interface EditAIPromptsModalProps {
 }
 
 const modelOptions = [
+  "google/gemini-2.5-flash",
+  "google/gemini-2.5-flash-lite",
+  "google/gemini-2.5-pro",
   "anthropic/claude-sonnet-4",
-  "anthropic/claude-3.5-sonnet",
-  "openai/gpt-5-chat",
   "openai/gpt-4o",
-  "x-ai/grok-4",
-  "google/gemini-2.5-pro"
 ]
 
 const PROMPT_LABELS: Record<string, { label: string; icon: string; step: number }> = {

@@ -195,7 +195,7 @@ CREATE TABLE IF NOT EXISTS active_summarizer_prompt (
     temperature double precision,
     top_p double precision,
     max_tokens integer,
-    model_name text NOT NULL DEFAULT 'anthropic/claude-3.5-sonnet'
+    model_name text NOT NULL DEFAULT 'google/gemini-2.5-flash'
 );
 
 -- Analysis prompts (per-section AI prompts)
@@ -206,7 +206,7 @@ CREATE TABLE IF NOT EXISTS analysis_prompts (
     description text,
     system_content text NOT NULL,
     user_content_template text NOT NULL,
-    model_name text NOT NULL DEFAULT 'anthropic/claude-3.5-sonnet',
+    model_name text NOT NULL DEFAULT 'google/gemini-2.5-flash',
     temperature double precision DEFAULT 0.7,
     max_tokens integer DEFAULT 2000,
     expect_json boolean DEFAULT false,
@@ -492,7 +492,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 INSERT INTO active_chat_prompt (id, system_content, model_name, temperature, max_tokens)
 VALUES (1,
 'You are Clarus, an AI assistant helping users understand content they''ve analyzed. You have access to the full analysis including overview, key takeaways, accuracy analysis, and action items. Be helpful, accurate, and cite specific sections when relevant.',
-'anthropic/claude-sonnet-4',
+'google/gemini-2.5-flash',
 0.7,
 2000
 ) ON CONFLICT (id) DO NOTHING;
