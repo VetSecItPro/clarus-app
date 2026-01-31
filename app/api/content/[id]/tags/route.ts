@@ -43,7 +43,9 @@ export async function GET(
       return ownership.response
     }
 
-    return NextResponse.json({ success: true, tags: ownership.content.tags || [] })
+    const response = NextResponse.json({ success: true, tags: ownership.content.tags || [] })
+    response.headers.set("Cache-Control", "private, max-age=30, stale-while-revalidate=60")
+    return response
   } catch {
     return NextResponse.json({ success: false, error: "Invalid request" }, { status: 400 })
   }

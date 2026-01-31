@@ -28,11 +28,13 @@ export async function GET(
 
   const shareToken = ownership.content.share_token ?? null
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     success: true,
     share_token: shareToken,
     share_url: shareToken ? `${getBaseUrl()}/share/${shareToken}` : null,
   })
+  response.headers.set("Cache-Control", "private, max-age=60")
+  return response
 }
 
 /**
