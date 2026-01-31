@@ -18,7 +18,7 @@ interface ContentStatus {
   id: string
   title: string | null
   url: string
-  type: "youtube" | "article" | "x_post"
+  type: "youtube" | "article" | "x_post" | "podcast"
   thumbnail_url?: string | null
   author?: string | null
   duration?: number | null
@@ -40,7 +40,7 @@ interface UseChatSessionOptions {
 interface UrlMeta {
   url: string
   domain: string
-  type: "youtube" | "article" | "x_post"
+  type: "youtube" | "article" | "x_post" | "podcast"
   favicon: string
 }
 

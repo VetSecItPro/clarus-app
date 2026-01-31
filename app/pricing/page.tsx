@@ -26,10 +26,12 @@ const PLANS = [
       { text: "5 analyses per month", included: true },
       { text: "All 6 analysis sections", included: true },
       { text: "10 chat messages per content", included: true },
+      { text: "50 chat messages per month", included: true },
       { text: "25 items in library", included: true },
       { text: "5 bookmarks", included: true },
       { text: "3 tags max", included: true },
       { text: "Articles + YouTube", included: true },
+      { text: "Podcast analysis", included: false },
       { text: "Shareable links", included: false },
       { text: "Export (Markdown/PDF)", included: false },
       { text: "Weekly digest email", included: false },
@@ -55,11 +57,13 @@ const PLANS = [
     features: [
       { text: "50 analyses per month", included: true },
       { text: "All 6 analysis sections", included: true },
-      { text: "30 chat messages per content", included: true },
+      { text: "25 chat messages per content", included: true },
+      { text: "300 chat messages per month", included: true },
       { text: "500 items in library", included: true },
       { text: "50 bookmarks", included: true },
       { text: "50 tags", included: true },
       { text: "All content types", included: true },
+      { text: "10 podcast analyses/month", included: true },
       { text: "10 shareable links/month", included: true },
       { text: "50 exports (Markdown)", included: true },
       { text: "Weekly digest email", included: true },
@@ -82,13 +86,15 @@ const PLANS = [
       button: "bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40",
     },
     features: [
-      { text: "300 analyses per month", included: true },
+      { text: "150 analyses per month", included: true },
       { text: "All 6 analysis sections", included: true },
-      { text: "100 chat messages per content", included: true },
+      { text: "50 chat messages per content", included: true },
+      { text: "1,000 chat messages per month", included: true },
       { text: "5,000 items in library", included: true },
       { text: "500 bookmarks", included: true },
       { text: "100 tags", included: true },
       { text: "All content types", included: true },
+      { text: "30 podcast analyses/month", included: true },
       { text: "100 shareable links/month", included: true },
       { text: "100 exports (PDF + Markdown)", included: true },
       { text: "Weekly digest email", included: true },
@@ -127,6 +133,10 @@ const FAQS = [
   {
     q: "How does annual billing work?",
     a: "Annual plans are billed once per year at a 17% discount. That's 2 months free compared to monthly billing.",
+  },
+  {
+    q: "What is podcast analysis?",
+    a: "Podcast analysis transcribes audio content with speaker identification, then runs the same 6-section AI analysis as articles and videos. It supports direct audio files (.mp3, .m4a, etc.) and podcast hosting platforms. Podcast analyses have their own monthly quota, separate from regular content analyses.",
   },
 ]
 
@@ -390,8 +400,10 @@ export default function PricingPage() {
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
                   {[
-                    ["Analyses per month", "5", "50", "300"],
-                    ["Chat messages", "10/content", "30/content", "100/content"],
+                    ["Analyses per month", "5", "50", "150"],
+                    ["Podcast analyses", false, "10/month", "30/month"],
+                    ["Chat messages/content", "10", "25", "50"],
+                    ["Chat messages/month", "50", "300", "1,000"],
                     ["Library storage", "25 items", "500 items", "5,000 items"],
                     ["Bookmarks", "5", "50", "500"],
                     ["Tags", "3 max", "50", "100"],

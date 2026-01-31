@@ -897,6 +897,14 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               )
             }
 
+            if (item.type === "podcast") {
+              return (
+                <TranscriptViewer
+                  transcript={item.full_text}
+                />
+              )
+            }
+
             return (
               <div className="prose prose-sm prose-invert max-w-none text-white/70 leading-relaxed">
                 <MarkdownRenderer
