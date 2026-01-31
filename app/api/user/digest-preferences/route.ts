@@ -20,10 +20,12 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to fetch preferences" }, { status: 500 })
   }
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     success: true,
     digest_enabled: data.digest_enabled ?? true,
   })
+  response.headers.set("Cache-Control", "private, max-age=60")
+  return response
 }
 
 /**
