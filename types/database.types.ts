@@ -773,6 +773,91 @@ export interface Database {
           },
         ]
       }
+      flagged_content: {
+        Row: {
+          id: string
+          content_id: string | null
+          user_id: string | null
+          url: string
+          content_type: string | null
+          flag_source: string
+          flag_reason: string
+          flag_categories: string[]
+          severity: string
+          user_ip: string | null
+          content_hash: string | null
+          scraped_text_preview: string | null
+          status: string
+          review_notes: string | null
+          reviewed_by: string | null
+          reviewed_at: string | null
+          reported_to: string | null
+          report_reference: string | null
+          reported_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          content_id?: string | null
+          user_id?: string | null
+          url: string
+          content_type?: string | null
+          flag_source: string
+          flag_reason: string
+          flag_categories?: string[]
+          severity: string
+          user_ip?: string | null
+          content_hash?: string | null
+          scraped_text_preview?: string | null
+          status?: string
+          review_notes?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          reported_to?: string | null
+          report_reference?: string | null
+          reported_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          content_id?: string | null
+          user_id?: string | null
+          url?: string
+          content_type?: string | null
+          flag_source?: string
+          flag_reason?: string
+          flag_categories?: string[]
+          severity?: string
+          user_ip?: string | null
+          content_hash?: string | null
+          scraped_text_preview?: string | null
+          status?: string
+          review_notes?: string | null
+          reviewed_by?: string | null
+          reviewed_at?: string | null
+          reported_to?: string | null
+          report_reference?: string | null
+          reported_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "flagged_content_content_id_fkey"
+            columns: ["content_id"]
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "flagged_content_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: { [_ in never]: never }
     Functions: {
