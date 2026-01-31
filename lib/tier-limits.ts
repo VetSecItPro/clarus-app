@@ -22,7 +22,7 @@ export interface TierLimits {
   library: number
 }
 
-/** Monthly limits per tier. Infinity = unlimited. */
+/** Monthly limits per tier. All tiers have hard caps to prevent abuse. */
 export const TIER_LIMITS: Record<UserTier, TierLimits> = {
   free: {
     analyses: 5,
@@ -35,21 +35,21 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
   },
   starter: {
     analyses: 50,
-    chatMessages: Infinity,
+    chatMessages: 30,
     shareLinks: 10,
     exports: 50,
     bookmarks: 50,
-    tags: Infinity,
+    tags: 50,
     library: 500,
   },
   pro: {
-    analyses: Infinity,
-    chatMessages: Infinity,
-    shareLinks: Infinity,
-    exports: Infinity,
-    bookmarks: Infinity,
-    tags: Infinity,
-    library: Infinity,
+    analyses: 300,
+    chatMessages: 100,
+    shareLinks: 100,
+    exports: 100,
+    bookmarks: 500,
+    tags: 100,
+    library: 5000,
   },
 }
 
