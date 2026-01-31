@@ -20,7 +20,6 @@ const PUBLIC_PREFIXES = [
   "/share/",
   "/features/",
   "/articles/",
-  "/demo/",
   "/api/polar/webhook",
   "/api/assemblyai-webhook",
   "/api/crons/",
