@@ -102,11 +102,18 @@ interface SystemHealthDetails {
   processingTimeTrend: ProcessingTimeTrendData[]
 }
 
+export interface TierBreakdown {
+  free: number
+  starter: number
+  pro: number
+}
+
 export interface DashboardMetrics {
   totalUsers: number
   activeUsers: number
   newUsersToday: number
   userGrowthPercent: number
+  usersByTier: TierBreakdown
   totalContent: number
   contentToday: number
   contentGrowthPercent: number
@@ -189,6 +196,7 @@ export async function GET(request: NextRequest) {
       apiUsageHourlyResult,
       previousUsersResult,
       previousContentResult,
+      userTiersResult,
     ] = await Promise.all([
       // Total users
       getSupabaseAdmin().from("users").select("id", { count: "exact", head: true }),
@@ -253,6 +261,8 @@ export async function GET(request: NextRequest) {
       getSupabaseAdmin().from("content").select("id", { count: "exact", head: true })
         .gte("date_added", previousPeriodStart)
         .lt("date_added", previousPeriodEnd),
+      // User tiers breakdown
+      getSupabaseAdmin().from("users").select("tier"),
     ])
 
     // Calculate unique active users
@@ -277,6 +287,15 @@ export async function GET(request: NextRequest) {
       if (u.subscription_status === "active") subCounts.active++
       else if (u.subscription_status === "trialing") subCounts.trialing++
       else if (u.subscription_status === "canceled") subCounts.canceled++
+    })
+
+    // Calculate users by tier
+    const usersByTier: TierBreakdown = { free: 0, starter: 0, pro: 0 }
+    userTiersResult.data?.forEach(u => {
+      const tier = u.tier as string | null
+      if (tier === "starter") usersByTier.starter++
+      else if (tier === "pro") usersByTier.pro++
+      else usersByTier.free++
     })
 
     // Calculate signup trend (group by day)
@@ -628,6 +647,7 @@ export async function GET(request: NextRequest) {
       activeUsers: activeUserIds.size,
       newUsersToday: newUsersResult.count || 0,
       userGrowthPercent: Math.round(userGrowthPercent * 10) / 10,
+      usersByTier,
       totalContent,
       contentToday: contentTodayResult.count || 0,
       contentGrowthPercent: Math.round(contentGrowthPercent * 10) / 10,
