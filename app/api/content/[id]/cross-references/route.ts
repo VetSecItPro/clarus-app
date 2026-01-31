@@ -77,5 +77,7 @@ export async function GET(
     }
   }
 
-  return NextResponse.json({ success: true, crossReferences })
+  const response = NextResponse.json({ success: true, crossReferences })
+  response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=600")
+  return response
 }
