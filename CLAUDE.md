@@ -296,83 +296,112 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
 
 ---
 
-## Pricing (Locked)
+## Pricing (Locked — Hard Caps, No "Unlimited")
 
-> **These prices are final. Do not change them without explicit owner approval.**
+> **These prices and limits are final. Do not change without explicit owner approval.**
+> **RULE: No "Unlimited" on any tier. Every feature has a hard cap to prevent abuse.**
 
-| Plan | Monthly | Annual | Analyses/mo | Key Differentiator |
-|------|---------|--------|-------------|-------------------|
-| **Free** | $0 | $0 | 5 | 10 chat msgs/content, 25 library items |
-| **Starter** | $8 | $80 | 50 | Unlimited chat, exports, digest email |
-| **Pro** | $16 | $160 | Unlimited | Cross-content claim tracking |
+| Feature | Free | Starter ($8/mo) | Pro ($16/mo) |
+|---------|------|-----------------|--------------|
+| Analyses/month | 5 | 50 | 300 |
+| Chat messages/content | 10 | 30 | 100 |
+| Library items | 25 | 500 | 5,000 |
+| Bookmarks | 5 | 50 | 500 |
+| Tags | 3 | 50 | 100 |
+| Share links/month | 0 | 10 | 100 |
+| Exports/month | 0 | 50 | 100 |
+| Claim tracking | No | No | Yes |
+| Weekly digest | No | Yes | Yes |
+| Priority processing | No | No | Yes |
 
-Annual discount: 17% (2 months free).
+Annual discount: 17% ($80/yr Starter, $160/yr Pro = 2 months free).
 
 **Rules:**
 - Do NOT add a Team/Enterprise tier until team features are built
 - Do NOT change prices, limits, or feature gating without explicit approval
+- Do NOT use the word "Unlimited" anywhere in pricing or marketing
 - Pricing page lives at `app/pricing/page.tsx`
 - Tier gating logic lives in `lib/tier-limits.ts`
 
 ---
 
+## AI Models
+
+> **Switched from Claude (Anthropic) to Gemini 2.5 Flash (Google) on 2026-01-30.**
+> **Reason: 7x cheaper per analysis ($0.032 vs $0.225). Quality is adequate for content analysis.**
+
+| Component | Model | Cost (per 1M tokens) |
+|-----------|-------|---------------------|
+| 6 analysis sections | `google/gemini-2.5-flash` | $0.30 in / $2.50 out |
+| Summarizer | `google/gemini-2.5-flash` | $0.30 in / $2.50 out |
+| Chat | `google/gemini-2.5-flash` | $0.30 in / $2.50 out |
+| Keyword extraction | `google/gemini-2.5-flash-lite` | $0.10 in / $0.40 out |
+
+- Models configured in database (`analysis_prompts`, `active_chat_prompt`, `active_summarizer_prompt`)
+- Fallback models in code default to `google/gemini-2.5-flash`
+- Legacy Claude pricing kept in `lib/api-usage.ts` for historical cost tracking
+- Migration script: `scripts/030-switch-to-gemini-flash.sql`
+
+**Content Safety:** All prompts include mandatory CONTENT_REFUSED guardrails for CSAM, terrorism, weapons manufacturing. Content about politics, conspiracy theories, controversial opinions IS allowed.
+
+**Speaker Attribution:** All analysis prompts attribute claims/arguments to specific speakers by name for video/podcast content. Makes analysis more intimate and useful.
+
+---
+
+## Content Moderation Policy
+
+> **Legal obligation under 18 U.S.C. § 2258A — ESPs must report apparent CSAM to NCMEC.**
+
+- Layer 1: Google Safe Browsing API (URL screening before scrape)
+- Layer 2: Keyword screening on scraped text (CSAM/terrorism terms)
+- Layer 3: AI model refusal detection (Gemini safety refusals)
+- Layer 4: Admin dashboard moderation queue + NCMEC CyberTipline reporting
+- All flagged content preserved with legal hold (non-deletable)
+- Penalty for not reporting: $150K first offense, $300K subsequent
+
+---
+
 ## Clarus Session Work
 
-> **Last Updated**: 2026-01-30 (Session 2)
+> **Last Updated**: 2026-01-30 (Session 3)
 
-### ✅ Completed
+### Completed
 
 | Task | PR | Status |
 |------|-----|--------|
-| Security hardening: Zod validation, auth helpers, security headers | #3 | ✅ Merged |
-| Optimize CI workflow (PR-only triggers, concurrency, combined jobs) | #4 | ✅ Merged |
-| Add clarus schema isolation for shared Supabase | #5 | ✅ Merged |
-| Code cleanup, TypeScript fixes, Polar migration | #6 | ✅ Merged |
-| Configure MCP servers (Vercel, Supabase) | - | ✅ Done |
-| Document Supabase isolation rules | - | ✅ Done |
-| Dead code cleanup (1,481+ lines) | #13, #14 | ✅ Merged |
-| Perf: middleware auth bypass, caching, CSS animations, ISR | #15 | ✅ Merged |
-| Document pricing (locked) in CLAUDE.md | - | ✅ Done |
-| Clean up all remote branches | - | ✅ Done |
+| Security hardening: Zod validation, auth helpers, security headers | #3 | Merged |
+| Optimize CI workflow (PR-only triggers, concurrency, combined jobs) | #4 | Merged |
+| Add clarus schema isolation for shared Supabase | #5 | Merged |
+| Code cleanup, TypeScript fixes, Polar migration | #6 | Merged |
+| Configure MCP servers (Vercel, Supabase) | - | Done |
+| Dead code cleanup (1,481+ lines) | #13, #14 | Merged |
+| Perf: middleware auth bypass, caching, CSS animations, ISR | #15 | Merged |
+| Landing page overhaul (hero, features, personas, CTA, SEO) | #17 | Merged |
+| Switch AI models to Gemini 2.5 Flash | WIP | In current branch |
+| Remove "Unlimited" from all pricing, add hard caps | WIP | In current branch |
+| Enhanced AI prompts (speaker attribution + content safety) | WIP | In current branch |
+| Landing page honesty (fix pills, persona claims, SEO title) | WIP | In current branch |
 
-### 🔄 Current State
+### Current Branch
 
-- **GitHub**: All code merged to `main`, only `main` branch exists
-- **Local**: Synced with remote, working tree clean
-- **Revert point**: Commit `f4a62f8` is the baseline before landing page work
+`feature/landing-page-honesty-pricing-caps` — pending PR
 
-### 📋 TODO
+### TODO (Not Yet Built)
 
-1. **Complete Vercel Setup**
-   - Import GitHub repo to Vercel
-   - Add environment variables (see "All Environment Variables" section)
-   - Connect custom domain (clarusapp.io)
+1. **Content moderation pipeline** — URL screening, keyword scanning, AI refusal handling
+2. **NCMEC reporting mechanism** — Automated evidence collection, admin review, CyberTipline filing
+3. **Admin dashboard** — User metrics, content analytics, API costs, revenue, moderation queue
+4. **Weekly discovery newsletter** — Anonymous content curation, Resend email, /discover page
+5. **In-product paywall detection** — Warn users before processing paywalled URLs
+6. **SEO content/help articles** — Feature pages for organic search traffic
+7. **Podcast transcription** — AssemblyAI or Deepgram integration with speaker diarization
+8. **Run database migration** — `scripts/030-switch-to-gemini-flash.sql` on live Supabase
+9. **Complete Vercel setup** — Import repo, env vars, custom domain
+10. **Set up external services** — OpenRouter credits, Tavily, Firecrawl, Polar
 
-2. **Run Database Migrations** (via Supabase MCP)
-   ```sql
-   -- Run in order:
-   1. scripts/100-create-clarus-schema.sql
-   2. scripts/000-full-schema.sql
-   3. scripts/000b-insert-prompts.sql
-   ```
-
-3. **Set Up External Services**
-   - OpenRouter: Get API key, add credits
-   - Tavily: Get API key (free tier: 1000 searches/month)
-   - Firecrawl: Get API key (free tier: 500 credits)
-   - Polar: Create account for payments (optional for launch)
-
-4. **Test End-to-End**
-   - Submit a URL for analysis
-   - Verify all 6 analysis cards render
-   - Test chat functionality
-
-### 🚫 Known Issues
-
-- **Vercel deployment failing**: Missing env vars (need to add in Vercel dashboard before deploy)
-
-### 📝 Notes
+### Notes
 
 - Supabase project ID: `srqmutgamvktxqmylied`
 - Tables in `public` schema belong to OTHER projects - DO NOT TOUCH
 - All Clarus tables go in the `clarus` schema (search_path handles this automatically)
+- Revert point: Commit `f4a62f8` is the baseline before landing page work

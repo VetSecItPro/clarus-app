@@ -9,7 +9,7 @@ import {
   AlertTriangle, CheckCircle, Clock, Zap,
   ArrowUpRight, ArrowDownRight, Loader2,
   BarChart3, RefreshCw, ChevronDown, ChevronUp,
-  ArrowLeft
+  ArrowLeft, Shield, Eye, XCircle, Flag
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -17,7 +17,7 @@ import {
   PieChart as RechartsPie, Pie, Cell, BarChart, Bar, LineChart, Line
 } from "recharts"
 import { cn } from "@/lib/utils"
-import { useAdminMetrics, useAdminMrr } from "@/hooks/use-admin-metrics"
+import { useAdminMetrics, useAdminMrr, useFlaggedContent } from "@/hooks/use-admin-metrics"
 import type { DashboardMetrics } from "@/app/api/admin/metrics/route"
 
 const COLORS = {
@@ -158,6 +158,11 @@ export default function AdminDashboard() {
   // Fetch MRR separately (it has its own caching)
   const { mrrData } = useAdminMrr({ userId, enabled: isAdmin && !!userId })
 
+  // Fetch flagged content for moderation queue
+  const { flaggedContent, refresh: refreshFlags } = useFlaggedContent({ userId, enabled: isAdmin && !!userId })
+  const [updatingFlagId, setUpdatingFlagId] = useState<string | null>(null)
+  const [expandedFlagId, setExpandedFlagId] = useState<string | null>(null)
+
   // Combine metrics with MRR data
   const combinedMetrics: DashboardMetrics | null = metrics
     ? {
@@ -179,6 +184,25 @@ export default function AdminDashboard() {
       }
       return newSet
     })
+  }
+
+  const updateFlagStatus = async (id: string, status: "reviewed" | "reported" | "dismissed", extra?: { review_notes?: string; reported_to?: string; report_reference?: string }) => {
+    setUpdatingFlagId(id)
+    try {
+      const res = await fetch("/api/admin/flagged-content", {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id, status, ...extra }),
+      })
+      if (res.ok) {
+        refreshFlags()
+        setExpandedFlagId(null)
+      }
+    } catch (error) {
+      console.error("Failed to update flag:", error)
+    } finally {
+      setUpdatingFlagId(null)
+    }
   }
 
   // Check admin status on mount
@@ -331,6 +355,188 @@ export default function AdminDashboard() {
             loading={loading}
           />
         </div>
+
+        {/* Content Moderation Queue */}
+        {flaggedContent && flaggedContent.counts.pending > 0 && (
+          <div className="bg-red-500/5 border border-red-500/20 rounded-2xl p-5">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl bg-red-500/10">
+                  <Shield className="w-5 h-5 text-red-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-medium text-white">Content Moderation Queue</h3>
+                  <p className="text-xs text-white/50">
+                    {flaggedContent.counts.pending} pending
+                    {flaggedContent.counts.critical > 0 && (
+                      <span className="text-red-400 font-medium ml-1">
+                        ({flaggedContent.counts.critical} critical)
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => refreshFlags()}
+                className="text-xs text-white/50 hover:text-white/70 transition-colors"
+              >
+                Refresh
+              </button>
+            </div>
+            <div className="space-y-2 max-h-[400px] overflow-y-auto subtle-scrollbar">
+              {flaggedContent.items
+                .filter(item => item.status === "pending")
+                .map((item) => (
+                  <div
+                    key={item.id}
+                    className={cn(
+                      "bg-black/30 rounded-xl border transition-colors",
+                      item.severity === "critical" ? "border-red-500/30" : "border-white/[0.06]"
+                    )}
+                  >
+                    <button
+                      onClick={() => setExpandedFlagId(expandedFlagId === item.id ? null : item.id)}
+                      className="w-full flex items-center justify-between p-3 hover:bg-white/[0.02] transition-colors rounded-xl"
+                    >
+                      <div className="flex items-center gap-3 text-left min-w-0">
+                        <div className={cn(
+                          "px-2 py-0.5 rounded text-[10px] font-medium uppercase shrink-0",
+                          item.severity === "critical" && "bg-red-500/20 text-red-400",
+                          item.severity === "high" && "bg-orange-500/20 text-orange-400",
+                          item.severity === "medium" && "bg-yellow-500/20 text-yellow-400"
+                        )}>
+                          {item.severity}
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm text-white truncate">{item.url}</p>
+                          <p className="text-xs text-white/40 truncate">{item.flag_reason}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0 ml-3">
+                        <span className="text-[10px] text-white/30">
+                          {new Date(item.created_at).toLocaleDateString()}
+                        </span>
+                        {expandedFlagId === item.id ? (
+                          <ChevronUp className="w-4 h-4 text-white/40" />
+                        ) : (
+                          <ChevronDown className="w-4 h-4 text-white/40" />
+                        )}
+                      </div>
+                    </button>
+                    {expandedFlagId === item.id && (
+                      <div className="px-3 pb-3 border-t border-white/[0.06] space-y-3">
+                        <div className="grid grid-cols-2 gap-3 pt-3 text-xs">
+                          <div>
+                            <span className="text-white/40">Source</span>
+                            <p className="text-white/80">{item.flag_source.replace(/_/g, " ")}</p>
+                          </div>
+                          <div>
+                            <span className="text-white/40">Categories</span>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {item.flag_categories.map(cat => (
+                                <span key={cat} className="px-1.5 py-0.5 bg-white/[0.06] rounded text-white/60 text-[10px]">
+                                  {cat}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          {item.content_type && (
+                            <div>
+                              <span className="text-white/40">Content Type</span>
+                              <p className="text-white/80">{item.content_type}</p>
+                            </div>
+                          )}
+                          <div>
+                            <span className="text-white/40">Flagged</span>
+                            <p className="text-white/80">{new Date(item.created_at).toLocaleString()}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2 pt-2 border-t border-white/[0.06]">
+                          <button
+                            onClick={() => updateFlagStatus(item.id, "reviewed", { review_notes: "Reviewed by admin" })}
+                            disabled={updatingFlagId === item.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-50"
+                          >
+                            <Eye className="w-3 h-3" />
+                            Mark Reviewed
+                          </button>
+                          <button
+                            onClick={() => updateFlagStatus(item.id, "dismissed", { review_notes: "Dismissed by admin — false positive" })}
+                            disabled={updatingFlagId === item.id}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-white/[0.06] text-white/60 hover:bg-white/[0.1] transition-colors disabled:opacity-50"
+                          >
+                            <XCircle className="w-3 h-3" />
+                            Dismiss
+                          </button>
+                          {item.flag_categories.includes("csam") && (
+                            <button
+                              onClick={() => updateFlagStatus(item.id, "reported", {
+                                review_notes: "Reported to NCMEC CyberTipline",
+                                reported_to: "ncmec",
+                              })}
+                              disabled={updatingFlagId === item.id}
+                              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-50"
+                            >
+                              <Flag className="w-3 h-3" />
+                              Report to NCMEC
+                            </button>
+                          )}
+                          {updatingFlagId === item.id && (
+                            <Loader2 className="w-3 h-3 text-white/40 animate-spin" />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          </div>
+        )}
+
+        {/* Users by Tier */}
+        <ChartCard title="Users by Tier">
+          <div className="flex items-center gap-6">
+            {loading ? (
+              <div className="h-[80px] w-full bg-white/[0.03] rounded animate-pulse" />
+            ) : (() => {
+              const tiers = combinedMetrics?.usersByTier || { free: 0, starter: 0, pro: 0 }
+              const total = tiers.free + tiers.starter + tiers.pro
+              const tierItems: { label: string; count: number; color: string; pct: string }[] = [
+                { label: "Free", count: tiers.free, color: "bg-white/40", pct: total > 0 ? ((tiers.free / total) * 100).toFixed(1) : "0" },
+                { label: "Starter", count: tiers.starter, color: "bg-[#1d9bf0]", pct: total > 0 ? ((tiers.starter / total) * 100).toFixed(1) : "0" },
+                { label: "Pro", count: tiers.pro, color: "bg-purple-500", pct: total > 0 ? ((tiers.pro / total) * 100).toFixed(1) : "0" },
+              ]
+              return (
+                <>
+                  {/* Stacked bar */}
+                  <div className="flex-1">
+                    <div className="flex h-3 rounded-full overflow-hidden bg-white/[0.06]">
+                      {tierItems.map(t => t.count > 0 ? (
+                        <div
+                          key={t.label}
+                          className={cn(t.color, "transition-all")}
+                          style={{ width: `${t.pct}%` }}
+                        />
+                      ) : null)}
+                    </div>
+                    <div className="flex items-center gap-6 mt-3">
+                      {tierItems.map(t => (
+                        <div key={t.label} className="flex items-center gap-2">
+                          <div className={cn("w-3 h-3 rounded-full", t.color)} />
+                          <div>
+                            <span className="text-sm font-medium text-white">{t.count.toLocaleString()}</span>
+                            <span className="text-xs text-white/40 ml-1">{t.label}</span>
+                            <span className="text-xs text-white/30 ml-1">({t.pct}%)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        </ChartCard>
 
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

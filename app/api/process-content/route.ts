@@ -4,6 +4,8 @@ import type { Database, Json, Tables, TriageData, TruthCheckData, ActionItemsDat
 import { validateContentId, checkRateLimit } from "@/lib/validation"
 import { logApiUsage, logProcessingMetrics, createTimer } from "@/lib/api-usage"
 import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { detectPaywallTruncation } from "@/lib/paywall-detection"
+import { screenContent, detectAiRefusal, persistFlag } from "@/lib/content-screening"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -78,7 +80,7 @@ async function extractKeyTopics(text: string): Promise<string[]> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "anthropic/claude-3-haiku", // Fast and cheap
+        model: "google/gemini-2.5-flash-lite", // Fast and cheap
         messages: [
           {
             role: "system",
@@ -670,7 +672,7 @@ async function getModelSummary(
 
   const { system_content, user_content_template, temperature, top_p, max_tokens, model_name } = promptData
 
-  const openRouterModelId = model_name || "anthropic/claude-3.5-sonnet"
+  const openRouterModelId = model_name || "google/gemini-2.5-flash"
   const finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}").replace(
     "{{TEXT_TO_SUMMARIZE}}",
     textToSummarize,
@@ -1388,17 +1390,70 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // ============================================
+  // CONTENT MODERATION PRE-SCREENING
+  // Runs before AI analysis to catch prohibited content
+  // ============================================
+  const screeningResult = await screenContent({
+    url: content.url,
+    scrapedText: content.full_text,
+    contentId: content.id,
+    userId: content.user_id,
+    contentType: content.type,
+    userIp: clientIp,
+  })
+
+  if (screeningResult.blocked) {
+    console.warn(`MODERATION: Content blocked for ${content.url} — ${screeningResult.flags.map(f => f.reason).join("; ")}`)
+
+    // Mark content as failed so it doesn't appear in the library as processable
+    await supabase.from("content").update({
+      full_text: "PROCESSING_FAILED::CONTENT_POLICY_VIOLATION",
+    }).eq("id", content.id)
+
+    // Create a summary record marked as refused
+    await supabase.from("summaries").upsert({
+      content_id: content.id,
+      user_id: content.user_id!,
+      processing_status: "refused",
+      brief_overview: "This content could not be analyzed because it may violate our content policy.",
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "content_id" })
+
+    return NextResponse.json(
+      {
+        success: false,
+        message: "This content cannot be analyzed because it may contain prohibited material.",
+        content_id: content.id,
+        content_blocked: true,
+      },
+      { status: 200 }
+    )
+  }
+
+  // Paywall detection — warn user if content appears truncated
+  const paywallWarning = detectPaywallTruncation(
+    content.url,
+    content.full_text,
+    content.type || "article"
+  )
+  if (paywallWarning) {
+    console.log(`API: Paywall warning for ${content.url}: ${paywallWarning}`)
+  }
+
   const responsePayload: {
     success: boolean
     message: string
     content_id: string
     sections_generated: string[]
     modelErrors?: ModelProcessingError[]
+    paywall_warning?: string | null
   } = {
     success: true,
     message: "Content processed successfully.",
     content_id: content.id,
     sections_generated: [],
+    paywall_warning: paywallWarning,
   }
 
   if (!content.user_id) {
@@ -1573,6 +1628,33 @@ export async function POST(req: NextRequest) {
     ])
 
     truthCheck = truthResult
+  }
+
+  // ============================================
+  // AI REFUSAL DETECTION (Layer 3)
+  // Check if any AI section refused the content
+  // ============================================
+  const aiSections = [
+    { name: "brief_overview", content: briefOverview },
+    { name: "triage", content: triage },
+    { name: "detailed_summary", content: detailedSummary },
+    { name: "truth_check", content: truthCheck },
+  ]
+
+  for (const section of aiSections) {
+    const refusal = detectAiRefusal(section.content)
+    if (refusal) {
+      await persistFlag({
+        contentId,
+        userId,
+        url: contentUrl,
+        contentType,
+        flag: refusal,
+        userIp: clientIp,
+        scrapedText: fullText,
+      })
+      console.warn(`MODERATION: AI refused [${section.name}] for ${contentUrl}: ${refusal.reason}`)
+    }
   }
 
   // Update domain credibility stats

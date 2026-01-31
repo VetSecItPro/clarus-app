@@ -349,7 +349,7 @@ You are grounded in the analysis above. Your primary job is to help users unders
 
     const modelMessages = convertToModelMessages(sanitizedMessages as UIMessage[])
 
-    const modelName = promptData.model_name || "anthropic/claude-sonnet-4"
+    const modelName = promptData.model_name || "google/gemini-2.5-flash"
 
     // Create OpenRouter provider instance
     const openrouter = createOpenRouter({ apiKey: openRouterApiKey! })
