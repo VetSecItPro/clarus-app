@@ -20,20 +20,19 @@ export function HeroSection() {
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.05] mb-6"
         >
-          Understand{" "}
+          Get the point of any
+          <br />
+          video or article in{" "}
           <span className="relative inline-block">
-            <span className="relative z-10 italic">any</span>
+            <span className="relative z-10 text-[#00D4FF]">30 seconds</span>
             <motion.span
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ duration: 0.6, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-0 bg-[#1d9bf0]/30 -skew-x-6 rounded origin-left"
+              className="absolute inset-0 bg-[#00D4FF]/15 -skew-x-6 rounded origin-left"
               style={{ top: '10%', bottom: '10%' }}
             />
           </span>
-          {" "}content
-          <br />
-          <span className="gradient-text">instantly</span>
         </motion.h1>
 
         {/* Subheadline */}
@@ -43,15 +42,16 @@ export function HeroSection() {
           transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="text-lg sm:text-xl text-white/40 max-w-xl mx-auto leading-relaxed font-light mb-8"
         >
-          Drop a YouTube video, article, or document.
-          <span className="text-white/60"> Get AI-powered summaries and insights in seconds.</span>
+          Paste a link. Get key points, claims, and takeaways.
+          <span className="text-white/60"> Ask follow-up questions. Build a searchable library of everything you&apos;ve learned.</span>
         </motion.p>
 
-        {/* CTA Button */}
+        {/* CTA Buttons */}
         <motion.div
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
+          className="flex flex-col sm:flex-row items-center justify-center gap-3"
         >
           <Link href="/signup">
             <motion.button
@@ -59,11 +59,30 @@ export function HeroSection() {
               whileTap={{ scale: 0.98 }}
               className="group inline-flex items-center gap-2 px-8 py-3.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-full transition-colors duration-200 shadow-lg shadow-[#1d9bf0]/25"
             >
-              Get started free
+              Start free
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
             </motion.button>
           </Link>
+          <a href="#how-it-works">
+            <motion.button
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              className="inline-flex items-center gap-2 px-8 py-3.5 text-white/70 hover:text-white font-medium rounded-full border border-white/[0.12] hover:border-white/[0.25] transition-all duration-200"
+            >
+              See how it works
+            </motion.button>
+          </a>
         </motion.div>
+
+        {/* Trust line */}
+        <motion.p
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.8, delay: 0.5 }}
+          className="mt-4 text-xs text-white/30"
+        >
+          No credit card required. 5 free analyses.
+        </motion.p>
       </div>
     </section>
   )
