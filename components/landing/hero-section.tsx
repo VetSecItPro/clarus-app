@@ -24,7 +24,7 @@ export function HeroSection() {
           <br />
           video or article in{" "}
           <span className="relative inline-block">
-            <span className="relative z-10 text-[#00D4FF]">30 seconds</span>
+            <span className="relative z-10 text-[#00D4FF]">seconds</span>
             <motion.span
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}

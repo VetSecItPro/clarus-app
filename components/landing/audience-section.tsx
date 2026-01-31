@@ -6,22 +6,38 @@ const personas = [
   {
     emoji: "\uD83D\uDD2C",
     title: "Researchers",
-    description: "Track claims across sources. Build evidence libraries. Never lose a citation.",
+    bullets: [
+      "Fact-check claims with AI-powered truth analysis",
+      "Save analyses to a searchable library",
+      "Export to markdown or PDF",
+    ],
   },
   {
     emoji: "\uD83C\uDFA4",
     title: "Content creators",
-    description: "Consume 10x faster. Extract insights from competitors. Research in minutes, not hours.",
+    bullets: [
+      "Break down long videos into key points",
+      "Build a reference library of analyzed sources",
+      "Chat with content to find specific details",
+    ],
   },
   {
     emoji: "\uD83D\uDCBC",
     title: "Professionals",
-    description: "Clear the newsletter backlog. Get through reports. Make decisions faster.",
+    bullets: [
+      "Get key takeaways from articles and reports",
+      "Quality scores tell you what\u2019s worth reading",
+      "Search your library for past insights",
+    ],
   },
   {
     emoji: "\uD83D\uDCDA",
     title: "Students",
-    description: "Understand lectures and papers. Prep for exams. Learn what matters.",
+    bullets: [
+      "Understand lecture videos with detailed breakdowns",
+      "Identify the most important points for study",
+      "Ask follow-up questions via chat",
+    ],
   },
 ]
 
@@ -58,9 +74,14 @@ export function AudienceSection() {
               <h3 className="text-base font-semibold text-white mb-2">
                 {persona.title}
               </h3>
-              <p className="text-white/40 text-sm leading-relaxed">
-                {persona.description}
-              </p>
+              <ul className="text-white/40 text-sm leading-relaxed space-y-1 text-left">
+                {persona.bullets.map((bullet) => (
+                  <li key={bullet} className="flex gap-2">
+                    <span className="text-white/20 shrink-0">&bull;</span>
+                    <span>{bullet}</span>
+                  </li>
+                ))}
+              </ul>
             </motion.div>
           ))}
         </div>

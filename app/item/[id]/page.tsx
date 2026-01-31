@@ -10,6 +10,7 @@ import { formatDistanceToNow } from "date-fns"
 import { useRouter } from "next/navigation"
 import { getCachedSession } from "@/components/with-auth"
 import { formatDuration, getYouTubeVideoId, getDomainFromUrl } from "@/lib/utils"
+import { detectPaywallTruncation } from "@/lib/paywall-detection"
 import { EditAIPromptsModal } from "@/components/edit-ai-prompts-modal"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { TranscriptViewer } from "@/components/ui/transcript-viewer"
@@ -529,9 +530,20 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const triageData = summary?.triage as unknown as TriageData | null
   const contentCategory = triageData?.content_category as ContentCategory | undefined
 
+  // Paywall detection — warn if content appears truncated
+  const paywallWarning = item.full_text && !item.full_text.startsWith("PROCESSING_FAILED::")
+    ? detectPaywallTruncation(item.url, item.full_text, item.type || "article")
+    : null
+
   // Analysis cards content (shared between desktop right panel and mobile analysis tab)
   const analysisContent = (
     <div className="space-y-6 sm:space-y-8">
+      {paywallWarning && !processingError && (
+        <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex gap-3 items-start">
+          <Shield className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
+          <p className="text-sm text-amber-300/80 leading-relaxed">{paywallWarning}</p>
+        </div>
+      )}
       {processingError ? (
         <div className="p-4 text-center rounded-2xl bg-yellow-500/10 border border-yellow-500/20">
           <h3 className="text-base font-medium text-yellow-300 mb-2">Processing Failed</h3>
