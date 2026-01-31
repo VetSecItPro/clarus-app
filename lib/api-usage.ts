@@ -14,14 +14,18 @@ const supabaseAdmin = createClient(
 // API pricing (per 1M tokens or per request)
 export const API_PRICING = {
   openrouter: {
-    // Claude Sonnet 3.5 pricing via OpenRouter
+    // Gemini 2.5 pricing via OpenRouter (primary models)
+    "google/gemini-2.5-flash": { input: 0.3, output: 2.5 },
+    "google/gemini-2.5-flash-lite": { input: 0.1, output: 0.4 },
+    "google/gemini-2.5-pro": { input: 1.25, output: 10.0 },
+    // Legacy models (kept for cost tracking of historical usage)
     "anthropic/claude-sonnet-4": { input: 3.0, output: 15.0 },
     "anthropic/claude-3.5-sonnet": { input: 3.0, output: 15.0 },
     "anthropic/claude-3-haiku": { input: 0.25, output: 1.25 },
     "openai/gpt-4o": { input: 2.5, output: 10.0 },
     "openai/gpt-4o-mini": { input: 0.15, output: 0.6 },
     "google/gemini-2.0-flash-001": { input: 0.1, output: 0.4 },
-    default: { input: 3.0, output: 15.0 },
+    default: { input: 0.3, output: 2.5 },
   },
   supadata: {
     transcript: 0.001, // ~$0.001 per transcript request
