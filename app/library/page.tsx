@@ -533,7 +533,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                         id={item.id}
                         title={item.title || "Untitled"}
                         url={item.url}
-                        type={(item.type as "youtube" | "article" | "x_post") || "article"}
+                        type={(item.type as "youtube" | "article" | "x_post" | "podcast") || "article"}
                         thumbnail_url={item.thumbnail_url}
                         brief_overview={summary?.brief_overview}
                         triage={summary?.triage as TriageData | null | undefined}
