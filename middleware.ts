@@ -11,12 +11,16 @@ const PUBLIC_ROUTES = [
   "/auth/callback",
   "/terms",
   "/privacy",
+  "/pricing",
+  "/discover",
 ]
 
 const PUBLIC_PREFIXES = [
   "/share/",
+  "/features/",
   "/api/polar/webhook",
   "/api/crons/",
+  "/api/discover",
 ]
 
 function isPublicRoute(pathname: string): boolean {
