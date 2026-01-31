@@ -4,6 +4,7 @@ import type { Database, Json, Tables, TriageData, TruthCheckData, ActionItemsDat
 import { validateContentId, checkRateLimit } from "@/lib/validation"
 import { logApiUsage, logProcessingMetrics, createTimer } from "@/lib/api-usage"
 import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { detectPaywallTruncation } from "@/lib/paywall-detection"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -1388,17 +1389,29 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Paywall detection — warn user if content appears truncated
+  const paywallWarning = detectPaywallTruncation(
+    content.url,
+    content.full_text,
+    content.type || "article"
+  )
+  if (paywallWarning) {
+    console.log(`API: Paywall warning for ${content.url}: ${paywallWarning}`)
+  }
+
   const responsePayload: {
     success: boolean
     message: string
     content_id: string
     sections_generated: string[]
     modelErrors?: ModelProcessingError[]
+    paywall_warning?: string | null
   } = {
     success: true,
     message: "Content processed successfully.",
     content_id: content.id,
     sections_generated: [],
+    paywall_warning: paywallWarning,
   }
 
   if (!content.user_id) {
