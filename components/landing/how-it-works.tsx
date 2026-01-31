@@ -8,25 +8,25 @@ const steps = [
     number: "01",
     icon: Link2,
     title: "Paste a link",
-    description: "YouTube video, blog post, news article. Just drop the URL.",
+    description: "YouTube video, podcast, blog post, news article, PDF, or research paper. Just drop the URL.",
   },
   {
     number: "02",
     icon: Sparkles,
     title: "Get instant analysis",
-    description: "AI extracts key points, summaries, and actionable insights.",
+    description: "Key points, main arguments, claims with sources, and actionable takeaways. Ready in seconds.",
   },
   {
     number: "03",
     icon: MessageCircle,
     title: "Ask anything",
-    description: "Chat with your content. Dive deeper. Get answers.",
+    description: "Chat with your content. Get specific answers. Export to Markdown or PDF.",
   },
 ]
 
 export function HowItWorks() {
   return (
-    <section className="py-20 px-6">
+    <section id="how-it-works" className="py-20 px-6 scroll-mt-20">
       <div className="max-w-3xl mx-auto">
         {/* Section header */}
         <motion.div
