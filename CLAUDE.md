@@ -296,11 +296,31 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
 
 ---
 
+## Pricing (Locked)
+
+> **These prices are final. Do not change them without explicit owner approval.**
+
+| Plan | Monthly | Annual | Analyses/mo | Key Differentiator |
+|------|---------|--------|-------------|-------------------|
+| **Free** | $0 | $0 | 5 | 10 chat msgs/content, 25 library items |
+| **Starter** | $8 | $80 | 50 | Unlimited chat, exports, digest email |
+| **Pro** | $16 | $160 | Unlimited | Cross-content claim tracking |
+
+Annual discount: 17% (2 months free).
+
+**Rules:**
+- Do NOT add a Team/Enterprise tier until team features are built
+- Do NOT change prices, limits, or feature gating without explicit approval
+- Pricing page lives at `app/pricing/page.tsx`
+- Tier gating logic lives in `lib/tier-limits.ts`
+
+---
+
 ## Clarus Session Work
 
-> **Last Updated**: 2026-01-28 (Session 1 Complete)
+> **Last Updated**: 2026-01-30 (Session 2)
 
-### ✅ Completed This Session
+### ✅ Completed
 
 | Task | PR | Status |
 |------|-----|--------|
@@ -308,26 +328,27 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
 | Optimize CI workflow (PR-only triggers, concurrency, combined jobs) | #4 | ✅ Merged |
 | Add clarus schema isolation for shared Supabase | #5 | ✅ Merged |
 | Code cleanup, TypeScript fixes, Polar migration | #6 | ✅ Merged |
-| Configure MCP servers (Vercel, Supabase) | - | ✅ Done (.mcp.json) |
-| Document Supabase isolation rules | - | ✅ Done (CLAUDE.md) |
-| Clean up all feature branches | - | ✅ Done (only `main` exists) |
+| Configure MCP servers (Vercel, Supabase) | - | ✅ Done |
+| Document Supabase isolation rules | - | ✅ Done |
+| Dead code cleanup (1,481+ lines) | #13, #14 | ✅ Merged |
+| Perf: middleware auth bypass, caching, CSS animations, ISR | #15 | ✅ Merged |
+| Document pricing (locked) in CLAUDE.md | - | ✅ Done |
+| Clean up all remote branches | - | ✅ Done |
 
 ### 🔄 Current State
 
 - **GitHub**: All code merged to `main`, only `main` branch exists
 - **Local**: Synced with remote, working tree clean
-- **MCP Servers**: Configured in `.mcp.json`, need Claude Code restart to authenticate
+- **Revert point**: Commit `f4a62f8` is the baseline before landing page work
 
-### 📋 Next Session TODO
+### 📋 TODO
 
-1. **Restart Claude Code** to authenticate MCP servers (Vercel, Supabase)
-
-2. **Complete Vercel Setup**
+1. **Complete Vercel Setup**
    - Import GitHub repo to Vercel
    - Add environment variables (see "All Environment Variables" section)
    - Connect custom domain (clarusapp.io)
 
-3. **Run Database Migrations** (via Supabase MCP)
+2. **Run Database Migrations** (via Supabase MCP)
    ```sql
    -- Run in order:
    1. scripts/100-create-clarus-schema.sql
@@ -335,22 +356,13 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
    3. scripts/000b-insert-prompts.sql
    ```
 
-4. **Add Remaining MCP Servers** (optional)
-   ```bash
-   # Tavily (web search)
-   claude mcp add --transport http tavily "https://mcp.tavily.com/mcp/?tavilyApiKey=YOUR_KEY" --scope project
-
-   # Firecrawl (web scraping)
-   claude mcp add firecrawl -e FIRECRAWL_API_KEY=YOUR_KEY --scope project -- npx -y @anthropic-ai/mcp-server-firecrawl
-   ```
-
-5. **Set Up External Services**
+3. **Set Up External Services**
    - OpenRouter: Get API key, add credits
    - Tavily: Get API key (free tier: 1000 searches/month)
    - Firecrawl: Get API key (free tier: 500 credits)
    - Polar: Create account for payments (optional for launch)
 
-6. **Test End-to-End**
+4. **Test End-to-End**
    - Submit a URL for analysis
    - Verify all 6 analysis cards render
    - Test chat functionality
@@ -359,7 +371,7 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
 
 - **Vercel deployment failing**: Missing env vars (need to add in Vercel dashboard before deploy)
 
-### 📝 Notes for Next Session
+### 📝 Notes
 
 - Supabase project ID: `srqmutgamvktxqmylied`
 - Tables in `public` schema belong to OTHER projects - DO NOT TOUCH
