@@ -6,6 +6,7 @@ import { type NextRequest, NextResponse } from "next/server"
 import { validateContentId, validateChatMessage, checkRateLimit } from "@/lib/validation"
 import { z } from "zod"
 import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { TIER_LIMITS } from "@/lib/tier-limits"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -174,7 +175,7 @@ export async function POST(req: NextRequest) {
     // Fetch content with title and URL
     const { data: contentData, error: contentError } = await supabaseAdmin
       .from("content")
-      .select("title, url, full_text, type, author, user_id")
+      .select("title, url, full_text, type, author, user_id, detected_tone")
       .eq("id", contentIdValidation.sanitized!)
       .single()
 
@@ -192,6 +193,17 @@ export async function POST(req: NextRequest) {
           { status: 403 }
         )
       }
+
+      // Per-content limit check: count user messages in this conversation
+      const userMessageCount = messages.filter((m: UIMessage) => m.role === "user").length
+      const perContentLimit = TIER_LIMITS[usageCheck.tier].chatMessagesPerContent
+      if (userMessageCount > perContentLimit) {
+        return NextResponse.json(
+          { error: `Message limit reached for this content (${perContentLimit}). Upgrade your plan for more messages per content.`, upgrade_required: true, tier: usageCheck.tier },
+          { status: 403 }
+        )
+      }
+
       // Increment before streaming (can't increment after stream completes)
       await incrementUsage(supabaseAdmin, contentData.user_id, "chat_messages_count")
     }
@@ -228,6 +240,7 @@ export async function POST(req: NextRequest) {
     contextParts.push(`- **Title:** ${contentData.title || "Untitled"}`)
     contextParts.push(`- **Type:** ${contentData.type || "Unknown"}`)
     if (contentData.author) contextParts.push(`- **Author:** ${contentData.author}`)
+    if (contentData.detected_tone) contextParts.push(`- **Detected Tone:** ${contentData.detected_tone}`)
     if (contentData.url) contextParts.push(`- **Source:** ${contentData.url}`)
     contextParts.push("")
 

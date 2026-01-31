@@ -143,6 +143,17 @@ If you connect to this Supabase project and see tables like `users`, `content`, 
 - **Status**: ✅ Configured
 - **Env var**: `RESEND_API_KEY` (set in `.env.local` and Vercel)
 
+### 11. AssemblyAI (Podcast Transcription)
+- **Dashboard**: https://www.assemblyai.com/app
+- **Status**: ❌ Needs API key configured
+- **Actions**:
+  1. Create AssemblyAI account
+  2. Get API key from dashboard
+  3. Add `ASSEMBLYAI_API_KEY` to `.env.local` and Vercel
+- **Env var**: `ASSEMBLYAI_API_KEY` (required for podcast analysis)
+- **Pricing**: $0.17/hr ($0.15 transcription + $0.02 speaker diarization)
+- **Features**: Speaker diarization, language detection, webhook callbacks
+
 ---
 
 ## All Environment Variables
@@ -174,6 +185,9 @@ TAVILY_API_KEY=tvly-...
 
 # Resend (Email)
 RESEND_API_KEY=re_...
+
+# AssemblyAI (Podcast Transcription)
+ASSEMBLYAI_API_KEY=...
 ```
 
 ---
@@ -186,6 +200,7 @@ RESEND_API_KEY=re_...
 - **Payments**: Polar (not active yet)
 - **AI**: OpenRouter (Gemini 2.5 Flash)
 - **Scraping**: Firecrawl (articles), Supadata (YouTube)
+- **Transcription**: AssemblyAI (podcasts, speaker diarization)
 - **Search**: Tavily (web search for AI context)
 - **Email**: Resend
 - **Hosting**: Vercel
@@ -214,7 +229,7 @@ export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm build
 
 ```
 users                    -- clarus.users (user profiles)
-content                  -- clarus.content (analyzed URLs)
+content                  -- clarus.content (analyzed URLs, podcast_transcript_id for AssemblyAI)
 summaries                -- clarus.summaries (AI analysis results)
 content_ratings          -- clarus.content_ratings (user feedback)
 chat_threads             -- clarus.chat_threads (per-content chat)
@@ -226,7 +241,7 @@ processing_metrics       -- clarus.processing_metrics (performance)
 active_chat_prompt       -- clarus.active_chat_prompt (chat config)
 active_summarizer_prompt -- clarus.active_summarizer_prompt (summarizer config)
 analysis_prompts         -- clarus.analysis_prompts (AI prompts)
-usage_tracking           -- clarus.usage_tracking (monthly usage per user)
+usage_tracking           -- clarus.usage_tracking (monthly usage per user, podcast_analyses_count)
 claims                   -- clarus.claims (extracted claims for cross-referencing)
 flagged_content          -- clarus.flagged_content (content moderation flags)
 ```
@@ -238,6 +253,8 @@ flagged_content          -- clarus.flagged_content (content moderation flags)
 4. `scripts/023-add-fulltext-search.sql` - Full-text search indexes
 5. `scripts/030-switch-to-gemini-flash.sql` - Switch all prompts to Gemini 2.5 Flash (applied 2026-01-31)
 6. `scripts/031-create-flagged-content.sql` - Content moderation flagged_content table (applied 2026-01-31)
+7. `scripts/204-add-podcast-analyses.sql` - Podcast analysis columns + updated increment_usage (applied 2026-01-31)
+8. `scripts/033-add-tone-detection.sql` - Auto-tone detection column + {{TONE}} in 4 prose prompts (applied 2026-01-31)
 
 **Tables are created in the `clarus` schema. Code references them without prefix (e.g., `users` not `clarus.users`).**
 
@@ -288,8 +305,10 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
 
 | Feature | Free | Starter ($8/mo) | Pro ($16/mo) |
 |---------|------|-----------------|--------------|
-| Analyses/month | 5 | 50 | 300 |
-| Chat messages/content | 10 | 30 | 100 |
+| Analyses/month | 5 | 50 | 150 |
+| Podcast analyses/month | 0 | 10 | 30 |
+| Chat messages/content | 10 | 25 | 50 |
+| Chat messages/month | 50 | 300 | 1,000 |
 | Library items | 25 | 500 | 5,000 |
 | Bookmarks | 5 | 50 | 500 |
 | Tags | 3 | 50 | 100 |
@@ -374,10 +393,11 @@ Annual discount: 17% ($80/yr Starter, $160/yr Pro = 2 months free).
 | CLAUDE.md session documentation update | #20 | Merged |
 | Vercel deployment + custom domain (clarusapp.io) | - | Done |
 | All external services configured (OpenRouter, Firecrawl, Supadata, Tavily, Resend) | - | Done |
+| Podcast analysis — AssemblyAI transcription + separate tier gating | - | Code complete, needs API key |
 
 ### TODO (Remaining)
 
-1. **Podcast transcription** — Audio transcription service with speaker diarization (new feature, service TBD)
+1. **AssemblyAI API key** — Create AssemblyAI account, add `ASSEMBLYAI_API_KEY` to `.env.local` and Vercel
 2. **Polar payments** — Create Polar account, products, webhook secret (env vars still placeholder)
 
 ### Notes
