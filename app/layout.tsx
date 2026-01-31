@@ -24,13 +24,34 @@ const cormorant = Cormorant_Garamond({
 })
 
 export const metadata: Metadata = {
-  title: "Clarus",
-  description: "AI-powered content analysis for clarity and understanding",
-  generator: "v0.dev",
+  title: "Clarus — Get the point of any video or article in 30 seconds",
+  description: "Paste a link, get instant analysis. Key points, claims, takeaways. Chat with your content. Build a searchable library of everything you learn.",
+  keywords: [
+    "youtube summarizer",
+    "article summarizer",
+    "ai summary tool",
+    "content analysis",
+    "research tool",
+    "claim tracking",
+    "video summary",
+    "podcast summary",
+  ],
   manifest: "/manifest.json",
   icons: {
     icon: "/favicon.png",
     apple: "/apple-touch-icon.png",
+  },
+  openGraph: {
+    title: "Clarus — Get the point of any video or article in 30 seconds",
+    description: "Paste a link, get instant analysis. Key points, claims, takeaways. Chat with your content. Build a searchable library of everything you learn.",
+    siteName: "Clarus",
+    type: "website",
+    url: "https://clarusapp.io",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Clarus — Get the point of any video or article in 30 seconds",
+    description: "Paste a link, get instant analysis. Key points, claims, takeaways.",
   },
   appleWebApp: {
     capable: true,
