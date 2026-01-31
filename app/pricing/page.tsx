@@ -104,28 +104,32 @@ const PLANS = [
 
 const FAQS = [
   {
-    q: "Can I switch plans anytime?",
-    a: "Yes. Upgrade or downgrade at any time. When upgrading, you get immediate access to new features. When downgrading, your current billing cycle completes first and you keep full access until it ends.",
+    q: "What counts as an analysis?",
+    a: "One analysis = one piece of content processed. A YouTube video, article, PDF, or any supported content type. Re-viewing the same content does not count against your limit.",
   },
   {
-    q: "What happens when I hit my monthly limit?",
-    a: "You'll see a prompt to upgrade. Your existing analyses, bookmarks, and chat history remain fully accessible. Limits reset on the 1st of each month.",
+    q: "What happens if I hit my limit?",
+    a: "You can still access your library and chat with existing content. You just can't analyze new content until your limit resets on the 1st of each month, or you upgrade.",
   },
   {
-    q: "What content types are supported?",
-    a: "Free users can analyze articles and YouTube videos. Starter and Pro unlock X/Twitter posts, PDFs, Word docs, spreadsheets, and more.",
-  },
-  {
-    q: "Do you offer refunds?",
-    a: "We do not offer refunds. When you cancel, your subscription remains active through the end of your current billing period. You keep full access to all paid features until that date.",
-  },
-  {
-    q: "How does annual billing work?",
-    a: "Annual plans are billed once per year at a 17% discount. That's 2 months free compared to monthly billing.",
+    q: "Can I switch plans?",
+    a: "Yes. Upgrade anytime and get immediate access. Downgrade takes effect at your next billing cycle. No penalties.",
   },
   {
     q: "Is the Free plan really free?",
     a: "Yes, forever. 5 analyses per month, no credit card required, no time limit. Upgrade only when you need more.",
+  },
+  {
+    q: "Do you use my content to train AI?",
+    a: "No. Your content is processed, analyzed, and stored for you. We never use it to train models. We never sell it. You can delete everything anytime.",
+  },
+  {
+    q: "What's claim tracking?",
+    a: "Clarus identifies factual claims in content and tracks them across your library. See which claims appear in multiple sources, which are supported, and which contradict each other. Available on the Pro plan.",
+  },
+  {
+    q: "How does annual billing work?",
+    a: "Annual plans are billed once per year at a 17% discount. That's 2 months free compared to monthly billing.",
   },
 ]
 
