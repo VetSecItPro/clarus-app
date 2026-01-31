@@ -8,7 +8,6 @@ import { supabase } from "@/lib/supabase"
 import { setAuthCache } from "@/components/with-auth"
 import { toast } from "sonner"
 import { AlertCircle, Info, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react"
-import { motion } from "framer-motion"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -82,53 +81,22 @@ export default function LoginPage() {
     <div className="min-h-screen bg-black flex">
       {/* Left side - Animated background (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
-        {/* Animated gradient orbs */}
-        <motion.div
-          animate={{
-            x: [0, 100, 0],
-            y: [0, -50, 0],
-            scale: [1, 1.2, 1],
-          }}
-          transition={{
-            duration: 20,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
+        {/* Animated gradient orbs — CSS keyframes instead of framer-motion */}
+        <div
           className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-[#1d9bf0]/30 blur-[120px]"
+          style={{ animation: "loginOrb1 20s ease-in-out infinite" }}
         />
-        <motion.div
-          animate={{
-            x: [0, -80, 0],
-            y: [0, 100, 0],
-            scale: [1, 1.3, 1],
-          }}
-          transition={{
-            duration: 25,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
+        <div
           className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] rounded-full bg-teal-500/20 blur-[100px]"
+          style={{ animation: "loginOrb2 25s ease-in-out infinite" }}
         />
-        <motion.div
-          animate={{
-            x: [0, 60, 0],
-            y: [0, 60, 0],
-          }}
-          transition={{
-            duration: 18,
-            repeat: Infinity,
-            ease: "easeInOut",
-          }}
+        <div
           className="absolute top-1/2 left-1/3 w-[300px] h-[300px] rounded-full bg-cyan-500/15 blur-[80px]"
+          style={{ animation: "loginOrb3 18s ease-in-out infinite" }}
         />
 
         {/* Content overlay */}
-        <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-16 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8 }}
-          >
+        <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-16 text-center animate-[fadeInUp_0.8s_ease-out]">
             <Link href="/" className="inline-block mb-10 hover:opacity-80 transition-opacity">
               <Image
                 src="/clarus-email-logo-transparent.png"
@@ -144,18 +112,12 @@ export default function LoginPage() {
             <p className="text-white/50 text-lg max-w-md">
               Sign in to continue analyzing content and gaining clarity on what matters.
             </p>
-          </motion.div>
         </div>
       </div>
 
       {/* Right side - Login form */}
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12">
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="w-full max-w-xs"
-        >
+        <div className="w-full max-w-xs animate-[fadeInUp_0.6s_ease-out]">
           {/* Mobile logo */}
           <Link href="/" className="lg:hidden flex justify-center mb-8 hover:opacity-80 transition-opacity">
             <Image
@@ -179,14 +141,10 @@ export default function LoginPage() {
           </div>
 
           {accountExists && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex items-center p-3 text-xs text-blue-400 bg-blue-500/10 rounded-lg border border-blue-500/20 mb-4"
-            >
+            <div className="flex items-center p-3 text-xs text-blue-400 bg-blue-500/10 rounded-lg border border-blue-500/20 mb-4 animate-[fadeIn_0.3s_ease-out]">
               <Info className="w-4 h-4 mr-2 flex-shrink-0" />
               <span>An account with that email already exists. Please log in with your existing password.</span>
-            </motion.div>
+            </div>
           )}
 
           {/* Form */}
@@ -243,14 +201,10 @@ export default function LoginPage() {
 
             {/* Error message */}
             {error && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20"
-              >
+              <div className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
                 <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
                 <span>{error}</span>
-              </motion.div>
+              </div>
             )}
 
             {/* Submit button */}
@@ -283,8 +237,31 @@ export default function LoginPage() {
               Privacy Policy
             </Link>
           </p>
-        </motion.div>
+        </div>
       </div>
+
+      <style>{`
+        @keyframes loginOrb1 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(100px, -50px) scale(1.2); }
+        }
+        @keyframes loginOrb2 {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          50% { transform: translate(-80px, 100px) scale(1.3); }
+        }
+        @keyframes loginOrb3 {
+          0%, 100% { transform: translate(0, 0); }
+          50% { transform: translate(60px, 60px); }
+        }
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }
