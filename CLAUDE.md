@@ -60,9 +60,9 @@ If you connect to this Supabase project and see tables like `users`, `content`, 
 
 | Resource | URL | Status |
 |----------|-----|--------|
-| **Production** | https://clarusapp.io | Pending DNS setup |
+| **Production** | https://clarusapp.io | ✅ Live |
 | **GitHub Repo** | https://github.com/VetSecItPro/clarus-app | ✅ Active |
-| **Vercel Project** | TBD - needs new project | ❌ Needs setup |
+| **Vercel Project** | https://vercel.com/vetsecitpro/clarus-app | ✅ Deployed |
 | **Supabase Project** | https://supabase.com/dashboard/project/srqmutgamvktxqmylied | ✅ Shared instance |
 
 ---
@@ -80,13 +80,10 @@ If you connect to this Supabase project and see tables like `users`, `content`, 
 - **Env vars needed**: None (public repo)
 
 ### 3. Vercel (Hosting)
-- **Dashboard**: https://vercel.com/dashboard
-- **Status**: ❌ Needs new project
-- **Actions**:
-  1. Create new project linked to VetSecItPro/clarus-app
-  2. Add custom domain clarusapp.io
-  3. Configure environment variables (see below)
-- **Env var**: None for Vercel itself
+- **Dashboard**: https://vercel.com/vetsecitpro/clarus-app
+- **Status**: ✅ Deployed and live at clarusapp.io
+- **Domain**: clarusapp.io (DNS configured, HTTPS active)
+- **Env vars**: All configured in Vercel dashboard
 
 ### 4. Supabase (Database + Auth)
 - **Dashboard**: https://supabase.com/dashboard/project/srqmutgamvktxqmylied
@@ -107,12 +104,8 @@ If you connect to this Supabase project and see tables like `users`, `content`, 
 
 ### 5. OpenRouter (AI/LLM)
 - **Dashboard**: https://openrouter.ai/settings/keys
-- **Status**: ❌ Needs API key
-- **Actions**:
-  1. Create OpenRouter account
-  2. Add credits ($20-50 to start)
-  3. Generate API key
-- **Env var**: `OPENROUTER_API_KEY`
+- **Status**: ✅ Configured
+- **Env var**: `OPENROUTER_API_KEY` (set in `.env.local` and Vercel)
 
 ### 6. Polar (Payments)
 - **Dashboard**: https://polar.sh/dashboard
@@ -132,36 +125,23 @@ If you connect to this Supabase project and see tables like `users`, `content`, 
 
 ### 7. Firecrawl (Web Scraping)
 - **Dashboard**: https://www.firecrawl.dev/app
-- **Status**: ❌ Needs API key
-- **Actions**:
-  1. Create Firecrawl account
-  2. Get API key (free tier: 500 credits)
-- **Env var**: `FIRECRAWL_API_KEY`
+- **Status**: ✅ Configured
+- **Env var**: `FIRECRAWL_API_KEY` (set in `.env.local` and Vercel)
 
 ### 8. Supadata (YouTube Transcripts)
 - **Dashboard**: https://supadata.ai/dashboard
-- **Status**: ❌ Needs API key
-- **Actions**:
-  1. Create Supadata account
-  2. Get API key
-- **Env var**: `SUPADATA_API_KEY`
+- **Status**: ✅ Configured
+- **Env var**: `SUPADATA_API_KEY` (set in `.env.local` and Vercel)
 
 ### 9. Tavily (Web Search for AI)
 - **Dashboard**: https://tavily.com/dashboard
-- **Status**: ❌ Needs API key
-- **Actions**:
-  1. Create Tavily account
-  2. Get API key (free tier: 1000 searches/month)
-- **Env var**: `TAVILY_API_KEY`
+- **Status**: ✅ Configured
+- **Env var**: `TAVILY_API_KEY` (set in `.env.local` and Vercel)
 
 ### 10. Resend (Transactional Email)
 - **Dashboard**: https://resend.com/emails
-- **Status**: ❌ Needs API key
-- **Actions**:
-  1. Create Resend account
-  2. Verify domain clarusapp.io
-  3. Get API key
-- **Env var**: `RESEND_API_KEY`
+- **Status**: ✅ Configured
+- **Env var**: `RESEND_API_KEY` (set in `.env.local` and Vercel)
 
 ---
 
@@ -391,12 +371,14 @@ Annual discount: 17% ($80/yr Starter, $160/yr Pro = 2 months free).
 | SEO feature pages (8 pages + shared layout) | #18 | Merged |
 | Database migration — switch live prompts to Gemini 2.5 Flash | - | Applied |
 | Perf: framer-motion removal from auth pages, expanded public routes | #19 | Merged |
+| CLAUDE.md session documentation update | #20 | Merged |
+| Vercel deployment + custom domain (clarusapp.io) | - | Done |
+| All external services configured (OpenRouter, Firecrawl, Supadata, Tavily, Resend) | - | Done |
 
 ### TODO (Remaining)
 
-1. **Podcast transcription** — AssemblyAI or Deepgram integration with speaker diarization (new feature)
-2. **Complete Vercel setup** — Import repo, add env vars, connect `clarusapp.io` custom domain (needs owner)
-3. **Set up external services** — OpenRouter credits, Tavily API key, Firecrawl API key, Polar account (needs owner)
+1. **Podcast transcription** — Audio transcription service with speaker diarization (new feature, service TBD)
+2. **Polar payments** — Create Polar account, products, webhook secret (env vars still placeholder)
 
 ### Notes
 
