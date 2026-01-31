@@ -85,6 +85,7 @@ export async function GET(request: Request) {
       headers: {
         "Content-Type": "text/markdown; charset=utf-8",
         "Content-Disposition": `attachment; filename="${filename}"`,
+        "Cache-Control": "private, max-age=60",
       },
     })
   } catch (error) {
