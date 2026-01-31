@@ -1,0 +1,54 @@
+import type { Metadata } from "next"
+import { FeaturePage } from "@/components/features/feature-page"
+
+export const metadata: Metadata = {
+  title: "Weekly AI Digest & Trending Content | Clarus",
+  description:
+    "Get a weekly email with your top analyses and trending content across Clarus. Stay informed without opening the app.",
+  openGraph: {
+    title: "Weekly AI Digest & Trending Content | Clarus",
+    description:
+      "Get a weekly email with your top analyses and trending content across Clarus.",
+  },
+}
+
+export default function WeeklyDigestPage() {
+  return (
+    <FeaturePage
+      badge="Feature"
+      title="Weekly Digest & Discovery"
+      subtitle="Your personal analysis recap plus the most interesting content from across Clarus — delivered weekly."
+      description="Every Sunday, Clarus sends you a digest of your top analyses from the week along with a curated selection of trending content analyzed by other users. The discovery section is completely anonymous — no user attribution, just great content and AI-powered insights. Think of it as a Flipboard for people who care about truth and substance."
+      steps={[
+        {
+          number: "1",
+          title: "Opt in",
+          description: "Weekly digests are enabled by default. You can toggle the setting on or off in your account preferences.",
+        },
+        {
+          number: "2",
+          title: "Analyze content",
+          description: "Throughout the week, analyze content as usual. Your top analyses by quality score are featured in your digest.",
+        },
+        {
+          number: "3",
+          title: "Discover new content",
+          description: "The trending section surfaces the best publicly shared analyses — a curated feed of vetted content and insights.",
+        },
+      ]}
+      benefits={[
+        "Personal weekly recap of your top analyses",
+        "Trending content curated from across Clarus",
+        "Zero user attribution — completely anonymous curation",
+        "Quality-scored ranking (best content surfaces first)",
+        "One-click access to full analyses",
+        "Easy opt-out in settings",
+      ]}
+      relatedFeatures={[
+        { title: "Content Library", href: "/features/library", description: "Browse all your saved analyses" },
+        { title: "Export & Share", href: "/features/export", description: "Export or share analyses publicly" },
+        { title: "Truth Analysis", href: "/features/truth-analysis", description: "Fact-check claims from any content" },
+      ]}
+    />
+  )
+}
