@@ -204,7 +204,7 @@ RESEND_API_KEY=re_...
 - **Database**: Supabase/Postgres
 - **Auth**: Supabase Auth (Email + Google OAuth)
 - **Payments**: Polar (not active yet)
-- **AI**: OpenRouter (Claude Sonnet 4, Haiku)
+- **AI**: OpenRouter (Gemini 2.5 Flash)
 - **Scraping**: Firecrawl (articles), Supadata (YouTube)
 - **Search**: Tavily (web search for AI context)
 - **Email**: Resend
@@ -246,13 +246,18 @@ processing_metrics       -- clarus.processing_metrics (performance)
 active_chat_prompt       -- clarus.active_chat_prompt (chat config)
 active_summarizer_prompt -- clarus.active_summarizer_prompt (summarizer config)
 analysis_prompts         -- clarus.analysis_prompts (AI prompts)
+usage_tracking           -- clarus.usage_tracking (monthly usage per user)
+claims                   -- clarus.claims (extracted claims for cross-referencing)
+flagged_content          -- clarus.flagged_content (content moderation flags)
 ```
 
 ### Migration Scripts (Run in Order)
 1. `scripts/100-create-clarus-schema.sql` - **RUN FIRST** - Creates `clarus` schema and sets search_path
 2. `scripts/000-full-schema.sql` - Creates all tables in the `clarus` schema
-3. `scripts/000b-insert-prompts.sql` - AI prompts data
+3. `scripts/000b-insert-prompts.sql` - AI prompts data (includes Gemini 2.5 Flash models)
 4. `scripts/023-add-fulltext-search.sql` - Full-text search indexes
+5. `scripts/030-switch-to-gemini-flash.sql` - Switch all prompts to Gemini 2.5 Flash (applied 2026-01-31)
+6. `scripts/031-create-flagged-content.sql` - Content moderation flagged_content table (applied 2026-01-31)
 
 **Tables are created in the `clarus` schema. Code references them without prefix (e.g., `users` not `clarus.users`).**
 
@@ -363,7 +368,7 @@ Annual discount: 17% ($80/yr Starter, $160/yr Pro = 2 months free).
 
 ## Clarus Session Work
 
-> **Last Updated**: 2026-01-30 (Session 3)
+> **Last Updated**: 2026-01-31 (Session 4)
 
 ### Completed
 
@@ -377,31 +382,24 @@ Annual discount: 17% ($80/yr Starter, $160/yr Pro = 2 months free).
 | Dead code cleanup (1,481+ lines) | #13, #14 | Merged |
 | Perf: middleware auth bypass, caching, CSS animations, ISR | #15 | Merged |
 | Landing page overhaul (hero, features, personas, CTA, SEO) | #17 | Merged |
-| Switch AI models to Gemini 2.5 Flash | WIP | In current branch |
-| Remove "Unlimited" from all pricing, add hard caps | WIP | In current branch |
-| Enhanced AI prompts (speaker attribution + content safety) | WIP | In current branch |
-| Landing page honesty (fix pills, persona claims, SEO title) | WIP | In current branch |
+| Gemini 2.5 Flash, hard caps, honest landing page, content safety | #18 | Merged |
+| Content moderation pipeline (3-layer screening + admin queue) | #18 | Merged |
+| NCMEC reporting mechanism (flagged_content table + admin review) | #18 | Merged |
+| Admin dashboard enhancements (tier breakdown + moderation queue) | #18 | Merged |
+| Weekly discovery newsletter (/discover page + cron + email) | #18 | Merged |
+| In-product paywall detection warning | #18 | Merged |
+| SEO feature pages (8 pages + shared layout) | #18 | Merged |
+| Database migration — switch live prompts to Gemini 2.5 Flash | - | Applied |
+| Perf: framer-motion removal from auth pages, expanded public routes | #19 | Merged |
 
-### Current Branch
+### TODO (Remaining)
 
-`feature/landing-page-honesty-pricing-caps` — pending PR
-
-### TODO (Not Yet Built)
-
-1. **Content moderation pipeline** — URL screening, keyword scanning, AI refusal handling
-2. **NCMEC reporting mechanism** — Automated evidence collection, admin review, CyberTipline filing
-3. **Admin dashboard** — User metrics, content analytics, API costs, revenue, moderation queue
-4. **Weekly discovery newsletter** — Anonymous content curation, Resend email, /discover page
-5. **In-product paywall detection** — Warn users before processing paywalled URLs
-6. **SEO content/help articles** — Feature pages for organic search traffic
-7. **Podcast transcription** — AssemblyAI or Deepgram integration with speaker diarization
-8. **Run database migration** — `scripts/030-switch-to-gemini-flash.sql` on live Supabase
-9. **Complete Vercel setup** — Import repo, env vars, custom domain
-10. **Set up external services** — OpenRouter credits, Tavily, Firecrawl, Polar
+1. **Podcast transcription** — AssemblyAI or Deepgram integration with speaker diarization (new feature)
+2. **Complete Vercel setup** — Import repo, add env vars, connect `clarusapp.io` custom domain (needs owner)
+3. **Set up external services** — OpenRouter credits, Tavily API key, Firecrawl API key, Polar account (needs owner)
 
 ### Notes
 
 - Supabase project ID: `srqmutgamvktxqmylied`
 - Tables in `public` schema belong to OTHER projects - DO NOT TOUCH
 - All Clarus tables go in the `clarus` schema (search_path handles this automatically)
-- Revert point: Commit `f4a62f8` is the baseline before landing page work
