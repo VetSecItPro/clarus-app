@@ -70,6 +70,58 @@ export function useAdminMrr({ userId, enabled = true }: { userId: string | null;
   }
 }
 
+// Flagged content for moderation queue
+interface FlaggedContentItem {
+  id: string
+  content_id: string | null
+  user_id: string | null
+  url: string
+  content_type: string | null
+  flag_source: string
+  flag_reason: string
+  flag_categories: string[]
+  severity: string
+  status: string
+  review_notes: string | null
+  reviewed_by: string | null
+  reviewed_at: string | null
+  reported_to: string | null
+  report_reference: string | null
+  reported_at: string | null
+  created_at: string
+}
+
+interface FlaggedContentCounts {
+  total: number
+  pending: number
+  critical: number
+  reported: number
+}
+
+export interface FlaggedContentData {
+  items: FlaggedContentItem[]
+  counts: FlaggedContentCounts
+}
+
+export function useFlaggedContent({ userId, enabled = true }: { userId: string | null; enabled?: boolean }) {
+  const { data, error, isLoading, mutate } = useSWR<FlaggedContentData>(
+    enabled && userId ? `/api/admin/flagged-content` : null,
+    fetcher,
+    {
+      refreshInterval: 2 * 60 * 1000, // Check every 2 minutes
+      dedupingInterval: 30 * 1000,
+      revalidateOnFocus: true, // Important for moderation queue
+    }
+  )
+
+  return {
+    flaggedContent: data,
+    isLoading,
+    error,
+    refresh: () => mutate(),
+  }
+}
+
 // Prefetch admin metrics for instant navigation
 export function prefetchAdminMetrics(userId: string, timeRange: number = 30) {
   if (typeof window === "undefined") return
