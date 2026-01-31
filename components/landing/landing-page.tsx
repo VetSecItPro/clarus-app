@@ -2,6 +2,7 @@
 
 import { LandingHeader } from "./landing-header"
 import { HeroSection } from "./hero-section"
+import { ProductPreview } from "./product-preview"
 import { SocialProofBar } from "./social-proof-bar"
 import { HowItWorks } from "./how-it-works"
 import { FeatureGrid } from "./feature-grid"
@@ -17,6 +18,7 @@ export function LandingPage() {
 
       <main className="pt-16 flex-1">
         <HeroSection />
+        <ProductPreview />
         <SocialProofBar />
         <HowItWorks />
         <FeatureGrid />
