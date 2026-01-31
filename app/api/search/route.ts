@@ -67,12 +67,14 @@ export async function GET(request: NextRequest) {
 
     const results = (data || []) as SearchResult[]
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       success: true,
       results,
       query,
       count: results.length,
     })
+    response.headers.set("Cache-Control", "private, max-age=0, stale-while-revalidate=60")
+    return response
   } catch (error) {
     console.error("Search error:", error)
     return NextResponse.json(
@@ -148,13 +150,15 @@ async function fallbackSearch(
     }
   })
 
-  return NextResponse.json({
+  const response = NextResponse.json({
     success: true,
     results,
     query,
     count: results.length,
     fallback: true, // Indicate that fallback search was used
   })
+  response.headers.set("Cache-Control", "private, max-age=0, stale-while-revalidate=60")
+  return response
 }
 
 // Autocomplete suggestions schema
