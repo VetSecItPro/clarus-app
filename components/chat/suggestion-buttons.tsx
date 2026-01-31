@@ -31,7 +31,7 @@ interface SuggestionButtonsProps {
   onSelect: (action: SuggestionAction) => void
   onCustomPrompt?: (prompt: string) => void
   contentCategory?: ContentCategory
-  contentType?: "youtube" | "article" | "x_post"
+  contentType?: "youtube" | "article" | "x_post" | "podcast"
   disabled?: boolean
 }
 
