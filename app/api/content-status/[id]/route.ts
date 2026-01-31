@@ -95,7 +95,7 @@ export async function GET(
       .limit(1)
       .single()
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       id: content.id,
       title: content.title,
       url: content.url,
@@ -110,6 +110,8 @@ export async function GET(
       truth_check: summary?.truth_check || null,
       action_items: summary?.action_items || null,
     })
+    response.headers.set("Cache-Control", "private, max-age=10, stale-while-revalidate=30")
+    return response
   } catch {
     return NextResponse.json(
       { error: "Internal server error" },

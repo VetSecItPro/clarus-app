@@ -2,6 +2,28 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { createMiddlewareClient } from "@/lib/supabase-middleware"
 
+// Routes that don't need auth session refresh
+const PUBLIC_ROUTES = [
+  "/",
+  "/login",
+  "/signup",
+  "/forgot-password",
+  "/auth/callback",
+  "/terms",
+  "/privacy",
+]
+
+const PUBLIC_PREFIXES = [
+  "/share/",
+  "/api/polar/webhook",
+  "/api/crons/",
+]
+
+function isPublicRoute(pathname: string): boolean {
+  if (PUBLIC_ROUTES.includes(pathname)) return true
+  return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
+}
+
 export async function middleware(request: NextRequest) {
   const origin = request.headers.get("origin")
   const pathname = request.nextUrl.pathname
@@ -25,7 +47,15 @@ export async function middleware(request: NextRequest) {
       return response
     }
 
-    // Refresh session for API routes
+    // Skip auth for public API routes (webhooks, crons)
+    if (isPublicRoute(pathname)) {
+      const response = NextResponse.next()
+      setCorsHeaders(response, origin)
+      setSecurityHeaders(response)
+      return response
+    }
+
+    // Refresh session for authenticated API routes
     const { supabase, response } = createMiddlewareClient(request)
     await supabase.auth.getSession()
 
@@ -34,11 +64,15 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // For all other routes, refresh the session to keep users logged in
-  const { supabase, response } = createMiddlewareClient(request)
+  // Skip auth for public pages (landing, login, share, etc.)
+  if (isPublicRoute(pathname)) {
+    const response = NextResponse.next()
+    setSecurityHeaders(response)
+    return response
+  }
 
-  // This will refresh the session if it's expired
-  // The refreshed session will be stored in cookies automatically
+  // For authenticated routes, refresh the session to keep users logged in
+  const { supabase, response } = createMiddlewareClient(request)
   await supabase.auth.getSession()
 
   return response

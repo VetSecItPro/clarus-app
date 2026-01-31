@@ -3,6 +3,8 @@ import { createClient } from "@supabase/supabase-js"
 import type { Database, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
 import { SharePageContent } from "./share-page-content"
 
+export const revalidate = 3600
+
 interface PageProps {
   params: Promise<{ token: string }>
 }
