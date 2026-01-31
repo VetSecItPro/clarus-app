@@ -14,10 +14,11 @@ import {
   Twitter,
   Loader2,
   FileUp,
+  Headphones,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { validateUrl } from "@/lib/validation"
-import { getYouTubeVideoId, isXUrl, getDomainFromUrl } from "@/lib/utils"
+import { getYouTubeVideoId, isXUrl, isPodcastUrl, getDomainFromUrl } from "@/lib/utils"
 import { useSpeechToText } from "@/lib/hooks/use-speech"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
@@ -56,7 +57,7 @@ function sanitizeFileName(name: string, maxLength = 40): string {
 interface UrlPreview {
   url: string
   domain: string
-  type: "youtube" | "article" | "x_post"
+  type: "youtube" | "article" | "x_post" | "podcast"
   favicon: string
 }
 
@@ -127,11 +128,13 @@ export function ChatInputBar({
     const domain = getDomainFromUrl(validUrl)
 
     // Detect content type
-    let type: "youtube" | "article" | "x_post" = "article"
+    let type: "youtube" | "article" | "x_post" | "podcast" = "article"
     if (getYouTubeVideoId(validUrl)) {
       type = "youtube"
     } else if (isXUrl(validUrl)) {
       type = "x_post"
+    } else if (isPodcastUrl(validUrl)) {
+      type = "podcast"
     }
 
     // Get favicon
@@ -197,9 +200,10 @@ export function ChatInputBar({
 
     const validUrl = validation.sanitized
     const domain = getDomainFromUrl(validUrl)
-    let type: "youtube" | "article" | "x_post" = "article"
+    let type: "youtube" | "article" | "x_post" | "podcast" = "article"
     if (getYouTubeVideoId(validUrl)) type = "youtube"
     else if (isXUrl(validUrl)) type = "x_post"
+    else if (isPodcastUrl(validUrl)) type = "podcast"
     const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
 
     // Show URL in input with preview chip so the user sees visual confirmation
@@ -275,12 +279,14 @@ export function ChatInputBar({
     }
   }
 
-  const getTypeIcon = (type: "youtube" | "article" | "x_post") => {
+  const getTypeIcon = (type: "youtube" | "article" | "x_post" | "podcast") => {
     switch (type) {
       case "youtube":
         return <Youtube className="w-4 h-4 text-red-400" />
       case "x_post":
         return <Twitter className="w-4 h-4 text-white" />
+      case "podcast":
+        return <Headphones className="w-4 h-4 text-purple-400" />
       default:
         return <FileText className="w-4 h-4 text-blue-400" />
     }
