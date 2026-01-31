@@ -67,6 +67,7 @@ export type ActionItemsData = ActionItemData[]
 // Processing status for summaries
 export type ProcessingStatus =
   | "pending"
+  | "transcribing"
   | "overview_complete"
   | "triage_complete"
   | "truth_check_complete"
@@ -257,7 +258,8 @@ export interface Database {
           view_count: number | null
           tags: string[] | null
           share_token: string | null
-
+          podcast_transcript_id: string | null
+          detected_tone: string | null
           regeneration_count: number | null
         }
         Insert: {
@@ -281,7 +283,8 @@ export interface Database {
           view_count?: number | null
           tags?: string[] | null
           share_token?: string | null
-
+          podcast_transcript_id?: string | null
+          detected_tone?: string | null
           regeneration_count?: number | null
         }
         Update: {
@@ -305,7 +308,8 @@ export interface Database {
           view_count?: number | null
           tags?: string[] | null
           share_token?: string | null
-
+          podcast_transcript_id?: string | null
+          detected_tone?: string | null
           regeneration_count?: number | null
         }
         Relationships: [
@@ -688,6 +692,7 @@ export interface Database {
           share_links_count: number
           exports_count: number
           bookmarks_count: number
+          podcast_analyses_count: number
           created_at: string | null
           updated_at: string | null
         }
@@ -700,6 +705,7 @@ export interface Database {
           share_links_count?: number
           exports_count?: number
           bookmarks_count?: number
+          podcast_analyses_count?: number
           created_at?: string | null
           updated_at?: string | null
         }
@@ -712,6 +718,7 @@ export interface Database {
           share_links_count?: number
           exports_count?: number
           bookmarks_count?: number
+          podcast_analyses_count?: number
           created_at?: string | null
           updated_at?: string | null
         }
@@ -903,6 +910,9 @@ export interface Database {
     CompositeTypes: { [_ in never]: never }
   }
 }
+
+// Content type for URL/source detection
+export type ContentType = "youtube" | "article" | "x_post" | "podcast" | "pdf" | "document"
 
 export type Tables<TableName extends keyof Database["clarus"]["Tables"]> =
   Database["clarus"]["Tables"][TableName]["Row"]
