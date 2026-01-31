@@ -24,7 +24,7 @@ const cormorant = Cormorant_Garamond({
 })
 
 export const metadata: Metadata = {
-  title: "Clarus — Get the point of any video or article in 30 seconds",
+  title: "Clarus — Get the point of any video or article in seconds",
   description: "Paste a link, get instant analysis. Key points, claims, takeaways. Chat with your content. Build a searchable library of everything you learn.",
   keywords: [
     "youtube summarizer",
@@ -42,7 +42,7 @@ export const metadata: Metadata = {
     apple: "/apple-touch-icon.png",
   },
   openGraph: {
-    title: "Clarus — Get the point of any video or article in 30 seconds",
+    title: "Clarus — Get the point of any video or article in seconds",
     description: "Paste a link, get instant analysis. Key points, claims, takeaways. Chat with your content. Build a searchable library of everything you learn.",
     siteName: "Clarus",
     type: "website",
@@ -50,7 +50,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Clarus — Get the point of any video or article in 30 seconds",
+    title: "Clarus — Get the point of any video or article in seconds",
     description: "Paste a link, get instant analysis. Key points, claims, takeaways.",
   },
   appleWebApp: {
