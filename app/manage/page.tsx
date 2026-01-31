@@ -332,6 +332,51 @@ export default function AdminDashboard() {
           />
         </div>
 
+        {/* Users by Tier */}
+        <ChartCard title="Users by Tier">
+          <div className="flex items-center gap-6">
+            {loading ? (
+              <div className="h-[80px] w-full bg-white/[0.03] rounded animate-pulse" />
+            ) : (() => {
+              const tiers = combinedMetrics?.usersByTier || { free: 0, starter: 0, pro: 0 }
+              const total = tiers.free + tiers.starter + tiers.pro
+              const tierItems: { label: string; count: number; color: string; pct: string }[] = [
+                { label: "Free", count: tiers.free, color: "bg-white/40", pct: total > 0 ? ((tiers.free / total) * 100).toFixed(1) : "0" },
+                { label: "Starter", count: tiers.starter, color: "bg-[#1d9bf0]", pct: total > 0 ? ((tiers.starter / total) * 100).toFixed(1) : "0" },
+                { label: "Pro", count: tiers.pro, color: "bg-purple-500", pct: total > 0 ? ((tiers.pro / total) * 100).toFixed(1) : "0" },
+              ]
+              return (
+                <>
+                  {/* Stacked bar */}
+                  <div className="flex-1">
+                    <div className="flex h-3 rounded-full overflow-hidden bg-white/[0.06]">
+                      {tierItems.map(t => t.count > 0 ? (
+                        <div
+                          key={t.label}
+                          className={cn(t.color, "transition-all")}
+                          style={{ width: `${t.pct}%` }}
+                        />
+                      ) : null)}
+                    </div>
+                    <div className="flex items-center gap-6 mt-3">
+                      {tierItems.map(t => (
+                        <div key={t.label} className="flex items-center gap-2">
+                          <div className={cn("w-3 h-3 rounded-full", t.color)} />
+                          <div>
+                            <span className="text-sm font-medium text-white">{t.count.toLocaleString()}</span>
+                            <span className="text-xs text-white/40 ml-1">{t.label}</span>
+                            <span className="text-xs text-white/30 ml-1">({t.pct}%)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </>
+              )
+            })()}
+          </div>
+        </ChartCard>
+
         {/* Charts Row */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Signup Trend */}

@@ -7,6 +7,7 @@ import { PaymentFailedEmail } from "@/emails/payment-failed"
 import { SubscriptionCancelledEmail } from "@/emails/subscription-cancelled"
 import { WeeklyDigestEmail } from "@/emails/weekly-digest"
 import { ShareAnalysisEmail } from "@/emails/share-analysis"
+import { DiscoveryNewsletterEmail } from "@/emails/discovery-newsletter"
 
 // Lazy initialization to avoid build errors when API key is missing
 let resendClient: Resend | null = null
@@ -112,6 +113,27 @@ export async function sendWeeklyDigestEmail(
     WeeklyDigestEmail({ userName, weekOf, totalAnalyses, topAnalyses, avgQualityScore })
   )
   return sendEmail(to, "Clarus - Your Weekly Digest", html)
+}
+
+// ==================== Discovery Newsletter ====================
+
+export async function sendDiscoveryNewsletterEmail(
+  to: string,
+  userName: string | undefined,
+  weekOf: string,
+  trendingItems: Array<{
+    title: string
+    shareUrl: string
+    type: string
+    domain: string
+    teaser: string
+    qualityScore: number
+  }>
+) {
+  const html = await render(
+    DiscoveryNewsletterEmail({ userName, weekOf, trendingItems })
+  )
+  return sendEmail(to, "Clarus - Trending This Week", html)
 }
 
 // ==================== Sharing Emails ====================
