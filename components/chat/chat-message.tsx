@@ -30,7 +30,7 @@ export interface ChatMessageData {
   url?: string
   urlMeta?: {
     domain: string
-    type: "youtube" | "article" | "x_post"
+    type: "youtube" | "article" | "x_post" | "podcast"
     favicon: string
     title?: string
   }

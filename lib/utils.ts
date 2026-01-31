@@ -69,6 +69,53 @@ export function isXUrl(url: string): boolean {
   }
 }
 
+/** Audio file extensions that indicate a direct podcast/audio URL */
+const AUDIO_EXTENSIONS = [".mp3", ".m4a", ".wav", ".ogg", ".aac", ".flac"]
+
+/** Podcast hosting platforms that may expose direct audio URLs */
+const PODCAST_HOSTNAMES = [
+  "anchor.fm",
+  "podbean.com",
+  "buzzsprout.com",
+  "transistor.fm",
+  "simplecast.com",
+  "libsyn.com",
+  "overcast.fm",
+  "pocketcasts.com",
+  "podcasts.apple.com",
+]
+
+/**
+ * Detect if a URL points to podcast/audio content.
+ * Matches direct audio files and known podcast platforms.
+ * Note: Spotify/Apple Podcasts URL resolution is a follow-up feature.
+ */
+export function isPodcastUrl(url: string): boolean {
+  if (!url) return false
+  try {
+    const urlObj = new URL(url)
+    const pathname = urlObj.pathname.toLowerCase()
+    const hostname = urlObj.hostname.toLowerCase()
+
+    // Direct audio file links
+    if (AUDIO_EXTENSIONS.some((ext) => pathname.endsWith(ext))) {
+      return true
+    }
+
+    // Spotify episode URLs (open.spotify.com/episode/*)
+    if (hostname === "open.spotify.com" && pathname.startsWith("/episode/")) {
+      return true
+    }
+
+    // Known podcast hosting platforms
+    return PODCAST_HOSTNAMES.some(
+      (h) => hostname === h || hostname.endsWith(`.${h}`)
+    )
+  } catch {
+    return false
+  }
+}
+
 export function getDomainFromUrl(url: string | null): string {
   if (!url) return "unknown.com"
   try {
