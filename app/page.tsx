@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from "react"
 import Image from "next/image"
-import { Loader2, MessageSquare, Youtube, FileText, FileUp, Twitter } from "lucide-react"
+import { Loader2, MessageSquare, Youtube, FileText, FileUp, Twitter, Headphones } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import SiteHeader from "@/components/site-header"
@@ -135,7 +135,7 @@ function HomePageContent({ session }: HomePageProps) {
   // Handle URL submission — set navigating flag to prevent chat view flash
   const onSubmitUrl = (
     url: string,
-    urlMeta: { url: string; domain: string; type: "youtube" | "article" | "x_post"; favicon: string }
+    urlMeta: { url: string; domain: string; type: "youtube" | "article" | "x_post" | "podcast"; favicon: string }
   ) => {
     setIsNavigating(true)
     submitUrl(url, urlMeta)
@@ -223,6 +223,7 @@ function HomePageContent({ session }: HomePageProps) {
               {[
                 { icon: Youtube, label: "YouTube" },
                 { icon: FileText, label: "Articles" },
+                { icon: Headphones, label: "Podcasts" },
                 { icon: FileUp, label: "PDF" },
                 { icon: Twitter, label: "X Posts" },
               ].map(({ icon: Icon, label }) => (

@@ -58,7 +58,8 @@ function TierCard({ tier, isRecommended }: { tier: "starter" | "pro"; isRecommen
       </div>
       <ul className="space-y-1.5 text-xs text-white/60">
         <li>{limits.analyses === Infinity ? "Unlimited" : limits.analyses} analyses/mo</li>
-        <li>{limits.chatMessages === Infinity ? "Unlimited" : limits.chatMessages} chat messages/mo</li>
+        <li>{limits.chatMessagesMonthly} chat messages/mo</li>
+        <li>{limits.chatMessagesPerContent} messages/content</li>
         {features.shareLinks && <li>Shareable analysis links</li>}
         {features.exports && <li>PDF &amp; Markdown export</li>}
         {features.weeklyDigest && <li>Weekly digest email</li>}

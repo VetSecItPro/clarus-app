@@ -14,6 +14,7 @@ interface UsageCounts {
   share_links_count: number
   exports_count: number
   bookmarks_count: number
+  podcast_analyses_count: number
 }
 
 interface UsageCheckResult {
@@ -51,7 +52,7 @@ export async function getUsageCounts(
 
   const { data } = await supabase
     .from("usage_tracking")
-    .select("analyses_count, chat_messages_count, share_links_count, exports_count, bookmarks_count")
+    .select("analyses_count, chat_messages_count, share_links_count, exports_count, bookmarks_count, podcast_analyses_count")
     .eq("user_id", userId)
     .eq("period", currentPeriod)
     .single()
@@ -62,6 +63,7 @@ export async function getUsageCounts(
     share_links_count: data?.share_links_count ?? 0,
     exports_count: data?.exports_count ?? 0,
     bookmarks_count: data?.bookmarks_count ?? 0,
+    podcast_analyses_count: data?.podcast_analyses_count ?? 0,
   }
 }
 

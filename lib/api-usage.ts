@@ -37,14 +37,18 @@ export const API_PRICING = {
   tavily: {
     search: 0.01, // ~$0.01 per search
   },
+  assemblyai: {
+    transcribe: 0.0000472, // $0.17/hr ($0.15 transcription + $0.02 speaker diarization)
+  },
 }
 
-export type ApiName = "openrouter" | "supadata" | "firecrawl" | "tavily" | "polar" | "supabase" | "vercel"
+export type ApiName = "openrouter" | "supadata" | "firecrawl" | "tavily" | "polar" | "supabase" | "vercel" | "assemblyai"
 export type ApiOperation =
-  | "analyze" | "chat" | "summarize"  // openrouter
+  | "analyze" | "chat" | "summarize" | "tone_detection"  // openrouter
   | "transcript" | "metadata"          // supadata
   | "scrape"                           // firecrawl
   | "search"                           // tavily
+  | "transcribe"                       // assemblyai
   | "mrr_fetch" | "checkout" | "webhook"  // polar
   | "query" | "insert" | "update" | "auth"  // supabase
   | "deploy" | "status"                // vercel
@@ -96,6 +100,11 @@ export function calculateCost(params: {
 
   if (apiName === "tavily") {
     return API_PRICING.tavily.search
+  }
+
+  if (apiName === "assemblyai") {
+    // Cost is per second of audio; tokensInput is used to pass audio_duration_seconds
+    return (tokensInput || 0) * API_PRICING.assemblyai.transcribe
   }
 
   return 0
