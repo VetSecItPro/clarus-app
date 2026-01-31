@@ -6,6 +6,7 @@ import { logApiUsage, logProcessingMetrics, createTimer } from "@/lib/api-usage"
 import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
 import { detectPaywallTruncation } from "@/lib/paywall-detection"
 import { screenContent, detectAiRefusal, persistFlag } from "@/lib/content-screening"
+import { submitPodcastTranscription } from "@/lib/assemblyai"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -32,6 +33,7 @@ const supadataApiKey = process.env.SUPADATA_API_KEY
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 const firecrawlApiKey = process.env.FIRECRAWL_API_KEY
 const tavilyApiKey = process.env.TAVILY_API_KEY
+const assemblyAiApiKey = process.env.ASSEMBLYAI_API_KEY
 
 // ============================================
 // WEB SEARCH INTEGRATION (Tavily)
@@ -251,6 +253,133 @@ function formatWebContext(searches: WebSearchResult[]): string {
   lines.push("")
 
   return lines.join("\n")
+}
+
+// ============================================
+// TONE DETECTION PRE-PASS
+// Detects content voice/tone before analysis
+// so AI output matches the content's register
+// ============================================
+
+const NEUTRAL_TONE_DIRECTIVE = "The content uses a standard informational tone. Write your analysis in a clear, neutral voice."
+const NEUTRAL_TONE_LABEL = "neutral"
+
+const TONE_DETECTION_SYSTEM_PROMPT = `You are a content voice analyst. Given a sample of content, identify its communicative tone and produce a writing directive.
+
+ANALYSIS FRAMEWORK:
+1. Formality: Academic/formal vs. casual/conversational vs. professional/business
+2. Expertise level: Expert-to-expert vs. expert-to-layperson vs. general audience
+3. Emotional register: Neutral/objective vs. passionate/persuasive vs. humorous/irreverent
+4. Pacing: Dense/information-heavy vs. narrative/storytelling vs. punchy/fast-paced
+
+OUTPUT: Return a JSON object with:
+- "tone_label": 1-3 word label (e.g., "casual-technical", "academic", "investigative-journalism")
+- "tone_directive": 2-4 sentence instruction telling an AI analyst how to write about this content in a way that respects the original voice. Be specific about word choice, sentence structure, and framing. Do NOT describe the content — describe how to WRITE ABOUT IT.
+
+Return ONLY valid JSON.`
+
+interface ToneDetectionResult {
+  tone_label: string
+  tone_directive: string
+}
+
+async function detectContentTone(
+  fullText: string,
+  contentTitle: string | null,
+  contentType: string,
+  userId?: string | null,
+  contentId?: string | null,
+): Promise<ToneDetectionResult> {
+  if (!openRouterApiKey) {
+    return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+  }
+
+  const timer = createTimer()
+  const sample = fullText.substring(0, 2000)
+  const titleLine = contentTitle ? `Title: ${contentTitle}\n` : ""
+
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s hard timeout
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterApiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://clarusapp.io",
+        "X-Title": "Clarus",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          { role: "system", content: TONE_DETECTION_SYSTEM_PROMPT },
+          { role: "user", content: `${titleLine}Content Type: ${contentType}\n\n${sample}` },
+        ],
+        temperature: 0.2,
+        max_tokens: 250,
+        response_format: { type: "json_object" },
+      }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      console.warn(`API: [tone_detection] HTTP ${response.status}`)
+      return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+    }
+
+    const data = await response.json()
+    const rawContent = data.choices?.[0]?.message?.content
+    const usage = data.usage || {}
+
+    if (!rawContent) {
+      return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+    }
+
+    // Log API usage
+    logApiUsage({
+      userId,
+      contentId,
+      apiName: "openrouter",
+      operation: "tone_detection",
+      tokensInput: usage.prompt_tokens || 0,
+      tokensOutput: usage.completion_tokens || 0,
+      modelName: "google/gemini-2.5-flash-lite",
+      responseTimeMs: timer.elapsed(),
+      status: "success",
+      metadata: { section: "tone_detection" },
+    })
+
+    const parsed = JSON.parse(rawContent)
+    const toneLabel = typeof parsed.tone_label === "string" ? parsed.tone_label.trim() : NEUTRAL_TONE_LABEL
+    const toneDirective = typeof parsed.tone_directive === "string" ? parsed.tone_directive.trim() : NEUTRAL_TONE_DIRECTIVE
+
+    if (!toneLabel || !toneDirective) {
+      return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+    }
+
+    console.log(`API: [tone_detection] Detected tone: "${toneLabel}"`)
+    return { tone_label: toneLabel, tone_directive: toneDirective }
+  } catch (error: unknown) {
+    const msg = getErrorMessage(error)
+    console.warn(`API: [tone_detection] Failed (non-fatal): ${msg}`)
+
+    logApiUsage({
+      userId,
+      contentId,
+      apiName: "openrouter",
+      operation: "tone_detection",
+      modelName: "google/gemini-2.5-flash-lite",
+      responseTimeMs: timer.elapsed(),
+      status: "error",
+      errorMessage: msg,
+      metadata: { section: "tone_detection" },
+    })
+
+    return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+  }
 }
 
 interface SupadataYouTubeResponse {
@@ -642,9 +771,9 @@ interface ModelProcessingError {
 
 async function getModelSummary(
   textToSummarize: string,
-  options: { shouldExtractTitle?: boolean } = {},
+  options: { shouldExtractTitle?: boolean; toneDirective?: string | null } = {},
 ): Promise<ModelSummary | ModelProcessingError> {
-  const { shouldExtractTitle = false } = options
+  const { shouldExtractTitle = false, toneDirective } = options
 
   if (!openRouterApiKey) {
     const msg = "OpenRouter API key is not configured."
@@ -673,10 +802,9 @@ async function getModelSummary(
   const { system_content, user_content_template, temperature, top_p, max_tokens, model_name } = promptData
 
   const openRouterModelId = model_name || "google/gemini-2.5-flash"
-  const finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}").replace(
-    "{{TEXT_TO_SUMMARIZE}}",
-    textToSummarize,
-  )
+  const finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}")
+    .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
+    .replace("{{TEXT_TO_SUMMARIZE}}", textToSummarize)
 
   const requestBody: OpenRouterRequestBody = {
     model: openRouterModelId,
@@ -849,6 +977,7 @@ async function generateSectionWithAI(
   userId?: string | null,
   contentId?: string | null,
   webContext?: string | null,
+  toneDirective?: string | null,
 ): Promise<SectionGenerationResult> {
   if (!openRouterApiKey) {
     return { content: null, error: "OpenRouter API key not configured" }
@@ -862,6 +991,7 @@ async function generateSectionWithAI(
 
   // Replace template variables
   let userContent = prompt.user_content_template
+    .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
     .replace("{{CONTENT}}", textToAnalyze)
     .replace("{{TYPE}}", contentType || "article")
 
@@ -1059,8 +1189,8 @@ async function generateSectionWithAI(
   return { content: null, error: `All ${maxRetries} attempts failed. Last error: ${lastError}` }
 }
 
-async function generateBriefOverview(fullText: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", undefined, 3, userId, contentId, webContext)
+async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective)
   if (result.error) {
     console.error(`API: Brief overview generation failed: ${result.error}`)
     return null
@@ -1068,8 +1198,8 @@ async function generateBriefOverview(fullText: string, userId?: string | null, c
   return typeof result.content === "string" ? result.content : null
 }
 
-async function generateTriage(fullText: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<TriageData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", undefined, 3, userId, contentId, webContext)
+async function generateTriage(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<TriageData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", contentType, 3, userId, contentId, webContext)
   if (result.error) {
     console.error(`API: Triage generation failed: ${result.error}`)
     return null
@@ -1077,8 +1207,8 @@ async function generateTriage(fullText: string, userId?: string | null, contentI
   return result.content as TriageData
 }
 
-async function generateTruthCheck(fullText: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<TruthCheckData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", undefined, 3, userId, contentId, webContext)
+async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<TruthCheckData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, webContext)
   if (result.error) {
     console.error(`API: Truth check generation failed: ${result.error}`)
     return null
@@ -1100,9 +1230,9 @@ async function generateActionItems(fullText: string, contentType: string, userId
   return content as ActionItemsData
 }
 
-async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<string | null> {
+async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null): Promise<string | null> {
   // Now uses database prompt with {{CONTENT}} and {{TYPE}} placeholders
-  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId, webContext)
+  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId, webContext, toneDirective)
   if (result.error) {
     console.error(`API: Detailed summary generation failed: ${result.error}`)
     return null
@@ -1271,10 +1401,12 @@ export async function POST(req: NextRequest) {
 
   // Tier-based usage limit check (skip for regeneration — already counted)
   if (!force_regenerate && content.user_id) {
-    const usageCheck = await enforceUsageLimit(supabase, content.user_id, "analyses_count")
+    const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
+    const usageCheck = await enforceUsageLimit(supabase, content.user_id, usageField)
     if (!usageCheck.allowed) {
+      const label = content.type === "podcast" ? "podcast analysis" : "analysis"
       return NextResponse.json(
-        { error: `Monthly analysis limit reached (${usageCheck.limit}). Upgrade your plan for more.`, upgrade_required: true, tier: usageCheck.tier },
+        { error: `Monthly ${label} limit reached (${usageCheck.limit}). Upgrade your plan for more.`, upgrade_required: true, tier: usageCheck.tier },
         { status: 403 }
       )
     }
@@ -1323,6 +1455,54 @@ export async function POST(req: NextRequest) {
           else content.full_text = full_text
         }
       }
+    } else if (content.type === "podcast") {
+      // Podcast: two-phase pipeline via AssemblyAI
+      if (!content.full_text || force_regenerate) {
+        if (!assemblyAiApiKey) {
+          console.error("API: ASSEMBLYAI_API_KEY not configured")
+          return NextResponse.json(
+            { success: false, message: "Podcast transcription is not configured.", content_id: content.id },
+            { status: 500 },
+          )
+        }
+
+        // Build webhook URL
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
+          ? `https://${process.env.VERCEL_URL}`
+          : "http://localhost:3000"
+        const webhookUrl = `${appUrl}/api/assemblyai-webhook`
+
+        console.log(`API: Submitting podcast to AssemblyAI: ${content.url}`)
+        const { transcript_id } = await submitPodcastTranscription(
+          content.url,
+          webhookUrl,
+          assemblyAiApiKey,
+        )
+
+        // Save transcript ID and set status to transcribing
+        await supabase
+          .from("content")
+          .update({ podcast_transcript_id: transcript_id })
+          .eq("id", content.id)
+
+        await updateSummarySection(supabase, content.id, content.user_id!, {
+          processing_status: "transcribing",
+        })
+
+        console.log(`API: Podcast submitted to AssemblyAI. Transcript ID: ${transcript_id}. Waiting for webhook.`)
+
+        // Return early — the webhook will trigger the AI analysis later
+        return NextResponse.json(
+          {
+            success: true,
+            message: "Podcast transcription started. Analysis will begin when transcription completes.",
+            content_id: content.id,
+            transcript_id,
+          },
+          { status: 200 },
+        )
+      }
+      // If full_text already exists (webhook filled it), fall through to AI analysis below
     } else if (content.type === "article" || content.type === "pdf" || content.type === "document" || content.type === "x_post") {
       const shouldScrape = force_regenerate || !content.full_text || content.full_text.startsWith("PROCESSING_FAILED::")
       if (shouldScrape) {
@@ -1485,14 +1665,24 @@ export async function POST(req: NextRequest) {
 
   const failedSections: string[] = []
 
-  // Web search context (run once, shared across all sections)
-  console.log(`API: [0/6] Getting web search context...`)
-  const webSearchContext = await getWebSearchContext(fullText.substring(0, 10000), content.title || undefined)
+  // Web search context + tone detection (run in parallel — zero added latency)
+  console.log(`API: [0/6] Getting web search context + detecting tone in parallel...`)
+  const [webSearchContext, toneResult] = await Promise.all([
+    getWebSearchContext(fullText.substring(0, 10000), content.title || undefined),
+    detectContentTone(fullText, content.title, contentType, userId, contentId),
+  ])
   const webContext = webSearchContext?.formattedContext || null
+  const toneDirective = toneResult.tone_directive
   if (webContext) {
     console.log(`API: Web search context ready (${webSearchContext?.searches.length} searches)`)
   } else {
     console.log(`API: No web search context available`)
+  }
+  console.log(`API: Tone detected: "${toneResult.tone_label}" — directive: "${toneDirective.substring(0, 80)}..."`)
+
+  // Persist tone label (non-blocking fire-and-forget)
+  if (toneResult.tone_label !== NEUTRAL_TONE_LABEL) {
+    supabase.from("content").update({ detected_tone: toneResult.tone_label }).eq("id", contentId).then()
   }
 
   // ============================================
@@ -1503,7 +1693,7 @@ export async function POST(req: NextRequest) {
 
   const overviewPromise = (async () => {
     console.log(`API: [1/6] Generating brief overview...`)
-    const result = await generateBriefOverview(fullText, userId, contentId, webContext)
+    const result = await generateBriefOverview(fullText, contentType, userId, contentId, webContext, toneDirective)
     if (result) {
       await updateSummarySection(supabase, contentId, userId, { brief_overview: result })
       responsePayload.sections_generated.push("brief_overview")
@@ -1517,7 +1707,7 @@ export async function POST(req: NextRequest) {
 
   const triagePromise = (async () => {
     console.log(`API: [2/6] Generating triage...`)
-    const result = await generateTriage(fullText, userId, contentId, webContext)
+    const result = await generateTriage(fullText, contentType, userId, contentId, webContext)
     if (result) {
       await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json })
       responsePayload.sections_generated.push("triage")
@@ -1531,7 +1721,7 @@ export async function POST(req: NextRequest) {
 
   const midSummaryPromise = (async () => {
     console.log(`API: [5/6] Generating mid-length summary...`)
-    const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing })
+    const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing, toneDirective })
     if (summaryResult && !("error" in summaryResult)) {
       const validSummary = summaryResult as ModelSummary
       if (titleNeedsFixing && validSummary.title) {
@@ -1552,7 +1742,7 @@ export async function POST(req: NextRequest) {
 
   const detailedPromise = (async () => {
     console.log(`API: [6/6] Generating detailed summary...`)
-    const result = await generateDetailedSummary(fullText, contentType, userId, contentId, webContext)
+    const result = await generateDetailedSummary(fullText, contentType, userId, contentId, webContext, toneDirective)
     if (result) {
       await updateSummarySection(supabase, contentId, userId, { detailed_summary: result })
       responsePayload.sections_generated.push("detailed_summary")
@@ -1602,7 +1792,7 @@ export async function POST(req: NextRequest) {
     const [truthResult] = await Promise.all([
       (async () => {
         console.log(`API: [3/6] Generating truth check...`)
-        const result = await generateTruthCheck(fullText, userId, contentId, webContext)
+        const result = await generateTruthCheck(fullText, contentType, userId, contentId, webContext)
         if (result) {
           await updateSummarySection(supabase, contentId, userId, { truth_check: result as unknown as Json })
           responsePayload.sections_generated.push("truth_check")
@@ -1735,14 +1925,14 @@ export async function POST(req: NextRequest) {
 
     await Promise.all(criticalFailures.map(async (section) => {
       if (section === "brief_overview") {
-        const result = await generateBriefOverview(fullText, userId, contentId)
+        const result = await generateBriefOverview(fullText, contentType, userId, contentId, null, toneDirective)
         if (result) {
           await updateSummarySection(supabase, contentId, userId, { brief_overview: result })
           responsePayload.sections_generated.push("brief_overview")
           console.log(`API: RETRY SUCCESS - Brief overview saved.`)
         }
       } else if (section === "triage") {
-        const result = await generateTriage(fullText, userId, contentId)
+        const result = await generateTriage(fullText, contentType, userId, contentId)
         if (result) {
           await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json })
           responsePayload.sections_generated.push("triage")
@@ -1750,7 +1940,7 @@ export async function POST(req: NextRequest) {
           if (contentUrl) await updateDomainStats(supabase, contentUrl, result, truthCheck)
         }
       } else if (section === "detailed_summary") {
-        const result = await generateDetailedSummary(fullText, contentType, userId, contentId)
+        const result = await generateDetailedSummary(fullText, contentType, userId, contentId, null, toneDirective)
         if (result) {
           await updateSummarySection(supabase, contentId, userId, { detailed_summary: result })
           responsePayload.sections_generated.push("detailed_summary")
@@ -1780,7 +1970,8 @@ export async function POST(req: NextRequest) {
   // Track analysis usage (non-fatal)
   if (!force_regenerate && content.user_id) {
     try {
-      await incrementUsage(supabase, content.user_id, "analyses_count")
+      const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
+      await incrementUsage(supabase, content.user_id, usageField)
     } catch (e) {
       console.error("[usage] Failed to track analysis usage:", e)
     }
