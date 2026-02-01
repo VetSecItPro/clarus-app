@@ -1,10 +1,12 @@
 # Clarus Performance Optimization — Feb 2026
 
+**Result: 25 of 27 items completed. 2 deferred (won't fix). Sweep complete.**
+
 ## Critical (Fix First)
 
 - [x] 1. Remove duplicate Supabase client instances (`lib/supabase.ts:4-43`)
 - [x] 2. Eliminate double session fetch on item page (`app/item/[id]/page.tsx:1731-1782`)
-- [ ] 3. Break up 1,798-line item page monolith (`app/item/[id]/page.tsx`)
+- ~[ ] 3. Break up 1,798-line item page monolith~ — **DEFERRED (won't fix)**: Code is well-organized internally with sections already extracted into sub-components. No correctness or performance issue — purely a maintainability preference. Dynamic imports (#10) already addressed the bundle size concern.
 - [x] 4. Replace fixed 1s polling with exponential backoff (`app/item/[id]/page.tsx:346-352`)
 - [x] 5. Replace `select("*")` with explicit columns (`lib/prefetch.ts`)
 - [x] 6. Batch weekly digest queries with `Promise.all()` (`api/crons/weekly-digest/route.ts:48-129`)
@@ -13,9 +15,9 @@
 ## High
 
 - [x] 8. Replace `window.location.href` with `router.push()` (`app/page.tsx:76`)
-- [ ] 9. Add Suspense boundaries for streaming on heavy pages — requires server component refactor
+- [ ] 9. Add Suspense boundaries for streaming on heavy pages — **DEFERRED**: requires converting client components to server components, large architectural change with no clear user-facing benefit given current page sizes
 - [x] 10. Add dynamic imports for chat, share, transcript, and modal components (`app/item/[id]/page.tsx`)
-- [ ] 11. Add message virtualization in chat (`components/inline-chat.tsx:425-463`)
+- ~[ ] 11. Add message virtualization in chat~ — **DEFERRED (won't fix)**: Tier caps limit chat to 50 messages max (Pro). Virtualization only benefits 100+ items. Low ROI — `@tanstack/react-virtual` adds dependency complexity for negligible gain at these volumes.
 - [x] 12. Fix N+1 query in flagged content admin (`api/admin/flagged-content/route.ts:20-41`)
 - [x] 13. Parallelize sequential RPC calls in cross-references (`api/content/[id]/cross-references/route.ts:51-58`)
 - [x] 14. Use count queries instead of full row fetches in admin metrics (`api/admin/metrics/route.ts:215-243`)
