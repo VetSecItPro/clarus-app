@@ -44,38 +44,42 @@ export async function GET(
     return NextResponse.json({ success: true, crossReferences: [] })
   }
 
-  // Find similar claims for each (limit to first 20 claims to avoid overload)
-  const crossReferences: CrossReference[] = []
+  // Find similar claims in parallel (limit to first 20 claims to avoid overload)
   const claimsToCheck = claims.slice(0, 20)
 
-  for (const claim of claimsToCheck) {
-    const { data: similar } = await auth.supabase.rpc("find_similar_claims", {
-      p_user_id: auth.user.id,
-      p_claim_text: claim.claim_text,
-      p_content_id: parsed.data,
-      p_threshold: 0.4,
-      p_limit: 5,
-    })
-
-    if (similar && similar.length > 0) {
-      crossReferences.push({
-        claimText: claim.claim_text,
-        matches: similar.map((s: {
-          content_id: string
-          content_title: string
-          claim_text: string
-          status: string
-          similarity_score: number
-        }) => ({
-          contentId: s.content_id,
-          contentTitle: s.content_title,
-          claimText: s.claim_text,
-          status: s.status,
-          similarityScore: s.similarity_score,
-        })),
+  const results = await Promise.all(
+    claimsToCheck.map(async (claim) => {
+      const { data: similar } = await auth.supabase.rpc("find_similar_claims", {
+        p_user_id: auth.user.id,
+        p_claim_text: claim.claim_text,
+        p_content_id: parsed.data,
+        p_threshold: 0.4,
+        p_limit: 5,
       })
-    }
-  }
+
+      if (similar && similar.length > 0) {
+        return {
+          claimText: claim.claim_text,
+          matches: similar.map((s: {
+            content_id: string
+            content_title: string
+            claim_text: string
+            status: string
+            similarity_score: number
+          }) => ({
+            contentId: s.content_id,
+            contentTitle: s.content_title,
+            claimText: s.claim_text,
+            status: s.status,
+            similarityScore: s.similarity_score,
+          })),
+        } as CrossReference
+      }
+      return null
+    })
+  )
+
+  const crossReferences = results.filter((r): r is CrossReference => r !== null)
 
   const response = NextResponse.json({ success: true, crossReferences })
   response.headers.set("Cache-Control", "private, max-age=300, stale-while-revalidate=600")

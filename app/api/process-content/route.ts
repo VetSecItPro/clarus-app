@@ -1682,7 +1682,10 @@ export async function POST(req: NextRequest) {
 
   // Persist tone label (non-blocking fire-and-forget)
   if (toneResult.tone_label !== NEUTRAL_TONE_LABEL) {
-    supabase.from("content").update({ detected_tone: toneResult.tone_label }).eq("id", contentId).then()
+    supabase.from("content").update({ detected_tone: toneResult.tone_label }).eq("id", contentId).then(
+      () => {},
+      (err) => console.warn("Failed to persist detected_tone:", err)
+    )
   }
 
   // ============================================

@@ -74,6 +74,7 @@ export async function middleware(request: NextRequest) {
   // Skip auth for public pages (landing, login, share, etc.)
   if (isPublicRoute(pathname)) {
     const response = NextResponse.next()
+    setCacheHeaders(response, pathname)
     setSecurityHeaders(response)
     return response
   }
@@ -83,6 +84,20 @@ export async function middleware(request: NextRequest) {
   await supabase.auth.getSession()
 
   return response
+}
+
+function setCacheHeaders(response: NextResponse, pathname: string) {
+  if (pathname.startsWith("/articles")) {
+    // Blog articles are static — cache aggressively at CDN and browser
+    response.headers.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=604800")
+  } else if (pathname.startsWith("/features/")) {
+    // Feature pages are static marketing content
+    response.headers.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400")
+  } else if (pathname === "/pricing" || pathname === "/discover") {
+    // Semi-static pages — short cache, long stale
+    response.headers.set("Cache-Control", "public, max-age=300, stale-while-revalidate=3600")
+  }
+  // Dynamic/auth pages get no Cache-Control (browser defaults)
 }
 
 function setCorsHeaders(response: NextResponse, origin: string | null) {

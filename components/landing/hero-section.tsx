@@ -1,11 +1,12 @@
 "use client"
 
+import { memo } from "react"
 import { motion } from "framer-motion"
 import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { AnimatedBackground } from "./animated-background"
 
-export function HeroSection() {
+export const HeroSection = memo(function HeroSection() {
   return (
     <section className="relative pt-24 pb-16 md:pt-32 md:pb-24 flex items-center justify-center overflow-hidden">
       {/* Animated gradient orbs */}
@@ -86,4 +87,4 @@ export function HeroSection() {
       </div>
     </section>
   )
-}
+})
