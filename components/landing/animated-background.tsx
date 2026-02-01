@@ -25,31 +25,6 @@ export function AnimatedBackground() {
         style={{ animation: "orb4 22s ease-in-out infinite" }}
       />
 
-      <style>{`
-        @keyframes orb1 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          25% { transform: translate(100px, -50px) scale(1.1); }
-          50% { transform: translate(50px, 30px) scale(0.95); }
-          75% { transform: translate(75px, -10px) scale(1.05); }
-        }
-        @keyframes orb2 {
-          0%, 100% { transform: translate(0, 0) scale(1); }
-          25% { transform: translate(-80px, 60px) scale(0.9); }
-          50% { transform: translate(-40px, -20px) scale(1.05); }
-          75% { transform: translate(-60px, 20px) scale(0.95); }
-        }
-        @keyframes orb3 {
-          0%, 100% { transform: translate(0, 0); }
-          25% { transform: translate(60px, -40px); }
-          50% { transform: translate(-30px, 20px); }
-          75% { transform: translate(15px, -10px); }
-        }
-        @keyframes orb4 {
-          0%, 100% { transform: translate(0, 0); opacity: 0.5; }
-          33% { transform: translate(40px, -30px); opacity: 0.7; }
-          66% { transform: translate(-20px, 40px); opacity: 0.5; }
-        }
-      `}</style>
     </div>
   )
 }
