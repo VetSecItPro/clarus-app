@@ -20,6 +20,7 @@ import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
 import { TriageCard } from "@/components/ui/triage-card"
 import { TruthCheckCard, type CrossReference } from "@/components/ui/truth-check-card"
 import { ActionItemsCard } from "@/components/ui/action-items-card"
+import { AnalysisProgress } from "@/components/ui/analysis-progress"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { useUpgradeModal } from "@/lib/hooks/use-upgrade-modal"
@@ -371,13 +372,18 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     }
     document.addEventListener("visibilitychange", handleVisibilityChange)
 
+    // Podcasts need longer timeout (transcription + analysis can take 5+ min)
+    const isPodcast = item?.type === "podcast"
+    const isTranscribing = item?.summary?.processing_status === "transcribing"
+    const maxTimeout = (isPodcast || isTranscribing) ? 600000 : 180000 // 10 min for podcasts, 3 min for others
+
     const maxPollingTimeout = setTimeout(() => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current)
         pollingIntervalRef.current = null
         setIsPolling(false)
       }
-    }, 120000)
+    }, maxTimeout)
 
     return () => {
       if (pollingIntervalRef.current) {
@@ -387,7 +393,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       clearTimeout(maxPollingTimeout)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [isPolling, pollContentAndUpdate])
+  }, [isPolling, pollContentAndUpdate, item?.type, item?.summary?.processing_status])
 
   useEffect(() => {
     const fetchDomainStats = async () => {
@@ -547,6 +553,17 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   // Analysis cards content (shared between desktop right panel and mobile analysis tab)
   const analysisContent = (
     <div className="space-y-6 sm:space-y-8">
+      <AnalysisProgress
+        processingStatus={summary?.processing_status ?? null}
+        briefOverview={summary?.brief_overview ?? null}
+        triage={summary?.triage ?? null}
+        midLengthSummary={summary?.mid_length_summary ?? null}
+        truthCheck={summary?.truth_check ?? null}
+        actionItems={summary?.action_items ?? null}
+        detailedSummary={summary?.detailed_summary ?? null}
+        contentType={item?.type ?? null}
+        isPolling={isPolling}
+      />
       {paywallWarning && !processingError && (
         <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex gap-3 items-start">
           <Shield className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
