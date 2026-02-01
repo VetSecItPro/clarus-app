@@ -125,6 +125,7 @@ If you connect to this Supabase project and see tables like `users`, `content`, 
   - `POLAR_PRODUCT_STARTER_ANNUAL` - Starter annual product ID ($144/yr)
   - `POLAR_PRODUCT_PRO_MONTHLY` - Pro monthly product ID ($29/mo)
   - `POLAR_PRODUCT_PRO_ANNUAL` - Pro annual product ID ($279/yr)
+  - `POLAR_PRODUCT_DAY_PASS` - Day Pass one-time product ID ($10)
 
 ### 7. Firecrawl (Web Scraping)
 - **Dashboard**: https://www.firecrawl.dev/app
@@ -178,6 +179,7 @@ POLAR_PRODUCT_STARTER_MONTHLY=...
 POLAR_PRODUCT_STARTER_ANNUAL=...
 POLAR_PRODUCT_PRO_MONTHLY=...
 POLAR_PRODUCT_PRO_ANNUAL=...
+POLAR_PRODUCT_DAY_PASS=...
 
 # Firecrawl (Web Scraping)
 FIRECRAWL_API_KEY=fc-...
@@ -260,6 +262,7 @@ flagged_content          -- clarus.flagged_content (content moderation flags)
 6. `scripts/031-create-flagged-content.sql` - Content moderation flagged_content table (applied 2026-01-31)
 7. `scripts/204-add-podcast-analyses.sql` - Podcast analysis columns + updated increment_usage (applied 2026-01-31)
 8. `scripts/033-add-tone-detection.sql` - Auto-tone detection column + {{TONE}} in 4 prose prompts (applied 2026-01-31)
+9. `scripts/205-add-day-pass-expires.sql` - Day pass expiration column on users table (applied 2026-02-01)
 
 **Tables are created in the `clarus` schema. Code references them without prefix (e.g., `users` not `clarus.users`).**
 
@@ -308,22 +311,31 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
 > **These prices and limits are final. Do not change without explicit owner approval.**
 > **RULE: No "Unlimited" on any tier. Every feature has a hard cap to prevent abuse.**
 
-| Feature | Free | Starter ($18/mo) | Pro ($29/mo) |
-|---------|------|-----------------|--------------|
-| Analyses/month | 5 | 50 | 150 |
-| Podcast analyses/month | 0 | 10 | 30 |
-| Chat messages/content | 10 | 25 | 50 |
-| Chat messages/month | 50 | 300 | 1,000 |
-| Library items | 25 | 500 | 5,000 |
-| Bookmarks | 5 | 50 | 500 |
-| Tags | 3 | 50 | 100 |
-| Share links/month | 0 | 10 | 100 |
-| Exports/month | 0 | 50 | 100 |
-| Claim tracking | No | No | Yes |
-| Weekly digest | No | Yes | Yes |
-| Priority processing | No | No | Yes |
+| Feature | Free | Starter ($18/mo) | Pro ($29/mo) | Day Pass ($10) |
+|---------|------|-----------------|--------------|----------------|
+| Analyses/month | 5 | 50 | 150 | 15 (24hr) |
+| Podcast analyses/month | 0 | 10 | 30 | 3 (24hr) |
+| Chat messages/content | 10 | 25 | 50 | 25 |
+| Chat messages/month | 50 | 300 | 1,000 | 100 (24hr) |
+| Library items | 25 | 500 | 5,000 | 25 |
+| Bookmarks | 5 | 50 | 500 | 10 |
+| Tags | 3 | 50 | 100 | 10 |
+| Share links/month | 0 | 10 | 100 | 5 (24hr) |
+| Exports/month | 0 | 50 | 100 | 10 (24hr) |
+| Claim tracking | No | No | Yes | Yes |
+| Weekly digest | No | Yes | Yes | No |
+| Priority processing | No | No | Yes | No |
 
-Annual discount: ~17% ($144/yr Starter, $279/yr Pro = 2 months free).
+Annual discount: up to 33% off ($144/yr Starter saves $72, $279/yr Pro saves $69).
+
+### Day Pass ($10 one-time)
+- 24-hour premium access, one-time payment (not a subscription)
+- Uses `day_pass_expires_at` column on users table for expiration
+- Cannot buy if already on active subscription (starter/pro)
+- Cannot stack — must wait for current pass to expire
+- On expiration, user reverts to free tier (content stays in library)
+- Polar product: one-time (not recurring) — `POLAR_PRODUCT_DAY_PASS`
+- Webhook: handled in `checkout.updated` (no subscription events for one-time products)
 
 **Rules:**
 - Do NOT add a Team/Enterprise tier until team features are built
@@ -372,7 +384,7 @@ Annual discount: ~17% ($144/yr Starter, $279/yr Pro = 2 months free).
 
 ## Clarus Session Work
 
-> **Last Updated**: 2026-02-01 (Session 6)
+> **Last Updated**: 2026-02-01 (Session 7)
 > **All implementation plans complete.** Historical docs archived to `docs/archive/`.
 
 ### Completed (All Sessions)
@@ -405,6 +417,8 @@ Annual discount: ~17% ($144/yr Starter, $279/yr Pro = 2 months free).
 | Demo page cleanup | #24 | Merged |
 | Performance optimization sweep batch 1 (20 items) | #25 | Merged |
 | Performance optimization sweep batch 2 (5 items: Tavily retry, cache headers, dynamic imports, score filter, WebP logo) | #26 | Merged |
+| Analysis progress bar (6-segment, color-coded, real-time section tracking) | #30 | Merged |
+| Pre-launch security hardening (9 fixes — see Security Hardening section below) | #31 | Pending |
 
 ### Performance Optimization Summary
 
@@ -414,10 +428,29 @@ Annual discount: ~17% ($144/yr Starter, $279/yr Pro = 2 months free).
 
 Full checklist archived at `docs/archive/clarus-optimize-feb26.md`.
 
+### Security Hardening (Session 7 — 2026-02-01)
+
+Full security audit performed. 9 fixes applied:
+
+| # | Fix | File | Severity |
+|---|-----|------|----------|
+| 1 | Polar product ID validation — `isPolarConfigured()` helper, fail-fast if env missing | `lib/polar.ts` | Critical |
+| 2 | Polar webhook — verify secret before reading body, return 401 on bad signature, 503 if unconfigured | `app/api/polar/webhook/route.ts` | Critical |
+| 3 | AssemblyAI webhook — token now mandatory (503 if missing), always validated | `app/api/assemblyai-webhook/route.ts` | Critical |
+| 4 | Admin auth — removed env var bypass, always checks DB `is_admin` column, 5min cache | `lib/auth.ts` | Critical |
+| 5 | Search SQL injection — escape `%`, `_`, `\` in ILIKE fallback patterns | `app/api/search/route.ts` | High |
+| 6 | PDF magic byte verification — validates `%PDF-` header and `PK` for Office docs server-side | `app/api/process-pdf/route.ts` | High |
+| 7 | Discover endpoint rate limiting — 30 req/min per IP on public endpoint | `app/api/discover/route.ts` | High |
+| 8 | Removed `ignoreBuildErrors` and `ignoreDuringBuilds` from next.config — build now validates types+lint | `next.config.mjs` | Medium |
+| 9 | Sanitized error responses — removed `error.message` leak from search API 500 responses | `app/api/search/route.ts` | Medium |
+
 ### TODO (Owner Actions — Not Code)
 
-1. **AssemblyAI API key** — Create AssemblyAI account, add `ASSEMBLYAI_API_KEY` to `.env.local` and Vercel
-2. **Polar payments** — Create Polar account, products, webhook secret (env vars still placeholder)
+1. ~~AssemblyAI API key~~ — Done, configured in `.env.local` and Vercel
+2. ~~Polar payments~~ — Done, all product IDs and credentials configured in `.env.local`
+3. **Verify Polar env vars in Vercel dashboard** — Ensure all `POLAR_*` vars from `.env.local` are set in Vercel production environment
+4. **Verify `ASSEMBLYAI_WEBHOOK_TOKEN`** — Must be set in Vercel for webhook to accept callbacks
+5. **Verify `is_admin` column** — Ensure your user has `is_admin = true` in clarus.users (env var bypass removed)
 
 ### Archived Plans
 

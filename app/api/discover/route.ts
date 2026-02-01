@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database.types"
 import type { TriageData } from "@/types/database.types"
+import { checkRateLimit } from "@/lib/validation"
 
 /**
  * GET /api/discover
@@ -34,7 +35,14 @@ export interface DiscoverItem {
   dateAdded: string
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  // Rate limit public endpoint
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = checkRateLimit(`discover:${clientIp}`, 30, 60000) // 30 per minute
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 })
+  }
+
   try {
     const supabase = getClient()
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()

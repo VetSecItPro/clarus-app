@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, verifyContentOwnership } from "@/lib/auth"
 import { uuidSchema } from "@/lib/schemas"
+import { getUserTier } from "@/lib/usage"
+import { TIER_FEATURES } from "@/lib/tier-limits"
+import { checkRateLimit } from "@/lib/validation"
 
 export interface CrossReference {
   claimText: string
@@ -18,11 +21,31 @@ export interface CrossReference {
  * Find claims from this content that appear in other analyses
  */
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
+
+  // Rate limiting - expensive RPC calls
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = checkRateLimit(`crossref:${auth.user.id}`, 20, 60000) // 20 per minute per user
+  const ipRateLimit = checkRateLimit(`crossref:ip:${clientIp}`, 30, 60000) // 30 per minute per IP
+  if (!rateLimit.allowed || !ipRateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    )
+  }
+
+  // Enforce claim tracking tier gate
+  const tier = await getUserTier(auth.supabase, auth.user.id)
+  if (!TIER_FEATURES[tier].claimTracking) {
+    return NextResponse.json(
+      { error: "Claim tracking requires a Starter or Pro subscription.", upgrade: true },
+      { status: 403 }
+    )
+  }
 
   const { id } = await params
   const parsed = uuidSchema.safeParse(id)
