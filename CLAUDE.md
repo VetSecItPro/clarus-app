@@ -367,9 +367,10 @@ Annual discount: 17% ($80/yr Starter, $160/yr Pro = 2 months free).
 
 ## Clarus Session Work
 
-> **Last Updated**: 2026-01-31 (Session 4)
+> **Last Updated**: 2026-02-01 (Session 6)
+> **All implementation plans complete.** Historical docs archived to `docs/archive/`.
 
-### Completed
+### Completed (All Sessions)
 
 | Task | PR | Status |
 |------|-----|--------|
@@ -394,11 +395,34 @@ Annual discount: 17% ($80/yr Starter, $160/yr Pro = 2 months free).
 | Vercel deployment + custom domain (clarusapp.io) | - | Done |
 | All external services configured (OpenRouter, Firecrawl, Supadata, Tavily, Resend) | - | Done |
 | Podcast analysis — AssemblyAI transcription + separate tier gating | - | Code complete, needs API key |
+| Auto-detect content tone before analysis | #22 | Merged |
+| SEO articles section (15 articles, /articles + /articles/[slug]) | #23 | Merged |
+| Demo page cleanup | #24 | Merged |
+| Performance optimization sweep batch 1 (20 items) | #25 | Merged |
+| Performance optimization sweep batch 2 (5 items: Tavily retry, cache headers, dynamic imports, score filter, WebP logo) | #26 | Merged |
 
-### TODO (Remaining)
+### Performance Optimization Summary
+
+25 of 27 items completed. 2 deferred (won't fix):
+- Item page monolith split — code well-organized, dynamic imports already addressed bundle size
+- Chat virtualization — tier caps limit to 50 messages max, virtualization only benefits 100+ items
+
+Full checklist archived at `docs/archive/clarus-optimize-feb26.md`.
+
+### TODO (Owner Actions — Not Code)
 
 1. **AssemblyAI API key** — Create AssemblyAI account, add `ASSEMBLYAI_API_KEY` to `.env.local` and Vercel
 2. **Polar payments** — Create Polar account, products, webhook secret (env vars still placeholder)
+
+### Archived Plans
+
+All historical implementation plans have been completed and moved to `docs/archive/`:
+- `vajra-new-plan-jan26.md` — Master implementation plan (workstreams 1-6, all completed)
+- `clarus-optimize-feb26.md` — Performance optimization checklist (25/27 done, 2 deferred)
+- `vajra-optimization-21dec.md` — Early brainstorming doc (Dec 2025)
+- `PRD-streaming-analysis.md` — Streaming analysis PRD (fully implemented)
+- `vajra-implementation.md` — Phase 0-3 tracker (fully implemented)
+- Feature docs, workflow docs, prompt docs (all superseded by current code)
 
 ### Notes
 
