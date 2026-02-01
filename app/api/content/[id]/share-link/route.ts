@@ -68,10 +68,10 @@ export async function POST(
   // Tier feature check: share links require starter+
   const { data: userData } = await auth.supabase
     .from("users")
-    .select("tier")
+    .select("tier, day_pass_expires_at")
     .eq("id", auth.user.id)
     .single()
-  const tier = normalizeTier(userData?.tier)
+  const tier = normalizeTier(userData?.tier, userData?.day_pass_expires_at)
   if (!TIER_FEATURES[tier].shareLinks) {
     return NextResponse.json(
       { error: "Share links require a Starter or Pro plan.", upgrade_required: true, tier },

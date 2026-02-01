@@ -15,9 +15,19 @@ export async function POST(request: Request) {
   try {
     const { tier, interval } = await request.json()
 
-    // Resolve product ID from tier + interval
-    const productKey = `${tier}_${interval}` as keyof typeof PRODUCTS
-    const productId = PRODUCTS[productKey]
+    // Validate input
+    const validSubscriptionTiers = ["starter", "pro"] as const
+    const validIntervals = ["monthly", "annual"] as const
+    const isDayPass = tier === "day_pass"
+
+    if (!isDayPass && (!validSubscriptionTiers.includes(tier) || !validIntervals.includes(interval))) {
+      return NextResponse.json({ error: "Invalid tier or interval" }, { status: 400 })
+    }
+
+    // Resolve product ID
+    const productId = isDayPass
+      ? PRODUCTS.day_pass
+      : PRODUCTS[`${tier}_${interval}` as keyof typeof PRODUCTS]
 
     if (!productId) {
       return NextResponse.json(
@@ -59,9 +69,29 @@ export async function POST(request: Request) {
     // Get user data
     const { data: userData } = await supabase
       .from("users")
-      .select("polar_customer_id, email")
+      .select("polar_customer_id, email, tier, subscription_status, day_pass_expires_at")
       .eq("id", user.id)
       .single()
+
+    // Day pass abuse prevention
+    if (isDayPass) {
+      // Can't buy day pass if already on active subscription
+      if (userData?.tier === "starter" || userData?.tier === "pro") {
+        if (userData?.subscription_status === "active" || userData?.subscription_status === "trialing") {
+          return NextResponse.json(
+            { error: "You already have an active subscription with more features than a day pass." },
+            { status: 400 }
+          )
+        }
+      }
+      // Can't stack day passes
+      if (userData?.day_pass_expires_at && new Date(userData.day_pass_expires_at) > new Date()) {
+        return NextResponse.json(
+          { error: "You already have an active day pass. It expires " + new Date(userData.day_pass_expires_at).toLocaleString() + "." },
+          { status: 400 }
+        )
+      }
+    }
 
     // Get the origin for redirect URLs
     const origin = request.headers.get("origin") || "https://clarusapp.io"
@@ -74,7 +104,7 @@ export async function POST(request: Request) {
       metadata: {
         supabase_user_id: user.id,
         tier,
-        interval,
+        ...(isDayPass ? {} : { interval }),
       },
     })
 

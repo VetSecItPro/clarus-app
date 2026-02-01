@@ -6,6 +6,11 @@ import { checkRateLimit } from "@/lib/validation"
 import { z } from "zod"
 import type { Database } from "@/types/database.types"
 
+/** Escape special LIKE/ILIKE characters to prevent pattern injection */
+function escapeLikePattern(input: string): string {
+  return input.replace(/[%_\\]/g, (char) => `\\${char}`)
+}
+
 interface SearchResult {
   id: string
   title: string | null
@@ -78,7 +83,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error("Search error:", error)
     return NextResponse.json(
-      { error: "Failed to search content", details: error instanceof Error ? error.message : "Unknown error" },
+      { error: "Failed to search content" },
       { status: 500 }
     )
   }
@@ -107,7 +112,7 @@ async function fallbackSearch(
       summaries(brief_overview, triage)
     `)
     .eq("user_id", userId)
-    .or(`title.ilike.%${query}%,full_text.ilike.%${query}%`)
+    .or(`title.ilike.%${escapeLikePattern(query)}%,full_text.ilike.%${escapeLikePattern(query)}%`)
     .order("date_added", { ascending: false })
     .range(offset, offset + limit - 1)
 
@@ -208,7 +213,7 @@ export async function POST(request: NextRequest) {
           .from("content")
           .select("id, title, type")
           .eq("user_id", userId)
-          .ilike("title", `%${query}%`)
+          .ilike("title", `%${escapeLikePattern(query)}%`)
           .limit(limit)
 
         return NextResponse.json({ success: true, suggestions: fallbackData || [], fallback: true })

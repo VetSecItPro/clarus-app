@@ -2,6 +2,9 @@ import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database.types"
 import { type NextRequest, NextResponse } from "next/server"
 import { checkRateLimit } from "@/lib/validation"
+import { authenticateRequest } from "@/lib/auth"
+import { getUserTier } from "@/lib/usage"
+import { TIER_LIMITS } from "@/lib/tier-limits"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -120,19 +123,37 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Authenticate user from session
+  const auth = await authenticateRequest()
+  if (!auth.success) return auth.response
+
+  const userId = auth.user.id
+
   try {
+    // Enforce library size limit
+    const tier = await getUserTier(auth.supabase, userId)
+    const libraryLimit = TIER_LIMITS[tier].library
+
+    const { count: libraryCount } = await auth.supabase
+      .from("content")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+
+    if ((libraryCount ?? 0) >= libraryLimit) {
+      return NextResponse.json(
+        { error: `Library limit reached (${libraryLimit} items on ${tier} tier). Upgrade for more storage.` },
+        { status: 403 }
+      )
+    }
+
     const formData = await req.formData()
     const file = formData.get("file") as File | null
-    const userId = formData.get("userId") as string | null
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
     }
 
-    if (!userId) {
-      return NextResponse.json({ error: "User ID required" }, { status: 400 })
-    }
-
+    // Note: userId comes from authenticated session above, not from form data
     if (file.size === 0) {
       return NextResponse.json({ error: "File is empty" }, { status: 400 })
     }
@@ -153,6 +174,24 @@ export async function POST(req: NextRequest) {
     // Read file as ArrayBuffer
     const arrayBuffer = await file.arrayBuffer()
     const buffer = Buffer.from(arrayBuffer)
+
+    // Verify file magic bytes (server-side — don't trust client MIME type alone)
+    if (file.type === "application/pdf") {
+      // PDF magic bytes: %PDF-
+      const pdfMagic = Buffer.from([0x25, 0x50, 0x44, 0x46, 0x2D])
+      if (buffer.length < 5 || !buffer.subarray(0, 5).equals(pdfMagic)) {
+        return NextResponse.json({ error: "Invalid PDF file" }, { status: 400 })
+      }
+    } else if (
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+      file.type === "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" ||
+      file.type === "application/vnd.openxmlformats-officedocument.presentationml.presentation"
+    ) {
+      // Office Open XML (docx, xlsx, pptx) magic bytes: PK (ZIP header)
+      if (buffer.length < 2 || buffer[0] !== 0x50 || buffer[1] !== 0x4B) {
+        return NextResponse.json({ error: "Invalid Office document" }, { status: 400 })
+      }
+    }
 
     // Extract text from PDF - try pdf-parse first, then OCR as fallback
     let pdfText = ""
