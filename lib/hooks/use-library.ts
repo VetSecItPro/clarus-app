@@ -1,6 +1,6 @@
 "use client"
 
-import { useMemo } from "react"
+import { useMemo, useCallback } from "react"
 import useSWRInfinite from "swr/infinite"
 import { supabase } from "@/lib/supabase"
 import type { Database } from "@/types/database.types"
@@ -216,22 +216,22 @@ const fetcher = async (
 }
 
 export function useLibrary(options: UseLibraryOptions) {
-  const getKey = (pageIndex: number, previousPageData: { items: LibraryItem[]; hasMore: boolean } | null) => {
-    if (!options.userId) return null
-    // If previous page returned no items, don't fetch more
-    if (previousPageData && previousPageData.items.length === 0) return null
+  // Memoize key prefix to prevent SWR cache misses from recreated strings
+  const keyPrefix = useMemo(() => [
+    "library",
+    options.userId,
+    options.searchQuery || "",
+    options.filterType || "all",
+    options.sortBy || "date_desc",
+    options.bookmarkOnly ? "bookmarked" : "",
+    (options.selectedTags || []).join(","),
+  ].join(":"), [options.userId, options.searchQuery, options.filterType, options.sortBy, options.bookmarkOnly, options.selectedTags])
 
-    return [
-      "library",
-      options.userId,
-      options.searchQuery || "",
-      options.filterType || "all",
-      options.sortBy || "date_desc",
-      options.bookmarkOnly ? "bookmarked" : "",
-      (options.selectedTags || []).join(","),
-      pageIndex,
-    ].join(":")
-  }
+  const getKey = useCallback((pageIndex: number, previousPageData: { items: LibraryItem[]; hasMore: boolean } | null) => {
+    if (!options.userId) return null
+    if (previousPageData && previousPageData.items.length === 0) return null
+    return `${keyPrefix}:${pageIndex}`
+  }, [options.userId, keyPrefix])
 
   const { data, error, isLoading, size, setSize, mutate } = useSWRInfinite(
     getKey,

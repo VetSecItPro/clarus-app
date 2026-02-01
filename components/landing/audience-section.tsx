@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { motion } from "framer-motion"
 
 const personas = [
@@ -41,7 +42,7 @@ const personas = [
   },
 ]
 
-export function AudienceSection() {
+export const AudienceSection = memo(function AudienceSection() {
   return (
     <section className="py-20 px-6 border-t border-white/[0.04]">
       <div className="max-w-4xl mx-auto">
@@ -88,4 +89,4 @@ export function AudienceSection() {
       </div>
     </section>
   )
-}
+})
