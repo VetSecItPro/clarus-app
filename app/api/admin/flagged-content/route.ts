@@ -28,19 +28,16 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to fetch flagged content" }, { status: 500 })
   }
 
-  // Also get counts by status for the header
-  const { data: allFlags } = await supabase
-    .from("flagged_content")
-    .select("status, severity")
-
+  // Compute counts from the already-fetched data instead of a second query
+  const items = data || []
   const counts = {
-    total: allFlags?.length || 0,
-    pending: allFlags?.filter(f => f.status === "pending").length || 0,
-    critical: allFlags?.filter(f => f.severity === "critical").length || 0,
-    reported: allFlags?.filter(f => f.status === "reported").length || 0,
+    total: items.length,
+    pending: items.filter(f => f.status === "pending").length,
+    critical: items.filter(f => f.severity === "critical").length,
+    reported: items.filter(f => f.status === "reported").length,
   }
 
-  return NextResponse.json({ items: data || [], counts })
+  return NextResponse.json({ items, counts })
 }
 
 const updateSchema = z.object({

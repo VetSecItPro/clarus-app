@@ -42,70 +42,75 @@ export async function GET(request: Request) {
     return NextResponse.json({ success: true, sent: 0, skipped: 0, message: "No eligible users" })
   }
 
+  // Batch fetch all user content and summaries in parallel
+  const userIds = users.filter(u => u.email).map(u => u.id)
+
+  const [contentResult, summariesResult] = await Promise.all([
+    supabase
+      .from("content")
+      .select("id, title, url, user_id")
+      .in("user_id", userIds)
+      .gte("date_added", sevenDaysAgo)
+      .order("date_added", { ascending: false }),
+    supabase
+      .from("summaries")
+      .select("content_id, triage")
+      .eq("processing_status", "complete")
+      .gte("created_at", sevenDaysAgo),
+  ])
+
+  const allContent = contentResult.data || []
+  const allSummaries = summariesResult.data || []
+
+  // Index summaries by content_id for O(1) lookup
+  const summaryMap = new Map(allSummaries.map(s => [s.content_id, s]))
+
+  const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const weekOf = weekStart.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+  })
+
   let sent = 0
   let skipped = 0
 
-  for (const user of users) {
+  // Process each user using pre-fetched data
+  const sendPromises = users.map(async (user) => {
     if (!user.email) {
       skipped++
-      continue
+      return
     }
 
     try {
-      // Get user's analyses from the last 7 days
-      const { data: recentContent, error: contentError } = await supabase
-        .from("content")
-        .select("id, title, url")
-        .eq("user_id", user.id)
-        .gte("date_added", sevenDaysAgo)
-        .order("date_added", { ascending: false })
-
-      if (contentError || !recentContent || recentContent.length === 0) {
+      const recentContent = allContent.filter(c => c.user_id === user.id)
+      if (recentContent.length === 0) {
         skipped++
-        continue
+        return
       }
 
-      // Get summaries with quality scores for these content items
-      const contentIds = recentContent.map((c) => c.id)
-      const { data: summaries } = await supabase
-        .from("summaries")
-        .select("content_id, triage")
-        .in("content_id", contentIds)
-        .eq("processing_status", "complete")
-
-      if (!summaries || summaries.length === 0) {
-        skipped++
-        continue
-      }
-
-      // Build scored list
       const scoredItems = recentContent
         .map((content) => {
-          const summary = summaries.find((s) => s.content_id === content.id)
+          const summary = summaryMap.get(content.id)
           const triage = summary?.triage as unknown as TriageData | null
           const qualityScore = triage?.quality_score ?? 0
           return {
             title: content.title || "Untitled",
             url: `https://clarusapp.io/item/${content.id}`,
-            qualityScore: Math.round(qualityScore * 10), // Convert 1-10 to percentage-like
+            qualityScore: Math.round(qualityScore * 10),
           }
         })
+        .filter(item => item.qualityScore > 0)
         .sort((a, b) => b.qualityScore - a.qualityScore)
 
+      if (scoredItems.length === 0) {
+        skipped++
+        return
+      }
+
       const topAnalyses = scoredItems.slice(0, 5)
-      const avgScore = scoredItems.length > 0
-        ? Math.round(scoredItems.reduce((sum, item) => sum + item.qualityScore, 0) / scoredItems.length)
-        : 0
+      const avgScore = Math.round(scoredItems.reduce((sum, item) => sum + item.qualityScore, 0) / scoredItems.length)
 
-      // Format week string
-      const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
-      const weekOf = weekStart.toLocaleDateString("en-US", {
-        month: "long",
-        day: "numeric",
-        year: "numeric",
-      })
-
-      // Send the email
       const result = await sendWeeklyDigestEmail(
         user.email,
         user.name ?? undefined,
@@ -116,7 +121,6 @@ export async function GET(request: Request) {
       )
 
       if (result.success) {
-        // Update last_digest_at
         await supabase
           .from("users")
           .update({ last_digest_at: new Date().toISOString() })
@@ -130,7 +134,9 @@ export async function GET(request: Request) {
       console.error(`Error processing digest for user ${user.id}:`, err)
       skipped++
     }
-  }
+  })
+
+  await Promise.all(sendPromises)
 
   return NextResponse.json({ success: true, sent, skipped })
 }

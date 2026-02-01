@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { motion } from "framer-motion"
 import { Link2, Sparkles, MessageCircle } from "lucide-react"
 
@@ -24,7 +25,7 @@ const steps = [
   },
 ]
 
-export function HowItWorks() {
+export const HowItWorks = memo(function HowItWorks() {
   return (
     <section id="how-it-works" className="py-20 px-6 scroll-mt-20">
       <div className="max-w-3xl mx-auto">
@@ -89,4 +90,4 @@ export function HowItWorks() {
       </div>
     </section>
   )
-}
+})

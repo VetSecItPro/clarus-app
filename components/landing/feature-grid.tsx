@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { motion } from "framer-motion"
 import {
   Youtube, FileText, FileUp, Brain, Headphones,
@@ -51,7 +52,7 @@ const features = [
   },
 ]
 
-export function FeatureGrid() {
+export const FeatureGrid = memo(function FeatureGrid() {
   return (
     <section id="features" className="py-20 px-6 border-t border-white/[0.04]">
       <div className="max-w-4xl mx-auto">
@@ -144,4 +145,4 @@ export function FeatureGrid() {
       </div>
     </section>
   )
-}
+})

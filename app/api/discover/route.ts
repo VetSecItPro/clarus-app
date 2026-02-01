@@ -39,12 +39,13 @@ export async function GET() {
     const supabase = getClient()
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-    // Fetch content that has been shared publicly in the last 7 days
+    // Fetch shared content with summaries in a single joined query
     const { data: sharedContent, error: contentError } = await supabase
       .from("content")
-      .select("id, title, url, type, share_token, date_added")
+      .select("id, title, url, type, share_token, date_added, summaries!inner(brief_overview, triage)")
       .not("share_token", "is", null)
       .gte("date_added", sevenDaysAgo)
+      .eq("summaries.processing_status", "complete")
       .order("date_added", { ascending: false })
       .limit(50)
 
@@ -59,18 +60,10 @@ export async function GET() {
       })
     }
 
-    // Fetch summaries for these content items
-    const contentIds = sharedContent.map(c => c.id)
-    const { data: summaries } = await supabase
-      .from("summaries")
-      .select("content_id, brief_overview, triage")
-      .in("content_id", contentIds)
-      .eq("processing_status", "complete")
-
     // Build scored items — zero user attribution
     const items: DiscoverItem[] = sharedContent
       .map(content => {
-        const summary = summaries?.find(s => s.content_id === content.id)
+        const summary = Array.isArray(content.summaries) ? content.summaries[0] : content.summaries
         if (!summary) return null
 
         const triage = summary.triage as unknown as TriageData | null

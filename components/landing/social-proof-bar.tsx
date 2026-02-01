@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import { motion } from "framer-motion"
 import { ShieldCheck, Lock } from "lucide-react"
 
@@ -8,7 +9,7 @@ const proofItems = [
   { icon: Lock, text: "Your data never used for training" },
 ]
 
-export function SocialProofBar() {
+export const SocialProofBar = memo(function SocialProofBar() {
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -26,4 +27,4 @@ export function SocialProofBar() {
       </div>
     </motion.div>
   )
-}
+})

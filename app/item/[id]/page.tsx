@@ -343,13 +343,19 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       return
     }
 
-    pollingIntervalRef.current = setInterval(async () => {
+    let pollAttempt = 0
+    const pollWithBackoff = async () => {
       const stillProcessing = await pollContentAndUpdate()
       if (!stillProcessing) {
         setIsPolling(false)
         toast.success("Analysis complete!")
+        return
       }
-    }, 1000)
+      // Exponential backoff: 1s → 2s → 4s → 8s (cap)
+      const delay = Math.min(1000 * Math.pow(2, pollAttempt++), 8000)
+      pollingIntervalRef.current = setTimeout(pollWithBackoff, delay) as unknown as NodeJS.Timeout
+    }
+    pollingIntervalRef.current = setTimeout(pollWithBackoff, 1000) as unknown as NodeJS.Timeout
 
     const handleVisibilityChange = async () => {
       if (document.visibilityState === "visible" && isPolling) {
@@ -1734,49 +1740,39 @@ export default function ItemPage({ params }: PageProps) {
   const router = useRouter()
 
   useEffect(() => {
+    // If cache is already initialized, trust it — no remote fetch needed
     if (cached.initialized) {
       setSession(cached.session)
       setLoading(false)
-      return
     }
 
-    let isMounted = true
-
-    const getSessionWithTimeout = async () => {
-      try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Session timeout")), 5000)
-        })
-
-        const {
-          data: { session },
-        } = await Promise.race([supabase.auth.getSession(), timeoutPromise])
-
-        if (isMounted) {
-          setSession(session)
-          setLoading(false)
-        }
-      } catch {
-        if (isMounted) {
-          setSession(null)
-          setLoading(false)
-        }
-      }
-    }
-
-    getSessionWithTimeout()
-
+    // Listen for auth state changes (handles sign-out, token refresh)
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (isMounted) {
-        setSession(session)
-        setLoading(false)
-      }
+      setSession(session)
+      setLoading(false)
     })
 
+    // Only fetch remotely if cache wasn't initialized
+    if (!cached.initialized) {
+      const timeoutId = setTimeout(() => {
+        setSession(null)
+        setLoading(false)
+      }, 5000)
+
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        clearTimeout(timeoutId)
+        setSession(session)
+        setLoading(false)
+      }).catch(() => {
+        clearTimeout(timeoutId)
+        setSession(null)
+        setLoading(false)
+      })
+    }
+
     return () => {
-      isMounted = false
       subscription.unsubscribe()
     }
   }, [cached.initialized, cached.session])

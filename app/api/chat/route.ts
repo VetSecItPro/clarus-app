@@ -172,7 +172,10 @@ export async function POST(req: NextRequest) {
       return msg
     })
 
-    // Fetch content with title and URL
+    // Determine if we need full_text (only for first few messages to save tokens)
+    const isFirstMessages = limitedMessages.filter((m: UIMessage) => m.role === "user").length <= 2
+
+    // Fetch content — always include full_text in select but only use it for first messages
     const { data: contentData, error: contentError } = await supabaseAdmin
       .from("content")
       .select("title, url, full_text, type, author, user_id, detected_tone")
@@ -230,9 +233,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Build context - use full content only for first few messages, then use summaries
-    // This saves significant tokens for longer conversations
-    const isFirstMessages = limitedMessages.filter(m => m.role === "user").length <= 2
-
+    // (isFirstMessages already computed above for conditional content fetch)
     let contextParts: string[] = []
 
     // Content metadata (always included)

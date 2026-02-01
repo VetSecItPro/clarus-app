@@ -231,8 +231,8 @@ export async function GET(request: NextRequest) {
       getSupabaseAdmin().from("domains").select("domain, total_analyses, avg_quality_score")
         .order("total_analyses", { ascending: false })
         .limit(10),
-      // Truth ratings from summaries
-      getSupabaseAdmin().from("summaries").select("truth_check"),
+      // Truth ratings from summaries (only need overall_rating from the JSON)
+      getSupabaseAdmin().from("summaries").select("truth_check->overall_rating"),
       // Processing metrics
       getSupabaseAdmin().from("processing_metrics").select("status, processing_time_ms, section_type")
         .gte("created_at", startDateStr),
@@ -334,7 +334,7 @@ export async function GET(request: NextRequest) {
     // Truth rating distribution
     const ratingCounts: Record<string, number> = {}
     truthRatingsResult.data?.forEach(s => {
-      const rating = (s.truth_check as { overall_rating?: string })?.overall_rating || "Unknown"
+      const rating = (s as Record<string, unknown>).overall_rating as string || "Unknown"
       ratingCounts[rating] = (ratingCounts[rating] || 0) + 1
     })
     const truthRatingDistribution = [
