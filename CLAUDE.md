@@ -113,15 +113,18 @@ If you connect to this Supabase project and see tables like `users`, `content`, 
 - **Actions**:
   1. Create Polar account
   2. Create organization
-  3. Create product "Clarus Pro" with monthly ($4) and annual ($29) variants
-  4. Set up webhook endpoint: `https://clarusapp.io/api/polar/webhook`
-  5. Get access token from Settings → Developers
+  3. Create product "Clarus Starter" with monthly ($18) and annual ($144) variants
+  4. Create product "Clarus Pro" with monthly ($29) and annual ($279) variants
+  5. Set up webhook endpoint: `https://clarusapp.io/api/polar/webhook`
+  6. Get access token from Settings → Developers
 - **Env vars needed**:
   - `POLAR_ACCESS_TOKEN` - Access token
   - `POLAR_WEBHOOK_SECRET` - Webhook signing secret
   - `POLAR_ORGANIZATION_ID` - Organization ID
-  - `POLAR_PRODUCT_MONTHLY` - Monthly product ID
-  - `POLAR_PRODUCT_ANNUAL` - Annual product ID
+  - `POLAR_PRODUCT_STARTER_MONTHLY` - Starter monthly product ID ($18/mo)
+  - `POLAR_PRODUCT_STARTER_ANNUAL` - Starter annual product ID ($144/yr)
+  - `POLAR_PRODUCT_PRO_MONTHLY` - Pro monthly product ID ($29/mo)
+  - `POLAR_PRODUCT_PRO_ANNUAL` - Pro annual product ID ($279/yr)
 
 ### 7. Firecrawl (Web Scraping)
 - **Dashboard**: https://www.firecrawl.dev/app
@@ -167,12 +170,14 @@ SUPABASE_SERVICE_ROLE_KEY=eyJ...
 # OpenRouter (AI)
 OPENROUTER_API_KEY=sk-or-...
 
-# Polar (Payments) - NOT ACTIVE YET
+# Polar (Payments)
 POLAR_ACCESS_TOKEN=polar_at_...
 POLAR_WEBHOOK_SECRET=...
 POLAR_ORGANIZATION_ID=...
-POLAR_PRODUCT_MONTHLY=prod_...
-POLAR_PRODUCT_ANNUAL=prod_...
+POLAR_PRODUCT_STARTER_MONTHLY=...
+POLAR_PRODUCT_STARTER_ANNUAL=...
+POLAR_PRODUCT_PRO_MONTHLY=...
+POLAR_PRODUCT_PRO_ANNUAL=...
 
 # Firecrawl (Web Scraping)
 FIRECRAWL_API_KEY=fc-...
@@ -303,7 +308,7 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
 > **These prices and limits are final. Do not change without explicit owner approval.**
 > **RULE: No "Unlimited" on any tier. Every feature has a hard cap to prevent abuse.**
 
-| Feature | Free | Starter ($8/mo) | Pro ($16/mo) |
+| Feature | Free | Starter ($18/mo) | Pro ($29/mo) |
 |---------|------|-----------------|--------------|
 | Analyses/month | 5 | 50 | 150 |
 | Podcast analyses/month | 0 | 10 | 30 |
@@ -318,7 +323,7 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
 | Weekly digest | No | Yes | Yes |
 | Priority processing | No | No | Yes |
 
-Annual discount: 17% ($80/yr Starter, $160/yr Pro = 2 months free).
+Annual discount: ~17% ($144/yr Starter, $279/yr Pro = 2 months free).
 
 **Rules:**
 - Do NOT add a Team/Enterprise tier until team features are built
