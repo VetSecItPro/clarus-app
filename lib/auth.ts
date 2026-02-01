@@ -9,10 +9,8 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import type { Database } from "@/types/database.types"
 
-// Admin user IDs (should match your Supabase users)
-const ADMIN_USER_IDS = new Set([
-  process.env.ADMIN_USER_ID, // Primary admin
-].filter(Boolean))
+// Admin cache to avoid repeated DB queries within the same runtime (5 min TTL)
+const adminCache = new Map<string, { isAdmin: boolean; expires: number }>()
 
 export interface AuthResult {
   success: true
@@ -85,18 +83,28 @@ export async function authenticateRequest(): Promise<AuthResult | AuthError> {
 
 /**
  * Authenticate request and verify admin status
- * Checks is_admin column in database OR environment variable whitelist
+ * Always checks is_admin column in database (single source of truth)
  */
 export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
   const auth = await authenticateRequest()
   if (!auth.success) return auth
 
-  // Check against environment variable whitelist first (fast path)
-  if (ADMIN_USER_IDS.has(auth.user.id)) {
+  // Check short-lived cache first (avoids repeated DB hits within same runtime)
+  const cached = adminCache.get(auth.user.id)
+  if (cached && cached.expires > Date.now()) {
+    if (!cached.isAdmin) {
+      return {
+        success: false,
+        response: NextResponse.json(
+          { error: "Admin access required" },
+          { status: 403 }
+        ),
+      }
+    }
     return auth
   }
 
-  // Check database for is_admin flag
+  // Always check database for is_admin flag (single source of truth)
   const adminClient = getAdminClient()
   const { data: userData } = await adminClient
     .from("users")
@@ -104,7 +112,12 @@ export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
     .eq("id", auth.user.id)
     .single()
 
-  if (!userData?.is_admin) {
+  const isAdmin = userData?.is_admin === true
+
+  // Cache for 5 minutes
+  adminCache.set(auth.user.id, { isAdmin, expires: Date.now() + 5 * 60 * 1000 })
+
+  if (!isAdmin) {
     return {
       success: false,
       response: NextResponse.json(
@@ -171,10 +184,16 @@ export function getAdminClient(): SupabaseClient<Database> {
 }
 
 /**
- * Check if a user is an admin
+ * Check if a user is an admin (checks cache, falls back to DB)
+ * For use in non-async contexts — prefer authenticateAdmin() in API routes
  */
 export function isAdmin(userId: string): boolean {
-  return ADMIN_USER_IDS.has(userId)
+  const cached = adminCache.get(userId)
+  if (cached && cached.expires > Date.now()) {
+    return cached.isAdmin
+  }
+  // If not cached, return false — caller should use authenticateAdmin() for authoritative check
+  return false
 }
 
 /**

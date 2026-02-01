@@ -13,6 +13,7 @@ export const ADMIN_COLORS = {
   purple: "#a855f7",
   cyan: "#06b6d4",
   orange: "#f97316",
+  amber: "#f59e0b",
 }
 
 // Shared tooltip style for all Recharts charts

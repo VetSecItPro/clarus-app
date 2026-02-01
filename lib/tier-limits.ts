@@ -60,6 +60,17 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     library: 5000,
     podcastAnalyses: 30,
   },
+  day_pass: {
+    analyses: 15,
+    chatMessagesMonthly: 100,
+    chatMessagesPerContent: 25,
+    shareLinks: 5,
+    exports: 10,
+    bookmarks: 10,
+    tags: 10,
+    library: 25,
+    podcastAnalyses: 3,
+  },
 }
 
 /** Map a usage database field to its corresponding tier limit key */
@@ -91,9 +102,14 @@ export function getCurrentPeriod(): string {
   return `${year}-${month}`
 }
 
-/** Normalize a tier string from the database to a valid UserTier */
-export function normalizeTier(tier: string | null | undefined): UserTier {
+/** Normalize a tier string from the database to a valid UserTier.
+ *  For day_pass, checks expiration — returns "free" if expired. */
+export function normalizeTier(tier: string | null | undefined, dayPassExpiresAt?: string | null): UserTier {
   if (tier === "starter" || tier === "pro") return tier
+  if (tier === "day_pass") {
+    if (!dayPassExpiresAt || new Date(dayPassExpiresAt) < new Date()) return "free"
+    return "day_pass"
+  }
   return "free"
 }
 
@@ -125,5 +141,12 @@ export const TIER_FEATURES: Record<UserTier, {
     weeklyDigest: true,
     claimTracking: true,
     priorityProcessing: true,
+  },
+  day_pass: {
+    shareLinks: true,
+    exports: true,
+    weeklyDigest: false,
+    claimTracking: true,
+    priorityProcessing: false,
   },
 }

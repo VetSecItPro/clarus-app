@@ -2,6 +2,8 @@ import { NextResponse } from "next/server"
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { uuidSchema, parseBody } from "@/lib/schemas"
 import { checkRateLimit } from "@/lib/validation"
+import { getUserTier } from "@/lib/usage"
+import { TIER_LIMITS } from "@/lib/tier-limits"
 import { z } from "zod"
 
 // Schema for tag operations
@@ -113,9 +115,37 @@ export async function PATCH(
       newTags = currentTags
     }
 
-    // Limit to 10 tags per content
+    // Limit to 10 tags per content item
     if (newTags.length > 10) {
       return AuthErrors.badRequest("Maximum 10 tags allowed per content")
+    }
+
+    // Enforce tier-based unique tag limit across entire library
+    if (actionData.action === "add") {
+      const tier = await getUserTier(auth.supabase, auth.user.id)
+      const tagLimit = TIER_LIMITS[tier].tags
+
+      // Get all unique tags across user's content
+      const { data: allContent } = await auth.supabase
+        .from("content")
+        .select("tags")
+        .eq("user_id", auth.user.id)
+
+      const allUniqueTags = new Set<string>()
+      allContent?.forEach(c => {
+        const tags = c.tags as string[] | null
+        tags?.forEach(t => allUniqueTags.add(t))
+      })
+      // Add the new tag to check if it exceeds limit
+      const sanitizedTag = actionData.tag.toLowerCase()
+      allUniqueTags.add(sanitizedTag)
+
+      if (allUniqueTags.size > tagLimit) {
+        return NextResponse.json(
+          { success: false, error: `Tag limit reached (${tagLimit} unique tags on ${tier} tier). Upgrade for more.` },
+          { status: 403 }
+        )
+      }
     }
 
     // Update tags

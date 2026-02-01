@@ -445,9 +445,13 @@ async function getYouTubeMetadata(url: string, apiKey: string, userId?: string |
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 30000) // 30s timeout
       const response = await fetch(endpoint, {
         headers: { "x-api-key": apiKey },
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
 
       if (response.ok) {
         const contentType = response.headers.get("content-type")
@@ -555,9 +559,13 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 60000) // 60s timeout (transcripts can be large)
       const response = await fetch(endpoint, {
         headers: { "x-api-key": apiKey },
+        signal: controller.signal,
       })
+      clearTimeout(timeout)
 
       if (response.ok) {
         const contentType = response.headers.get("content-type")
@@ -1482,11 +1490,13 @@ export async function POST(req: NextRequest) {
           )
         }
 
-        // Build webhook URL
-        const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-          ? `https://${process.env.VERCEL_URL}`
-          : "http://localhost:3000"
-        const webhookUrl = `${appUrl}/api/assemblyai-webhook`
+        // Build webhook URL with optional token for validation
+        const appUrl = process.env.NEXT_PUBLIC_APP_URL
+          || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+        const tokenParam = process.env.ASSEMBLYAI_WEBHOOK_TOKEN
+          ? `?token=${process.env.ASSEMBLYAI_WEBHOOK_TOKEN}`
+          : ""
+        const webhookUrl = `${appUrl}/api/assemblyai-webhook${tokenParam}`
 
         console.log(`API: Submitting podcast to AssemblyAI: ${content.url}`)
         const { transcript_id } = await submitPodcastTranscription(

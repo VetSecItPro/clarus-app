@@ -7,15 +7,31 @@ import { logApiUsage } from "@/lib/api-usage"
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
+// Shared webhook token to verify requests come from our AssemblyAI submissions
+const webhookToken = process.env.ASSEMBLYAI_WEBHOOK_TOKEN
+
 /**
  * AssemblyAI webhook endpoint.
  * Called by AssemblyAI when podcast transcription completes.
- * Public route (no auth) — validated by matching transcript_id to a content row.
+ * Validated by: (1) mandatory shared token in query string, (2) transcript_id must match a pending podcast.
  */
 export async function POST(req: NextRequest) {
   if (!supabaseUrl || !supabaseKey) {
     console.error("WEBHOOK: Supabase not configured")
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
+  }
+
+  // Require webhook token in production
+  if (!webhookToken) {
+    console.error("WEBHOOK: CRITICAL: ASSEMBLYAI_WEBHOOK_TOKEN not configured")
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 })
+  }
+
+  // Validate webhook token from query parameter (set when submitting to AssemblyAI)
+  const urlToken = req.nextUrl.searchParams.get("token")
+  if (urlToken !== webhookToken) {
+    console.error("WEBHOOK: Invalid webhook token")
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const supabase = createClient<Database>(supabaseUrl, supabaseKey, {
@@ -30,8 +46,8 @@ export async function POST(req: NextRequest) {
   }
 
   const { transcript_id, status } = payload
-  if (!transcript_id) {
-    return NextResponse.json({ error: "Missing transcript_id" }, { status: 400 })
+  if (!transcript_id || typeof transcript_id !== "string" || transcript_id.length > 100) {
+    return NextResponse.json({ error: "Invalid transcript_id" }, { status: 400 })
   }
 
   console.log(`WEBHOOK: Received AssemblyAI callback for transcript ${transcript_id}, status: ${status}`)
@@ -129,28 +145,55 @@ export async function POST(req: NextRequest) {
     metadata: { speaker_count, duration_seconds },
   })
 
-  // Trigger AI analysis by calling process-content internally
+  // Trigger AI analysis with retry logic (3 attempts with exponential backoff)
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000")
 
-  try {
-    console.log(`WEBHOOK: Triggering AI analysis for content ${content.id}`)
-    const analysisResponse = await fetch(`${appUrl}/api/process-content`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content_id: content.id }),
-    })
+  let analysisTriggered = false
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      console.log(`WEBHOOK: Triggering AI analysis for content ${content.id} (attempt ${attempt}/3)`)
+      const analysisResponse = await fetch(`${appUrl}/api/process-content`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content_id: content.id }),
+      })
 
-    if (!analysisResponse.ok) {
+      if (analysisResponse.ok) {
+        console.log(`WEBHOOK: AI analysis triggered for ${content.id}`)
+        analysisTriggered = true
+        break
+      }
+
       const errorData = await analysisResponse.json().catch(() => ({}))
-      console.error(`WEBHOOK: AI analysis trigger failed for ${content.id}:`, errorData)
-    } else {
-      console.log(`WEBHOOK: AI analysis triggered for ${content.id}`)
+      console.error(`WEBHOOK: AI analysis trigger failed for ${content.id} (attempt ${attempt}):`, errorData)
+    } catch (error) {
+      console.error(`WEBHOOK: Failed to trigger AI analysis for ${content.id} (attempt ${attempt}):`, error)
     }
-  } catch (error) {
-    console.error(`WEBHOOK: Failed to trigger AI analysis for ${content.id}:`, error)
+
+    // Wait before retry: 2s, 4s
+    if (attempt < 3) {
+      await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
+    }
   }
 
-  return NextResponse.json({ success: true, content_id: content.id })
+  // If all retries failed, mark content as needing attention
+  if (!analysisTriggered) {
+    console.error(`WEBHOOK: All retry attempts failed for content ${content.id}. Marking as error.`)
+    await supabase
+      .from("summaries")
+      .upsert(
+        {
+          content_id: content.id,
+          user_id: content.user_id!,
+          processing_status: "error",
+          brief_overview: "Transcription completed but analysis failed to start. Please try regenerating.",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "content_id" },
+      )
+  }
+
+  return NextResponse.json({ success: true, content_id: content.id, analysisTriggered })
 }

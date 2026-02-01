@@ -1,7 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { X, Sparkles, Zap, Crown } from "lucide-react"
+import { X, Sparkles, Zap, Crown, Loader2 } from "lucide-react"
 import type { UserTier } from "@/types/database.types"
 import { TIER_LIMITS, TIER_FEATURES } from "@/lib/tier-limits"
 
@@ -39,10 +40,36 @@ const TIER_COLORS: Record<string, { bg: string; border: string; text: string; ac
 }
 
 function TierCard({ tier, isRecommended }: { tier: "starter" | "pro"; isRecommended: boolean }) {
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const colors = TIER_COLORS[tier]
   const limits = TIER_LIMITS[tier]
   const features = TIER_FEATURES[tier]
-  const price = tier === "starter" ? "$8/mo" : "$16/mo"
+  const price = tier === "starter" ? "$18/mo" : "$29/mo"
+
+  async function handleCheckout() {
+    setLoading(true)
+    setError(null)
+    try {
+      const res = await fetch("/api/polar/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tier, interval: "monthly" }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setError(data.error || "Checkout failed")
+        return
+      }
+      if (data.url) {
+        window.location.href = data.url
+      }
+    } catch {
+      setError("Something went wrong. Please try again.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className={`relative rounded-xl border p-4 ${colors.bg} ${colors.border} ${isRecommended ? "ring-1 ring-blue-500/40" : ""}`}>
@@ -57,7 +84,7 @@ function TierCard({ tier, isRecommended }: { tier: "starter" | "pro"; isRecommen
         <span className="text-white/40 text-sm ml-auto">{price}</span>
       </div>
       <ul className="space-y-1.5 text-xs text-white/60">
-        <li>{limits.analyses === Infinity ? "Unlimited" : limits.analyses} analyses/mo</li>
+        <li>{limits.analyses} analyses/mo</li>
         <li>{limits.chatMessagesMonthly} chat messages/mo</li>
         <li>{limits.chatMessagesPerContent} messages/content</li>
         {features.shareLinks && <li>Shareable analysis links</li>}
@@ -66,12 +93,23 @@ function TierCard({ tier, isRecommended }: { tier: "starter" | "pro"; isRecommen
         {features.claimTracking && <li>Cross-content claim tracking</li>}
         {features.priorityProcessing && <li>Priority processing</li>}
       </ul>
-      <a
-        href="/pricing"
-        className={`block mt-3 w-full text-center px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors ${colors.accent}`}
+      <button
+        onClick={handleCheckout}
+        disabled={loading}
+        className={`block mt-3 w-full text-center px-4 py-2 rounded-lg text-sm font-medium text-white transition-colors disabled:opacity-50 ${colors.accent}`}
       >
-        Upgrade to {tier.charAt(0).toUpperCase() + tier.slice(1)}
-      </a>
+        {loading ? (
+          <span className="flex items-center justify-center gap-2">
+            <Loader2 className="w-4 h-4 animate-spin" />
+            Redirecting...
+          </span>
+        ) : (
+          `Upgrade to ${tier.charAt(0).toUpperCase() + tier.slice(1)}`
+        )}
+      </button>
+      {error && (
+        <p className="mt-2 text-xs text-red-400 text-center">{error}</p>
+      )}
     </div>
   )
 }

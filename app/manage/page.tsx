@@ -315,12 +315,13 @@ export default function AdminOverview() {
             <div className="h-[80px] w-full bg-white/[0.03] rounded animate-pulse" />
           ) : (
             (() => {
-              const tiers = combinedMetrics?.usersByTier || { free: 0, starter: 0, pro: 0 }
-              const total = tiers.free + tiers.starter + tiers.pro
+              const tiers = combinedMetrics?.usersByTier || { free: 0, starter: 0, pro: 0, day_pass: 0 }
+              const total = tiers.free + tiers.starter + tiers.pro + tiers.day_pass
               const tierItems = [
                 { label: "Free", count: tiers.free, color: "bg-white/40", pct: total > 0 ? ((tiers.free / total) * 100).toFixed(1) : "0" },
                 { label: "Starter", count: tiers.starter, color: "bg-[#1d9bf0]", pct: total > 0 ? ((tiers.starter / total) * 100).toFixed(1) : "0" },
                 { label: "Pro", count: tiers.pro, color: "bg-purple-500", pct: total > 0 ? ((tiers.pro / total) * 100).toFixed(1) : "0" },
+                { label: "Day Pass", count: tiers.day_pass, color: "bg-amber-500", pct: total > 0 ? ((tiers.day_pass / total) * 100).toFixed(1) : "0" },
               ]
               return (
                 <div className="flex-1">

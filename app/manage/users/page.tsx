@@ -25,11 +25,12 @@ export default function UsersPage() {
 
   const loading = isLoading
 
-  const tiers = metrics?.usersByTier || { free: 0, starter: 0, pro: 0 }
+  const tiers = metrics?.usersByTier || { free: 0, starter: 0, pro: 0, day_pass: 0 }
   const tierData = [
     { name: "Free", value: tiers.free, color: COLORS.blue },
     { name: "Starter", value: tiers.starter, color: COLORS.cyan },
     { name: "Pro", value: tiers.pro, color: COLORS.purple },
+    { name: "Day Pass", value: tiers.day_pass, color: COLORS.amber },
   ].filter((t) => t.value > 0)
 
   const churnRate = mrrData?.churnRate ?? 0

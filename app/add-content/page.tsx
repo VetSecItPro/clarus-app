@@ -2,10 +2,11 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
-import type { TablesInsert } from "@/types/database.types"
+import type { TablesInsert, UserTier } from "@/types/database.types"
+import { TIER_LIMITS } from "@/lib/tier-limits"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -27,6 +28,42 @@ export default function AddContentPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [libraryCount, setLibraryCount] = useState<number | null>(null)
+  const [libraryLimit, setLibraryLimit] = useState<number | null>(null)
+
+  // Check library size on mount
+  useEffect(() => {
+    async function checkLibrary() {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+
+      const { data: userData } = await supabase
+        .from("users")
+        .select("tier, day_pass_expires_at")
+        .eq("id", user.id)
+        .single()
+
+      const rawTier = userData?.tier as string | null
+      let tier: UserTier = "free"
+      if (rawTier === "starter" || rawTier === "pro") tier = rawTier
+      else if (rawTier === "day_pass") {
+        const expires = userData?.day_pass_expires_at
+        tier = (expires && new Date(expires) > new Date()) ? "day_pass" : "free"
+      }
+
+      const limit = TIER_LIMITS[tier].library
+      setLibraryLimit(limit)
+
+      const { count } = await supabase
+        .from("content")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", user.id)
+      setLibraryCount(count ?? 0)
+    }
+    checkLibrary()
+  }, [])
+
+  const isAtLibraryLimit = libraryCount !== null && libraryLimit !== null && libraryCount >= libraryLimit
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -43,6 +80,18 @@ export default function AddContentPage() {
       return
     }
 
+    // Re-check library limit server-side
+    const { count: currentCount } = await supabase
+      .from("content")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+
+    if (libraryLimit !== null && (currentCount ?? 0) >= libraryLimit) {
+      setError(`Library limit reached (${libraryLimit} items). Upgrade your plan for more storage.`)
+      setIsLoading(false)
+      return
+    }
+
     const newContent: TablesInsert<"content"> = {
       title,
       url,
@@ -51,8 +100,6 @@ export default function AddContentPage() {
       user_id: user.id,
     }
 
-    // RLS: "Users can insert their own content"
-    // The `date_added` and `id` will be handled by the DB or Supabase defaults.
     const { error: insertError } = await supabase.from("content").insert(newContent)
 
     setIsLoading(false)
@@ -125,6 +172,15 @@ export default function AddContentPage() {
                 placeholder="Paste full text here if available..."
               />
             </div>
+            {isAtLibraryLimit && (
+              <Alert variant="destructive">
+                <AlertTriangle className="h-4 w-4" />
+                <AlertTitle>Library Full</AlertTitle>
+                <AlertDescription>
+                  You&apos;ve reached your library limit of {libraryLimit} items. Upgrade your plan to add more content.
+                </AlertDescription>
+              </Alert>
+            )}
             {error && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -142,7 +198,7 @@ export default function AddContentPage() {
                 <AlertDescription>{success}</AlertDescription>
               </Alert>
             )}
-            <Button type="submit" disabled={isLoading} className="w-full">
+            <Button type="submit" disabled={isLoading || isAtLibraryLimit} className="w-full">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
