@@ -313,7 +313,7 @@ export default function PricingPage() {
             <Link href="/" className="flex items-center gap-3 group">
               <div className="relative">
                 <Image
-                  src="/clarus-logo.png"
+                  src="/clarus-logo.webp"
                   alt="Clarus"
                   width={40}
                   height={40}
@@ -470,7 +470,7 @@ export default function PricingPage() {
         <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
           <div className="flex items-center gap-3 text-white/50">
             <Image
-              src="/clarus-logo.png"
+              src="/clarus-logo.webp"
               alt="Clarus"
               width={40}
               height={40}

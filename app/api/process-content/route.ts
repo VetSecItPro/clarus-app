@@ -128,60 +128,76 @@ OUTPUT: Return a JSON object with a "queries" key containing an array of 3-5 con
   }
 }
 
-// Search a single topic with Tavily
-async function searchTavily(query: string): Promise<WebSearchResult | null> {
+// Search a single topic with Tavily (with retry + exponential backoff)
+async function searchTavily(query: string, maxRetries = 2): Promise<WebSearchResult | null> {
   if (!tavilyApiKey) return null
 
-  const timer = createTimer()
-  try {
-    const response = await fetch("https://api.tavily.com/search", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        api_key: tavilyApiKey,
-        query,
-        search_depth: "basic",
-        include_answer: true,
-        include_raw_content: false,
-        max_results: 3,
-      }),
-    })
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const timer = createTimer()
+    try {
+      const response = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: tavilyApiKey,
+          query,
+          search_depth: "basic",
+          include_answer: true,
+          include_raw_content: false,
+          max_results: 3,
+        }),
+      })
 
-    if (!response.ok) {
-      console.warn(`API: Tavily search failed for "${query}"`)
+      if (!response.ok) {
+        // Retry on 5xx or 429 (rate limit)
+        if (attempt < maxRetries && (response.status >= 500 || response.status === 429)) {
+          const delay = Math.min(1000 * Math.pow(2, attempt), 4000)
+          console.warn(`API: Tavily search failed for "${query}" (HTTP ${response.status}), retrying in ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        console.warn(`API: Tavily search failed for "${query}" after ${attempt + 1} attempt(s)`)
+        await logApiUsage({
+          apiName: "tavily",
+          operation: "search",
+          responseTimeMs: timer.elapsed(),
+          status: "error",
+          errorMessage: `HTTP ${response.status}`,
+        })
+        return null
+      }
+
+      const data = await response.json()
+
       await logApiUsage({
         apiName: "tavily",
         operation: "search",
         responseTimeMs: timer.elapsed(),
-        status: "error",
-        errorMessage: `HTTP ${response.status}`,
+        status: "success",
+        metadata: { query, resultsCount: data.results?.length || 0, attempts: attempt + 1 },
       })
+
+      return {
+        query,
+        answer: data.answer,
+        results: ((data as TavilyApiResponse).results || []).slice(0, 3).map((r) => ({
+          title: r.title,
+          url: r.url,
+          content: r.content?.substring(0, 500) || "",
+        })),
+      }
+    } catch (error) {
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 4000)
+        console.warn(`API: Tavily search error for "${query}" (attempt ${attempt + 1}), retrying in ${delay}ms...`, error)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      console.warn(`API: Tavily search error for "${query}" after ${attempt + 1} attempt(s):`, error)
       return null
     }
-
-    const data = await response.json()
-
-    await logApiUsage({
-      apiName: "tavily",
-      operation: "search",
-      responseTimeMs: timer.elapsed(),
-      status: "success",
-      metadata: { query, resultsCount: data.results?.length || 0 },
-    })
-
-    return {
-      query,
-      answer: data.answer,
-      results: ((data as TavilyApiResponse).results || []).slice(0, 3).map((r) => ({
-        title: r.title,
-        url: r.url,
-        content: r.content?.substring(0, 500) || "",
-      })),
-    }
-  } catch (error) {
-    console.warn(`API: Tavily search error for "${query}":`, error)
-    return null
   }
+  return null
 }
 
 // Get web search context for content analysis
