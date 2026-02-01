@@ -12,6 +12,7 @@ interface MrrData {
   mrrGrowthPercent: number
   activeSubscriptions: number
   trialingSubscriptions: number
+  churnRate: number
 }
 
 const fetcher = async (url: string) => {
