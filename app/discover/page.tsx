@@ -135,7 +135,7 @@ export default async function DiscoverPage() {
           <div className="flex items-center justify-between h-14">
             <Link href="/" className="flex items-center gap-3 group">
               <Image
-                src="/clarus-logo.png"
+                src="/clarus-logo.webp"
                 alt="Clarus"
                 width={28}
                 height={28}

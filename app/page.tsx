@@ -166,7 +166,7 @@ function HomePageContent({ session }: HomePageProps) {
         className="lg:hidden flex items-center justify-center gap-2.5 py-4 sm:py-5 border-b border-white/[0.04]"
       >
         <Image
-          src="/clarus-logo.png"
+          src="/clarus-logo.webp"
           alt="Clarus"
           width={36}
           height={36}

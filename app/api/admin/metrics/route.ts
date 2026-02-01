@@ -684,7 +684,7 @@ export async function GET(request: NextRequest) {
     // Return with cache headers - cache for 1 minute, stale-while-revalidate for 5 minutes
     return NextResponse.json(metrics, {
       headers: {
-        "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+        "Cache-Control": "private, max-age=60, stale-while-revalidate=300",
       },
     })
   } catch (error) {

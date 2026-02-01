@@ -54,7 +54,7 @@ export const HeroSection = memo(function HeroSection() {
           transition={{ duration: 0.8, delay: 0.25, ease: [0.22, 1, 0.36, 1] }}
           className="flex flex-col sm:flex-row items-center justify-center gap-3"
         >
-          <Link href="/signup">
+          <Link href="/signup" prefetch={true}>
             <motion.button
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}

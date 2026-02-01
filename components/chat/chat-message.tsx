@@ -111,7 +111,7 @@ function AssistantWrapper({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex gap-2 justify-start" style={{ maxWidth: "600px" }}>
       <Image
-        src="/clarus-logo.png"
+        src="/clarus-logo.webp"
         alt="Clarus"
         width={28}
         height={28}

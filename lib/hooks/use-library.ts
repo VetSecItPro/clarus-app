@@ -26,6 +26,11 @@ export type LibraryItem = ContentItem & {
   relevance?: number
 }
 
+interface ScoreFilterConfig {
+  min: number
+  max: number
+}
+
 interface UseLibraryOptions {
   userId: string | undefined
   searchQuery?: string
@@ -33,6 +38,7 @@ interface UseLibraryOptions {
   sortBy?: string
   bookmarkOnly?: boolean
   selectedTags?: string[]
+  scoreFilter?: ScoreFilterConfig | null
   pageSize?: number
 }
 
@@ -117,6 +123,12 @@ const searchFetcher = async (
   }
 }
 
+// Helper to extract quality score from a library item
+function getQualityScore(item: LibraryItem): number | null {
+  const summary = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
+  return summary?.triage?.quality_score ?? null
+}
+
 // Regular fetcher for browsing without search
 const browseFetcher = async (
   options: UseLibraryOptions,
@@ -125,7 +137,10 @@ const browseFetcher = async (
   if (!options.userId) return { items: [], hasMore: false }
 
   const pageSize = options.pageSize || PAGE_SIZE
-  const offset = page * pageSize
+  const hasScoreFilter = options.scoreFilter && (options.scoreFilter.min > 0 || options.scoreFilter.max < 10)
+  // Over-fetch when score filter is active to ensure enough results after filtering
+  const fetchSize = hasScoreFilter ? pageSize * 3 : pageSize
+  const offset = page * (hasScoreFilter ? pageSize * 3 : pageSize)
 
   let query = supabase
     .from("content")
@@ -144,15 +159,13 @@ const browseFetcher = async (
   if (options.sortBy === "date_asc") {
     query = query.order("date_added", { ascending: true })
   } else if (options.sortBy === "score_desc") {
-    // Sort by quality score (stored in summaries.triage.quality_score)
-    // Fall back to date for now since jsonb sorting is complex
     query = query.order("date_added", { ascending: false })
   } else {
     query = query.order("date_added", { ascending: false })
   }
 
   // Apply pagination - fetch one extra to check if more exist
-  query = query.range(offset, offset + pageSize)
+  query = query.range(offset, offset + fetchSize)
 
   const { data, error } = await query
 
@@ -176,11 +189,17 @@ const browseFetcher = async (
     })
   } else if (options.sortBy === "score_desc") {
     sortedData = sortedData.sort((a, b) => {
-      const getScore = (item: LibraryItem) => {
-        const summary = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
-        return summary?.triage?.quality_score ?? -1
-      }
-      return getScore(b) - getScore(a)
+      return (getQualityScore(b) ?? -1) - (getQualityScore(a) ?? -1)
+    })
+  }
+
+  // Apply score filter in the fetcher so pagination accounts for it
+  if (hasScoreFilter && options.scoreFilter) {
+    const { min, max } = options.scoreFilter
+    sortedData = sortedData.filter((item) => {
+      const score = getQualityScore(item)
+      if (score === null) return false
+      return score >= min && score <= max
     })
   }
 
@@ -193,11 +212,11 @@ const browseFetcher = async (
   }
 
   // Check if we got more items than requested (indicates more exist)
-  const hasMoreItems = data.length > pageSize
+  const hasMoreItems = sortedData.length > pageSize
 
-  // Return only pageSize items, keep the extra one just for hasMore check
+  // Return only pageSize items
   return {
-    items: hasMoreItems ? sortedData.slice(0, pageSize) : sortedData,
+    items: sortedData.slice(0, pageSize),
     hasMore: hasMoreItems,
   }
 }
@@ -225,7 +244,8 @@ export function useLibrary(options: UseLibraryOptions) {
     options.sortBy || "date_desc",
     options.bookmarkOnly ? "bookmarked" : "",
     (options.selectedTags || []).join(","),
-  ].join(":"), [options.userId, options.searchQuery, options.filterType, options.sortBy, options.bookmarkOnly, options.selectedTags])
+    options.scoreFilter ? `${options.scoreFilter.min}-${options.scoreFilter.max}` : "",
+  ].join(":"), [options.userId, options.searchQuery, options.filterType, options.sortBy, options.bookmarkOnly, options.selectedTags, options.scoreFilter])
 
   const getKey = useCallback((pageIndex: number, previousPageData: { items: LibraryItem[]; hasMore: boolean } | null) => {
     if (!options.userId) return null
