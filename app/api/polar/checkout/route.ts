@@ -13,12 +13,13 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { interval } = await request.json()
+    const { tier, interval } = await request.json()
 
-    // Validate interval
-    const productId = interval === "annual" ? PRODUCTS.annual : PRODUCTS.monthly
-    if (!productId || productId.startsWith("prod_placeholder")) {
-      // Payments not configured yet
+    // Resolve product ID from tier + interval
+    const productKey = `${tier}_${interval}` as keyof typeof PRODUCTS
+    const productId = PRODUCTS[productKey]
+
+    if (!productId) {
       return NextResponse.json(
         { error: "Payments are not configured yet. Please check back later." },
         { status: 503 }
@@ -66,13 +67,14 @@ export async function POST(request: Request) {
     const origin = request.headers.get("origin") || "https://clarusapp.io"
 
     // Create Polar checkout session
-    // Products array allows the customer to select from available products
     const checkout = await polar.checkouts.create({
       products: [productId],
       successUrl: `${origin}/?success=true`,
       customerEmail: user.email || userData?.email || undefined,
       metadata: {
         supabase_user_id: user.id,
+        tier,
+        interval,
       },
     })
 

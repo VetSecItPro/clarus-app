@@ -1705,10 +1705,10 @@ export async function POST(req: NextRequest) {
   }
 
   // ============================================
-  // PHASE 1: 4 independent sections in parallel
-  // overview, triage, key takeaways, detailed analysis
+  // ALL SECTIONS: Run everything in parallel
+  // overview, triage, truth check, action items, key takeaways, detailed analysis
   // ============================================
-  console.log(`API: [Phase 1] Starting overview, triage, key takeaways, detailed analysis in parallel...`)
+  console.log(`API: Starting all 6 analysis sections in parallel...`)
 
   const overviewPromise = (async () => {
     console.log(`API: [1/6] Generating brief overview...`)
@@ -1788,55 +1788,59 @@ export async function POST(req: NextRequest) {
     return tags
   })()
 
-  // Wait for all Phase 1 sections
-  const [briefOverview, triage, , detailedSummary] = await Promise.all([
+  const truthCheckPromise = (async () => {
+    console.log(`API: [3/6] Generating truth check...`)
+    const result = await generateTruthCheck(fullText, contentType, userId, contentId, webContext)
+    if (result) {
+      console.log(`API: [3/6] Truth check generated.`)
+    } else {
+      console.warn(`API: [3/6] Truth check failed.`)
+    }
+    return result
+  })()
+
+  const actionItemsPromise = (async () => {
+    console.log(`API: [4/6] Generating action items...`)
+    const result = await generateActionItems(fullText, contentType, userId, contentId, webContext)
+    if (result) {
+      console.log(`API: [4/6] Action items generated.`)
+    } else {
+      console.warn(`API: [4/6] Action items failed.`)
+    }
+    return result
+  })()
+
+  // Wait for ALL sections in parallel
+  const [briefOverview, triage, , detailedSummary, , truthCheckResult, actionItemsResult] = await Promise.all([
     overviewPromise, triagePromise, midSummaryPromise, detailedPromise, autoTagPromise,
+    truthCheckPromise, actionItemsPromise,
   ])
 
-  // ============================================
-  // PHASE 2: Triage-dependent sections in parallel
-  // truth check + action items (skip for music/entertainment)
-  // ============================================
+  // Post-check: skip saving truth check + action items for music/entertainment
   const skipCategories = ["music", "entertainment"]
   const triageCategory = triage?.content_category
-  const shouldSkipPhase2 = triageCategory && skipCategories.includes(triageCategory)
+  const shouldSkipTruthCheck = triageCategory && skipCategories.includes(triageCategory)
 
   let truthCheck: TruthCheckData | null = null
 
-  if (shouldSkipPhase2) {
-    console.log(`API: [Phase 2] Skipping truth check + action items for ${triageCategory} content`)
+  if (shouldSkipTruthCheck) {
+    console.log(`API: Discarding truth check + action items for ${triageCategory} content`)
   } else {
-    console.log(`API: [Phase 2] Starting truth check + action items in parallel...`)
+    if (truthCheckResult) {
+      await updateSummarySection(supabase, contentId, userId, { truth_check: truthCheckResult as unknown as Json })
+      responsePayload.sections_generated.push("truth_check")
+      console.log(`API: [3/6] Truth check saved.`)
+    } else {
+      failedSections.push("truth_check")
+    }
 
-    const [truthResult] = await Promise.all([
-      (async () => {
-        console.log(`API: [3/6] Generating truth check...`)
-        const result = await generateTruthCheck(fullText, contentType, userId, contentId, webContext)
-        if (result) {
-          await updateSummarySection(supabase, contentId, userId, { truth_check: result as unknown as Json })
-          responsePayload.sections_generated.push("truth_check")
-          console.log(`API: [3/6] Truth check saved.`)
-        } else {
-          failedSections.push("truth_check")
-          console.warn(`API: [3/6] Truth check failed.`)
-        }
-        return result
-      })(),
-      (async () => {
-        console.log(`API: [4/6] Generating action items...`)
-        const result = await generateActionItems(fullText, contentType, userId, contentId, webContext)
-        if (result) {
-          await updateSummarySection(supabase, contentId, userId, { action_items: result as unknown as Json })
-          responsePayload.sections_generated.push("action_items")
-          console.log(`API: [4/6] Action items saved.`)
-        } else {
-          console.warn(`API: [4/6] Action items failed.`)
-        }
-        return result
-      })(),
-    ])
+    if (actionItemsResult) {
+      await updateSummarySection(supabase, contentId, userId, { action_items: actionItemsResult as unknown as Json })
+      responsePayload.sections_generated.push("action_items")
+      console.log(`API: [4/6] Action items saved.`)
+    }
 
-    truthCheck = truthResult
+    truthCheck = truthCheckResult
   }
 
   // ============================================
