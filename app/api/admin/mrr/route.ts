@@ -53,7 +53,9 @@ export async function GET() {
       },
     }
 
-    return NextResponse.json(mrrData)
+    return NextResponse.json(mrrData, {
+      headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" },
+    })
   } catch (error: unknown) {
     console.error("Error fetching MRR data:", error)
     return NextResponse.json(

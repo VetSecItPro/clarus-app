@@ -26,7 +26,7 @@ export const CTASection = memo(function CTASection() {
           5 free analyses. No credit card required.
         </p>
 
-        <Link href="/signup">
+        <Link href="/signup" prefetch={true}>
           <motion.button
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.98 }}

@@ -63,7 +63,7 @@ export function ChatMessagesArea({
         {showLoadingIndicator && (
           <div className="flex gap-2 justify-start">
             <Image
-              src="/clarus-logo.png"
+              src="/clarus-logo.webp"
               alt="Clarus"
               width={28}
               height={28}
