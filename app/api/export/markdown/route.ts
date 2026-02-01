@@ -32,10 +32,10 @@ export async function GET(request: Request) {
     // Tier feature check: exports require starter+
     const { data: userData } = await auth.supabase
       .from("users")
-      .select("tier")
+      .select("tier, day_pass_expires_at")
       .eq("id", auth.user.id)
       .single()
-    const tier = normalizeTier(userData?.tier)
+    const tier = normalizeTier(userData?.tier, userData?.day_pass_expires_at)
     if (!TIER_FEATURES[tier].exports) {
       return new Response(
         JSON.stringify({ error: "Exports require a Starter or Pro plan.", upgrade_required: true, tier }),

@@ -4,7 +4,7 @@ import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { motion } from "framer-motion"
-import { Check, X, Zap, Crown, Sparkles } from "lucide-react"
+import { Check, X, Zap, Crown, Sparkles, Clock } from "lucide-react"
 
 type BillingInterval = "monthly" | "annual"
 
@@ -43,8 +43,8 @@ const PLANS = [
   {
     name: "Starter",
     description: "For serious content consumers",
-    monthlyPrice: 8,
-    annualPrice: 80,
+    monthlyPrice: 18,
+    annualPrice: 144,
     icon: <Zap className="w-5 h-5" />,
     color: "blue",
     popular: true,
@@ -75,8 +75,8 @@ const PLANS = [
   {
     name: "Pro",
     description: "Full power for power users",
-    monthlyPrice: 16,
-    annualPrice: 160,
+    monthlyPrice: 29,
+    annualPrice: 279,
     icon: <Crown className="w-5 h-5" />,
     color: "purple",
     accent: {
@@ -132,11 +132,15 @@ const FAQS = [
   },
   {
     q: "How does annual billing work?",
-    a: "Annual plans are billed once per year at a 17% discount. That's 2 months free compared to monthly billing.",
+    a: "Annual plans are billed once per year at a significant discount — up to 33% off monthly pricing. Starter saves $72/year, Pro saves $69/year.",
   },
   {
     q: "What is podcast analysis?",
     a: "Podcast analysis transcribes audio content with speaker identification, then runs the same 6-section AI analysis as articles and videos. It supports direct audio files (.mp3, .m4a, etc.) and podcast hosting platforms. Podcast analyses have their own monthly quota, separate from regular content analyses.",
+  },
+  {
+    q: "How does the Day Pass work?",
+    a: "The Day Pass gives you 24 hours of premium access for a one-time $10 payment. You get 15 analyses, 3 podcast analyses, 100 chat messages, shareable links, exports, and claim tracking. After 24 hours, you revert to the free plan. Content you analyzed during the pass stays in your library. You can't stack day passes or buy one while on an active subscription.",
   },
 ]
 
@@ -165,7 +169,7 @@ function PricingToggle({ interval, onChange }: { interval: BillingInterval; onCh
           interval === "annual" ? "opacity-100" : "opacity-0"
         }`}
       >
-        Save 17%
+        Save up to 33%
       </span>
     </div>
   )
@@ -380,6 +384,69 @@ export default function PricingPage() {
               <PlanCard key={plan.name} plan={plan} interval={interval} index={i} />
             ))}
           </div>
+        </section>
+
+        {/* Day Pass */}
+        <section className="pb-20 px-4">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.4 }}
+            className="max-w-3xl mx-auto"
+          >
+            <div className="relative rounded-2xl border border-amber-500/30 bg-amber-500/[0.06] p-6 sm:p-8 overflow-hidden">
+              {/* Glow accent */}
+              <div className="absolute top-0 right-0 w-40 h-40 bg-amber-500/10 rounded-full blur-[80px] pointer-events-none" />
+
+              <div className="relative flex flex-col sm:flex-row items-start sm:items-center gap-6">
+                {/* Left: info */}
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Clock className="w-5 h-5 text-amber-400" />
+                    <h3 className="text-lg font-bold text-white">Day Pass</h3>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                      24-Hour Access
+                    </span>
+                  </div>
+                  <p className="text-sm text-white/50 mb-4">
+                    Need access for just one day? Get premium features without a subscription.
+                  </p>
+                  <div className="grid grid-cols-2 gap-x-6 gap-y-1.5">
+                    {[
+                      "15 analyses",
+                      "3 podcast analyses",
+                      "100 chat messages",
+                      "Shareable links",
+                      "Exports (Markdown)",
+                      "Claim tracking",
+                    ].map((feature) => (
+                      <div key={feature} className="flex items-center gap-2">
+                        <Check className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
+                        <span className="text-xs text-white/60">{feature}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Right: price + CTA */}
+                <div className="flex flex-col items-center gap-3 sm:min-w-[160px]">
+                  <div className="text-center">
+                    <div className="text-3xl font-bold text-white">$10</div>
+                    <div className="text-xs text-white/40">one-time payment</div>
+                  </div>
+                  <Link
+                    href="/signup"
+                    className="block w-full text-center px-6 py-2.5 rounded-xl text-sm font-semibold text-white bg-amber-500 hover:bg-amber-600 shadow-lg shadow-amber-500/25 hover:shadow-amber-500/40 transition-all duration-200 hover:-translate-y-0.5"
+                  >
+                    Get Day Pass
+                  </Link>
+                  <p className="text-[10px] text-white/30 text-center">
+                    Expires 24 hours after purchase
+                  </p>
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </section>
 
         {/* Comparison table (desktop) */}
