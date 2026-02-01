@@ -18,7 +18,7 @@ export function LandingHeader() {
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
               <Image
-                src="/clarus-logo.png"
+                src="/clarus-logo.webp"
                 alt="Clarus"
                 width={40}
                 height={40}
@@ -33,10 +33,10 @@ export function LandingHeader() {
 
           {/* Nav links + Auth button */}
           <div className="flex items-center gap-6">
-            <Link href="/pricing" className="text-sm text-white/50 hover:text-white transition-colors">
+            <Link href="/pricing" prefetch={true} className="text-sm text-white/50 hover:text-white transition-colors">
               Pricing
             </Link>
-            <Link href="/login">
+            <Link href="/login" prefetch={true}>
               <button className="px-5 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-[#1d9bf0]/25 hover:shadow-lg hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5">
                 Log In
               </button>
