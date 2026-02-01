@@ -88,7 +88,7 @@ export async function GET(
     const { data: summary } = await supabase
       .from("summaries")
       .select(
-        "processing_status, triage, brief_overview, detailed_summary, truth_check, action_items"
+        "processing_status, triage, brief_overview, mid_length_summary, detailed_summary, truth_check, action_items"
       )
       .eq("content_id", contentId)
       .order("created_at", { ascending: false })
@@ -106,6 +106,7 @@ export async function GET(
       processing_status: summary?.processing_status || "pending",
       triage: summary?.triage || null,
       brief_overview: summary?.brief_overview || null,
+      mid_length_summary: summary?.mid_length_summary || null,
       detailed_summary: summary?.detailed_summary || null,
       truth_check: summary?.truth_check || null,
       action_items: summary?.action_items || null,
