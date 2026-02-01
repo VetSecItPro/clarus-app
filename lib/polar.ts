@@ -1,16 +1,25 @@
 import { Polar } from "@polar-sh/sdk"
 
 // Initialize Polar client
-// Note: Polar is not active yet - using placeholder configuration
 export const polar = new Polar({
   accessToken: process.env.POLAR_ACCESS_TOKEN!,
 })
 
-// Placeholder product/price IDs - replace with actual Polar product IDs once created
+// Product IDs for each tier + billing interval
+// Set these in .env.local and Vercel dashboard
 export const PRODUCTS = {
-  monthly: process.env.POLAR_PRODUCT_MONTHLY || "prod_placeholder_monthly",
-  annual: process.env.POLAR_PRODUCT_ANNUAL || "prod_placeholder_annual",
+  starter_monthly: process.env.POLAR_PRODUCT_STARTER_MONTHLY || "",
+  starter_annual: process.env.POLAR_PRODUCT_STARTER_ANNUAL || "",
+  pro_monthly: process.env.POLAR_PRODUCT_PRO_MONTHLY || "",
+  pro_annual: process.env.POLAR_PRODUCT_PRO_ANNUAL || "",
+}
+
+// Map Polar product IDs back to tier names (populated at runtime)
+export function getTierFromProductId(productId: string): "starter" | "pro" | null {
+  if (productId === PRODUCTS.starter_monthly || productId === PRODUCTS.starter_annual) return "starter"
+  if (productId === PRODUCTS.pro_monthly || productId === PRODUCTS.pro_annual) return "pro"
+  return null
 }
 
 // Organization ID for the Clarus product
-export const ORGANIZATION_ID = process.env.POLAR_ORGANIZATION_ID || "org_placeholder"
+export const ORGANIZATION_ID = process.env.POLAR_ORGANIZATION_ID || ""

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { validateEvent, WebhookVerificationError } from "@polar-sh/sdk/webhooks"
 import { createClient } from "@supabase/supabase-js"
+import { getTierFromProductId } from "@/lib/polar"
 import {
   sendSubscriptionStartedEmail,
   sendSubscriptionCancelledEmail,
@@ -29,7 +30,6 @@ async function findUserByCustomerId(customerId: string): Promise<string | undefi
   const { data, error } = await supabaseAdmin.from("users").select("id").eq("polar_customer_id", customerId).single()
 
   if (error && error.code !== "PGRST116") {
-    // PGRST116 = no rows returned
     console.error("[Polar Webhook] findUserByCustomerId error:", error.code)
   }
 
@@ -43,6 +43,7 @@ async function updateUserSubscription(
     subscription_id?: string
     subscription_ends_at?: string
     polar_customer_id?: string
+    tier?: string
   },
 ) {
   const { error } = await supabaseAdmin.from("users").update(updates).eq("id", userId)
@@ -53,6 +54,32 @@ async function updateUserSubscription(
   }
 
   return true
+}
+
+// Resolve tier from checkout/subscription metadata or product ID
+function resolveTier(metadata: Record<string, unknown> | null | undefined, productId?: string): "starter" | "pro" | "free" {
+  // First check metadata (set during checkout)
+  const metaTier = metadata?.tier as string | undefined
+  if (metaTier === "starter" || metaTier === "pro") return metaTier
+
+  // Fall back to product ID lookup
+  if (productId) {
+    const tier = getTierFromProductId(productId)
+    if (tier) return tier
+  }
+
+  return "free"
+}
+
+// Format tier name for emails
+function tierDisplayName(tier: string): string {
+  return tier === "pro" ? "Clarus Pro" : "Clarus Starter"
+}
+
+// Get price string based on tier and interval
+function tierPrice(tier: string, interval?: string): string {
+  if (tier === "pro") return interval === "annual" ? "$279/year" : "$29/month"
+  return interval === "annual" ? "$144/year" : "$18/month"
 }
 
 export async function POST(request: Request) {
@@ -134,11 +161,19 @@ export async function POST(request: Request) {
             status = "none"
         }
 
+        // Resolve tier from metadata or product ID
+        const productId = subscription.productId
+        const tier = resolveTier(subscription.metadata, productId)
+        const interval = (subscription.metadata?.interval as string) || "monthly"
         const endDate = subscription.currentPeriodEnd ? new Date(subscription.currentPeriodEnd).toISOString() : null
+
+        // Set tier to the paid tier when active/trialing, reset to free when canceled
+        const effectiveTier = (status === "active" || status === "trialing") ? tier : "free"
 
         await updateUserSubscription(userId, {
           subscription_status: status,
           subscription_id: subscription.id,
+          tier: effectiveTier,
           ...(endDate && { subscription_ends_at: endDate }),
           polar_customer_id: customerId,
         })
@@ -147,22 +182,20 @@ export async function POST(request: Request) {
         const user = await getUserEmailAndName(userId)
         if (user) {
           if (event.type === "subscription.created" && status === "active") {
-            // New subscription started
             await sendSubscriptionStartedEmail(
               user.email,
               user.name,
-              "Clarus Pro",
-              "Monthly",
-              "$4.00/month",
+              tierDisplayName(tier),
+              interval === "annual" ? "Annual" : "Monthly",
+              tierPrice(tier, interval),
               endDate ? new Date(endDate).toLocaleDateString() : "Next month"
             )
           } else if (event.type === "subscription.updated" && subscription.status === "past_due") {
-            // Payment failed
             await sendPaymentFailedEmail(
               user.email,
               user.name,
-              "$4.00",
-              "Clarus Pro",
+              tierPrice(tier, interval),
+              tierDisplayName(tier),
               "Payment method declined",
               "in 3 days",
               "https://clarusapp.io/manage"
@@ -185,21 +218,22 @@ export async function POST(request: Request) {
         if (userId) {
           await updateUserSubscription(userId, {
             subscription_status: "canceled",
+            tier: "free",
             subscription_ends_at: new Date().toISOString(),
           })
 
-          // Send cancellation email
           const user = await getUserEmailAndName(userId)
           if (user) {
+            const tier = resolveTier(subscription.metadata, subscription.productId)
             const endDate = subscription.currentPeriodEnd
               ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
               : "today"
             await sendSubscriptionCancelledEmail(
               user.email,
               user.name,
-              "Clarus Pro",
+              tierDisplayName(tier),
               endDate,
-              "https://clarusapp.io/signup"
+              "https://clarusapp.io/pricing"
             )
           }
         }
