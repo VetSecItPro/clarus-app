@@ -1,26 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-import { authenticateAdmin, AuthErrors } from "@/lib/auth"
+import { authenticateAdmin, getAdminClient, AuthErrors } from "@/lib/auth"
 import { z } from "zod"
 import { parseQuery } from "@/lib/schemas"
-import type { Database } from "@/types/database.types"
 
 // Schema for metrics query params
 const metricsQuerySchema = z.object({
   timeRange: z.coerce.number().int().min(1).max(365).optional().default(30),
 })
 
-// Lazy initialization of admin client to avoid build-time env var issues
-let _adminClient: ReturnType<typeof createClient<Database, "clarus">> | null = null
 function getSupabaseAdmin() {
-  if (!_adminClient) {
-    _adminClient = createClient<Database, "clarus">(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
-      { db: { schema: "clarus" } }
-    )
-  }
-  return _adminClient
+  return getAdminClient()
 }
 
 // Types
@@ -106,6 +95,7 @@ export interface TierBreakdown {
   free: number
   starter: number
   pro: number
+  day_pass: number
 }
 
 export interface DashboardMetrics {
@@ -290,11 +280,12 @@ export async function GET(request: NextRequest) {
     })
 
     // Calculate users by tier
-    const usersByTier: TierBreakdown = { free: 0, starter: 0, pro: 0 }
+    const usersByTier: TierBreakdown = { free: 0, starter: 0, pro: 0, day_pass: 0 }
     userTiersResult.data?.forEach(u => {
       const tier = u.tier as string | null
       if (tier === "starter") usersByTier.starter++
       else if (tier === "pro") usersByTier.pro++
+      else if (tier === "day_pass") usersByTier.day_pass++
       else usersByTier.free++
     })
 
@@ -655,7 +646,7 @@ export async function GET(request: NextRequest) {
       contentByTypeMonthly,
       activeSubscriptions: subCounts.active,
       trialUsers: subCounts.trialing,
-      mrr: subCounts.active * 9.99, // Will be overridden by MRR API on client
+      mrr: 0, // Real MRR comes from /api/admin/mrr endpoint
       mrrGrowthPercent: 0,
       avgContentPerUser: Math.round(avgContentPerUser * 10) / 10,
       chatThreads: chatThreadsResult.count || 0,

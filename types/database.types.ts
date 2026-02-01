@@ -1,7 +1,7 @@
 export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 // User tiers for feature gating
-export type UserTier = "free" | "starter" | "pro"
+export type UserTier = "free" | "starter" | "pro" | "day_pass"
 
 // Content categories for contextual UI
 export type ContentCategory =
@@ -542,6 +542,7 @@ export interface Database {
           digest_enabled: boolean | null
           last_digest_at: string | null
           tier: string | null
+          day_pass_expires_at: string | null
         }
         Insert: {
           created_at?: string | null
@@ -559,6 +560,7 @@ export interface Database {
           digest_enabled?: boolean | null
           last_digest_at?: string | null
           tier?: string | null
+          day_pass_expires_at?: string | null
         }
         Update: {
           created_at?: string | null
@@ -576,6 +578,7 @@ export interface Database {
           digest_enabled?: boolean | null
           last_digest_at?: string | null
           tier?: string | null
+          day_pass_expires_at?: string | null
         }
         Relationships: [
           {

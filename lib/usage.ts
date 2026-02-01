@@ -33,11 +33,11 @@ export async function getUserTier(
 ): Promise<UserTier> {
   const { data } = await supabase
     .from("users")
-    .select("tier")
+    .select("tier, day_pass_expires_at")
     .eq("id", userId)
     .single()
 
-  return normalizeTier(data?.tier)
+  return normalizeTier(data?.tier, data?.day_pass_expires_at)
 }
 
 /**

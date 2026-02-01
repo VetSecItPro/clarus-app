@@ -39,11 +39,12 @@ async function findUserByCustomerId(customerId: string): Promise<string | undefi
 async function updateUserSubscription(
   userId: string,
   updates: {
-    subscription_status: string
+    subscription_status?: string
     subscription_id?: string
     subscription_ends_at?: string
     polar_customer_id?: string
     tier?: string
+    day_pass_expires_at?: string | null
   },
 ) {
   const { error } = await supabaseAdmin.from("users").update(updates).eq("id", userId)
@@ -57,10 +58,10 @@ async function updateUserSubscription(
 }
 
 // Resolve tier from checkout/subscription metadata or product ID
-function resolveTier(metadata: Record<string, unknown> | null | undefined, productId?: string): "starter" | "pro" | "free" {
+function resolveTier(metadata: Record<string, unknown> | null | undefined, productId?: string): "starter" | "pro" | "day_pass" | "free" {
   // First check metadata (set during checkout)
   const metaTier = metadata?.tier as string | undefined
-  if (metaTier === "starter" || metaTier === "pro") return metaTier
+  if (metaTier === "starter" || metaTier === "pro" || metaTier === "day_pass") return metaTier
 
   // Fall back to product ID lookup
   if (productId) {
@@ -73,31 +74,35 @@ function resolveTier(metadata: Record<string, unknown> | null | undefined, produ
 
 // Format tier name for emails
 function tierDisplayName(tier: string): string {
-  return tier === "pro" ? "Clarus Pro" : "Clarus Starter"
+  if (tier === "pro") return "Clarus Pro"
+  if (tier === "day_pass") return "Clarus Day Pass"
+  return "Clarus Starter"
 }
 
 // Get price string based on tier and interval
 function tierPrice(tier: string, interval?: string): string {
+  if (tier === "day_pass") return "$10"
   if (tier === "pro") return interval === "annual" ? "$279/year" : "$29/month"
   return interval === "annual" ? "$144/year" : "$18/month"
 }
 
 export async function POST(request: Request) {
-  const body = await request.text()
+  // Verify webhook secret is configured BEFORE reading body
   const webhookSecret = process.env.POLAR_WEBHOOK_SECRET
-
   if (!webhookSecret) {
-    console.error("[Polar Webhook] No webhook secret configured")
-    return NextResponse.json({ error: "Webhook not configured" }, { status: 500 })
+    console.error("[Polar Webhook] CRITICAL: POLAR_WEBHOOK_SECRET not configured")
+    return NextResponse.json({ error: "Webhook not configured" }, { status: 503 })
   }
+
+  const body = await request.text()
 
   let event
   try {
     event = validateEvent(body, Object.fromEntries(request.headers), webhookSecret)
   } catch (err: unknown) {
     if (err instanceof WebhookVerificationError) {
-      console.error("[Polar Webhook] Webhook signature verification failed:", err.message)
-      return NextResponse.json({ error: "Webhook signature verification failed" }, { status: 400 })
+      console.error("[Polar Webhook] Signature verification failed")
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     throw err
   }
@@ -114,6 +119,7 @@ export async function POST(request: Request) {
         if (checkout.status === "succeeded") {
           const metadataUserId = checkout.metadata?.supabase_user_id as string | undefined
           const customerId = checkout.customerId
+          const metaTier = checkout.metadata?.tier as string | undefined
 
           let userId = metadataUserId
           if (!userId && customerId) {
@@ -123,6 +129,29 @@ export async function POST(request: Request) {
           if (userId && customerId) {
             // Link customer ID to user
             await supabaseAdmin.from("users").update({ polar_customer_id: customerId }).eq("id", userId)
+          }
+
+          // Handle day pass activation (one-time purchase — no subscription events fire)
+          if (metaTier === "day_pass" && userId) {
+            const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+            await updateUserSubscription(userId, {
+              tier: "day_pass",
+              day_pass_expires_at: expiresAt,
+            })
+            console.log(`[Polar Webhook] Day pass activated for user ${userId}, expires ${expiresAt}`)
+
+            // Send confirmation email
+            const user = await getUserEmailAndName(userId)
+            if (user) {
+              await sendSubscriptionStartedEmail(
+                user.email,
+                user.name,
+                "Clarus Day Pass",
+                "24-Hour Access",
+                "$10",
+                new Date(expiresAt).toLocaleString()
+              )
+            }
           }
         }
         break
@@ -174,6 +203,8 @@ export async function POST(request: Request) {
           subscription_status: status,
           subscription_id: subscription.id,
           tier: effectiveTier,
+          // Clear day pass when subscribing (subscription supersedes day pass)
+          day_pass_expires_at: null,
           ...(endDate && { subscription_ends_at: endDate }),
           polar_customer_id: customerId,
         })
