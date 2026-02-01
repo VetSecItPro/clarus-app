@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import Image from "next/image"
 import { Loader2, MessageSquare, Youtube, FileText, FileUp, Twitter, Headphones } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
@@ -47,6 +48,7 @@ interface HomePageProps {
 }
 
 function HomePageContent({ session }: HomePageProps) {
+  const router = useRouter()
   const userId = session?.user?.id || null
 
   // Username state
@@ -54,6 +56,11 @@ function HomePageContent({ session }: HomePageProps) {
 
   // Track when we're navigating to /item/[id] to prevent chat view flash
   const [isNavigating, setIsNavigating] = useState(false)
+
+  // Stable callback for content navigation
+  const onContentCreated = useCallback((id: string) => {
+    router.push(`/item/${id}`)
+  }, [router])
 
   // Chat session hook
   const {
@@ -71,10 +78,7 @@ function HomePageContent({ session }: HomePageProps) {
     retryAnalysis,
   } = useChatSession({
     userId,
-    onContentCreated: (id) => {
-      // Navigate to the split-screen card layout page
-      window.location.href = `/item/${id}`
-    },
+    onContentCreated,
   })
 
   // Fetch username - try DB name first, fall back to auth metadata

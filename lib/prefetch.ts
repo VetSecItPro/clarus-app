@@ -25,8 +25,9 @@ export async function prefetchContent(contentId: string): Promise<void> {
     const { data: content } = await supabase
       .from("content")
       .select(`
-        *,
-        summaries(*)
+        id, title, url, type, thumbnail_url, date_added, user_id, author,
+        is_bookmarked, tags, detected_tone, full_text,
+        summaries(id, content_id, processing_status, brief_overview, mid_length_summary, detailed_summary, triage, truth_check, action_items, key_takeaways)
       `)
       .eq("id", contentId)
       .single()
