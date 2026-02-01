@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
-import { useEffect, useState, useCallback, useMemo } from "react"
+import { useEffect, useState, useCallback } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
@@ -172,6 +172,9 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     sortBy,
     bookmarkOnly,
     selectedTags,
+    scoreFilter: scoreFilter !== "all"
+      ? SCORE_FILTER_OPTIONS.find((opt) => opt.value === scoreFilter) ?? null
+      : null,
   })
 
   // Sync SWR data to local state for optimistic updates
@@ -179,20 +182,8 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     setLocalItems(swrItems)
   }, [swrItems])
 
-  // Apply client-side score filtering
-  const items = useMemo(() => {
-    if (scoreFilter === "all") return localItems
-
-    const filterConfig = SCORE_FILTER_OPTIONS.find((opt) => opt.value === scoreFilter)
-    if (!filterConfig) return localItems
-
-    return localItems.filter((item) => {
-      const summary = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
-      const score = summary?.triage?.quality_score
-      if (score === undefined || score === null) return scoreFilter === "all"
-      return score >= filterConfig.min && score <= filterConfig.max
-    })
-  }, [localItems, scoreFilter])
+  // Score filtering is now handled by the useLibrary hook for correct pagination
+  const items = localItems
 
   // Fetch all tags
   const fetchAllTags = useCallback(async () => {

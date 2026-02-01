@@ -1,6 +1,7 @@
 "use client"
 import Link from "next/link"
 import Image from "next/image"
+import dynamic from "next/dynamic"
 import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, MessageSquare, Bookmark, BookmarkCheck } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback, useRef, use } from "react"
@@ -11,12 +12,8 @@ import { useRouter } from "next/navigation"
 import { getCachedSession } from "@/components/with-auth"
 import { formatDuration, getYouTubeVideoId, getDomainFromUrl } from "@/lib/utils"
 import { detectPaywallTruncation } from "@/lib/paywall-detection"
-import { EditAIPromptsModal } from "@/components/edit-ai-prompts-modal"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
-import { TranscriptViewer } from "@/components/ui/transcript-viewer"
-import { HighlightedTranscript } from "@/components/ui/highlighted-transcript"
-import { YouTubePlayer, YouTubePlayerRef } from "@/components/ui/youtube-player"
-import { InlineChat } from "@/components/inline-chat"
+import { YouTubePlayer, type YouTubePlayerRef } from "@/components/ui/youtube-player"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
@@ -25,8 +22,6 @@ import { TruthCheckCard, type CrossReference } from "@/components/ui/truth-check
 import { ActionItemsCard } from "@/components/ui/action-items-card"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
-import { ShareModal } from "@/components/share-modal"
-import { UpgradeModal } from "@/components/upgrade-modal"
 import { useUpgradeModal } from "@/lib/hooks/use-upgrade-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -37,6 +32,14 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useIsDesktop } from "@/lib/hooks/use-media-query"
 import type { Session } from "@supabase/supabase-js"
+
+// Dynamic imports for below-fold and conditional components (reduces initial bundle)
+const InlineChat = dynamic(() => import("@/components/inline-chat").then(m => ({ default: m.InlineChat })), { ssr: false })
+const ShareModal = dynamic(() => import("@/components/share-modal").then(m => ({ default: m.ShareModal })), { ssr: false })
+const UpgradeModal = dynamic(() => import("@/components/upgrade-modal").then(m => ({ default: m.UpgradeModal })), { ssr: false })
+const EditAIPromptsModal = dynamic(() => import("@/components/edit-ai-prompts-modal").then(m => ({ default: m.EditAIPromptsModal })), { ssr: false })
+const TranscriptViewer = dynamic(() => import("@/components/ui/transcript-viewer").then(m => ({ default: m.TranscriptViewer })), { ssr: false })
+const HighlightedTranscript = dynamic(() => import("@/components/ui/highlighted-transcript").then(m => ({ default: m.HighlightedTranscript })), { ssr: false })
 
 // Next.js page props
 interface PageProps {
