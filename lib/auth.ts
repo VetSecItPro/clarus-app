@@ -9,8 +9,9 @@ import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import type { Database } from "@/types/database.types"
 
-// Admin cache to avoid repeated DB queries within the same runtime (5 min TTL)
+// Admin cache to avoid repeated DB queries within the same runtime (5 min TTL, max 500 entries)
 const adminCache = new Map<string, { isAdmin: boolean; expires: number }>()
+const MAX_ADMIN_CACHE_SIZE = 500
 
 export interface AuthResult {
   success: true
@@ -114,7 +115,11 @@ export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
 
   const isAdmin = userData?.is_admin === true
 
-  // Cache for 5 minutes
+  // Cache for 5 minutes (evict oldest if over limit)
+  if (adminCache.size >= MAX_ADMIN_CACHE_SIZE) {
+    const firstKey = adminCache.keys().next().value
+    if (firstKey) adminCache.delete(firstKey)
+  }
   adminCache.set(auth.user.id, { isAdmin, expires: Date.now() + 5 * 60 * 1000 })
 
   if (!isAdmin) {

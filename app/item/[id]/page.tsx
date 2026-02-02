@@ -522,11 +522,9 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       <div className="min-h-screen bg-black flex items-center justify-center px-6">
         <div className="text-center">
           <h2 className="text-lg font-medium text-white mb-4">{error || "Item not found"}</h2>
-          <Link href="/">
-            <button className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white transition-all mx-auto">
-              <ArrowLeft className="w-4 h-4" />
-              Back to home
-            </button>
+          <Link href="/" className="flex items-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-white/60 hover:bg-white/[0.08] hover:text-white transition-all mx-auto">
+            <ArrowLeft className="w-4 h-4" />
+            Back to home
           </Link>
         </div>
       </div>

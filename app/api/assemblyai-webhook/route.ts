@@ -156,7 +156,10 @@ export async function POST(req: NextRequest) {
       console.log(`WEBHOOK: Triggering AI analysis for content ${content.id} (attempt ${attempt}/3)`)
       const analysisResponse = await fetch(`${appUrl}/api/process-content`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+        },
         body: JSON.stringify({ content_id: content.id }),
       })
 
