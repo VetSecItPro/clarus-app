@@ -75,7 +75,11 @@ interface TavilyApiResponse {
 async function extractKeyTopics(text: string): Promise<string[]> {
   if (!openRouterApiKey) return []
 
+  const prompt = await fetchPromptFromDB("keyword_extraction")
+  if (!prompt) return []
+
   const truncatedText = text.substring(0, 8000) // Limit input for speed
+  const userContent = prompt.user_content_template.replace("{{CONTENT}}", truncatedText)
 
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -85,27 +89,13 @@ async function extractKeyTopics(text: string): Promise<string[]> {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite", // Fast and cheap
+        model: prompt.model_name,
         messages: [
-          {
-            role: "system",
-            content: `You are a search query strategist for fact-verification. Given content, generate targeted web search queries that would help verify the most important and time-sensitive claims.
-
-PRIORITIZATION:
-1. Specific factual assertions (statistics, dates, figures, rankings)
-2. Claims about people, companies, or organizations
-3. References to studies, reports, or official announcements
-4. Time-sensitive claims that may have changed since publication
-
-OUTPUT: Return a JSON object with a "queries" key containing an array of 3-5 concise search queries (2-8 words each). Target verifiable assertions, not general topics.`
-          },
-          {
-            role: "user",
-            content: `Generate fact-verification search queries for the key claims in this content:\n\n${truncatedText}`
-          }
+          { role: "system", content: prompt.system_content },
+          { role: "user", content: userContent }
         ],
-        temperature: 0.1,
-        max_tokens: 200,
+        temperature: prompt.temperature,
+        max_tokens: prompt.max_tokens,
         response_format: { type: "json_object" }
       }),
     })
@@ -283,20 +273,6 @@ function formatWebContext(searches: WebSearchResult[]): string {
 const NEUTRAL_TONE_DIRECTIVE = "The content uses a standard informational tone. Write your analysis in a clear, neutral voice."
 const NEUTRAL_TONE_LABEL = "neutral"
 
-const TONE_DETECTION_SYSTEM_PROMPT = `You are a content voice analyst. Given a sample of content, identify its communicative tone and produce a writing directive.
-
-ANALYSIS FRAMEWORK:
-1. Formality: Academic/formal vs. casual/conversational vs. professional/business
-2. Expertise level: Expert-to-expert vs. expert-to-layperson vs. general audience
-3. Emotional register: Neutral/objective vs. passionate/persuasive vs. humorous/irreverent
-4. Pacing: Dense/information-heavy vs. narrative/storytelling vs. punchy/fast-paced
-
-OUTPUT: Return a JSON object with:
-- "tone_label": 1-3 word label (e.g., "casual-technical", "academic", "investigative-journalism")
-- "tone_directive": 2-4 sentence instruction telling an AI analyst how to write about this content in a way that respects the original voice. Be specific about word choice, sentence structure, and framing. Do NOT describe the content — describe how to WRITE ABOUT IT.
-
-Return ONLY valid JSON.`
-
 interface ToneDetectionResult {
   tone_label: string
   tone_directive: string
@@ -313,9 +289,18 @@ async function detectContentTone(
     return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
   }
 
+  const prompt = await fetchPromptFromDB("tone_detection")
+  if (!prompt) {
+    return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+  }
+
   const timer = createTimer()
   const sample = fullText.substring(0, 2000)
   const titleLine = contentTitle ? `Title: ${contentTitle}\n` : ""
+  const userContent = prompt.user_content_template
+    .replace("{{TITLE_LINE}}", titleLine)
+    .replace("{{TYPE}}", contentType)
+    .replace("{{CONTENT}}", sample)
 
   try {
     const controller = new AbortController()
@@ -330,13 +315,13 @@ async function detectContentTone(
         "X-Title": "Clarus",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: prompt.model_name,
         messages: [
-          { role: "system", content: TONE_DETECTION_SYSTEM_PROMPT },
-          { role: "user", content: `${titleLine}Content Type: ${contentType}\n\n${sample}` },
+          { role: "system", content: prompt.system_content },
+          { role: "user", content: userContent },
         ],
-        temperature: 0.2,
-        max_tokens: 250,
+        temperature: prompt.temperature,
+        max_tokens: prompt.max_tokens,
         response_format: { type: "json_object" },
       }),
       signal: controller.signal,
@@ -365,7 +350,7 @@ async function detectContentTone(
       operation: "tone_detection",
       tokensInput: usage.prompt_tokens || 0,
       tokensOutput: usage.completion_tokens || 0,
-      modelName: "google/gemini-2.5-flash-lite",
+      modelName: prompt.model_name,
       responseTimeMs: timer.elapsed(),
       status: "success",
       metadata: { section: "tone_detection" },
@@ -390,7 +375,7 @@ async function detectContentTone(
       contentId,
       apiName: "openrouter",
       operation: "tone_detection",
-      modelName: "google/gemini-2.5-flash-lite",
+      modelName: prompt.model_name,
       responseTimeMs: timer.elapsed(),
       status: "error",
       errorMessage: msg,
