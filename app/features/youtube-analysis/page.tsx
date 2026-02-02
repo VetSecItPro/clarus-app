@@ -2,13 +2,33 @@ import type { Metadata } from "next"
 import { FeaturePage } from "@/components/features/feature-page"
 
 export const metadata: Metadata = {
-  title: "YouTube Video Analysis & Summary | Clarus",
+  title: "YouTube Video Summarizer — AI Analysis & Key Takeaways | Clarus",
   description:
-    "Get AI-powered summaries, fact-checks, and key takeaways from any YouTube video. Extract insights without watching the full video.",
+    "Summarize any YouTube video with AI. Get key points, fact-checks, speaker attribution, timestamps, and action items. Free YouTube summarizer — no account required for 5 analyses.",
+  keywords: [
+    "youtube summarizer",
+    "youtube video summary",
+    "youtube video analyzer",
+    "ai youtube summary",
+    "youtube key takeaways",
+    "youtube transcript summary",
+    "summarize youtube video",
+  ],
   openGraph: {
-    title: "YouTube Video Analysis & Summary | Clarus",
+    title: "YouTube Video Summarizer — AI Analysis & Key Takeaways | Clarus",
     description:
-      "Get AI-powered summaries, fact-checks, and key takeaways from any YouTube video.",
+      "Summarize any YouTube video with AI. Key points, fact-checks, speaker attribution, and timestamps in seconds.",
+    url: "https://clarusapp.io/features/youtube-analysis",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "YouTube Video Summarizer | Clarus",
+    description:
+      "Paste a YouTube link, get key points, fact-checks, and speaker breakdowns. Free to start.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/features/youtube-analysis",
   },
 }
 

@@ -1,24 +1,26 @@
 import { Metadata } from "next"
-import Link from "next/link"
-import { ArrowLeft, Shield } from "lucide-react"
+import { Shield } from "lucide-react"
+import { PublicHeader } from "@/components/public-header"
+import { LandingFooter } from "@/components/landing/landing-footer"
 
 export const metadata: Metadata = {
   title: "Terms of Service | Clarus",
-  description: "Terms of Service for Clarus",
+  description: "Terms of Service for Clarus — AI-powered content analysis platform. Read about acceptable use, subscriptions, data handling, and your rights.",
+  openGraph: {
+    title: "Terms of Service | Clarus",
+    description: "Terms of Service for Clarus. Acceptable use, subscriptions, and your rights.",
+    url: "https://clarusapp.io/terms",
+    type: "website",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/terms",
+  },
 }
 
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      {/* Simple Header */}
-      <header className="border-b border-white/[0.08] bg-black/60 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <Link href="/" className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Back to Home</span>
-          </Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* Content */}
       <main className="flex-1 max-w-4xl mx-auto px-4 py-12">
@@ -245,6 +247,8 @@ export default function TermsPage() {
           </div>
         </div>
       </main>
+
+      <LandingFooter />
     </div>
   )
 }

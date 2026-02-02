@@ -29,11 +29,8 @@ export function ProductPreview() {
       <div className="max-w-5xl mx-auto">
         {/* Section heading */}
         <div className="text-center mb-8">
-          <p className="text-[#1d9bf0] text-sm font-medium tracking-wide uppercase mb-2">
-            See it in action
-          </p>
           <h2 className="text-2xl sm:text-3xl font-bold text-white">
-            From link to insight in seconds
+            Six analysis sections. Claims verified. Speakers identified.
           </h2>
         </div>
 
@@ -175,7 +172,7 @@ function AnalysisPreview() {
           color="blue"
         >
           <p className="text-[10px] sm:text-[11px] text-white/50 leading-relaxed">
-            This video explores how newsrooms are integrating AI tools into investigative workflows — from document analysis to pattern recognition across large datasets. Host Marcus Chen interviews ProPublica&apos;s data team lead and a Columbia J-School professor about the promise and risks of AI-assisted reporting.
+            This video explores how newsrooms are integrating AI tools into investigative workflows, from document analysis to pattern recognition across large datasets. Host Marcus Chen interviews ProPublica&apos;s data team lead and a Columbia J-School professor about the promise and risks of AI-assisted reporting.
           </p>
         </MiniCard>
 
@@ -242,7 +239,7 @@ function AnalysisPreview() {
               </div>
               <div className="flex items-start gap-1.5">
                 <AlertTriangle className="w-3 h-3 text-yellow-400 mt-0.5 shrink-0" />
-                <span className="text-[10px] text-white/40">Open-source tool claim overgeneralizes — commercial still leads for complex review</span>
+                <span className="text-[10px] text-white/40">Open-source tool claim may overgeneralize; commercial tools still lead for complex review</span>
               </div>
             </div>
           </div>
@@ -269,6 +266,17 @@ function AnalysisPreview() {
             ))}
           </div>
         </MiniCard>
+
+        {/* Deep Dive card */}
+        <MiniCard
+          icon={<FileText className="w-3 h-3" />}
+          title="Deep Dive"
+          color="violet"
+        >
+          <p className="text-[10px] sm:text-[11px] text-white/50 leading-relaxed">
+            The interview reveals a tension between AI&apos;s speed and journalism&apos;s need for verification. <span className="text-white/70">Marcus Chen</span> pushes back on claims that AI can replace editorial judgment, while <span className="text-white/70">Dr. Sarah Hamilton</span> argues the real risk is newsrooms adopting AI without transparency standards...
+          </p>
+        </MiniCard>
       </div>
     </div>
   )
@@ -289,6 +297,15 @@ const LIBRARY_ITEMS = [
     bookmarked: true,
   },
   {
+    title: "Huberman Lab: Sleep Toolkit, Science-Based Protocols",
+    domain: "spotify.com",
+    type: "podcast" as const,
+    score: 9.1,
+    badge: "Mind-blowing",
+    time: "3h ago",
+    bookmarked: true,
+  },
+  {
     title: "The Hidden Economics of Cloud Computing in 2026",
     domain: "arstechnica.com",
     type: "article" as const,
@@ -298,10 +315,10 @@ const LIBRARY_ITEMS = [
     bookmarked: false,
   },
   {
-    title: "Why Battery Technology Is Stuck — And What Might Unstick It",
-    domain: "youtube.com",
-    type: "youtube" as const,
-    score: 9.1,
+    title: "Stanford CS229: Machine Learning Lecture Notes",
+    domain: "cs229.stanford.edu",
+    type: "pdf" as const,
+    score: 8.9,
     badge: "Mind-blowing",
     time: "Yesterday",
     bookmarked: true,
@@ -316,22 +333,13 @@ const LIBRARY_ITEMS = [
     bookmarked: false,
   },
   {
-    title: "Deep Dive: The Future of Remote Work After RTO Backlash",
-    domain: "podcasts.apple.com",
-    type: "podcast" as const,
+    title: "Lex Fridman #412: Sam Altman on AGI and the Future of OpenAI",
+    domain: "youtube.com",
+    type: "youtube" as const,
     score: 7.9,
     badge: "Insightful",
     time: "2d ago",
     bookmarked: false,
-  },
-  {
-    title: "How Generative AI Is Changing Scientific Research",
-    domain: "nature.com",
-    type: "article" as const,
-    score: 8.7,
-    badge: "Mind-blowing",
-    time: "3d ago",
-    bookmarked: true,
   },
 ]
 
@@ -427,14 +435,14 @@ function LibraryItemRow({
 }: {
   title: string
   domain: string
-  type: "youtube" | "article" | "podcast"
+  type: "youtube" | "article" | "podcast" | "pdf"
   score: number
   badge: string
   time: string
   bookmarked: boolean
 }) {
-  const TypeIcon = type === "youtube" ? Play : type === "podcast" ? Headphones : FileText
-  const typeColor = type === "youtube" ? "text-red-400" : type === "podcast" ? "text-purple-400" : "text-blue-400"
+  const TypeIcon = type === "youtube" ? Play : type === "podcast" ? Headphones : type === "pdf" ? FileText : FileText
+  const typeColor = type === "youtube" ? "text-red-400" : type === "podcast" ? "text-purple-400" : type === "pdf" ? "text-orange-400" : "text-blue-400"
 
   const badgeColor =
     badge === "Mind-blowing"

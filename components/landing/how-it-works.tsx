@@ -8,20 +8,20 @@ const steps = [
   {
     number: "01",
     icon: Link2,
-    title: "Paste a link",
-    description: "YouTube video, podcast, blog post, news article, PDF, or research paper. Just drop the URL.",
+    title: "Paste any link",
+    description: "YouTube, podcasts, articles, PDFs, research papers, X posts. If it has content, Clarus can analyze it.",
   },
   {
     number: "02",
     icon: Sparkles,
-    title: "Get instant analysis",
-    description: "Key points, main arguments, claims with sources, and actionable takeaways. Ready in seconds.",
+    title: "Get a 6-section analysis",
+    description: "Overview, quality assessment, key takeaways, accuracy analysis, action items, and a deep dive. Speaker attribution and tone detection included where applicable.",
   },
   {
     number: "03",
     icon: MessageCircle,
-    title: "Ask anything",
-    description: "Chat with your content. Get specific answers. Export to Markdown or PDF.",
+    title: "Go deeper",
+    description: "Chat with your content. Cross-reference claims. Export to Markdown or PDF. Build a searchable library.",
   },
 ]
 
