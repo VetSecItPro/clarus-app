@@ -106,6 +106,7 @@ jobs:
             .next
             !.next/cache
           retention-days: 1
+          include-hidden-files: true
 
       - name: Build summary
         run: |
