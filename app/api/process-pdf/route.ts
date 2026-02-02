@@ -280,7 +280,10 @@ export async function POST(req: NextRequest) {
       `${baseUrl}/api/process-content`,
       {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${supabaseKey}`,
+        },
         body: JSON.stringify({
           content_id: contentId,
           skipScraping: true, // We already have the text

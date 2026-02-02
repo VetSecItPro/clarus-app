@@ -263,6 +263,7 @@ flagged_content          -- clarus.flagged_content (content moderation flags)
 7. `scripts/204-add-podcast-analyses.sql` - Podcast analysis columns + updated increment_usage (applied 2026-01-31)
 8. `scripts/033-add-tone-detection.sql` - Auto-tone detection column + {{TONE}} in 4 prose prompts (applied 2026-01-31)
 9. `scripts/205-add-day-pass-expires.sql` - Day pass expiration column on users table (applied 2026-02-01)
+10. `scripts/206-set-search-path-on-functions.sql` - Set search_path = clarus, extensions on all 10 functions (applied 2026-02-01)
 
 **Tables are created in the `clarus` schema. Code references them without prefix (e.g., `users` not `clarus.users`).**
 

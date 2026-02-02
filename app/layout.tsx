@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     "video summary",
     "podcast summary",
   ],
-  manifest: "/manifest.json",
+  metadataBase: new URL("https://clarusapp.io"),
   icons: {
     icon: "/favicon.png",
     apple: "/apple-touch-icon.png",

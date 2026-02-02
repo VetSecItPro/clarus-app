@@ -60,9 +60,14 @@ export default function UpdatePasswordPage() {
       return
     }
 
-    if (password.length < 6) {
-      setError("Password must be at least 6 characters long.")
-      toast.error("Password must be at least 6 characters long.")
+    if (password.length < 10) {
+      setError("Password must be at least 10 characters long.")
+      toast.error("Password must be at least 10 characters long.")
+      return
+    }
+    if (!/[A-Z]/.test(password) || !/[a-z]/.test(password) || !/[^A-Za-z0-9]/.test(password)) {
+      setError("Password must include uppercase, lowercase, and a special character.")
+      toast.error("Password must include uppercase, lowercase, and a special character.")
       return
     }
 

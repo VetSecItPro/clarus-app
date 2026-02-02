@@ -22,6 +22,8 @@ const INTERNAL_HOSTNAMES = [
   "0.0.0.0",
   "::1",
   "[::1]",
+  "169.254.169.254",       // Cloud metadata endpoint (AWS/GCP/Azure)
+  "metadata.google.internal",
 ]
 
 // XSS patterns to strip
@@ -80,7 +82,13 @@ export const safeUrlSchema = z
         if (INTERNAL_HOSTNAMES.includes(hostname)) return false
         if (hostname.startsWith("192.168.")) return false
         if (hostname.startsWith("10.")) return false
-        if (hostname.startsWith("172.16.")) return false
+        // Full RFC 1918 range: 172.16.0.0 - 172.31.255.255
+        const match172 = hostname.match(/^172\.(\d+)\./)
+        if (match172 && Number(match172[1]) >= 16 && Number(match172[1]) <= 31) return false
+        // Block link-local
+        if (hostname.startsWith("169.254.")) return false
+        // Block IPv6-mapped IPv4 (::ffff:127.0.0.1)
+        if (hostname.includes("::ffff:")) return false
         return true
       } catch {
         return false

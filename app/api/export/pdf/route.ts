@@ -1,4 +1,3 @@
-import { jsPDF } from "jspdf"
 import type { TruthCheckData, TriageData, ActionItemsData, ClaimHighlight } from "@/types/database.types"
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { exportSchema, parseQuery } from "@/lib/schemas"
@@ -107,6 +106,7 @@ export async function GET(request: Request) {
 }
 
 async function generatePDF(content: Record<string, unknown>, summary: Record<string, unknown> | null): Promise<ArrayBuffer> {
+  const { jsPDF } = await import("jspdf")
   const doc = new jsPDF({
     orientation: "portrait",
     unit: "mm",
