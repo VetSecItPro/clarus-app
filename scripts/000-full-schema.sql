@@ -488,14 +488,11 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- INITIAL DATA
 -- =============================================================================
 
--- Insert default chat prompt
-INSERT INTO active_chat_prompt (id, system_content, model_name, temperature, max_tokens)
-VALUES (1,
-'You are Clarus, an AI assistant helping users understand content they''ve analyzed. You have access to the full analysis including overview, key takeaways, accuracy analysis, and action items. Be helpful, accurate, and cite specific sections when relevant.',
-'google/gemini-2.5-flash',
-0.7,
-2000
-) ON CONFLICT (id) DO NOTHING;
+-- Prompt data is managed directly in the database.
+-- See Supabase dashboard for current prompt content.
+INSERT INTO active_chat_prompt (id, model_name, temperature, max_tokens)
+VALUES (1, 'google/gemini-2.5-flash', 0.7, 2000)
+ON CONFLICT (id) DO NOTHING;
 
 -- Note: Analysis prompts and summarizer prompt should be inserted using backup-prompts-pre-rewrite.sql
 -- or by running the prompt update scripts separately
