@@ -3,20 +3,26 @@
 import { memo } from "react"
 import { motion } from "framer-motion"
 import {
-  Youtube, FileText, FileUp, Brain, Headphones,
-  GraduationCap,
+  Youtube, FileText, FileUp, Headphones,
   Zap, CheckCircle, MessageSquare, Library, Download,
   Mic, ScanEye, Share2,
 } from "lucide-react"
+
+function XIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+    </svg>
+  )
+}
 import { cn } from "@/lib/utils"
 
 const contentTypes = [
-  { icon: Youtube, title: "YouTube", color: "text-red-400", bg: "bg-red-500/10", status: "live" as const },
-  { icon: Headphones, title: "Podcasts", color: "text-purple-400", bg: "bg-purple-500/10", status: "live" as const },
-  { icon: FileText, title: "Articles & Blogs", color: "text-blue-400", bg: "bg-blue-500/10", status: "live" as const },
-  { icon: FileUp, title: "PDFs & Documents", color: "text-orange-400", bg: "bg-orange-500/10", status: "live" as const },
-  { icon: Brain, title: "X Posts", color: "text-teal-400", bg: "bg-teal-500/10", status: "live" as const },
-  { icon: GraduationCap, title: "Research Papers", color: "text-amber-400", bg: "bg-amber-500/10", status: "coming" as const },
+  { icon: Youtube, title: "YouTube", color: "text-red-400", bg: "bg-red-500/10" },
+  { icon: Headphones, title: "Podcasts", color: "text-purple-400", bg: "bg-purple-500/10" },
+  { icon: FileText, title: "Articles & Blogs", color: "text-blue-400", bg: "bg-blue-500/10" },
+  { icon: FileUp, title: "PDFs & Documents", color: "text-orange-400", bg: "bg-orange-500/10" },
+  { icon: XIcon, title: "X Posts", color: "text-white/70", bg: "bg-white/[0.06]" },
 ]
 
 const features = [
@@ -88,18 +94,12 @@ export const FeatureGrid = memo(function FeatureGrid() {
                 viewport={{ once: true }}
                 transition={{ duration: 0.4, delay: index * 0.04 }}
                 whileHover={{ y: -2 }}
-                className={cn(
-                  "flex items-center gap-3 px-5 py-3 rounded-full bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1] transition-colors",
-                  type.status === "coming" && "opacity-50"
-                )}
+                className="flex items-center gap-3 px-5 py-3 rounded-full bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1] transition-colors"
               >
                 <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", type.bg)}>
                   <type.icon className={cn("w-4 h-4", type.color)} />
                 </div>
                 <span className="text-white/70 font-medium">{type.title}</span>
-                {type.status === "coming" && (
-                  <span className="text-[10px] font-medium text-white/30 uppercase tracking-wider">Soon</span>
-                )}
               </motion.div>
             ))}
           </div>
