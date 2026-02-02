@@ -36,3 +36,8 @@ next-env.d.ts
 .DS_Store
 .env*.local
 _chrome-extension-disabled/
+
+# AI prompt data — managed in database, never in git
+scripts/*prompts*.sql
+scripts/*prompt*.sql
+docs/archive/VAJRA_PROMPT*
