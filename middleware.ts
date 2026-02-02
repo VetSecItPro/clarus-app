@@ -144,12 +144,11 @@ function setSecurityHeaders(response: NextResponse) {
 
   // Content Security Policy
   // Note: 'unsafe-inline' needed for Next.js inline styles
-  // 'unsafe-eval' needed for some Next.js development features
   response.headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com",
+      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com",
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https: http:",

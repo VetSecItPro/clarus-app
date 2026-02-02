@@ -28,7 +28,7 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
           <Link href="/" className="flex items-center gap-3 group">
             <div className="relative">
               <Image
-                src="/clarus-logo.png"
+                src="/clarus-logo.webp"
                 alt="Clarus"
                 width={40}
                 height={40}
