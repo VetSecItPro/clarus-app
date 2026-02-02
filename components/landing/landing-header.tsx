@@ -36,10 +36,8 @@ export function LandingHeader() {
             <Link href="/pricing" prefetch={true} className="text-sm text-white/50 hover:text-white transition-colors">
               Pricing
             </Link>
-            <Link href="/login" prefetch={true}>
-              <button className="px-5 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-[#1d9bf0]/25 hover:shadow-lg hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5">
-                Log In
-              </button>
+            <Link href="/login" prefetch={true} className="px-5 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-[#1d9bf0]/25 hover:shadow-lg hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5">
+              Log In
             </Link>
           </div>
         </div>

@@ -7,6 +7,7 @@ import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
 import { detectPaywallTruncation } from "@/lib/paywall-detection"
 import { screenContent, detectAiRefusal, persistFlag } from "@/lib/content-screening"
 import { submitPodcastTranscription } from "@/lib/assemblyai"
+import { authenticateRequest } from "@/lib/auth"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -1386,6 +1387,18 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Authentication: accept either session auth (browser) or internal service token (server-to-server)
+  const authHeader = req.headers.get("authorization")
+  const isInternalCall = authHeader === `Bearer ${supabaseKey}`
+  let authenticatedUserId: string | null = null
+
+  if (!isInternalCall) {
+    // Browser call — require session auth
+    const auth = await authenticateRequest()
+    if (!auth.success) return auth.response
+    authenticatedUserId = auth.user.id
+  }
+
   // Clear prompts cache for fresh prompts each processing batch
   clearPromptsCache()
 
@@ -1418,7 +1431,12 @@ export async function POST(req: NextRequest) {
 
   if (fetchError || !content) {
     console.error(`API: Error fetching content by ID ${content_id}:`, fetchError)
-    return NextResponse.json({ error: `Content with ID ${content_id} not found or error fetching.` }, { status: 404 })
+    return NextResponse.json({ error: "Content not found" }, { status: 404 })
+  }
+
+  // Verify ownership for browser calls (internal calls already authorized)
+  if (authenticatedUserId && content.user_id !== authenticatedUserId) {
+    return NextResponse.json({ error: "Access denied" }, { status: 403 })
   }
 
   console.log(`API: Found content: ${content.url}, type: ${content.type}`)
