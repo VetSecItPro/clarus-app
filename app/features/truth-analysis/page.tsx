@@ -2,13 +2,33 @@ import type { Metadata } from "next"
 import { FeaturePage } from "@/components/features/feature-page"
 
 export const metadata: Metadata = {
-  title: "AI Truth Analysis & Fact-Checking | Clarus",
+  title: "AI Fact-Checker — Automated Truth Analysis for Any Content | Clarus",
   description:
-    "Automatically fact-check claims in articles, videos, and podcasts. Clarus identifies what's fact, opinion, or unsupported with AI-powered truth analysis.",
+    "Fact-check any article, YouTube video, podcast, or PDF with AI. Clarus identifies verified facts, opinions, and misleading claims with evidence-based ratings. Free AI fact-checker.",
+  keywords: [
+    "ai fact checker",
+    "fact checking tool",
+    "truth analysis",
+    "claim verification",
+    "misinformation detection",
+    "content fact check",
+    "automated fact checking",
+  ],
   openGraph: {
-    title: "AI Truth Analysis & Fact-Checking | Clarus",
+    title: "AI Fact-Checker — Automated Truth Analysis | Clarus",
     description:
-      "Automatically fact-check claims in articles, videos, and podcasts with AI-powered truth analysis.",
+      "Fact-check any article, video, or podcast with AI. Identifies verified facts, opinions, and misleading claims.",
+    url: "https://clarusapp.io/features/truth-analysis",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "AI Fact-Checker | Clarus",
+    description:
+      "Automatically fact-check claims in articles, videos, and podcasts. Free to start.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/features/truth-analysis",
   },
 }
 

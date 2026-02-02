@@ -23,7 +23,7 @@ function getResend(): Resend {
 
 const FROM_EMAIL = "Clarus <noreply@clarusapp.io>"
 
-interface SendEmailResult {
+export interface SendEmailResult {
   success: boolean
   messageId?: string
   error?: string
@@ -32,7 +32,8 @@ interface SendEmailResult {
 async function sendEmail(
   to: string,
   subject: string,
-  html: string
+  html: string,
+  replyTo?: string
 ): Promise<SendEmailResult> {
   try {
     const resend = getResend()
@@ -41,6 +42,7 @@ async function sendEmail(
       to,
       subject,
       html,
+      ...(replyTo ? { replyTo } : {}),
     })
 
     if (error) {
@@ -160,4 +162,45 @@ export async function sendShareAnalysisEmail(
     })
   )
   return sendEmail(to, "Clarus - Someone Shared an Analysis With You", html)
+}
+
+// ==================== Contact Form ====================
+
+export async function sendContactFormEmail(
+  senderName: string,
+  senderEmail: string,
+  subject: string,
+  message: string
+): Promise<SendEmailResult> {
+  const CONTACT_RECIPIENT = "contact@steelmotionllc.com"
+
+  const escapedName = escapeHtml(senderName)
+  const escapedEmail = escapeHtml(senderEmail)
+  const escapedSubject = escapeHtml(subject)
+  const escapedMessage = escapeHtml(message)
+
+  const html = `
+    <div style="font-family: sans-serif; max-width: 600px;">
+      <h2 style="color: #1d9bf0;">New Contact Form Submission</h2>
+      <p><strong>From:</strong> ${escapedName} (${escapedEmail})</p>
+      <p><strong>Subject:</strong> ${escapedSubject}</p>
+      <hr style="border: 1px solid #eee;" />
+      <div style="white-space: pre-wrap; line-height: 1.6;">${escapedMessage}</div>
+      <hr style="border: 1px solid #eee;" />
+      <p style="color: #999; font-size: 12px;">
+        Sent via Clarus contact form. Reply directly to ${escapedEmail}.
+      </p>
+    </div>
+  `
+
+  return sendEmail(CONTACT_RECIPIENT, `[Clarus Contact] ${subject}`, html, senderEmail)
+}
+
+function escapeHtml(text: string): string {
+  return text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#x27;")
 }
