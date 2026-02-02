@@ -58,6 +58,7 @@ export async function GET(request: Request) {
     .select("content_id, brief_overview, triage")
     .in("content_id", contentIds)
     .eq("processing_status", "complete")
+    .eq("language", "en")
 
   // Step 3: Build anonymized trending items sorted by quality
   const trendingItems = sharedContent

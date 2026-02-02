@@ -19,6 +19,8 @@ import {
   type SuggestionAction,
 } from "@/components/chat"
 import { useChatSession } from "@/lib/hooks/use-chat-session"
+import { type AnalysisLanguage, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
+import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 
 const rotatingPrompts = [
   "What do you want to explore today?",
@@ -54,6 +56,20 @@ function HomePageContent({ session }: HomePageProps) {
   // Username state
   const [username, setUsername] = useState<string | null>(null)
 
+  // Language selector state — persisted to localStorage
+  const [analysisLanguage, setAnalysisLanguage] = useState<AnalysisLanguage>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY)
+      if (saved === "ar" || saved === "es" || saved === "fr" || saved === "de" || saved === "pt" || saved === "ja" || saved === "ko" || saved === "zh" || saved === "it" || saved === "nl") {
+        return saved
+      }
+    }
+    return "en"
+  })
+
+  // User tier for gating multi-language
+  const [multiLanguageEnabled, setMultiLanguageEnabled] = useState(false)
+
   // Track when we're navigating to /item/[id] to prevent chat view flash
   const [isNavigating, setIsNavigating] = useState(false)
 
@@ -79,43 +95,38 @@ function HomePageContent({ session }: HomePageProps) {
   } = useChatSession({
     userId,
     onContentCreated,
+    analysisLanguage,
   })
 
-  // Fetch username - try DB name first, fall back to auth metadata
+  // Fetch username and tier
   useEffect(() => {
-    const fetchUsername = async () => {
+    const fetchUserData = async () => {
       if (!session?.user) return
 
-      // 1. Check the users table for a custom display name
       const { data } = await supabase
         .from("users")
-        .select("name")
+        .select("name, tier, day_pass_expires_at")
         .eq("id", session.user.id)
         .single()
 
+      // Username
       if (data?.name) {
         setUsername(data.name)
-        return
+      } else {
+        const meta = session.user.user_metadata
+        const authName = meta?.full_name || meta?.name || null
+        if (authName && typeof authName === "string") {
+          setUsername(authName.split(" ")[0])
+        } else if (session.user.email) {
+          setUsername(session.user.email.split("@")[0])
+        }
       }
 
-      // 2. Fall back to auth metadata (Google OAuth provides full_name)
-      const meta = session.user.user_metadata
-      const authName = meta?.full_name || meta?.name || null
-      if (authName && typeof authName === "string") {
-        // Use first name only for a friendlier greeting
-        const firstName = authName.split(" ")[0]
-        setUsername(firstName)
-        return
-      }
-
-      // 3. Last resort: use the part before @ in the email
-      const email = session.user.email
-      if (email) {
-        const localPart = email.split("@")[0]
-        setUsername(localPart)
-      }
+      // Tier — determine if multi-language is enabled
+      const tier = normalizeTier(data?.tier, data?.day_pass_expires_at)
+      setMultiLanguageEnabled(TIER_FEATURES[tier].multiLanguageAnalysis)
     }
-    fetchUsername()
+    fetchUserData()
   }, [session])
 
   // Random prompt
@@ -130,6 +141,14 @@ function HomePageContent({ session }: HomePageProps) {
     if (hour < 17) return "Good afternoon"
     return "Good evening"
   }, [])
+
+  // Handle language change
+  const onLanguageChange = (lang: AnalysisLanguage) => {
+    setAnalysisLanguage(lang)
+    if (typeof window !== "undefined") {
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, lang)
+    }
+  }
 
   // Handle suggestion selection
   const onSuggestionSelect = (action: SuggestionAction) => {
@@ -214,6 +233,9 @@ function HomePageContent({ session }: HomePageProps) {
                 placeholder="Paste any URL or upload a PDF..."
                 disabled={!userId}
                 isProcessing={isLoading}
+                analysisLanguage={analysisLanguage}
+                onLanguageChange={onLanguageChange}
+                multiLanguageEnabled={multiLanguageEnabled}
               />
             </motion.div>
 

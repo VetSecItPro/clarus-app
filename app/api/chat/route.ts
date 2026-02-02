@@ -222,10 +222,12 @@ export async function POST(req: NextRequest) {
     }
 
     // Fetch summary data (including action_items for grounded chat)
+    // Default to English analysis for chat context; user's chat language is auto-detected
     const { data: summaryData } = await supabaseAdmin
       .from("summaries")
       .select("brief_overview, mid_length_summary, detailed_summary, triage, truth_check, action_items")
       .eq("content_id", contentIdValidation.sanitized!)
+      .eq("language", "en")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()
@@ -363,6 +365,7 @@ You are grounded in the analysis above. Your primary job is to help users unders
 5. **Be concise** — users want quick, actionable answers
 6. **If the content contains errors or questionable claims**, point them out based on the Accuracy Analysis data
 7. **For follow-up questions** about topics beyond the analysis, use web search if available
+8. **Language:** Always respond in the same language the user writes in. If they write in Spanish, respond entirely in Spanish. If they write in Arabic, respond in Arabic. Default to English if the language is ambiguous.
 
 ## Response Style
 - Use **bold** for key terms and important points

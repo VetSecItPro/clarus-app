@@ -1,39 +1,76 @@
-name: Deploy to Vercel
+name: Deploy Production
 
 on:
-  # Triggers after CI workflow completes successfully on main
-  workflow_run:
-    workflows: ["CI"]
-    types: [completed]
+  push:
     branches: [main]
-  # Allow manual deployment
   workflow_dispatch:
+
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false # NEVER cancel in-progress deploys
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9'
 
 jobs:
   deploy:
-    name: Deploy Production
+    name: Deploy to Vercel Production
     runs-on: ubuntu-latest
-    # Only deploy if CI was successful (or if manually triggered)
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
-
+    environment: production
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
+      - uses: actions/checkout@v4
 
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v25
+      - uses: pnpm/action-setup@v4
         with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.VERCEL_ORG_ID }}
-          vercel-project-id: ${{ secrets.VERCEL_PROJECT_ID }}
-          vercel-args: '--prod'
-          working-directory: ./
+          version: ${{ env.PNPM_VERSION }}
 
-      - name: Deployment Status
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Install Vercel CLI
+        run: pnpm add -g vercel@latest
+
+      - name: Pull Vercel environment
+        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build
+        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy to production
+        id: deploy
+        run: |
+          URL=$(vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
+          echo "url=$URL" >> $GITHUB_OUTPUT
+          echo "Deployed to: $URL"
+
+      - name: Health check
+        run: |
+          PROD_URL="https://clarusapp.io"
+          echo "Checking $PROD_URL..."
+          # Wait for deployment to propagate
+          sleep 10
+          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL" --max-time 30 || echo "000")
+          echo "HTTP Status: $HTTP_STATUS"
+          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
+            echo "Health check passed ($HTTP_STATUS)"
+          else
+            echo "::warning::Health check returned $HTTP_STATUS — deployment may still be propagating"
+          fi
+
+      - name: Deployment summary
         if: always()
         run: |
-          if [ "${{ job.status }}" == "success" ]; then
-            echo "✅ Deployed successfully to production!"
+          echo "## Deployment" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "**Status:** Deployed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "**URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
+            echo "**Production:** https://clarusapp.io" >> $GITHUB_STEP_SUMMARY
           else
-            echo "❌ Deployment failed. Check logs above."
+            echo "**Status:** Deployment failed" >> $GITHUB_STEP_SUMMARY
+            echo "Check logs above for details." >> $GITHUB_STEP_SUMMARY
           fi

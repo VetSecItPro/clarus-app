@@ -43,6 +43,7 @@ export default async function SharePage({ params }: PageProps) {
     .from("summaries")
     .select("brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status")
     .eq("content_id", content.id)
+    .eq("language", "en")
     .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle()

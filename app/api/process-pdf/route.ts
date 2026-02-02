@@ -148,6 +148,7 @@ export async function POST(req: NextRequest) {
 
     const formData = await req.formData()
     const file = formData.get("file") as File | null
+    const analysisLanguage = (formData.get("language") as string) || "en"
 
     if (!file) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 })
@@ -287,6 +288,7 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({
           content_id: contentId,
           skipScraping: true, // We already have the text
+          language: analysisLanguage,
         }),
       }
     )

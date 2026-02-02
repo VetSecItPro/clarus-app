@@ -1,12 +1,11 @@
 version: 2
 updates:
-  # JavaScript/Node dependencies
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
       interval: "weekly"
       day: "monday"
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 10
     groups:
       minor-and-patch:
         patterns:
@@ -15,11 +14,9 @@ updates:
           - "minor"
           - "patch"
     ignore:
-      # Ignore major version updates for stability
       - dependency-name: "*"
         update-types: ["version-update:semver-major"]
 
-  # GitHub Actions
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:

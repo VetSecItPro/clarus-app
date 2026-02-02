@@ -85,10 +85,11 @@ export async function POST(req: NextRequest) {
         {
           content_id: content.id,
           user_id: content.user_id!,
+          language: "en",
           processing_status: "error",
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "content_id" },
+        { onConflict: "content_id,language" },
       )
 
     return NextResponse.json({ success: false, message: "Transcription failed" })
@@ -111,10 +112,11 @@ export async function POST(req: NextRequest) {
         {
           content_id: content.id,
           user_id: content.user_id!,
+          language: "en",
           processing_status: "error",
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "content_id" },
+        { onConflict: "content_id,language" },
       )
 
     return NextResponse.json({ success: false, message: "Empty transcript" })
@@ -190,11 +192,12 @@ export async function POST(req: NextRequest) {
         {
           content_id: content.id,
           user_id: content.user_id!,
+          language: "en",
           processing_status: "error",
           brief_overview: "Transcription completed but analysis failed to start. Please try regenerating.",
           updated_at: new Date().toISOString(),
         },
-        { onConflict: "content_id" },
+        { onConflict: "content_id,language" },
       )
   }
 

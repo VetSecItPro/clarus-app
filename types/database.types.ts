@@ -261,6 +261,7 @@ export interface Database {
           podcast_transcript_id: string | null
           detected_tone: string | null
           regeneration_count: number | null
+          analysis_language: string | null
         }
         Insert: {
           author?: string | null
@@ -286,6 +287,7 @@ export interface Database {
           podcast_transcript_id?: string | null
           detected_tone?: string | null
           regeneration_count?: number | null
+          analysis_language?: string | null
         }
         Update: {
           author?: string | null
@@ -311,6 +313,7 @@ export interface Database {
           podcast_transcript_id?: string | null
           detected_tone?: string | null
           regeneration_count?: number | null
+          analysis_language?: string | null
         }
         Relationships: [
           {
@@ -521,6 +524,7 @@ export interface Database {
           mid_length_summary: string | null // Legacy, kept for compatibility
           detailed_summary: string | null
           processing_status: string | null // ProcessingStatus
+          language: string // ISO 639-1 code, default 'en'
         }
         Insert: {
           id?: string
@@ -536,6 +540,7 @@ export interface Database {
           mid_length_summary?: string | null
           detailed_summary?: string | null
           processing_status?: string | null
+          language?: string
         }
         Update: {
           id?: string
@@ -551,6 +556,7 @@ export interface Database {
           mid_length_summary?: string | null
           detailed_summary?: string | null
           processing_status?: string | null
+          language?: string
         }
         Relationships: [
           {

@@ -1,16 +1,29 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Home, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
+import { supabase } from "@/lib/supabase"
+import { getCachedSession } from "@/components/with-auth"
+import { normalizeTier } from "@/lib/tier-limits"
+import { InstantTooltip } from "@/components/ui/tooltip"
+import type { UserTier } from "@/types/database.types"
 
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Clock },
 ]
+
+const TIER_BADGE_CONFIG: Record<UserTier, { label: string; bg: string; text: string; border: string } | null> = {
+  free: { label: "Free", bg: "bg-white/[0.06]", text: "text-white/50", border: "border-white/[0.08]" },
+  starter: { label: "Starter", bg: "bg-[#1d9bf0]/10", text: "text-[#1d9bf0]", border: "border-[#1d9bf0]/20" },
+  pro: { label: "Pro", bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/20" },
+  day_pass: { label: "Day Pass", bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20" },
+}
 
 interface SiteHeaderProps {
   showNav?: boolean
@@ -19,6 +32,42 @@ interface SiteHeaderProps {
 
 export default function SiteHeader({ showNav = true, showSettings = true }: SiteHeaderProps) {
   const pathname = usePathname()
+  const [userTier, setUserTier] = useState<UserTier | null>(null)
+
+  useEffect(() => {
+    const fetchTier = async () => {
+      const { session } = getCachedSession()
+      if (!session?.user) {
+        // Try getting session directly if cache isn't ready
+        const { data: { session: freshSession } } = await supabase.auth.getSession()
+        if (!freshSession?.user) return
+
+        const { data } = await supabase
+          .from("users")
+          .select("tier, day_pass_expires_at")
+          .eq("id", freshSession.user.id)
+          .single()
+
+        if (data) {
+          setUserTier(normalizeTier(data.tier, data.day_pass_expires_at))
+        }
+        return
+      }
+
+      const { data } = await supabase
+        .from("users")
+        .select("tier, day_pass_expires_at")
+        .eq("id", session.user.id)
+        .single()
+
+      if (data) {
+        setUserTier(normalizeTier(data.tier, data.day_pass_expires_at))
+      }
+    }
+    fetchTier()
+  }, [])
+
+  const badgeConfig = userTier ? TIER_BADGE_CONFIG[userTier] : null
 
   return (
     <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-white/[0.06] hidden sm:block">
@@ -41,6 +90,23 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
               Clarus
             </span>
           </Link>
+
+          {/* Tier badge */}
+          {badgeConfig && (
+            <InstantTooltip content="View plans">
+              <Link
+                href="/pricing"
+                className={cn(
+                  "ml-2.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border transition-opacity hover:opacity-80",
+                  badgeConfig.bg,
+                  badgeConfig.text,
+                  badgeConfig.border
+                )}
+              >
+                {badgeConfig.label}
+              </Link>
+            </InstantTooltip>
+          )}
 
           {/* Navigation - absolutely centered */}
           {showNav && (
