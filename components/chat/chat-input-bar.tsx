@@ -22,6 +22,9 @@ import { getYouTubeVideoId, isXUrl, isPodcastUrl, getDomainFromUrl } from "@/lib
 import { useSpeechToText } from "@/lib/hooks/use-speech"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
+import { LanguageSelector } from "@/components/ui/language-selector"
+import { InstantTooltip } from "@/components/ui/tooltip"
+import type { AnalysisLanguage } from "@/lib/languages"
 
 /** Allowed file upload types: extension → MIME types */
 const ALLOWED_FILE_TYPES: Record<string, string[]> = {
@@ -70,6 +73,12 @@ interface ChatInputBarProps {
   disabled?: boolean
   isProcessing?: boolean
   showFileUpload?: boolean
+  /** Current analysis language */
+  analysisLanguage?: AnalysisLanguage
+  /** Callback when language changes */
+  onLanguageChange?: (language: AnalysisLanguage) => void
+  /** Whether user has multi-language unlocked (paid tier) */
+  multiLanguageEnabled?: boolean
 }
 
 export function ChatInputBar({
@@ -81,6 +90,9 @@ export function ChatInputBar({
   disabled = false,
   isProcessing = false,
   showFileUpload = true,
+  analysisLanguage,
+  onLanguageChange,
+  multiLanguageEnabled = false,
 }: ChatInputBarProps) {
   const [inputValue, setInputValue] = useState("")
   const [urlPreview, setUrlPreview] = useState<UrlPreview | null>(null)
@@ -186,7 +198,7 @@ export function ChatInputBar({
     }
   }
 
-  // Auto-analyze when a valid URL is pasted
+  // Show preview chip when a valid URL is pasted (user must click send or press Enter)
   const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     if (mode === "chat-only") return
 
@@ -206,15 +218,9 @@ export function ChatInputBar({
     else if (isPodcastUrl(validUrl)) type = "podcast"
     const favicon = `https://www.google.com/s2/favicons?domain=${domain}&sz=32`
 
-    // Show URL in input with preview chip so the user sees visual confirmation
+    // Show URL in input with preview chip — wait for user to submit
     setInputValue(pastedText)
     setUrlPreview({ url: validUrl, domain, type, favicon })
-
-    // Brief pause for visual feedback, then auto-submit
-    setTimeout(() => {
-      toast.success("URL detected — starting analysis...")
-      onSubmitUrl(validUrl, { url: validUrl, domain, type, favicon })
-    }, 400)
   }
 
   const clearInput = () => {
@@ -301,7 +307,7 @@ export function ChatInputBar({
 
   return (
     <div className="w-full flex justify-center px-4 py-3">
-      <div className="w-full" style={{ maxWidth: "680px" }}>
+      <div className="w-full" style={{ maxWidth: "760px" }}>
         {/* URL Preview */}
         <AnimatePresence>
           {isUrlMode && (
@@ -472,64 +478,81 @@ export function ChatInputBar({
 
           {/* File upload button - before send */}
           {showFileUpload && onSubmitFile && mode !== "chat-only" && (
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
+            <InstantTooltip content="Upload file">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={disabled || isProcessing}
+                className={cn(
+                  "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0",
+                  selectedFile
+                    ? "bg-orange-500/20 text-orange-400"
+                    : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+                )}
+                aria-label="Upload file"
+              >
+                <FileUp className="w-4 h-4" />
+              </button>
+            </InstantTooltip>
+          )}
+
+          {/* Language selector — before mic, only in url-only mode */}
+          {analysisLanguage && onLanguageChange && mode !== "chat-only" && (
+            <LanguageSelector
+              value={analysisLanguage}
+              onValueChange={onLanguageChange}
+              multiLanguageEnabled={multiLanguageEnabled}
               disabled={disabled || isProcessing}
-              className={cn(
-                "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0",
-                selectedFile
-                  ? "bg-orange-500/20 text-orange-400"
-                  : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
-              )}
-              aria-label="Upload file"
-            >
-              <FileUp className="w-4 h-4" />
-            </button>
+              compact
+            />
           )}
 
           {/* Microphone button - before send */}
           {sttSupported && (
-            <button
-              type="button"
-              onClick={isListening ? stopListening : startListening}
-              disabled={disabled || isProcessing}
-              className={cn(
-                "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 relative",
-                isListening
-                  ? "bg-red-500 hover:bg-red-600 text-white"
-                  : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
-              )}
-              aria-label={isListening ? "Stop recording" : "Start voice input"}
-            >
-              {isListening ? (
-                <>
-                  <span className="absolute inset-0 rounded-lg bg-red-500 animate-ping opacity-30" />
-                  <Square className="w-3.5 h-3.5 relative z-10 fill-white" />
-                </>
-              ) : (
-                <Mic className="w-4 h-4" />
-              )}
-            </button>
+            <InstantTooltip content={isListening ? "Stop recording" : "Voice input"}>
+              <button
+                type="button"
+                onClick={isListening ? stopListening : startListening}
+                disabled={disabled || isProcessing}
+                className={cn(
+                  "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 relative",
+                  isListening
+                    ? "bg-red-500 hover:bg-red-600 text-white"
+                    : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+                )}
+                aria-label={isListening ? "Stop recording" : "Start voice input"}
+              >
+                {isListening ? (
+                  <>
+                    <span className="absolute inset-0 rounded-lg bg-red-500 animate-ping opacity-30" />
+                    <Square className="w-3.5 h-3.5 relative z-10 fill-white" />
+                  </>
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
+              </button>
+            </InstantTooltip>
           )}
 
           {/* Send button */}
-          <button
-            onClick={handleSubmit}
-            disabled={!canSubmit}
-            className={cn(
-              "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
-              canSubmit
-                ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
-                : "text-white/30"
-            )}
-          >
-            {isProcessing ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </button>
+          <InstantTooltip content={isUrlMode ? "Analyze" : "Send"}>
+            <button
+              onClick={handleSubmit}
+              disabled={!canSubmit}
+              className={cn(
+                "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
+                canSubmit
+                  ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
+                  : "text-white/30"
+              )}
+            >
+              {isProcessing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </button>
+          </InstantTooltip>
         </div>
 
         {/* Helper text and character count */}

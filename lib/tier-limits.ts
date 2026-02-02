@@ -120,6 +120,7 @@ export const TIER_FEATURES: Record<UserTier, {
   weeklyDigest: boolean
   claimTracking: boolean
   priorityProcessing: boolean
+  multiLanguageAnalysis: boolean
 }> = {
   free: {
     shareLinks: false,
@@ -127,6 +128,7 @@ export const TIER_FEATURES: Record<UserTier, {
     weeklyDigest: false,
     claimTracking: false,
     priorityProcessing: false,
+    multiLanguageAnalysis: false,
   },
   starter: {
     shareLinks: true,
@@ -134,6 +136,7 @@ export const TIER_FEATURES: Record<UserTier, {
     weeklyDigest: true,
     claimTracking: true,
     priorityProcessing: false,
+    multiLanguageAnalysis: true,
   },
   pro: {
     shareLinks: true,
@@ -141,6 +144,7 @@ export const TIER_FEATURES: Record<UserTier, {
     weeklyDigest: true,
     claimTracking: true,
     priorityProcessing: true,
+    multiLanguageAnalysis: true,
   },
   day_pass: {
     shareLinks: true,
@@ -148,5 +152,6 @@ export const TIER_FEATURES: Record<UserTier, {
     weeklyDigest: false,
     claimTracking: true,
     priorityProcessing: false,
+    multiLanguageAnalysis: true,
   },
 }
