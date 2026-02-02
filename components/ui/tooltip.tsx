@@ -26,4 +26,29 @@ const TooltipContent = React.forwardRef<
 ))
 TooltipContent.displayName = TooltipPrimitive.Content.displayName
 
-export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider }
+/**
+ * Self-contained instant tooltip — wraps children with its own Provider.
+ * No need for a global TooltipProvider in the layout.
+ */
+function InstantTooltip({
+  children,
+  content,
+  side = "top",
+  delayDuration = 0,
+}: {
+  children: React.ReactNode
+  content: React.ReactNode
+  side?: "top" | "bottom" | "left" | "right"
+  delayDuration?: number
+}) {
+  return (
+    <TooltipProvider delayDuration={delayDuration}>
+      <Tooltip>
+        <TooltipTrigger asChild>{children}</TooltipTrigger>
+        <TooltipContent side={side}>{content}</TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  )
+}
+
+export { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider, InstantTooltip }
