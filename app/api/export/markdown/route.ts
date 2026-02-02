@@ -60,11 +60,13 @@ export async function GET(request: Request) {
 
     const content = ownership.content
 
-    // Fetch summary
+    // Fetch summary (filter by language if provided)
+    const lang = searchParams.get("language") || "en"
     const { data: summary } = await auth.supabase
       .from("summaries")
       .select("*")
       .eq("content_id", contentId)
+      .eq("language", lang)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle()

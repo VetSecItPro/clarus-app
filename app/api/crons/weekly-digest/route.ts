@@ -58,6 +58,7 @@ export async function GET(request: Request) {
       .from("summaries")
       .select("content_id, triage")
       .eq("processing_status", "complete")
+      .eq("language", "en")
       .gte("created_at", sevenDaysAgo),
   ])
 

@@ -7,6 +7,7 @@ import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import type { ChatMessageData, ChatMessageType } from "@/components/chat"
 import type { TriageData, TruthCheckData } from "@/types/database.types"
+import type { AnalysisLanguage } from "@/lib/languages"
 
 export type ChatSessionState =
   | "idle" // No content loaded, waiting for URL
@@ -35,6 +36,8 @@ interface UseChatSessionOptions {
   userId: string | null
   initialContentId?: string
   onContentCreated?: (contentId: string) => void
+  /** Analysis language for content processing */
+  analysisLanguage?: AnalysisLanguage
 }
 
 interface UrlMeta {
@@ -48,6 +51,7 @@ export function useChatSession({
   userId,
   initialContentId,
   onContentCreated,
+  analysisLanguage = "en",
 }: UseChatSessionOptions) {
   const [state, setState] = useState<ChatSessionState>(
     initialContentId ? "processing" : "idle"
@@ -117,93 +121,6 @@ export function useChatSession({
     setMessages((prev) => [...prev, message])
   }, [])
 
-  // Submit a URL for analysis
-  const submitUrl = useCallback(
-    async (url: string, urlMeta: UrlMeta) => {
-      if (!userId) {
-        toast.error("Please sign in to continue")
-        return
-      }
-
-      setState("processing")
-
-      // Add user message showing the URL
-      addMessage({
-        id: `user-url-${Date.now()}`,
-        type: "user-url",
-        content: url,
-        url,
-        urlMeta,
-        timestamp: new Date(),
-      })
-
-      try {
-        // Fetch title (with timeout)
-        let contentTitle: string | null = null
-        try {
-          const titleResponse = await fetch("/api/fetch-title", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url, type: urlMeta.type }),
-          })
-          if (titleResponse.ok) {
-            const titleData = await titleResponse.json()
-            contentTitle = titleData.title
-          }
-        } catch {
-          console.warn("Title fetch failed, using placeholder")
-        }
-
-        const title =
-          contentTitle ||
-          `Analyzing: ${url.substring(0, 50)}${url.length > 50 ? "..." : ""}`
-
-        // Create content record
-        const { data: newContent, error: insertError } = await supabase
-          .from("content")
-          .insert([
-            { url, type: urlMeta.type, user_id: userId, title, full_text: null },
-          ])
-          .select("id")
-          .single()
-
-        if (insertError || !newContent) {
-          toast.error("Failed to start analysis")
-          setState("idle")
-          return
-        }
-
-        setContentId(newContent.id)
-        onContentCreated?.(newContent.id)
-
-        // Start background processing (non-blocking)
-        fetch("/api/process-content", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content_id: newContent.id }),
-        }).then(async (res) => {
-          if (res.status === 403) {
-            const data = await res.json().catch(() => ({}))
-            if (data.upgrade_required) {
-              toast.error("Analysis limit reached", {
-                description: data.error || "Upgrade your plan for more analyses.",
-                action: { label: "View Plans", onClick: () => window.open("/pricing", "_blank") },
-              })
-            }
-          }
-        }).catch(console.error)
-
-        // Start polling for status
-        startPolling(newContent.id)
-      } catch {
-        toast.error("Something went wrong")
-        setState("idle")
-      }
-    },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [userId, addMessage, onContentCreated]
-  )
-
   // Poll for content status
   const startPolling = useCallback((id: string) => {
     // Clear any existing polling
@@ -219,7 +136,8 @@ export function useChatSession({
       pollCountRef.current++
 
       try {
-        const response = await fetch(`/api/content-status/${id}`)
+        const langParam = analysisLanguage !== "en" ? `?language=${analysisLanguage}` : ""
+        const response = await fetch(`/api/content-status/${id}${langParam}`)
         if (!response.ok) {
           // Check for specific errors
           if (response.status === 404) {
@@ -297,7 +215,151 @@ export function useChatSession({
     // Poll immediately, then every 2 seconds
     poll()
     pollingRef.current = setInterval(poll, 2000)
-  }, [])
+  }, [analysisLanguage])
+
+  // Submit a URL for analysis
+  const submitUrl = useCallback(
+    async (url: string, urlMeta: UrlMeta) => {
+      if (!userId) {
+        toast.error("Please sign in to continue")
+        return
+      }
+
+      setState("processing")
+
+      // Add user message showing the URL
+      addMessage({
+        id: `user-url-${Date.now()}`,
+        type: "user-url",
+        content: url,
+        url,
+        urlMeta,
+        timestamp: new Date(),
+      })
+
+      try {
+        // Check if user already has this URL analyzed (reuse content record to skip re-scraping)
+        const { data: existingContent } = await supabase
+          .from("content")
+          .select("id, full_text, title")
+          .eq("url", url)
+          .eq("user_id", userId)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle()
+
+        // If existing content has full_text, check if a summary in this language already exists
+        if (existingContent?.full_text) {
+          const { data: existingSummary } = await supabase
+            .from("summaries")
+            .select("processing_status")
+            .eq("content_id", existingContent.id)
+            .eq("language", analysisLanguage)
+            .maybeSingle()
+
+          if (existingSummary?.processing_status === "complete") {
+            // Already analyzed in this language — navigate directly
+            setContentId(existingContent.id)
+            onContentCreated?.(existingContent.id)
+            setState("idle")
+            return
+          }
+
+          // Content exists with full_text but no summary in this language — reuse it
+          // Update analysis_language on the content record
+          await supabase
+            .from("content")
+            .update({ analysis_language: analysisLanguage })
+            .eq("id", existingContent.id)
+
+          setContentId(existingContent.id)
+          onContentCreated?.(existingContent.id)
+
+          // Trigger analysis in the new language (will skip scraping since full_text exists)
+          fetch("/api/process-content", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ content_id: existingContent.id, language: analysisLanguage }),
+          }).then(async (res) => {
+            if (res.status === 403) {
+              const data = await res.json().catch(() => ({}))
+              if (data.upgrade_required) {
+                toast.error("Analysis limit reached", {
+                  description: data.error || "Upgrade your plan for more analyses.",
+                  action: { label: "View Plans", onClick: () => window.open("/pricing", "_blank") },
+                })
+              }
+            }
+          }).catch(console.error)
+
+          startPolling(existingContent.id)
+          return
+        }
+
+        // No existing content — fetch title and create new record
+        let contentTitle: string | null = null
+        try {
+          const titleResponse = await fetch("/api/fetch-title", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ url, type: urlMeta.type }),
+          })
+          if (titleResponse.ok) {
+            const titleData = await titleResponse.json()
+            contentTitle = titleData.title
+          }
+        } catch {
+          console.warn("Title fetch failed, using placeholder")
+        }
+
+        const title =
+          contentTitle ||
+          `Analyzing: ${url.substring(0, 50)}${url.length > 50 ? "..." : ""}`
+
+        // Create content record
+        const { data: newContent, error: insertError } = await supabase
+          .from("content")
+          .insert([
+            { url, type: urlMeta.type, user_id: userId, title, full_text: null, analysis_language: analysisLanguage },
+          ])
+          .select("id")
+          .single()
+
+        if (insertError || !newContent) {
+          toast.error("Failed to start analysis")
+          setState("idle")
+          return
+        }
+
+        setContentId(newContent.id)
+        onContentCreated?.(newContent.id)
+
+        // Start background processing (non-blocking)
+        fetch("/api/process-content", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content_id: newContent.id, language: analysisLanguage }),
+        }).then(async (res) => {
+          if (res.status === 403) {
+            const data = await res.json().catch(() => ({}))
+            if (data.upgrade_required) {
+              toast.error("Analysis limit reached", {
+                description: data.error || "Upgrade your plan for more analyses.",
+                action: { label: "View Plans", onClick: () => window.open("/pricing", "_blank") },
+              })
+            }
+          }
+        }).catch(console.error)
+
+        // Start polling for status
+        startPolling(newContent.id)
+      } catch {
+        toast.error("Something went wrong")
+        setState("idle")
+      }
+    },
+    [userId, addMessage, onContentCreated, startPolling, analysisLanguage]
+  )
 
   // Handle suggestion button clicks
   const handleSuggestion = useCallback(
@@ -330,7 +392,8 @@ export function useChatSession({
           } else {
             // Fetch if not loaded yet
             try {
-              const response = await fetch(`/api/content-status/${contentId}`)
+              const langParam = analysisLanguage !== "en" ? `?language=${analysisLanguage}` : ""
+              const response = await fetch(`/api/content-status/${contentId}${langParam}`)
               if (response.ok) {
                 const data: ContentStatus = await response.json()
                 if (data.detailed_summary) {
@@ -393,7 +456,7 @@ export function useChatSession({
           break
       }
     },
-    [contentStatus, contentId, addMessage]
+    [contentStatus, contentId, addMessage, analysisLanguage]
   )
 
   // Send a chat message
@@ -463,7 +526,8 @@ export function useChatSession({
 
       try {
         // Fetch content status
-        const response = await fetch(`/api/content-status/${id}`)
+        const langParam = analysisLanguage !== "en" ? `?language=${analysisLanguage}` : ""
+        const response = await fetch(`/api/content-status/${id}${langParam}`)
         if (!response.ok) {
           toast.error("Content not found")
           setState("idle")
@@ -530,7 +594,7 @@ export function useChatSession({
         setState("idle")
       }
     },
-    [userId, startPolling]
+    [userId, startPolling, analysisLanguage]
   )
 
   // Cleanup polling on unmount
@@ -561,7 +625,7 @@ export function useChatSession({
       await fetch("/api/process-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content_id: contentId, force_regenerate: true }),
+        body: JSON.stringify({ content_id: contentId, force_regenerate: true, language: analysisLanguage }),
       })
 
       // Start polling again
@@ -570,7 +634,7 @@ export function useChatSession({
       console.error("Retry error:", error)
       setAnalysisError("Failed to retry analysis. Please try again.")
     }
-  }, [contentId, startPolling])
+  }, [contentId, startPolling, analysisLanguage])
 
   // Submit a PDF for analysis
   const submitPdf = useCallback(
@@ -600,6 +664,9 @@ export function useChatSession({
         const formData = new FormData()
         formData.append("file", file)
         formData.append("userId", userId)
+        if (analysisLanguage !== "en") {
+          formData.append("language", analysisLanguage)
+        }
 
         const response = await fetch("/api/process-pdf", {
           method: "POST",
@@ -625,7 +692,7 @@ export function useChatSession({
         setState("idle")
       }
     },
-    [userId, addMessage, onContentCreated, startPolling]
+    [userId, addMessage, onContentCreated, startPolling, analysisLanguage]
   )
 
   // Get streaming message from AI SDK

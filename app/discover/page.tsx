@@ -84,6 +84,7 @@ async function getDiscoverItems(): Promise<DiscoverItem[]> {
     .select("content_id, brief_overview, triage")
     .in("content_id", contentIds)
     .eq("processing_status", "complete")
+    .eq("language", "en")
 
   return sharedContent
     .map(content => {

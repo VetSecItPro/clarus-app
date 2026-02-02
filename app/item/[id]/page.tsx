@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { useIsDesktop } from "@/lib/hooks/use-media-query"
 import type { Session } from "@supabase/supabase-js"
+import { type AnalysisLanguage, getLanguageConfig, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
 
 // Dynamic imports for below-fold and conditional components (reduces initial bundle)
 const InlineChat = dynamic(() => import("@/components/inline-chat").then(m => ({ default: m.InlineChat })), { ssr: false })
@@ -128,6 +129,18 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   const isDesktop = useIsDesktop()
 
+  // Analysis language — read from content record or localStorage
+  const [analysisLanguage] = useState<AnalysisLanguage>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY)
+      if (saved && ["ar","es","fr","de","pt","ja","ko","zh","it","nl"].includes(saved)) {
+        return saved as AnalysisLanguage
+      }
+    }
+    return "en"
+  })
+  const langConfig = getLanguageConfig(analysisLanguage)
+
   const isContentProcessing = useCallback((content: ContentWithSummary | null): boolean => {
     if (!content) return true
     const hasPlaceholderTitle = content.title?.startsWith("Analyzing:")
@@ -164,7 +177,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     fetch("/api/process-content", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ content_id: item.id, force_regenerate: true }),
+      body: JSON.stringify({ content_id: item.id, force_regenerate: true, language: analysisLanguage }),
     })
       .then(response => {
         if (!response.ok) throw new Error("Failed to regenerate")
@@ -178,7 +191,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       })
 
     setIsPolling(true)
-  }, [item, regenerationCount])
+  }, [item, regenerationCount, analysisLanguage])
 
   const handleToggleBookmark = useCallback(async () => {
     if (!item || isTogglingBookmark) return
@@ -218,7 +231,8 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const handleExport = useCallback(async (format: "pdf" | "markdown") => {
     if (!item) return
     try {
-      const response = await fetch(`/api/export/${format}?id=${item.id}`)
+      const langParam = analysisLanguage !== "en" ? `&language=${analysisLanguage}` : ""
+      const response = await fetch(`/api/export/${format}?id=${item.id}${langParam}`)
       if (response.status === 403) {
         const data = await response.json()
         if (data.upgrade_required) {
@@ -249,14 +263,14 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     } catch {
       toast.error("Export failed")
     }
-  }, [item, upgradeModal])
+  }, [item, upgradeModal, analysisLanguage])
 
   const fetchContentData = useCallback(async (showLoadingState = true) => {
     if (showLoadingState) setLoading(true)
 
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select("*").eq("id", contentId).single(),
-      supabase.from("summaries").select("*").eq("content_id", contentId).order("created_at", { ascending: false }).limit(1).maybeSingle()
+      supabase.from("summaries").select("*").eq("content_id", contentId).eq("language", analysisLanguage).order("created_at", { ascending: false }).limit(1).maybeSingle()
     ])
 
     if (contentResult.error) {
@@ -282,12 +296,12 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
     if (showLoadingState) setLoading(false)
     return combinedItem
-  }, [contentId])
+  }, [contentId, analysisLanguage])
 
   const pollContentAndUpdate = useCallback(async (): Promise<boolean> => {
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select("*").eq("id", contentId).single(),
-      supabase.from("summaries").select("*").eq("content_id", contentId).order("created_at", { ascending: false }).limit(1).maybeSingle(),
+      supabase.from("summaries").select("*").eq("content_id", contentId).eq("language", analysisLanguage).order("created_at", { ascending: false }).limit(1).maybeSingle(),
     ])
 
     if (!contentResult.data) return true
@@ -303,7 +317,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     const summaryNotComplete = !summaryResult.data?.processing_status || summaryResult.data.processing_status !== "complete"
 
     return hasPlaceholderTitle || noFullText || summaryNotComplete
-  }, [contentId])
+  }, [contentId, analysisLanguage])
 
   useEffect(() => {
     const initFetch = async () => {
@@ -550,7 +564,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   // Analysis cards content (shared between desktop right panel and mobile analysis tab)
   const analysisContent = (
-    <div className="space-y-6 sm:space-y-8">
+    <div className="space-y-6 sm:space-y-8" dir={langConfig.dir}>
       <AnalysisProgress
         processingStatus={summary?.processing_status ?? null}
         briefOverview={summary?.brief_overview ?? null}

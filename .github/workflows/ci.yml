@@ -4,12 +4,14 @@ on:
   pull_request:
     branches: [main]
 
-# Cancel in-progress runs when new commits are pushed
 concurrency:
-  group: ci-${{ github.head_ref }}
+  group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
 
 env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9'
+  # Placeholder env vars for build (real values in Vercel)
   NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
   NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
   SUPABASE_URL: https://placeholder.supabase.co
@@ -22,7 +24,7 @@ env:
   POLAR_ORGANIZATION_ID: placeholder-org-id
 
 jobs:
-  # Fast checks run in parallel
+  # ─── Fast quality gate (lint + typecheck) ───
   quality:
     name: Lint & Type Check
     runs-on: ubuntu-latest
@@ -30,15 +32,16 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
       - run: pnpm typecheck
 
+  # ─── Security scanning ───
   security:
     name: Security Audit
     runs-on: ubuntu-latest
@@ -46,48 +49,93 @@ jobs:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm audit --audit-level=high
+
+      - name: Dependency audit
+        run: pnpm audit --audit-level=high
         continue-on-error: true
 
-  # Build verification
+      - name: Secret pattern scan
+        run: |
+          echo "Scanning for leaked secrets in source..."
+          PATTERNS='sk_live_|sk_test_|AKIA[0-9A-Z]{16}|-----BEGIN (RSA |EC )?PRIVATE KEY|ghp_[a-zA-Z0-9]{36}|glpat-[a-zA-Z0-9\-]{20}'
+          MATCHES=$(grep -rn --include="*.ts" --include="*.tsx" --include="*.js" --include="*.jsx" --include="*.json" -E "$PATTERNS" . \
+            --exclude-dir=node_modules --exclude-dir=.next --exclude-dir=.git || true)
+          if [ -n "$MATCHES" ]; then
+            echo "::error::Potential secrets found in source code!"
+            echo "$MATCHES"
+            exit 1
+          fi
+          echo "No secrets detected."
+
+      - name: Semgrep SAST
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/owasp-top-ten
+            p/nextjs
+        continue-on-error: true
+
+  # ─── Build (gates e2e, lighthouse, bundle-size) ───
   build:
     name: Build
     runs-on: ubuntu-latest
-    needs: [quality]
+    needs: quality
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
 
-  # E2E tests (builds independently for reliability)
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nextjs-build
+          path: |
+            .next
+            !.next/cache
+          retention-days: 1
+          include-hidden-files: true
+
+      - name: Build summary
+        run: |
+          echo "## Build Output" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+          du -sh .next/static/chunks/*.js 2>/dev/null | sort -rh | head -20 >> $GITHUB_STEP_SUMMARY || echo "No chunks found" >> $GITHUB_STEP_SUMMARY
+          echo '```' >> $GITHUB_STEP_SUMMARY
+
+  # ─── E2E tests (reuses build artifact) ───
   e2e:
     name: E2E Tests
     runs-on: ubuntu-latest
-    needs: [quality]
+    needs: build
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: .next
 
       - name: Cache Playwright
         uses: actions/cache@v4
@@ -98,32 +146,129 @@ jobs:
       - run: pnpm exec playwright install chromium --with-deps
       - run: pnpm test
 
-      - uses: actions/upload-artifact@v4
+      - name: Upload failure artifacts
+        uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
 
-  # Lighthouse (builds independently for reliability)
+  # ─── Lighthouse (reuses build artifact) ───
   lighthouse:
     name: Lighthouse Audit
     runs-on: ubuntu-latest
-    needs: [quality]
+    needs: build
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
         with:
-          version: 9
+          version: ${{ env.PNPM_VERSION }}
       - uses: actions/setup-node@v4
         with:
-          node-version: '20'
-          cache: 'pnpm'
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
       - run: pnpm install --frozen-lockfile
-      - run: pnpm build
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: .next
 
       - uses: treosh/lighthouse-ci-action@v12
         with:
           uploadArtifacts: true
           temporaryPublicStorage: true
           configPath: ./lighthouserc.json
+
+  # ─── Bundle size check (reuses build artifact) ───
+  bundle-size:
+    name: Bundle Size
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download build artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: nextjs-build
+          path: .next
+
+      - name: Check bundle sizes
+        run: |
+          echo "## Bundle Size Report" >> $GITHUB_STEP_SUMMARY
+          echo '| File | Size |' >> $GITHUB_STEP_SUMMARY
+          echo '|------|------|' >> $GITHUB_STEP_SUMMARY
+
+          WARN=0
+          FAIL=0
+
+          for f in $(find .next/static/chunks -name "*.js" -type f 2>/dev/null | sort); do
+            SIZE=$(stat -c%s "$f" 2>/dev/null || stat -f%z "$f" 2>/dev/null || echo "0")
+            SIZE_KB=$((SIZE / 1024))
+            NAME=$(basename "$f")
+
+            if [ "$SIZE_KB" -gt 750 ]; then
+              echo "| \`$NAME\` | **${SIZE_KB}KB** :x: |" >> $GITHUB_STEP_SUMMARY
+              FAIL=$((FAIL + 1))
+            elif [ "$SIZE_KB" -gt 500 ]; then
+              echo "| \`$NAME\` | **${SIZE_KB}KB** :warning: |" >> $GITHUB_STEP_SUMMARY
+              WARN=$((WARN + 1))
+            elif [ "$SIZE_KB" -gt 200 ]; then
+              echo "| \`$NAME\` | ${SIZE_KB}KB |" >> $GITHUB_STEP_SUMMARY
+            fi
+          done
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Chunks > 500KB: $WARN warnings, $FAIL failures" >> $GITHUB_STEP_SUMMARY
+
+          if [ "$FAIL" -gt 0 ]; then
+            echo "::error::$FAIL chunk(s) exceed 750KB limit"
+            exit 1
+          fi
+
+  # ─── Summary (always runs) ───
+  summary:
+    name: CI Summary
+    runs-on: ubuntu-latest
+    needs: [quality, security, build, e2e, lighthouse, bundle-size]
+    if: always()
+    steps:
+      - name: Evaluate results
+        run: |
+          echo "## CI Results" >> $GITHUB_STEP_SUMMARY
+          echo '| Job | Status |' >> $GITHUB_STEP_SUMMARY
+          echo '|-----|--------|' >> $GITHUB_STEP_SUMMARY
+
+          FAILED=0
+
+          check_job() {
+            local name="$1"
+            local result="$2"
+            if [ "$result" = "success" ]; then
+              echo "| $name | :white_check_mark: passed |" >> $GITHUB_STEP_SUMMARY
+            elif [ "$result" = "skipped" ]; then
+              echo "| $name | :fast_forward: skipped |" >> $GITHUB_STEP_SUMMARY
+            else
+              echo "| $name | :x: $result |" >> $GITHUB_STEP_SUMMARY
+              FAILED=$((FAILED + 1))
+            fi
+          }
+
+          check_job "Quality" "${{ needs.quality.result }}"
+          check_job "Security" "${{ needs.security.result }}"
+          check_job "Build" "${{ needs.build.result }}"
+          check_job "E2E Tests" "${{ needs.e2e.result }}"
+          check_job "Lighthouse" "${{ needs.lighthouse.result }}"
+          check_job "Bundle Size" "${{ needs.bundle-size.result }}"
+
+          if [ "$FAILED" -gt 0 ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo ":x: **$FAILED job(s) failed**" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
+
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo ":white_check_mark: **All checks passed**" >> $GITHUB_STEP_SUMMARY
