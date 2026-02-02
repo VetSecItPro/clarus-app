@@ -7,6 +7,7 @@ import { validateContentId, validateChatMessage, checkRateLimit } from "@/lib/va
 import { z } from "zod"
 import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
+import { authenticateRequest } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -105,11 +106,15 @@ export async function POST(req: NextRequest) {
     )
   }
 
+  // Authenticate user — require session auth
+  const auth = await authenticateRequest()
+  if (!auth.success) return auth.response
+
   if (!supabaseUrl || !supabaseKey) {
-    return NextResponse.json({ error: "Server configuration error: Supabase credentials missing." }, { status: 500 })
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
   }
   if (!openRouterApiKey) {
-    return NextResponse.json({ error: "Server configuration error: OpenRouter API key missing." }, { status: 500 })
+    return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
   }
 
   try {
@@ -184,7 +189,12 @@ export async function POST(req: NextRequest) {
 
     if (contentError || !contentData) {
       console.error("Chat API: Error fetching content from DB.", contentError)
-      return NextResponse.json({ error: "Could not load content to chat with." }, { status: 500 })
+      return NextResponse.json({ error: "Content not found" }, { status: 404 })
+    }
+
+    // Verify the authenticated user owns this content
+    if (contentData.user_id !== auth.user.id) {
+      return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
     // Tier-based usage limit check for chat messages

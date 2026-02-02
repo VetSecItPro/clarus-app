@@ -195,16 +195,17 @@ export async function GET(request: NextRequest) {
         .gte("created_at", todayStart),
       // Active users (content in last N days)
       getSupabaseAdmin().from("content").select("user_id")
-        .gte("date_added", startDateStr),
+        .gte("date_added", startDateStr)
+        .limit(10000),
       // Total content
       getSupabaseAdmin().from("content").select("id", { count: "exact", head: true }),
       // Content today
       getSupabaseAdmin().from("content").select("id", { count: "exact", head: true })
         .gte("date_added", todayStart),
-      // Content by type
-      getSupabaseAdmin().from("content").select("type"),
+      // Content by type (limit to prevent unbounded fetch)
+      getSupabaseAdmin().from("content").select("type").limit(10000),
       // Subscriptions
-      getSupabaseAdmin().from("users").select("subscription_status"),
+      getSupabaseAdmin().from("users").select("subscription_status").limit(10000),
       // Chat threads
       getSupabaseAdmin().from("chat_threads").select("id", { count: "exact", head: true }),
       // Chat messages

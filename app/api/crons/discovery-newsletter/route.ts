@@ -3,6 +3,8 @@ import { getAdminClient } from "@/lib/auth"
 import { sendDiscoveryNewsletterEmail } from "@/lib/email"
 import type { TriageData } from "@/types/database.types"
 
+export const maxDuration = 120
+
 /**
  * GET /api/crons/discovery-newsletter
  * Called by Vercel Cron every Sunday at 4pm UTC (2 hours after personal digest).

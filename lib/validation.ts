@@ -52,9 +52,13 @@ export function validateUrl(url: string): ValidationResult {
       hostname === 'localhost' ||
       hostname === '127.0.0.1' ||
       hostname === '0.0.0.0' ||
+      hostname === '169.254.169.254' ||
+      hostname === 'metadata.google.internal' ||
       hostname.startsWith('192.168.') ||
       hostname.startsWith('10.') ||
-      hostname.startsWith('172.16.') ||
+      hostname.startsWith('169.254.') ||
+      hostname.includes('::ffff:') ||
+      (() => { const m = hostname.match(/^172\.(\d+)\./); return m ? Number(m[1]) >= 16 && Number(m[1]) <= 31 : false })() ||
       hostname === '::1' ||
       hostname === '[::1]'
     ) {
@@ -122,8 +126,20 @@ export function validateChatMessage(message: string): ValidationResult {
 
 /**
  * Rate limiting helper - tracks request counts
+ * Evicts expired entries every 1000 calls to prevent memory leaks in long-lived serverless instances
  */
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>()
+const MAX_RATE_LIMIT_ENTRIES = 10000
+let rateLimitCallCount = 0
+
+function evictExpiredEntries() {
+  const now = Date.now()
+  for (const [key, record] of rateLimitMap) {
+    if (now > record.resetTime) {
+      rateLimitMap.delete(key)
+    }
+  }
+}
 
 export function checkRateLimit(
   identifier: string,
@@ -131,6 +147,13 @@ export function checkRateLimit(
   windowMs: number = 60000
 ): { allowed: boolean; remaining: number; resetIn: number } {
   const now = Date.now()
+
+  // Periodic eviction to prevent unbounded growth
+  rateLimitCallCount++
+  if (rateLimitCallCount % 1000 === 0 || rateLimitMap.size > MAX_RATE_LIMIT_ENTRIES) {
+    evictExpiredEntries()
+  }
+
   const record = rateLimitMap.get(identifier)
 
   if (!record || now > record.resetTime) {

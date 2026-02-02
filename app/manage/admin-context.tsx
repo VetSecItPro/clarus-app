@@ -27,10 +27,10 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
     async function checkAdmin() {
       try {
         const {
-          data: { session },
-        } = await supabase.auth.getSession()
+          data: { user },
+        } = await supabase.auth.getUser()
 
-        if (!session) {
+        if (!user) {
           router.replace("/login")
           return
         }
@@ -38,7 +38,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
         const { data: userData } = await supabase
           .from("users")
           .select("is_admin")
-          .eq("id", session.user.id)
+          .eq("id", user.id)
           .single()
 
         if (!userData?.is_admin) {
@@ -46,7 +46,7 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
           return
         }
 
-        setState({ status: "ready", userId: session.user.id })
+        setState({ status: "ready", userId: user.id })
       } catch {
         router.replace("/")
       }

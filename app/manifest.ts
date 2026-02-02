@@ -10,7 +10,7 @@ export default function manifest(): MetadataRoute.Manifest {
     display: "standalone",
     orientation: "portrait-primary",
     background_color: "#0a0a0a",
-    theme_color: "#10b981",
+    theme_color: "#1d9bf0",
     categories: ["news", "productivity", "utilities", "education"],
     icons: [
       {
@@ -33,20 +33,6 @@ export default function manifest(): MetadataRoute.Manifest {
         src: "/icon-512x512.png",
         sizes: "512x512",
         type: "image/png",
-      },
-    ],
-    screenshots: [
-      {
-        src: "/screenshots/home.png",
-        sizes: "1280x720",
-        type: "image/png",
-        form_factor: "wide",
-      },
-      {
-        src: "/screenshots/analysis.png",
-        sizes: "750x1334",
-        type: "image/png",
-        form_factor: "narrow",
       },
     ],
     shortcuts: [
