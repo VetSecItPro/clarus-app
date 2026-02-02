@@ -8,6 +8,8 @@ import { detectPaywallTruncation } from "@/lib/paywall-detection"
 import { screenContent, detectAiRefusal, persistFlag } from "@/lib/content-screening"
 import { submitPodcastTranscription } from "@/lib/assemblyai"
 import { authenticateRequest } from "@/lib/auth"
+import { isValidLanguage, getLanguageDirective, type AnalysisLanguage } from "@/lib/languages"
+import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -796,9 +798,9 @@ interface ModelProcessingError {
 
 async function getModelSummary(
   textToSummarize: string,
-  options: { shouldExtractTitle?: boolean; toneDirective?: string | null } = {},
+  options: { shouldExtractTitle?: boolean; toneDirective?: string | null; languageDirective?: string | null } = {},
 ): Promise<ModelSummary | ModelProcessingError> {
-  const { shouldExtractTitle = false, toneDirective } = options
+  const { shouldExtractTitle = false, toneDirective, languageDirective } = options
 
   if (!openRouterApiKey) {
     const msg = "OpenRouter API key is not configured."
@@ -829,6 +831,7 @@ async function getModelSummary(
   const openRouterModelId = model_name || "google/gemini-2.5-flash"
   const finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}")
     .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
+    .replace("{{LANGUAGE}}", languageDirective || "Write your analysis in English.")
     .replace("{{TEXT_TO_SUMMARIZE}}", textToSummarize)
 
   const requestBody: OpenRouterRequestBody = {
@@ -1003,6 +1006,7 @@ async function generateSectionWithAI(
   contentId?: string | null,
   webContext?: string | null,
   toneDirective?: string | null,
+  languageDirective?: string | null,
 ): Promise<SectionGenerationResult> {
   if (!openRouterApiKey) {
     return { content: null, error: "OpenRouter API key not configured" }
@@ -1017,6 +1021,7 @@ async function generateSectionWithAI(
   // Replace template variables
   let userContent = prompt.user_content_template
     .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
+    .replace("{{LANGUAGE}}", languageDirective || "Write your analysis in English.")
     .replace("{{CONTENT}}", textToAnalyze)
     .replace("{{TYPE}}", contentType || "article")
 
@@ -1214,8 +1219,8 @@ async function generateSectionWithAI(
   return { content: null, error: `All ${maxRetries} attempts failed. Last error: ${lastError}` }
 }
 
-async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective)
+async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective)
   if (result.error) {
     console.error(`API: Brief overview generation failed: ${result.error}`)
     return null
@@ -1223,8 +1228,8 @@ async function generateBriefOverview(fullText: string, contentType: string, user
   return typeof result.content === "string" ? result.content : null
 }
 
-async function generateTriage(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<TriageData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", contentType, 3, userId, contentId, webContext)
+async function generateTriage(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null): Promise<TriageData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", contentType, 3, userId, contentId, webContext, undefined, languageDirective)
   if (result.error) {
     console.error(`API: Triage generation failed: ${result.error}`)
     return null
@@ -1232,8 +1237,8 @@ async function generateTriage(fullText: string, contentType: string, userId?: st
   return result.content as TriageData
 }
 
-async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<TruthCheckData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, webContext)
+async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null): Promise<TruthCheckData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, webContext, undefined, languageDirective)
   if (result.error) {
     console.error(`API: Truth check generation failed: ${result.error}`)
     return null
@@ -1241,8 +1246,8 @@ async function generateTruthCheck(fullText: string, contentType: string, userId?
   return result.content as TruthCheckData
 }
 
-async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null): Promise<ActionItemsData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, 3, userId, contentId, webContext)
+async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null): Promise<ActionItemsData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, 3, userId, contentId, webContext, undefined, languageDirective)
   if (result.error) {
     console.error(`API: Action items generation failed: ${result.error}`)
     return null
@@ -1255,9 +1260,9 @@ async function generateActionItems(fullText: string, contentType: string, userId
   return content as ActionItemsData
 }
 
-async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null): Promise<string | null> {
+async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null): Promise<string | null> {
   // Now uses database prompt with {{CONTENT}} and {{TYPE}} placeholders
-  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId, webContext, toneDirective)
+  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective)
   if (result.error) {
     console.error(`API: Detailed summary generation failed: ${result.error}`)
     return null
@@ -1298,6 +1303,7 @@ async function updateSummarySection(
   contentId: string,
   userId: string,
   updates: Partial<Database["clarus"]["Tables"]["summaries"]["Update"]>,
+  summaryLanguage: string = "en",
 ) {
   const { error } = await supabase
     .from("summaries")
@@ -1305,10 +1311,11 @@ async function updateSummarySection(
       {
         content_id: contentId,
         user_id: userId,
+        language: summaryLanguage,
         updated_at: new Date().toISOString(),
         ...updates,
       },
-      { onConflict: "content_id" },
+      { onConflict: "content_id,language" },
     )
 
   if (error) {
@@ -1370,10 +1377,182 @@ async function updateDomainStats(
 }
 
 // ============================================
+// CROSS-USER CONTENT CACHE
+// Serves cached analysis when another user has already analyzed the same URL
+// ============================================
+
+const CACHE_STALENESS_DAYS = 14
+
+interface CachedSourceFull {
+  type: "full"
+  content: Tables<"content">
+  summary: Tables<"summaries">
+}
+
+interface CachedSourceTextOnly {
+  type: "text_only"
+  content: Tables<"content">
+}
+
+type CachedSource = CachedSourceFull | CachedSourceTextOnly | null
+
+/**
+ * Searches across all users for a previously analyzed copy of the same URL.
+ * Uses service-role client (bypasses RLS) since we're reading other users' content.
+ *
+ * Returns:
+ * - "full"      → full_text + completed summary in the target language exist
+ * - "text_only" → full_text exists but no summary in the target language
+ * - null        → nothing usable found
+ */
+async function findCachedAnalysis(
+  supabase: ReturnType<typeof createClient<Database>>,
+  url: string,
+  targetLanguage: string,
+  currentUserId: string,
+): Promise<CachedSource> {
+  // Never cache-match PDFs (user-uploaded, pdf:// URLs are not shareable)
+  if (url.startsWith("pdf://")) return null
+
+  const stalenessDate = new Date()
+  stalenessDate.setDate(stalenessDate.getDate() - CACHE_STALENESS_DAYS)
+
+  // Find content records with same URL, non-null full_text, within staleness window
+  const { data: candidates, error } = await supabase
+    .from("content")
+    .select("*")
+    .eq("url", url)
+    .not("full_text", "is", null)
+    .neq("user_id", currentUserId)
+    .gte("date_added", stalenessDate.toISOString())
+    .order("date_added", { ascending: false })
+    .limit(5)
+
+  if (error || !candidates || candidates.length === 0) return null
+
+  // Filter out failed content
+  const validCandidates = candidates.filter(
+    (c) => c.full_text && !c.full_text.startsWith("PROCESSING_FAILED::")
+  )
+  if (validCandidates.length === 0) return null
+
+  // Check each candidate for a completed summary in the target language
+  for (const candidate of validCandidates) {
+    const { data: summary } = await supabase
+      .from("summaries")
+      .select("*")
+      .eq("content_id", candidate.id)
+      .eq("language", targetLanguage)
+      .eq("processing_status", "complete")
+      .single()
+
+    if (summary) {
+      console.log(`API: [cache] FULL HIT — found completed analysis from content ${candidate.id}`)
+      return { type: "full", content: candidate, summary }
+    }
+  }
+
+  // No full hit — return text-only from the best candidate
+  console.log(`API: [cache] TEXT-ONLY HIT — found full_text from content ${validCandidates[0].id}, no summary in ${targetLanguage}`)
+  return { type: "text_only", content: validCandidates[0] }
+}
+
+/**
+ * Extracts copyable metadata fields from a source content record.
+ * Only copies non-null fields.
+ */
+function buildMetadataCopyPayload(
+  source: Tables<"content">
+): Partial<Database["clarus"]["Tables"]["content"]["Update"]> {
+  const payload: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {}
+
+  if (source.title) payload.title = source.title
+  if (source.author) payload.author = source.author
+  if (source.duration) payload.duration = source.duration
+  if (source.thumbnail_url) payload.thumbnail_url = source.thumbnail_url
+  if (source.description) payload.description = source.description
+  if (source.upload_date) payload.upload_date = source.upload_date
+  if (source.view_count) payload.view_count = source.view_count
+  if (source.like_count) payload.like_count = source.like_count
+  if (source.channel_id) payload.channel_id = source.channel_id
+  if (source.raw_youtube_metadata) payload.raw_youtube_metadata = source.raw_youtube_metadata
+  if (source.transcript_languages) payload.transcript_languages = source.transcript_languages
+
+  return payload
+}
+
+/**
+ * Clones a full cached analysis (full_text + summary) to the target content record.
+ * Returns true on success, false on failure (caller should fall through to normal pipeline).
+ */
+async function cloneCachedContent(
+  supabase: ReturnType<typeof createClient<Database>>,
+  targetContentId: string,
+  targetUserId: string,
+  source: CachedSourceFull,
+  targetLanguage: string,
+): Promise<boolean> {
+  try {
+    // 1. Update target content record with full_text, detected_tone, metadata, tags, analysis_language
+    const metadataPayload = buildMetadataCopyPayload(source.content)
+    const contentUpdate: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {
+      ...metadataPayload,
+      full_text: source.content.full_text,
+      detected_tone: source.content.detected_tone,
+      tags: source.content.tags,
+      analysis_language: targetLanguage,
+    }
+
+    const { error: contentError } = await supabase
+      .from("content")
+      .update(contentUpdate)
+      .eq("id", targetContentId)
+
+    if (contentError) {
+      console.error("API: [cache] Failed to update target content:", contentError)
+      return false
+    }
+
+    // 2. Upsert summary record with all 6 sections from source
+    const { error: summaryError } = await supabase
+      .from("summaries")
+      .upsert(
+        {
+          content_id: targetContentId,
+          user_id: targetUserId,
+          language: targetLanguage,
+          brief_overview: source.summary.brief_overview,
+          triage: source.summary.triage,
+          truth_check: source.summary.truth_check,
+          action_items: source.summary.action_items,
+          mid_length_summary: source.summary.mid_length_summary,
+          detailed_summary: source.summary.detailed_summary,
+          model_name: source.summary.model_name,
+          processing_status: "complete",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "content_id,language" },
+      )
+
+    if (summaryError) {
+      console.error("API: [cache] Failed to upsert target summary:", summaryError)
+      return false
+    }
+
+    console.log(`API: [cache] Successfully cloned analysis from ${source.content.id} to ${targetContentId}`)
+    return true
+  } catch (err) {
+    console.error("API: [cache] Clone failed:", err)
+    return false
+  }
+}
+
+// ============================================
 
 interface ProcessContentRequestBody {
   content_id: string
   force_regenerate?: boolean
+  language?: string
 }
 
 export async function POST(req: NextRequest) {
@@ -1406,6 +1585,7 @@ export async function POST(req: NextRequest) {
 
   let content_id: string
   let force_regenerate: boolean
+  let language: AnalysisLanguage = "en"
 
   try {
     const body: ProcessContentRequestBody = await req.json()
@@ -1418,6 +1598,14 @@ export async function POST(req: NextRequest) {
     }
     content_id = contentIdValidation.sanitized!
 
+    // Validate language parameter
+    if (body.language) {
+      if (!isValidLanguage(body.language)) {
+        return NextResponse.json({ error: "Invalid language code" }, { status: 400 })
+      }
+      language = body.language
+    }
+
     if (!supabaseUrl || !supabaseKey || !supadataApiKey || !openRouterApiKey || !firecrawlApiKey) {
       return NextResponse.json({ error: "Server configuration error: Missing API keys." }, { status: 500 })
     }
@@ -1425,7 +1613,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 })
   }
 
-  console.log(`API: Processing request for content_id: ${content_id}, force_regenerate: ${force_regenerate}`)
+  console.log(`API: Processing request for content_id: ${content_id}, force_regenerate: ${force_regenerate}, language: ${language}`)
 
   const { data: content, error: fetchError } = await supabase.from("content").select("*").eq("id", content_id).single()
 
@@ -1441,6 +1629,22 @@ export async function POST(req: NextRequest) {
 
   console.log(`API: Found content: ${content.url}, type: ${content.type}`)
 
+  // Multi-language tier gating: non-English requires paid tier
+  if (language !== "en" && content.user_id) {
+    const { data: userData } = await supabase
+      .from("users")
+      .select("tier, day_pass_expires_at")
+      .eq("id", content.user_id)
+      .single()
+    const userTier = normalizeTier(userData?.tier, userData?.day_pass_expires_at)
+    if (!TIER_FEATURES[userTier].multiLanguageAnalysis) {
+      return NextResponse.json(
+        { error: "Multi-language analysis requires a Starter plan or higher.", upgrade_required: true, tier: userTier },
+        { status: 403 }
+      )
+    }
+  }
+
   // Tier-based usage limit check (skip for regeneration — already counted)
   if (!force_regenerate && content.user_id) {
     const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
@@ -1451,6 +1655,124 @@ export async function POST(req: NextRequest) {
         { error: `Monthly ${label} limit reached (${usageCheck.limit}). Upgrade your plan for more.`, upgrade_required: true, tier: usageCheck.tier },
         { status: 403 }
       )
+    }
+  }
+
+  // ============================================
+  // CROSS-USER CACHE CHECK
+  // If another user already analyzed this URL, clone results instead of re-processing
+  // ============================================
+  if (!force_regenerate && content.user_id) {
+    console.log(`API: [cache] Checking for cached analysis of ${content.url}...`)
+    const cached = await findCachedAnalysis(supabase, content.url, language, content.user_id)
+
+    if (cached?.type === "full") {
+      // FULL HIT: Clone full_text + summary → return instantly
+      const cloneSuccess = await cloneCachedContent(
+        supabase,
+        content.id,
+        content.user_id,
+        cached,
+        language,
+      )
+
+      if (cloneSuccess) {
+        // Update domain stats (non-blocking, using cached triage data)
+        const cachedTriage = cached.summary.triage as TriageData | null
+        const cachedTruthCheck = cached.summary.truth_check as TruthCheckData | null
+        if (content.url) {
+          updateDomainStats(supabase, content.url, cachedTriage, cachedTruthCheck).catch(
+            (err) => console.warn("API: [cache] Domain stats update failed:", err)
+          )
+        }
+
+        // Clone claims from source content (non-fatal best-effort)
+        try {
+          const { data: sourceClaims } = await supabase
+            .from("claims")
+            .select("*")
+            .eq("content_id", cached.content.id)
+
+          if (sourceClaims && sourceClaims.length > 0) {
+            const clonedClaims = sourceClaims.map((claim) => ({
+              content_id: content.id,
+              user_id: content.user_id!,
+              claim_text: claim.claim_text,
+              normalized_text: claim.normalized_text,
+              status: claim.status,
+              severity: claim.severity,
+              sources: claim.sources,
+            }))
+            await supabase.from("claims").insert(clonedClaims)
+            console.log(`API: [cache] Cloned ${clonedClaims.length} claims`)
+          }
+        } catch (claimErr) {
+          console.warn("API: [cache] Claims clone failed (non-fatal):", claimErr)
+        }
+
+        // Increment usage counter (cached results still count toward monthly quota)
+        try {
+          const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
+          await incrementUsage(supabase, content.user_id, usageField)
+        } catch (e) {
+          console.error("[usage] Failed to track cached analysis usage:", e)
+        }
+
+        // Log cache hit metric
+        logProcessingMetrics({
+          contentId: content.id,
+          userId: content.user_id,
+          sectionType: "cache_hit",
+          modelName: "none",
+          tokensInput: 0,
+          tokensOutput: 0,
+          processingTimeMs: 0,
+          retryCount: 0,
+          status: "success",
+        })
+
+        console.log(`API: [cache] Returning cached analysis for content_id: ${content.id}`)
+        return NextResponse.json(
+          {
+            success: true,
+            cached: true,
+            message: "Content analysis served from cache.",
+            content_id: content.id,
+            sections_generated: [
+              "brief_overview", "triage", "truth_check",
+              "action_items", "mid_length_summary", "detailed_summary",
+            ].filter((s) => {
+              const key = s as keyof typeof cached.summary
+              return cached.summary[key] != null
+            }),
+            language,
+          },
+          { status: 200 },
+        )
+      }
+      // Clone failed — fall through to normal pipeline
+      console.warn("API: [cache] Clone failed, falling back to normal pipeline")
+    } else if (cached?.type === "text_only") {
+      // TEXT-ONLY HIT: Copy full_text + metadata, skip scraping, run AI analysis
+      const metadataPayload = buildMetadataCopyPayload(cached.content)
+      const textOnlyUpdate: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {
+        ...metadataPayload,
+        full_text: cached.content.full_text,
+        detected_tone: cached.content.detected_tone,
+      }
+
+      const { error: textCopyError } = await supabase
+        .from("content")
+        .update(textOnlyUpdate)
+        .eq("id", content.id)
+
+      if (!textCopyError) {
+        // Update local content object so downstream guards see populated full_text
+        Object.assign(content, textOnlyUpdate)
+        console.log("API: [cache] Copied full_text from cached source, skipping scrape")
+      } else {
+        console.warn("API: [cache] Text copy failed, proceeding with normal scrape:", textCopyError)
+      }
     }
   }
 
@@ -1531,7 +1853,7 @@ export async function POST(req: NextRequest) {
 
         await updateSummarySection(supabase, content.id, content.user_id!, {
           processing_status: "transcribing",
-        })
+        }, language)
 
         console.log(`API: Podcast submitted to AssemblyAI. Transcript ID: ${transcript_id}. Waiting for webhook.`)
 
@@ -1639,10 +1961,11 @@ export async function POST(req: NextRequest) {
     await supabase.from("summaries").upsert({
       content_id: content.id,
       user_id: content.user_id!,
+      language,
       processing_status: "refused",
       brief_overview: "This content could not be analyzed because it may violate our content policy.",
       updated_at: new Date().toISOString(),
-    }, { onConflict: "content_id" })
+    }, { onConflict: "content_id,language" })
 
     return NextResponse.json(
       {
@@ -1665,6 +1988,9 @@ export async function POST(req: NextRequest) {
     console.log(`API: Paywall warning for ${content.url}: ${paywallWarning}`)
   }
 
+  // Compute language directive for prompt injection
+  const languageDirective = getLanguageDirective(language)
+
   const responsePayload: {
     success: boolean
     message: string
@@ -1672,12 +1998,14 @@ export async function POST(req: NextRequest) {
     sections_generated: string[]
     modelErrors?: ModelProcessingError[]
     paywall_warning?: string | null
+    language?: string
   } = {
     success: true,
     message: "Content processed successfully.",
     content_id: content.id,
     sections_generated: [],
     paywall_warning: paywallWarning,
+    language,
   }
 
   if (!content.user_id) {
@@ -1740,9 +2068,9 @@ export async function POST(req: NextRequest) {
 
   const overviewPromise = (async () => {
     console.log(`API: [1/6] Generating brief overview...`)
-    const result = await generateBriefOverview(fullText, contentType, userId, contentId, webContext, toneDirective)
+    const result = await generateBriefOverview(fullText, contentType, userId, contentId, webContext, toneDirective, languageDirective)
     if (result) {
-      await updateSummarySection(supabase, contentId, userId, { brief_overview: result })
+      await updateSummarySection(supabase, contentId, userId, { brief_overview: result }, language)
       responsePayload.sections_generated.push("brief_overview")
       console.log(`API: [1/6] Brief overview saved.`)
     } else {
@@ -1754,9 +2082,9 @@ export async function POST(req: NextRequest) {
 
   const triagePromise = (async () => {
     console.log(`API: [2/6] Generating triage...`)
-    const result = await generateTriage(fullText, contentType, userId, contentId, webContext)
+    const result = await generateTriage(fullText, contentType, userId, contentId, webContext, languageDirective)
     if (result) {
-      await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json })
+      await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json }, language)
       responsePayload.sections_generated.push("triage")
       console.log(`API: [2/6] Triage saved.`)
     } else {
@@ -1768,7 +2096,7 @@ export async function POST(req: NextRequest) {
 
   const midSummaryPromise = (async () => {
     console.log(`API: [5/6] Generating mid-length summary...`)
-    const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing, toneDirective })
+    const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing, toneDirective, languageDirective })
     if (summaryResult && !("error" in summaryResult)) {
       const validSummary = summaryResult as ModelSummary
       if (titleNeedsFixing && validSummary.title) {
@@ -1776,7 +2104,7 @@ export async function POST(req: NextRequest) {
         console.log(`API: [5/6] Title updated from summary.`)
       }
       if (validSummary.mid_length_summary) {
-        await updateSummarySection(supabase, contentId, userId, { mid_length_summary: validSummary.mid_length_summary })
+        await updateSummarySection(supabase, contentId, userId, { mid_length_summary: validSummary.mid_length_summary }, language)
         responsePayload.sections_generated.push("mid_length_summary")
         console.log(`API: [5/6] Mid-length summary saved.`)
       }
@@ -1789,9 +2117,9 @@ export async function POST(req: NextRequest) {
 
   const detailedPromise = (async () => {
     console.log(`API: [6/6] Generating detailed summary...`)
-    const result = await generateDetailedSummary(fullText, contentType, userId, contentId, webContext, toneDirective)
+    const result = await generateDetailedSummary(fullText, contentType, userId, contentId, webContext, toneDirective, languageDirective)
     if (result) {
-      await updateSummarySection(supabase, contentId, userId, { detailed_summary: result })
+      await updateSummarySection(supabase, contentId, userId, { detailed_summary: result }, language)
       responsePayload.sections_generated.push("detailed_summary")
       console.log(`API: [6/6] Detailed summary saved.`)
     } else {
@@ -1818,7 +2146,7 @@ export async function POST(req: NextRequest) {
 
   const truthCheckPromise = (async () => {
     console.log(`API: [3/6] Generating truth check...`)
-    const result = await generateTruthCheck(fullText, contentType, userId, contentId, webContext)
+    const result = await generateTruthCheck(fullText, contentType, userId, contentId, webContext, languageDirective)
     if (result) {
       console.log(`API: [3/6] Truth check generated.`)
     } else {
@@ -1829,7 +2157,7 @@ export async function POST(req: NextRequest) {
 
   const actionItemsPromise = (async () => {
     console.log(`API: [4/6] Generating action items...`)
-    const result = await generateActionItems(fullText, contentType, userId, contentId, webContext)
+    const result = await generateActionItems(fullText, contentType, userId, contentId, webContext, languageDirective)
     if (result) {
       console.log(`API: [4/6] Action items generated.`)
     } else {
@@ -1855,7 +2183,7 @@ export async function POST(req: NextRequest) {
     console.log(`API: Discarding truth check + action items for ${triageCategory} content`)
   } else {
     if (truthCheckResult) {
-      await updateSummarySection(supabase, contentId, userId, { truth_check: truthCheckResult as unknown as Json })
+      await updateSummarySection(supabase, contentId, userId, { truth_check: truthCheckResult as unknown as Json }, language)
       responsePayload.sections_generated.push("truth_check")
       console.log(`API: [3/6] Truth check saved.`)
     } else {
@@ -1863,7 +2191,7 @@ export async function POST(req: NextRequest) {
     }
 
     if (actionItemsResult) {
-      await updateSummarySection(supabase, contentId, userId, { action_items: actionItemsResult as unknown as Json })
+      await updateSummarySection(supabase, contentId, userId, { action_items: actionItemsResult as unknown as Json }, language)
       responsePayload.sections_generated.push("action_items")
       console.log(`API: [4/6] Action items saved.`)
     }
@@ -1976,24 +2304,24 @@ export async function POST(req: NextRequest) {
 
     await Promise.all(criticalFailures.map(async (section) => {
       if (section === "brief_overview") {
-        const result = await generateBriefOverview(fullText, contentType, userId, contentId, null, toneDirective)
+        const result = await generateBriefOverview(fullText, contentType, userId, contentId, null, toneDirective, languageDirective)
         if (result) {
-          await updateSummarySection(supabase, contentId, userId, { brief_overview: result })
+          await updateSummarySection(supabase, contentId, userId, { brief_overview: result }, language)
           responsePayload.sections_generated.push("brief_overview")
           console.log(`API: RETRY SUCCESS - Brief overview saved.`)
         }
       } else if (section === "triage") {
-        const result = await generateTriage(fullText, contentType, userId, contentId)
+        const result = await generateTriage(fullText, contentType, userId, contentId, undefined, languageDirective)
         if (result) {
-          await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json })
+          await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json }, language)
           responsePayload.sections_generated.push("triage")
           console.log(`API: RETRY SUCCESS - Triage saved.`)
           if (contentUrl) await updateDomainStats(supabase, contentUrl, result, truthCheck)
         }
       } else if (section === "detailed_summary") {
-        const result = await generateDetailedSummary(fullText, contentType, userId, contentId, null, toneDirective)
+        const result = await generateDetailedSummary(fullText, contentType, userId, contentId, null, toneDirective, languageDirective)
         if (result) {
-          await updateSummarySection(supabase, contentId, userId, { detailed_summary: result })
+          await updateSummarySection(supabase, contentId, userId, { detailed_summary: result }, language)
           responsePayload.sections_generated.push("detailed_summary")
           console.log(`API: RETRY SUCCESS - Detailed summary saved.`)
         }
@@ -2004,7 +2332,13 @@ export async function POST(req: NextRequest) {
   // Mark processing complete
   await updateSummarySection(supabase, contentId, userId, {
     processing_status: "complete",
-  })
+  }, language)
+
+  // Update content.analysis_language (non-blocking)
+  supabase.from("content").update({ analysis_language: language }).eq("id", contentId).then(
+    () => {},
+    (err) => console.warn("Failed to update analysis_language:", err)
+  )
 
   // Log final status
   const finalFailures = []

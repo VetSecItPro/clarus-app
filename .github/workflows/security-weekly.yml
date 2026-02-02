@@ -1,0 +1,124 @@
+name: Weekly Security Scan
+
+on:
+  schedule:
+    - cron: '0 2 * * 0' # Sundays 2am UTC
+  workflow_dispatch:
+
+env:
+  NODE_VERSION: '22'
+  PNPM_VERSION: '9'
+
+jobs:
+  dependency-audit:
+    name: Dependency Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Full audit
+        run: |
+          echo "## Dependency Audit" >> $GITHUB_STEP_SUMMARY
+          pnpm audit --json > audit-results.json 2>/dev/null || true
+          CRITICAL=$(jq '.advisories | to_entries | map(select(.value.severity == "critical")) | length' audit-results.json 2>/dev/null || echo "0")
+          HIGH=$(jq '.advisories | to_entries | map(select(.value.severity == "high")) | length' audit-results.json 2>/dev/null || echo "0")
+          echo "Critical: $CRITICAL, High: $HIGH" >> $GITHUB_STEP_SUMMARY
+          if [ "$CRITICAL" -gt 0 ]; then
+            echo "::error::$CRITICAL critical vulnerabilities found"
+          fi
+
+      - name: Check outdated packages
+        run: |
+          echo "## Outdated Packages" >> $GITHUB_STEP_SUMMARY
+          pnpm outdated --format json 2>/dev/null | jq -r 'to_entries[] | "- \(.key): \(.value.current) → \(.value.latest)"' >> $GITHUB_STEP_SUMMARY 2>/dev/null || echo "All packages up to date" >> $GITHUB_STEP_SUMMARY
+
+  semgrep-deep:
+    name: Semgrep Deep Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Semgrep SAST (extended rules)
+        uses: returntocorp/semgrep-action@v1
+        with:
+          config: >-
+            p/owasp-top-ten
+            p/nextjs
+            p/react
+            p/typescript
+
+  license-check:
+    name: License Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+
+      - name: Check licenses
+        run: |
+          npx license-checker --production --excludePrivatePackages --json > licenses.json 2>/dev/null || true
+          echo "## License Report" >> $GITHUB_STEP_SUMMARY
+
+          # Check for copyleft/problematic licenses
+          BANNED='GPL-3.0|AGPL|SSPL|BSL|EUPL'
+          FLAGGED=$(jq -r 'to_entries[] | select(.value.licenses | test("'"$BANNED"'")) | "\(.key): \(.value.licenses)"' licenses.json 2>/dev/null || true)
+
+          if [ -n "$FLAGGED" ]; then
+            echo "::warning::Potentially problematic licenses found:"
+            echo "$FLAGGED" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "All dependencies use approved licenses." >> $GITHUB_STEP_SUMMARY
+          fi
+
+  zap-dast:
+    name: ZAP DAST Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: ZAP Baseline Scan
+        uses: zaproxy/action-baseline@v0.14.0
+        with:
+          target: 'https://clarusapp.io'
+          rules_file_name: '.zap/rules.tsv'
+          cmd_options: '-a'
+        continue-on-error: true
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: zap-report
+          path: report_html.html
+          retention-days: 30
+
+  summary:
+    name: Security Summary
+    runs-on: ubuntu-latest
+    needs: [dependency-audit, semgrep-deep, license-check, zap-dast]
+    if: always()
+    steps:
+      - name: Summary
+        run: |
+          echo "## Weekly Security Scan Summary" >> $GITHUB_STEP_SUMMARY
+          echo '| Check | Status |' >> $GITHUB_STEP_SUMMARY
+          echo '|-------|--------|' >> $GITHUB_STEP_SUMMARY
+          echo "| Dependency Audit | ${{ needs.dependency-audit.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| Semgrep SAST | ${{ needs.semgrep-deep.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| License Check | ${{ needs.license-check.result }} |" >> $GITHUB_STEP_SUMMARY
+          echo "| ZAP DAST | ${{ needs.zap-dast.result }} |" >> $GITHUB_STEP_SUMMARY

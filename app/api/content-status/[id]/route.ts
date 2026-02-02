@@ -84,13 +84,17 @@ export async function GET(
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    // Fetch summary
+    // Fetch summary (filter by language if provided, default to 'en')
+    const { searchParams } = new URL(request.url)
+    const lang = searchParams.get("language") || "en"
+
     const { data: summary } = await supabase
       .from("summaries")
       .select(
-        "processing_status, triage, brief_overview, mid_length_summary, detailed_summary, truth_check, action_items"
+        "processing_status, triage, brief_overview, mid_length_summary, detailed_summary, truth_check, action_items, language"
       )
       .eq("content_id", contentId)
+      .eq("language", lang)
       .order("created_at", { ascending: false })
       .limit(1)
       .single()
