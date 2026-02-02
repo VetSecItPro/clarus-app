@@ -5,50 +5,62 @@ import { motion } from "framer-motion"
 import {
   Youtube, FileText, FileUp, Brain, Headphones,
   GraduationCap,
-  Zap, CheckCircle, MessageSquare, Library, Download, MailIcon,
+  Zap, CheckCircle, MessageSquare, Library, Download,
+  Mic, ScanEye, Share2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const contentTypes = [
   { icon: Youtube, title: "YouTube", color: "text-red-400", bg: "bg-red-500/10", status: "live" as const },
+  { icon: Headphones, title: "Podcasts", color: "text-purple-400", bg: "bg-purple-500/10", status: "live" as const },
   { icon: FileText, title: "Articles & Blogs", color: "text-blue-400", bg: "bg-blue-500/10", status: "live" as const },
   { icon: FileUp, title: "PDFs & Documents", color: "text-orange-400", bg: "bg-orange-500/10", status: "live" as const },
   { icon: Brain, title: "X Posts", color: "text-teal-400", bg: "bg-teal-500/10", status: "live" as const },
-  { icon: Headphones, title: "Podcasts", color: "text-purple-400", bg: "bg-purple-500/10", status: "coming" as const },
   { icon: GraduationCap, title: "Research Papers", color: "text-amber-400", bg: "bg-amber-500/10", status: "coming" as const },
 ]
 
 const features = [
   {
     icon: Zap,
-    title: "Instant breakdown",
-    description: "Key points extracted in seconds. Main arguments identified. No fluff, no filler.",
+    title: "6-section deep analysis",
+    description: "Overview, assessment, takeaways, accuracy analysis, action items, and deep dive. Not just a summary, but a structured breakdown.",
   },
   {
     icon: CheckCircle,
-    title: "Claim tracking",
-    description: "See what's fact, opinion, or unsupported. Track claims across everything you save.",
+    title: "Accuracy analysis",
+    description: "Claims are surfaced and assessed as fact, opinion, or unsupported. Cross-reference them across your library to spot patterns.",
     badge: "Unique",
+  },
+  {
+    icon: Mic,
+    title: "Speaker attribution",
+    description: "For podcasts and multi-speaker content, arguments are attributed to individual speakers where identifiable.",
+    badge: "New",
+  },
+  {
+    icon: ScanEye,
+    title: "Tone detection",
+    description: "Clarus identifies content tone (investigative, promotional, academic, conversational) and adjusts its analysis to match.",
   },
   {
     icon: MessageSquare,
     title: "Chat with content",
-    description: "Ask questions about anything you've saved. Get answers with citations from the source.",
+    description: "Ask follow-up questions about anything you've analyzed. Responses reference the source material directly.",
   },
   {
     icon: Library,
     title: "Personal library",
-    description: "Searchable archive of everything you've analyzed. Find any insight instantly.",
+    description: "Searchable archive with tags, bookmarks, quality scores, and full-text search. Find any insight when you need it.",
   },
   {
-    icon: MailIcon,
-    title: "Weekly digest",
-    description: "Email summary of your saved insights. Stay sharp without the scroll.",
+    icon: Share2,
+    title: "Share & export",
+    description: "Share analyses via link. Export to Markdown or PDF. Weekly digest emails help you stay current.",
   },
   {
     icon: Download,
-    title: "Export anywhere",
-    description: "Markdown, PDF, or Notion. Your notes, your format. Your data stays yours.",
+    title: "Works with most content",
+    description: "YouTube, podcasts, articles, PDFs, and X posts. Publicly accessible content only. Paste the link and go.",
   },
 ]
 
@@ -110,7 +122,7 @@ export const FeatureGrid = memo(function FeatureGrid() {
         </motion.div>
 
         {/* Features grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {features.map((feature, index) => (
             <motion.div
               key={feature.title}

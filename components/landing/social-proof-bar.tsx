@@ -2,10 +2,12 @@
 
 import { memo } from "react"
 import { motion } from "framer-motion"
-import { ShieldCheck, Lock } from "lucide-react"
+import { ShieldCheck, Lock, Zap, Mic } from "lucide-react"
 
 const proofItems = [
   { icon: ShieldCheck, text: "Veteran-Owned Business" },
+  { icon: Zap, text: "6-section AI analysis in seconds" },
+  { icon: Mic, text: "Speaker attribution for audio/video" },
   { icon: Lock, text: "Your data never used for training" },
 ]
 

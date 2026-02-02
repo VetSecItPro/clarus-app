@@ -1,24 +1,26 @@
 import { Metadata } from "next"
-import Link from "next/link"
-import { ArrowLeft, Lock, Eye, Trash2, Download, Mail } from "lucide-react"
+import { Lock, Eye, Trash2, Download, Mail } from "lucide-react"
+import { PublicHeader } from "@/components/public-header"
+import { LandingFooter } from "@/components/landing/landing-footer"
 
 export const metadata: Metadata = {
   title: "Privacy Policy | Clarus",
-  description: "Privacy Policy for Clarus",
+  description: "Privacy Policy for Clarus — how we collect, use, and protect your data. GDPR and CCPA compliant. No data selling, no ad tracking.",
+  openGraph: {
+    title: "Privacy Policy | Clarus",
+    description: "How Clarus collects, uses, and protects your data. GDPR and CCPA compliant.",
+    url: "https://clarusapp.io/privacy",
+    type: "website",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/privacy",
+  },
 }
 
 export default function PrivacyPage() {
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      {/* Simple Header */}
-      <header className="border-b border-white/[0.08] bg-black/60 backdrop-blur-xl">
-        <div className="max-w-4xl mx-auto px-4 py-4">
-          <Link href="/" className="inline-flex items-center gap-2 text-white/60 hover:text-white transition-colors">
-            <ArrowLeft className="w-4 h-4" />
-            <span className="text-sm">Back to Home</span>
-          </Link>
-        </div>
-      </header>
+      <PublicHeader />
 
       {/* Content */}
       <main className="flex-1 max-w-4xl mx-auto px-4 py-12">
@@ -285,6 +287,8 @@ export default function PrivacyPage() {
           </div>
         </div>
       </main>
+
+      <LandingFooter />
     </div>
   )
 }

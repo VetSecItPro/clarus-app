@@ -2,13 +2,33 @@ import type { Metadata } from "next"
 import { FeaturePage } from "@/components/features/feature-page"
 
 export const metadata: Metadata = {
-  title: "Article & Blog Analysis with AI | Clarus",
+  title: "Article Summarizer — AI Analysis for Any Web Article | Clarus",
   description:
-    "Analyze any web article or blog post with AI. Get summaries, fact-checks, quality scores, and actionable takeaways in seconds.",
+    "Summarize any article or blog post with AI. Get key takeaways, fact-checks, quality scores, and action items from news, Substack, Medium, and any web page. Free article summarizer.",
+  keywords: [
+    "article summarizer",
+    "article summary tool",
+    "ai article analyzer",
+    "blog post summarizer",
+    "summarize article",
+    "news article summary",
+    "web article analysis",
+  ],
   openGraph: {
-    title: "Article & Blog Analysis with AI | Clarus",
+    title: "Article Summarizer — AI Analysis for Any Web Article | Clarus",
     description:
-      "Analyze any web article or blog post with AI. Get summaries, fact-checks, and quality scores.",
+      "Summarize any article with AI. Key takeaways, fact-checks, quality scores, and action items in seconds.",
+    url: "https://clarusapp.io/features/article-analysis",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Article Summarizer | Clarus",
+    description:
+      "Paste any article URL, get key takeaways, fact-checks, and quality scores. Free to start.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/features/article-analysis",
   },
 }
 

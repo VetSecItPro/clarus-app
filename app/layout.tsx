@@ -82,6 +82,68 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://www.youtube.com" />
         <link rel="dns-prefetch" href="https://i.ytimg.com" />
         <link rel="dns-prefetch" href="https://openrouter.ai" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  "name": "Clarus",
+                  "url": "https://clarusapp.io",
+                  "logo": "https://clarusapp.io/clarus-logo.webp",
+                  "description": "AI-powered content analysis for videos, podcasts, articles, and PDFs. Fact-checking, summaries, and key takeaways in seconds.",
+                  "foundingDate": "2025",
+                  "sameAs": [],
+                },
+                {
+                  "@type": "SoftwareApplication",
+                  "name": "Clarus",
+                  "url": "https://clarusapp.io",
+                  "applicationCategory": "UtilitiesApplication",
+                  "operatingSystem": "Web",
+                  "description": "AI-powered YouTube video summarizer, podcast analyzer, article summarizer, and PDF analyzer with fact-checking, key takeaways, and a chat interface.",
+                  "offers": [
+                    {
+                      "@type": "Offer",
+                      "name": "Free",
+                      "price": "0",
+                      "priceCurrency": "USD",
+                      "description": "5 analyses per month, all 6 analysis sections, 25 library items",
+                    },
+                    {
+                      "@type": "Offer",
+                      "name": "Starter",
+                      "price": "18",
+                      "priceCurrency": "USD",
+                      "billingIncrement": 1,
+                      "description": "50 analyses per month, 10 podcast analyses, exports, sharing, weekly digest",
+                    },
+                    {
+                      "@type": "Offer",
+                      "name": "Pro",
+                      "price": "29",
+                      "priceCurrency": "USD",
+                      "billingIncrement": 1,
+                      "description": "150 analyses per month, 30 podcast analyses, claim tracking, priority processing",
+                    },
+                  ],
+                  "featureList": [
+                    "YouTube video summarizer with timestamps",
+                    "Podcast transcription and analysis",
+                    "Article and blog post analysis",
+                    "PDF document analysis",
+                    "AI fact-checking and truth analysis",
+                    "Chat with any analyzed content",
+                    "Searchable content library",
+                    "Export as Markdown or PDF",
+                  ],
+                },
+              ],
+            }),
+          }}
+        />
       </head>
       <body className="font-sans antialiased">
         <SWRProvider>

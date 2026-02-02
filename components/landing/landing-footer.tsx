@@ -26,6 +26,10 @@ export function LandingFooter() {
             Articles
           </Link>
           <span className="text-white/20">·</span>
+          <Link href="/contact" className="hover:text-white/70 transition-colors">
+            Contact
+          </Link>
+          <span className="text-white/20">·</span>
           <Link href="/pricing" className="hover:text-white/70 transition-colors">
             Pricing
           </Link>
