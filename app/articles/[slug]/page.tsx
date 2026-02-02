@@ -54,5 +54,52 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
 
   const related = getRelatedArticles(slug, 3)
 
-  return <ArticlePageClient article={article} relatedArticles={related} />
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@graph": [
+      {
+        "@type": "BlogPosting",
+        headline: article.title,
+        description: article.description,
+        author: { "@type": "Person", name: article.author },
+        publisher: {
+          "@type": "Organization",
+          name: "Clarus",
+          url: "https://clarusapp.io",
+        },
+        datePublished: article.publishedAt,
+        url: `https://clarusapp.io/articles/${article.slug}`,
+        keywords: article.keywords.join(", "),
+        mainEntityOfPage: {
+          "@type": "WebPage",
+          "@id": `https://clarusapp.io/articles/${article.slug}`,
+        },
+      },
+      ...(article.faqs.length > 0
+        ? [
+            {
+              "@type": "FAQPage",
+              mainEntity: article.faqs.map((faq) => ({
+                "@type": "Question",
+                name: faq.question,
+                acceptedAnswer: {
+                  "@type": "Answer",
+                  text: faq.answer,
+                },
+              })),
+            },
+          ]
+        : []),
+    ],
+  }
+
+  return (
+    <>
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
+      <ArticlePageClient article={article} relatedArticles={related} />
+    </>
+  )
 }

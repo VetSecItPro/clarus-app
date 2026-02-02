@@ -2,13 +2,32 @@ import type { Metadata } from "next"
 import { FeaturePage } from "@/components/features/feature-page"
 
 export const metadata: Metadata = {
-  title: "Export Analyses as Markdown & PDF | Clarus",
+  title: "Export & Share — Markdown, PDF & Public Links | Clarus",
   description:
-    "Export your Clarus analyses as markdown or PDF. Share insights with your team, save to Notion, or archive for reference.",
+    "Export AI analyses as clean markdown for Notion and Obsidian, formatted PDF for sharing, or public links anyone can view. Share insights with your team instantly.",
+  keywords: [
+    "export analysis",
+    "markdown export",
+    "pdf export",
+    "share analysis",
+    "content sharing",
+    "notion export",
+  ],
   openGraph: {
-    title: "Export Analyses as Markdown & PDF | Clarus",
+    title: "Export & Share — Markdown, PDF & Public Links | Clarus",
     description:
-      "Export your Clarus analyses as markdown or PDF. Share insights with your team.",
+      "Export analyses as markdown, PDF, or shareable links. Perfect for Notion, Obsidian, and team sharing.",
+    url: "https://clarusapp.io/features/export",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Export & Share | Clarus",
+    description:
+      "Export as markdown or PDF. Share via public links or email.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/features/export",
   },
 }
 

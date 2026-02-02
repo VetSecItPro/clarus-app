@@ -16,14 +16,14 @@ export const CTASection = memo(function CTASection() {
         className="max-w-2xl mx-auto text-center"
       >
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-          Stop drowning in content.
+          Videos. Podcasts. Articles. PDFs.
         </h2>
         <h2 className="text-3xl sm:text-4xl font-bold text-white/40 mb-6">
-          Start understanding it.
+          Understood in seconds.
         </h2>
 
         <p className="text-white/40 text-base mb-8 max-w-md mx-auto">
-          5 free analyses. No credit card required.
+          6-section analysis with accuracy insights and speaker attribution. 5 free analyses, no credit card.
         </p>
 
         <Link href="/signup" prefetch={true}>
@@ -37,15 +37,6 @@ export const CTASection = memo(function CTASection() {
           </motion.button>
         </Link>
 
-        <p className="mt-6 text-sm text-white/25">
-          Questions?{" "}
-          <a
-            href="mailto:hello@clarusapp.io"
-            className="text-white/40 hover:text-white/60 underline underline-offset-2 transition-colors"
-          >
-            hello@clarusapp.io
-          </a>
-        </p>
       </motion.div>
     </section>
   )

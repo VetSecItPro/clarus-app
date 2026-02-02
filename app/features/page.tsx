@@ -3,13 +3,33 @@ import Link from "next/link"
 import { Shield, Play, FileText, FileIcon, MessageSquare, BookOpen, Download, Mail } from "lucide-react"
 
 export const metadata: Metadata = {
-  title: "Features - AI Content Analysis Tools | Clarus",
+  title: "Features — YouTube Summarizer, Fact-Checker, Article & PDF Analyzer | Clarus",
   description:
-    "Explore Clarus features: AI truth analysis, YouTube video analysis, article analysis, PDF analysis, AI chat, content library, export, and weekly digest.",
+    "Explore all Clarus features: YouTube video summarizer, podcast analyzer, article summarizer, PDF analyzer, AI fact-checker, content chat, searchable library, and export tools.",
+  keywords: [
+    "youtube summarizer",
+    "podcast analyzer",
+    "article summarizer",
+    "pdf analyzer",
+    "ai fact checker",
+    "content analysis tool",
+    "video summary tool",
+  ],
   openGraph: {
-    title: "Features - AI Content Analysis Tools | Clarus",
+    title: "Features — YouTube Summarizer, Fact-Checker & More | Clarus",
     description:
-      "Explore all Clarus features for AI-powered content analysis, fact-checking, and insights.",
+      "YouTube summarizer, podcast analyzer, article summarizer, PDF analyzer, AI fact-checker, and more.",
+    url: "https://clarusapp.io/features",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Features | Clarus",
+    description:
+      "YouTube summarizer, podcast analyzer, article analyzer, fact-checker, and more. Free to start.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/features",
   },
 }
 

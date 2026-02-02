@@ -14,6 +14,7 @@ const PUBLIC_ROUTES = [
   "/pricing",
   "/discover",
   "/articles",
+  "/contact",
 ]
 
 const PUBLIC_PREFIXES = [
@@ -24,6 +25,7 @@ const PUBLIC_PREFIXES = [
   "/api/assemblyai-webhook",
   "/api/crons/",
   "/api/discover",
+  "/api/contact",
 ]
 
 function isPublicRoute(pathname: string): boolean {
@@ -93,6 +95,8 @@ function setCacheHeaders(response: NextResponse, pathname: string) {
   } else if (pathname.startsWith("/features/")) {
     // Feature pages are static marketing content
     response.headers.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400")
+  } else if (pathname === "/contact") {
+    response.headers.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400")
   } else if (pathname === "/pricing" || pathname === "/discover") {
     // Semi-static pages — short cache, long stale
     response.headers.set("Cache-Control", "public, max-age=300, stale-while-revalidate=3600")
@@ -144,17 +148,19 @@ function setSecurityHeaders(response: NextResponse) {
 
   // Content Security Policy
   // Note: 'unsafe-inline' needed for Next.js inline styles
+  // Note: 'unsafe-eval' needed for Next.js dev mode (HMR/webpack) — excluded in production
+  const isDev = process.env.NODE_ENV === "development"
   response.headers.set(
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com",
+      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com https://va.vercel-scripts.com`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https: http:",
       "media-src 'self' https://www.youtube.com",
       "frame-src 'self' https://www.youtube.com https://youtube.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openrouter.ai https://api.tavily.com https://api.firecrawl.dev https://api.supadata.ai https://api.resend.com https://api.polar.sh https://api.assemblyai.com",
+      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openrouter.ai https://api.tavily.com https://api.firecrawl.dev https://api.supadata.ai https://api.resend.com https://api.polar.sh https://api.assemblyai.com https://va.vercel-scripts.com",
       "object-src 'none'",
       "base-uri 'self'",
       "form-action 'self'",

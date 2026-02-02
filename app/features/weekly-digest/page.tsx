@@ -2,13 +2,32 @@ import type { Metadata } from "next"
 import { FeaturePage } from "@/components/features/feature-page"
 
 export const metadata: Metadata = {
-  title: "Weekly AI Digest & Trending Content | Clarus",
+  title: "Weekly Digest — Personal Recap & Trending Content | Clarus",
   description:
-    "Get a weekly email with your top analyses and trending content across Clarus. Stay informed without opening the app.",
+    "Receive a weekly email with your top analyses ranked by quality score plus trending content curated anonymously from across Clarus. Stay informed without opening the app.",
+  keywords: [
+    "weekly digest",
+    "content newsletter",
+    "trending content",
+    "analysis recap",
+    "content discovery",
+    "curated content",
+  ],
   openGraph: {
-    title: "Weekly AI Digest & Trending Content | Clarus",
+    title: "Weekly Digest — Personal Recap & Trending Content | Clarus",
     description:
-      "Get a weekly email with your top analyses and trending content across Clarus.",
+      "Weekly email with your top analyses plus trending content curated from across Clarus.",
+    url: "https://clarusapp.io/features/weekly-digest",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Weekly Digest | Clarus",
+    description:
+      "Your top analyses plus trending content — delivered weekly.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/features/weekly-digest",
   },
 }
 

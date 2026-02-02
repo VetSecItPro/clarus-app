@@ -2,9 +2,10 @@
 
 import { useState } from "react"
 import Link from "next/link"
-import Image from "next/image"
 import { motion } from "framer-motion"
 import { Check, X, Zap, Crown, Sparkles, Clock } from "lucide-react"
+import { LandingHeader } from "@/components/landing/landing-header"
+import { LandingFooter } from "@/components/landing/landing-footer"
 
 type BillingInterval = "monthly" | "annual"
 
@@ -305,36 +306,7 @@ export default function PricingPage() {
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      {/* Header */}
-      <motion.header
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="fixed top-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-white/[0.06]"
-      >
-        <div className="max-w-6xl mx-auto px-4 lg:px-6">
-          <div className="flex items-center justify-between h-14">
-            <Link href="/" className="flex items-center gap-3 group">
-              <div className="relative">
-                <Image
-                  src="/clarus-logo.webp"
-                  alt="Clarus"
-                  width={40}
-                  height={40}
-                  className="w-10 h-10 transition-all duration-300 group-hover:scale-105"
-                />
-                <div className="absolute inset-0 bg-[#1d9bf0]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-              </div>
-              <span className="text-white/90 font-bold text-3xl italic tracking-wide group-hover:text-white transition-colors duration-200" style={{ fontFamily: "var(--font-cormorant)" }}>
-                Clarus
-              </span>
-            </Link>
-            <Link href="/login" className="px-5 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-[#1d9bf0]/25 hover:shadow-lg hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5">
-              Log In
-            </Link>
-          </div>
-        </div>
-      </motion.header>
+      <LandingHeader />
 
       <main className="pt-14 flex-1">
         {/* Background orbs */}
@@ -530,34 +502,7 @@ export default function PricingPage() {
         </section>
       </main>
 
-      {/* Footer */}
-      <footer className="py-6 px-4 border-t border-white/[0.06]">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-sm">
-          <div className="flex items-center gap-3 text-white/50">
-            <Image
-              src="/clarus-logo.webp"
-              alt="Clarus"
-              width={40}
-              height={40}
-              className="w-10 h-10"
-            />
-            <span className="text-white/90 font-bold text-3xl italic tracking-wide" style={{ fontFamily: "var(--font-cormorant)" }}>
-              Clarus
-            </span>
-            <span className="text-white/30">&middot;</span>
-            <span>Veteran-Owned Business</span>
-          </div>
-          <div className="flex items-center gap-4 text-white/40">
-            <Link href="/terms" className="hover:text-white/70 transition-colors">
-              Terms of Service
-            </Link>
-            <span className="text-white/20">&middot;</span>
-            <Link href="/privacy" className="hover:text-white/70 transition-colors">
-              Privacy Policy
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   )
 }

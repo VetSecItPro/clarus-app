@@ -398,6 +398,48 @@ export interface Database {
           },
         ]
       }
+      contact_submissions: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          subject: string
+          message: string
+          status: string
+          resend_message_id: string | null
+          error_message: string | null
+          ip_address: string | null
+          created_at: string
+          sent_at: string | null
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          subject: string
+          message: string
+          status?: string
+          resend_message_id?: string | null
+          error_message?: string | null
+          ip_address?: string | null
+          created_at?: string
+          sent_at?: string | null
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          subject?: string
+          message?: string
+          status?: string
+          resend_message_id?: string | null
+          error_message?: string | null
+          ip_address?: string | null
+          created_at?: string
+          sent_at?: string | null
+        }
+        Relationships: []
+      }
       chat_threads: {
         Row: {
           id: string

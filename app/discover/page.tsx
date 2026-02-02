@@ -3,19 +3,39 @@ import type { Database } from "@/types/database.types"
 import type { TriageData } from "@/types/database.types"
 import type { Metadata } from "next"
 import Link from "next/link"
-import Image from "next/image"
 import { FileText, Play, MessageSquare, FileIcon, ExternalLink, TrendingUp, Sparkles } from "lucide-react"
+import { PublicHeader } from "@/components/public-header"
+import { LandingFooter } from "@/components/landing/landing-footer"
 
 export const revalidate = 300 // Revalidate every 5 minutes
 
 export const metadata: Metadata = {
-  title: "Discover - Trending Analyses | Clarus",
+  title: "Discover — Trending AI Analyses This Week | Clarus",
   description:
-    "Explore the most interesting content analyzed this week on Clarus. AI-powered truth analysis, summaries, and insights — curated anonymously.",
+    "Explore the most interesting content analyzed this week on Clarus. AI-powered truth analysis, summaries, and insights from YouTube videos, podcasts, articles, and PDFs — curated anonymously.",
+  keywords: [
+    "trending content",
+    "content discovery",
+    "ai analysis feed",
+    "curated content",
+    "trending articles",
+    "trending videos",
+  ],
   openGraph: {
-    title: "Discover - Trending Analyses | Clarus",
+    title: "Discover — Trending AI Analyses This Week | Clarus",
     description:
-      "Explore the most interesting content analyzed this week on Clarus.",
+      "Explore the most interesting content analyzed this week. AI summaries, fact-checks, and insights — curated anonymously.",
+    url: "https://clarusapp.io/discover",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Discover — Trending Analyses | Clarus",
+    description:
+      "The most interesting content analyzed this week. AI-powered summaries and fact-checks.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/discover",
   },
 }
 
@@ -128,42 +148,10 @@ export default async function DiscoverPage() {
   const items = await getDiscoverItems()
 
   return (
-    <div className="min-h-screen bg-black">
-      {/* Header */}
-      <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-white/[0.06]">
-        <div className="max-w-5xl mx-auto px-4 lg:px-6">
-          <div className="flex items-center justify-between h-14">
-            <Link href="/" className="flex items-center gap-3 group">
-              <Image
-                src="/clarus-logo.webp"
-                alt="Clarus"
-                width={28}
-                height={28}
-                className="rounded-lg"
-              />
-              <span className="text-white/90 font-semibold text-sm tracking-tight group-hover:text-white transition-colors">
-                Clarus
-              </span>
-            </Link>
-            <div className="flex items-center gap-3">
-              <Link
-                href="/login"
-                className="text-sm text-white/60 hover:text-white transition-colors"
-              >
-                Sign in
-              </Link>
-              <Link
-                href="/login"
-                className="text-sm font-medium text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] px-4 py-2 rounded-full transition-colors"
-              >
-                Try Clarus Free
-              </Link>
-            </div>
-          </div>
-        </div>
-      </header>
+    <div className="min-h-screen bg-black flex flex-col">
+      <PublicHeader />
 
-      <main className="max-w-5xl mx-auto px-4 lg:px-6 py-12">
+      <main className="flex-1 max-w-5xl mx-auto px-4 lg:px-6 py-12 w-full">
         {/* Hero */}
         <div className="text-center mb-12">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 mb-6">
@@ -245,23 +233,7 @@ export default async function DiscoverPage() {
         )}
       </main>
 
-      {/* Footer CTA */}
-      <footer className="border-t border-white/[0.06] mt-12">
-        <div className="max-w-5xl mx-auto px-4 lg:px-6 py-12 text-center">
-          <h2 className="text-xl font-semibold text-white mb-2">
-            Want to analyze your own content?
-          </h2>
-          <p className="text-white/40 text-sm mb-6">
-            Paste any URL and get AI-powered truth analysis, summaries, and key insights.
-          </p>
-          <Link
-            href="/login"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-medium rounded-full transition-colors"
-          >
-            Try Clarus Free
-          </Link>
-        </div>
-      </footer>
+      <LandingFooter />
     </div>
   )
 }

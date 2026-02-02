@@ -2,13 +2,32 @@ import type { Metadata } from "next"
 import { FeaturePage } from "@/components/features/feature-page"
 
 export const metadata: Metadata = {
-  title: "Personal Content Library & Search | Clarus",
+  title: "Content Library — Searchable Archive of All Your Analyses | Clarus",
   description:
-    "Save every analysis to a searchable personal library. Tag, filter, and find your analyzed content instantly with full-text search.",
+    "Build a personal knowledge base from everything you analyze. Full-text search, tags, quality filters, and bookmarks across videos, articles, podcasts, and PDFs.",
+  keywords: [
+    "content library",
+    "knowledge base",
+    "research library",
+    "content archive",
+    "searchable notes",
+    "content organizer",
+  ],
   openGraph: {
-    title: "Personal Content Library & Search | Clarus",
+    title: "Content Library — Searchable Archive | Clarus",
     description:
-      "Save every analysis to a searchable personal library. Tag, filter, and find content instantly.",
+      "Build a personal knowledge base. Full-text search, tags, and quality filters across all your analyses.",
+    url: "https://clarusapp.io/features/library",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Content Library | Clarus",
+    description:
+      "Save every analysis to a searchable library. Tags, filters, and full-text search.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/features/library",
   },
 }
 
