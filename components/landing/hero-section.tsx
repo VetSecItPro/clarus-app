@@ -21,9 +21,7 @@ export const HeroSection = memo(function HeroSection() {
           transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
           className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white tracking-tight leading-[1.05] mb-6"
         >
-          Get the point of any
-          <br />
-          video or article in{" "}
+          Understand anything in{" "}
           <span className="relative inline-block">
             <span className="relative z-10 text-[#00D4FF]">seconds</span>
             <motion.span
@@ -43,8 +41,8 @@ export const HeroSection = memo(function HeroSection() {
           transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="text-lg sm:text-xl text-white/40 max-w-xl mx-auto leading-relaxed font-light mb-8"
         >
-          Paste a link. Get key points, claims, and takeaways.
-          <span className="text-white/60"> Ask follow-up questions. Build a searchable library of everything you&apos;ve learned.</span>
+          Videos. Podcasts. Articles. PDFs. Drop a link and get
+          <span className="text-white/60"> key points, accuracy insights, speaker breakdowns where available, and a chat interface to go deeper.</span>
         </motion.p>
 
         {/* CTA Buttons */}
@@ -82,7 +80,7 @@ export const HeroSection = memo(function HeroSection() {
           transition={{ duration: 0.8, delay: 0.5 }}
           className="mt-4 text-xs text-white/30"
         >
-          No credit card required. 5 free analyses.
+          No credit card required. 5 free analyses. Works with publicly accessible content only.
         </motion.p>
       </div>
     </section>

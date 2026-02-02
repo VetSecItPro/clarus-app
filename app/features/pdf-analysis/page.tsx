@@ -2,13 +2,33 @@ import type { Metadata } from "next"
 import { FeaturePage } from "@/components/features/feature-page"
 
 export const metadata: Metadata = {
-  title: "PDF Document Analysis with AI | Clarus",
+  title: "PDF Summarizer — AI Analysis for Documents & Research Papers | Clarus",
   description:
-    "Upload or link to any PDF and get AI-powered analysis. Summaries, fact-checks, key takeaways, and action items from research papers, reports, and documents.",
+    "Summarize any PDF with AI. Get key findings, fact-checks, and action items from research papers, reports, whitepapers, and legal documents. Free PDF summarizer and analyzer.",
+  keywords: [
+    "pdf summarizer",
+    "pdf summary tool",
+    "ai pdf analyzer",
+    "research paper summarizer",
+    "document summary",
+    "pdf key takeaways",
+    "summarize pdf",
+  ],
   openGraph: {
-    title: "PDF Document Analysis with AI | Clarus",
+    title: "PDF Summarizer — AI Analysis for Documents | Clarus",
     description:
-      "Upload or link to any PDF and get AI-powered analysis, summaries, and key takeaways.",
+      "Summarize any PDF with AI. Key findings, fact-checks, and action items from research papers and reports.",
+    url: "https://clarusapp.io/features/pdf-analysis",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "PDF Summarizer | Clarus",
+    description:
+      "Link any PDF, get key findings, fact-checks, and action items. Free to start.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/features/pdf-analysis",
   },
 }
 

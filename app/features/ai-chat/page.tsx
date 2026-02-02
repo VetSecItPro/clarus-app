@@ -2,13 +2,32 @@ import type { Metadata } from "next"
 import { FeaturePage } from "@/components/features/feature-page"
 
 export const metadata: Metadata = {
-  title: "Chat with Any Content Using AI | Clarus",
+  title: "Chat with Any Content — AI Q&A for Videos, Articles & PDFs | Clarus",
   description:
-    "Ask questions about articles, videos, and PDFs you've analyzed. Get AI-powered answers with context and citations from the original content.",
+    "Ask questions about any YouTube video, article, podcast, or PDF after analysis. Get AI-powered answers grounded in the original content with web search for additional context.",
+  keywords: [
+    "chat with content",
+    "ai content chat",
+    "ask questions about video",
+    "chat with article",
+    "ai research assistant",
+    "content q&a",
+  ],
   openGraph: {
-    title: "Chat with Any Content Using AI | Clarus",
+    title: "Chat with Any Content — AI Q&A | Clarus",
     description:
-      "Ask questions about articles, videos, and PDFs with AI. Get answers with citations from the original content.",
+      "Ask questions about any video, article, or PDF. Get AI answers grounded in the original content.",
+    url: "https://clarusapp.io/features/ai-chat",
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Chat with Any Content | Clarus",
+    description:
+      "Ask follow-up questions about any analyzed content. AI answers with context and citations.",
+  },
+  alternates: {
+    canonical: "https://clarusapp.io/features/ai-chat",
   },
 }
 

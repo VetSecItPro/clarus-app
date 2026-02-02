@@ -9,7 +9,6 @@ import { FeatureGrid } from "./feature-grid"
 import { AudienceSection } from "./audience-section"
 import { CTASection } from "./cta-section"
 import { LandingFooter } from "./landing-footer"
-import { StickyCTA } from "./sticky-cta"
 
 export function LandingPage() {
   return (
@@ -27,7 +26,6 @@ export function LandingPage() {
       </main>
 
       <LandingFooter />
-      <StickyCTA />
     </div>
   )
 }
