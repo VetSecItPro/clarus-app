@@ -1,9 +1,8 @@
 "use client"
 
 import { useState, useRef, useEffect } from "react"
-import { Lock } from "lucide-react"
+import { Languages, Lock, ChevronDown } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { InstantTooltip } from "@/components/ui/tooltip"
 import {
   SUPPORTED_LANGUAGES,
   type AnalysisLanguage,
@@ -65,25 +64,33 @@ export function LanguageSelector({
 
   return (
     <div ref={containerRef} className="relative flex-shrink-0">
-      {/* Trigger button — flag only */}
-      <InstantTooltip content={`AI analysis language: ${current.name}`}>
-        <button
-          type="button"
-          onClick={() => !disabled && setIsOpen(!isOpen)}
-          disabled={disabled}
-          className={cn(
-            "flex items-center justify-center rounded-lg transition-all",
-            compact
-              ? "h-8 w-8 text-white/60 hover:text-white/90 hover:bg-white/[0.06]"
-              : "h-9 w-9 bg-white/[0.06] border border-white/[0.1] text-white/70 hover:text-white hover:border-white/20",
-            disabled && "opacity-50 cursor-not-allowed"
-          )}
-          aria-label={`Analysis language: ${current.name}. Click to change.`}
-          aria-expanded={isOpen}
-        >
-          <span className="text-base leading-none">{current.flag}</span>
-        </button>
-      </InstantTooltip>
+      {/* Trigger — pill-shaped button */}
+      <button
+        type="button"
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        disabled={disabled}
+        className={cn(
+          "flex items-center gap-1.5 rounded-full transition-all",
+          compact
+            ? "h-8 px-2.5 text-white/60 hover:text-white/90 hover:bg-white/[0.06]"
+            : "h-9 px-3 bg-white/[0.06] border border-white/[0.1] text-white/70 hover:text-white hover:border-white/20",
+          isOpen && !compact && "border-white/20 text-white",
+          disabled && "opacity-50 cursor-not-allowed"
+        )}
+        aria-label={`Translate analysis. Current language: ${current.name}. Click to change.`}
+        aria-expanded={isOpen}
+      >
+        <Languages className={cn("shrink-0", compact ? "w-3.5 h-3.5" : "w-3.5 h-3.5")} />
+        <span className={cn("font-medium whitespace-nowrap", compact ? "text-[10px]" : "text-xs")}>
+          {current.flag} {compact ? current.name : `Translate`}
+        </span>
+        {!compact && (
+          <ChevronDown className={cn(
+            "w-3 h-3 shrink-0 transition-transform",
+            isOpen && "rotate-180"
+          )} />
+        )}
+      </button>
 
       {/* Dropdown */}
       {isOpen && (
@@ -93,7 +100,7 @@ export function LanguageSelector({
         )}>
           <div className="px-3 py-2 border-b border-white/[0.06]">
             <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider">
-              Analysis Language
+              Translate Analysis
             </p>
           </div>
           <div className="max-h-[280px] overflow-y-auto py-1">
