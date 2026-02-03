@@ -44,7 +44,7 @@ export const API_PRICING = {
 
 export type ApiName = "openrouter" | "supadata" | "firecrawl" | "tavily" | "polar" | "supabase" | "vercel" | "assemblyai"
 export type ApiOperation =
-  | "analyze" | "chat" | "summarize" | "tone_detection"  // openrouter
+  | "analyze" | "chat" | "summarize" | "tone_detection" | "translate"  // openrouter
   | "transcript" | "metadata"          // supadata
   | "scrape"                           // firecrawl
   | "search"                           // tavily
