@@ -6,6 +6,7 @@ import { Toaster } from "sonner"
 import CookieConsent from "@/components/cookie-consent"
 import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import { SWRProvider } from "@/components/swr-provider"
+import { ActiveAnalysisProvider } from "@/lib/contexts/active-analysis-context"
 import { WebVitals } from "@/components/web-vitals"
 import "./globals.css"
 
@@ -147,7 +148,9 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased">
         <SWRProvider>
-          {children}
+          <ActiveAnalysisProvider>
+            {children}
+          </ActiveAnalysisProvider>
         </SWRProvider>
         <Toaster position="top-center" />
         <CookieConsent />
