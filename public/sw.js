@@ -1,33 +1,31 @@
-// Service Worker for aggressive caching
-const CACHE_NAME = 'clarus-v1';
-const STATIC_CACHE = 'clarus-static-v1';
-const DYNAMIC_CACHE = 'clarus-dynamic-v1';
+// Service Worker — offline fallback only
+// IMPORTANT: Do NOT cache HTML pages. Vercel deployments change asset hashes
+// on every deploy, so cached HTML references stale JS/CSS that no longer exists.
+// This causes RSC payload failures and CSS preload mismatches.
+const CACHE_NAME = 'clarus-v2';
 
-// Static assets to cache immediately
-const STATIC_ASSETS = [
-  '/',
-  '/library',
-  '/feed',
+// Only cache the offline fallback — the one truly static asset
+const PRECACHE_ASSETS = [
   '/offline.html',
 ];
 
-// Install event - cache static assets
+// Install event - cache only the offline fallback
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
+    caches.open(CACHE_NAME).then((cache) => {
+      return cache.addAll(PRECACHE_ASSETS);
     })
   );
   self.skipWaiting();
 });
 
-// Activate event - clean old caches
+// Activate event - clean ALL old caches (including stale v1 caches)
 self.addEventListener('activate', (event) => {
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys
-          .filter((key) => key !== STATIC_CACHE && key !== DYNAMIC_CACHE)
+          .filter((key) => key !== CACHE_NAME)
           .map((key) => caches.delete(key))
       );
     })
@@ -35,77 +33,26 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
-// Fetch event - serve from cache, fallback to network
+// Fetch event - network-first for everything, offline fallback for navigation
 self.addEventListener('fetch', (event) => {
   const { request } = event;
-  const url = new URL(request.url);
 
-  // Skip non-GET requests
+  // Only handle GET requests
   if (request.method !== 'GET') return;
 
-  // Skip API requests and Supabase requests (always fetch fresh)
-  if (url.pathname.startsWith('/api/') || url.hostname.includes('supabase')) {
-    return;
-  }
-
-  // For navigation requests, use network-first
+  // Only intercept navigation requests (page loads) for offline fallback
   if (request.mode === 'navigate') {
     event.respondWith(
-      fetch(request)
-        .then((response) => {
-          const clone = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(request, clone);
-          });
-          return response;
-        })
-        .catch(() => {
-          return caches.match(request).then((cached) => {
-            return cached || caches.match('/offline.html');
-          });
-        })
-    );
-    return;
-  }
-
-  // For images, use cache-first with network fallback
-  if (request.destination === 'image') {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        if (cached) return cached;
-
-        return fetch(request).then((response) => {
-          const clone = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(request, clone);
-          });
-          return response;
-        });
+      fetch(request).catch(() => {
+        return caches.match('/offline.html');
       })
     );
     return;
   }
 
-  // For other static assets (JS, CSS), use stale-while-revalidate
-  if (
-    request.destination === 'script' ||
-    request.destination === 'style' ||
-    request.destination === 'font'
-  ) {
-    event.respondWith(
-      caches.match(request).then((cached) => {
-        const fetchPromise = fetch(request).then((response) => {
-          const clone = response.clone();
-          caches.open(STATIC_CACHE).then((cache) => {
-            cache.put(request, clone);
-          });
-          return response;
-        });
-        return cached || fetchPromise;
-      })
-    );
-    return;
-  }
+  // Let all other requests (JS, CSS, images, API) go directly to the network.
+  // Vercel's CDN + browser cache handle caching far better than a SW for
+  // deployment-hashed assets.
 });
 
 // Handle messages from main thread

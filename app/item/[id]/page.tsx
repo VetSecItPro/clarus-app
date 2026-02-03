@@ -34,6 +34,8 @@ import {
 import { useIsDesktop } from "@/lib/hooks/use-media-query"
 import type { Session } from "@supabase/supabase-js"
 import { type AnalysisLanguage, getLanguageConfig, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
+import { LanguageSelector } from "@/components/ui/language-selector"
+import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
 
 // Dynamic imports for below-fold and conditional components (reduces initial bundle)
 const InlineChat = dynamic(() => import("@/components/inline-chat").then(m => ({ default: m.InlineChat })), { ssr: false })
@@ -130,7 +132,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const isDesktop = useIsDesktop()
 
   // Analysis language — read from content record or localStorage
-  const [analysisLanguage] = useState<AnalysisLanguage>(() => {
+  const [analysisLanguage, setAnalysisLanguage] = useState<AnalysisLanguage>(() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem(LANGUAGE_STORAGE_KEY)
       if (saved && ["ar","es","fr","de","pt","ja","ko","zh","it","nl"].includes(saved)) {
@@ -140,6 +142,10 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     return "en"
   })
   const langConfig = getLanguageConfig(analysisLanguage)
+  const [isTranslating, setIsTranslating] = useState(false)
+  const [multiLanguageEnabled, setMultiLanguageEnabled] = useState(false)
+  // Track the language before a translation attempt so we can revert on failure
+  const prevLanguageRef = useRef<AnalysisLanguage>(analysisLanguage)
 
   const isContentProcessing = useCallback((content: ContentWithSummary | null): boolean => {
     if (!content) return true
@@ -471,6 +477,94 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     fetchCrossRefs()
   }, [item?.id, hasTruthCheck])
 
+  // Fetch user tier on mount to determine multi-language access
+  useEffect(() => {
+    if (!session?.user?.id) return
+    const fetchTier = async () => {
+      const { data } = await supabase
+        .from("users")
+        .select("tier, day_pass_expires_at")
+        .eq("id", session.user.id)
+        .single()
+      if (data) {
+        const tier = normalizeTier(data.tier, data.day_pass_expires_at)
+        setMultiLanguageEnabled(TIER_FEATURES[tier].multiLanguageAnalysis)
+      }
+    }
+    fetchTier()
+  }, [session?.user?.id])
+
+  // Handle language change — fetch existing translation or trigger new one
+  const handleLanguageChange = useCallback(async (newLang: AnalysisLanguage) => {
+    if (newLang === analysisLanguage || !item) return
+
+    prevLanguageRef.current = analysisLanguage
+    setAnalysisLanguage(newLang)
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, newLang)
+
+    // Switching back to English — re-fetch English summary
+    if (newLang === "en") {
+      const { data: enSummary } = await supabase
+        .from("summaries")
+        .select("*")
+        .eq("content_id", item.id)
+        .eq("language", "en")
+        .maybeSingle()
+
+      if (enSummary) {
+        setItem(prev => prev ? { ...prev, summary: enSummary } : null)
+      }
+      return
+    }
+
+    // Check if a completed translation already exists (instant switch)
+    const { data: existingSummary } = await supabase
+      .from("summaries")
+      .select("*")
+      .eq("content_id", item.id)
+      .eq("language", newLang)
+      .maybeSingle()
+
+    if (existingSummary?.processing_status === "complete") {
+      setItem(prev => prev ? { ...prev, summary: existingSummary } : null)
+      return
+    }
+
+    // No translation yet — call the translate API
+    setIsTranslating(true)
+    try {
+      const res = await fetch(`/api/content/${item.id}/translate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ language: newLang }),
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        if (data.upgrade_required) {
+          toast.error("Multi-language requires Starter plan or higher")
+        } else {
+          toast.error(data.error || "Translation failed")
+        }
+        // Revert language
+        setAnalysisLanguage(prevLanguageRef.current)
+        localStorage.setItem(LANGUAGE_STORAGE_KEY, prevLanguageRef.current)
+        return
+      }
+
+      const translated = await res.json()
+      setItem(prev => prev ? { ...prev, summary: translated } : null)
+      const langName = getLanguageConfig(newLang).name
+      toast.success(`Translated to ${langName}`)
+    } catch {
+      toast.error("Translation failed. Please try again.")
+      setAnalysisLanguage(prevLanguageRef.current)
+      localStorage.setItem(LANGUAGE_STORAGE_KEY, prevLanguageRef.current)
+    } finally {
+      setIsTranslating(false)
+    }
+  }, [item, analysisLanguage])
+
   const handleAddTag = async (tagToAdd: string) => {
     if (!item || !tagToAdd.trim()) return
     const sanitizedTag = tagToAdd.trim().toLowerCase()
@@ -569,6 +663,18 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   // Analysis cards content (shared between desktop right panel and mobile analysis tab)
   const analysisContent = (
     <div className="space-y-6 sm:space-y-8" dir={langConfig.dir}>
+      {isTranslating && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#1d9bf0]/10 border border-[#1d9bf0]/20"
+        >
+          <Loader2 className="w-4 h-4 text-[#1d9bf0] animate-spin shrink-0" />
+          <p className="text-sm text-[#1d9bf0]/80">
+            Translating to {getLanguageConfig(analysisLanguage).name}...
+          </p>
+        </motion.div>
+      )}
       <AnalysisProgress
         processingStatus={summary?.processing_status ?? null}
         briefOverview={summary?.brief_overview ?? null}
@@ -1046,6 +1152,22 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     </Tooltip>
 
                   </TooltipProvider>
+
+                  <div className="relative">
+                    <LanguageSelector
+                      value={analysisLanguage}
+                      onValueChange={handleLanguageChange}
+                      multiLanguageEnabled={multiLanguageEnabled}
+                      disabled={isTranslating || isPolling || isRegenerating}
+                      dropdownDirection="down"
+                    />
+                    {isTranslating && (
+                      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap">
+                        <Loader2 className="w-3 h-3 text-[#1d9bf0] animate-spin" />
+                        <span className="text-[10px] text-white/50">Translating...</span>
+                      </div>
+                    )}
+                  </div>
                 </>
               )}
 
@@ -1128,6 +1250,15 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <LanguageSelector
+                value={analysisLanguage}
+                onValueChange={handleLanguageChange}
+                multiLanguageEnabled={multiLanguageEnabled}
+                disabled={isTranslating || isPolling || isRegenerating}
+                compact
+                dropdownDirection="down"
+              />
 
               <button
                 onClick={() => handleRegenerate()}
