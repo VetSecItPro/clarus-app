@@ -5,6 +5,9 @@ import { checkRateLimit } from "@/lib/validation"
 import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 
+// PERF: FIX-213 — set maxDuration for serverless function (PDF generation can be slow)
+export const maxDuration = 30
+
 // Color palette
 const COLORS = {
   primary: [29, 155, 240] as [number, number, number], // #1d9bf0

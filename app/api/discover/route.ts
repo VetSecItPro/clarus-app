@@ -11,12 +11,13 @@ import { checkRateLimit } from "@/lib/validation"
  * Only includes content with a share_token (publicly shared by a user).
  */
 
+// SECURITY: Use anon key for public endpoint, not service role — FIX-025 (service role bypasses RLS)
 let _client: ReturnType<typeof createClient<Database, "clarus">> | null = null
 function getClient() {
   if (!_client) {
     _client = createClient<Database, "clarus">(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.SUPABASE_SERVICE_ROLE_KEY!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       { db: { schema: "clarus" } }
     )
   }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { timingSafeEqual } from "crypto"
 import { getAdminClient } from "@/lib/auth"
 import { sendDiscoveryNewsletterEmail } from "@/lib/email"
 import type { TriageData } from "@/types/database.types"
@@ -21,7 +22,11 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 })
   }
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  // FIX-005: Use timingSafeEqual to prevent timing attacks on cron secret comparison
+  const expectedHeader = `Bearer ${cronSecret}`
+  const headerBuffer = Buffer.from(authHeader || "")
+  const expectedBuffer = Buffer.from(expectedHeader)
+  if (headerBuffer.length !== expectedBuffer.length || !timingSafeEqual(headerBuffer, expectedBuffer)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -103,12 +108,13 @@ export async function GET(request: Request) {
     })
   }
 
-  // Step 4: Get opted-in users
+  // PERF: FIX-208 — limit users query to prevent unbounded fetch
   const { data: users, error: usersError } = await supabase
     .from("users")
     .select("id, email, name, digest_enabled")
     .eq("digest_enabled", true)
     .not("email", "is", null)
+    .limit(500)
 
   if (usersError) {
     console.error("Failed to fetch users:", usersError)
@@ -130,29 +136,37 @@ export async function GET(request: Request) {
   let sent = 0
   let skipped = 0
 
-  for (const user of users) {
-    if (!user.email) {
-      skipped++
-      continue
-    }
-
-    try {
-      const result = await sendDiscoveryNewsletterEmail(
-        user.email,
-        user.name ?? undefined,
-        weekOf,
-        trendingItems
-      )
-
-      if (result.success) {
-        sent++
-      } else {
-        console.error(`Failed to send discovery newsletter to ${user.email}:`, result.error)
-        skipped++
-      }
-    } catch (err) {
-      console.error(`Error sending newsletter to user ${user.id}:`, err)
-      skipped++
+  // PERF: FIX-208 — batch email sends with Promise.all (batches of 10) instead of sequential for...of
+  const BATCH_SIZE = 10
+  for (let i = 0; i < users.length; i += BATCH_SIZE) {
+    const batch = users.slice(i, i + BATCH_SIZE)
+    const results = await Promise.all(
+      batch.map(async (user) => {
+        if (!user.email) {
+          return { sent: false }
+        }
+        try {
+          const result = await sendDiscoveryNewsletterEmail(
+            user.email,
+            user.name ?? undefined,
+            weekOf,
+            trendingItems
+          )
+          if (result.success) {
+            return { sent: true }
+          } else {
+            console.error(`Failed to send discovery newsletter to ${user.email}:`, result.error)
+            return { sent: false }
+          }
+        } catch (err) {
+          console.error(`Error sending newsletter to user ${user.id}:`, err)
+          return { sent: false }
+        }
+      })
+    )
+    for (const r of results) {
+      if (r.sent) sent++
+      else skipped++
     }
   }
 

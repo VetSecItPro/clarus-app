@@ -102,9 +102,10 @@ function LibraryItemCardComponent({
           {/* Thumbnail */}
           <div className="relative aspect-video bg-white/[0.06]">
             {item.thumbnail_url ? (
+              /* FIX-309: descriptive alt text for grid thumbnail */
               <Image
                 src={item.thumbnail_url}
-                alt=""
+                alt={item.title || "Content thumbnail"}
                 fill
                 className="object-cover"
                 sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
@@ -167,11 +168,13 @@ function LibraryItemCardComponent({
         {/* Action buttons */}
         <TooltipProvider delayDuration={300}>
           <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+            {/* FIX-304: added aria-labels for grid view icon-only buttons */}
             <Tooltip>
               <TooltipTrigger asChild>
                 <button
                   onClick={(e) => onToggleBookmark(e, item)}
                   disabled={togglingBookmark === item.id}
+                  aria-label={item.is_bookmarked ? "Remove bookmark" : "Add bookmark"}
                   className={cn(
                     "p-1.5 rounded-lg transition-all",
                     item.is_bookmarked
@@ -193,6 +196,7 @@ function LibraryItemCardComponent({
                 <button
                   onClick={(e) => onDelete(e, item.id)}
                   disabled={deletingId === item.id}
+                  aria-label="Delete item"
                   className="p-1.5 bg-black/60 rounded-lg hover:bg-red-500/80 transition-all"
                 >
                   {deletingId === item.id ? (
@@ -231,9 +235,10 @@ function LibraryItemCardComponent({
           {/* Thumbnail */}
           <div className="relative w-28 h-20 flex-shrink-0 rounded-xl overflow-hidden bg-white/[0.06]">
             {item.thumbnail_url ? (
+              /* FIX-309: descriptive alt text for list thumbnail */
               <Image
                 src={item.thumbnail_url}
-                alt=""
+                alt={item.title || "Content thumbnail"}
                 fill
                 className="object-cover"
                 sizes="112px"
@@ -392,9 +397,11 @@ function LibraryItemCardComponent({
               <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5" />
             </Link>
             <div className="flex items-center gap-2">
+              {/* FIX-304: added aria-label for expanded list view bookmark button */}
               <button
                 onClick={(e) => onToggleBookmark(e, item)}
                 disabled={togglingBookmark === item.id}
+                aria-label={item.is_bookmarked ? "Remove bookmark" : "Add bookmark"}
                 className={cn(
                   "w-10 h-10 flex items-center justify-center rounded-full transition-all border",
                   item.is_bookmarked
@@ -409,9 +416,11 @@ function LibraryItemCardComponent({
                   <Bookmark className={cn("w-4 h-4", item.is_bookmarked && "fill-current")} />
                 )}
               </button>
+              {/* FIX-304: added aria-label for expanded list view delete button */}
               <button
                 onClick={(e) => onDelete(e, item.id)}
                 disabled={deletingId === item.id}
+                aria-label="Delete item"
                 className="w-10 h-10 flex items-center justify-center bg-white/[0.06] border border-white/[0.08] hover:bg-red-500/20 hover:border-red-500/30 text-white/50 hover:text-red-400 rounded-full transition-all"
                 title="Delete"
               >
@@ -431,10 +440,12 @@ function LibraryItemCardComponent({
         <TooltipProvider delayDuration={300}>
           <div className="absolute top-3 right-3 flex gap-1 opacity-0 group-hover:opacity-100 transition-all">
             <Tooltip>
+              {/* FIX-304: added aria-labels for collapsed list view icon-only buttons */}
               <TooltipTrigger asChild>
                 <button
                   onClick={(e) => onToggleBookmark(e, item)}
                   disabled={togglingBookmark === item.id}
+                  aria-label={item.is_bookmarked ? "Remove bookmark" : "Add bookmark"}
                   className={cn(
                     "p-2 rounded-lg transition-all",
                     item.is_bookmarked
@@ -456,6 +467,7 @@ function LibraryItemCardComponent({
                 <button
                   onClick={(e) => onDelete(e, item.id)}
                   disabled={deletingId === item.id}
+                  aria-label="Delete item"
                   className="p-2 rounded-lg hover:bg-red-500/20 transition-all"
                 >
                   {deletingId === item.id ? (

@@ -210,40 +210,50 @@ export async function GET(request: NextRequest) {
       getSupabaseAdmin().from("chat_threads").select("id", { count: "exact", head: true }),
       // Chat messages
       getSupabaseAdmin().from("chat_messages").select("id", { count: "exact", head: true }),
+      // PERF: FIX-206 — add .limit(10000) to unbounded queries
       // Signup trend
       getSupabaseAdmin().from("users").select("created_at")
         .gte("created_at", startDateStr)
-        .order("created_at", { ascending: true }),
+        .order("created_at", { ascending: true })
+        .limit(10000),
       // Content trend
       getSupabaseAdmin().from("content").select("date_added")
         .gte("date_added", startDateStr)
-        .order("date_added", { ascending: true }),
+        .order("date_added", { ascending: true })
+        .limit(10000),
       // Top domains
       getSupabaseAdmin().from("domains").select("domain, total_analyses, avg_quality_score")
         .order("total_analyses", { ascending: false })
         .limit(10),
+      // PERF: FIX-206 — add .limit(10000) to unbounded queries
       // Truth ratings from summaries (only need overall_rating from the JSON)
-      getSupabaseAdmin().from("summaries").select("truth_check->overall_rating"),
+      getSupabaseAdmin().from("summaries").select("truth_check->overall_rating").limit(10000),
       // Processing metrics
       getSupabaseAdmin().from("processing_metrics").select("status, processing_time_ms, section_type")
-        .gte("created_at", startDateStr),
+        .gte("created_at", startDateStr)
+        .limit(10000),
       // API usage/costs today
       getSupabaseAdmin().from("api_usage").select("estimated_cost_usd, status, api_name, operation, error_message, created_at")
-        .gte("created_at", todayStart),
+        .gte("created_at", todayStart)
+        .limit(10000),
       // API usage for 7 days (for trends)
       getSupabaseAdmin().from("api_usage").select("estimated_cost_usd, status, api_name, operation, error_message, created_at, tokens_input, tokens_output, metadata")
         .gte("created_at", sevenDaysAgo)
-        .order("created_at", { ascending: true }),
+        .order("created_at", { ascending: true })
+        .limit(10000),
       // Processing metrics for 7 days (for trends)
       getSupabaseAdmin().from("processing_metrics").select("processing_time_ms, created_at, status")
         .gte("created_at", sevenDaysAgo)
-        .order("created_at", { ascending: true }),
+        .order("created_at", { ascending: true })
+        .limit(10000),
       // Content by type with date for monthly breakdown
       getSupabaseAdmin().from("content").select("type, date_added")
-        .gte("date_added", new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString()),
+        .gte("date_added", new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString())
+        .limit(10000),
       // API usage for last 24 hours (for status calculation)
       getSupabaseAdmin().from("api_usage").select("api_name, status")
-        .gte("created_at", todayStart),
+        .gte("created_at", todayStart)
+        .limit(10000),
       // Previous period users (for growth calculation)
       getSupabaseAdmin().from("users").select("id", { count: "exact", head: true })
         .gte("created_at", previousPeriodStart)
@@ -253,7 +263,7 @@ export async function GET(request: NextRequest) {
         .gte("date_added", previousPeriodStart)
         .lt("date_added", previousPeriodEnd),
       // User tiers breakdown
-      getSupabaseAdmin().from("users").select("tier"),
+      getSupabaseAdmin().from("users").select("tier").limit(10000),
     ])
 
     // Calculate unique active users
