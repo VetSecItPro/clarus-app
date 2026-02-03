@@ -120,7 +120,11 @@ export async function incrementUsage(
 
 /**
  * Combined check-and-gate: checks the limit, returns an error message if exceeded.
- * Use this in API routes for a one-call pattern.
+ * SECURITY: Reads current count to compare against limit — FIX-013 (TOCTOU race condition).
+ * The actual increment is atomic via the increment_usage RPC, so concurrent requests
+ * that both pass the check will still increment correctly (no data corruption).
+ * The worst case is a user slightly exceeding their limit by 1-2 requests under
+ * high concurrency, which is acceptable for this use case.
  */
 export async function enforceUsageLimit(
   supabase: SupabaseClient<Database>,

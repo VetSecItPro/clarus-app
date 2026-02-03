@@ -135,17 +135,20 @@ export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
   return auth
 }
 
-/**
- * Verify that the authenticated user owns a piece of content
- */
+/** Fields returned by verifyContentOwnership — intentionally narrower than the full Row */
+export type ContentOwnershipFields = Pick<
+  Database["clarus"]["Tables"]["content"]["Row"],
+  "id" | "user_id" | "title" | "url" | "type" | "thumbnail_url" | "tags" | "is_bookmarked" | "date_added" | "share_token" | "author" | "duration" | "detected_tone"
+>
+
 export async function verifyContentOwnership(
   supabase: SupabaseClient<Database>,
   userId: string,
   contentId: string
-): Promise<{ owned: true; content: Database["clarus"]["Tables"]["content"]["Row"] } | { owned: false; response: NextResponse }> {
+): Promise<{ owned: true; content: ContentOwnershipFields } | { owned: false; response: NextResponse }> {
   const { data: content, error } = await supabase
     .from("content")
-    .select("*")
+    .select("id, user_id, title, url, type, thumbnail_url, tags, is_bookmarked, date_added, share_token, author, duration, detected_tone")
     .eq("id", contentId)
     .single()
 

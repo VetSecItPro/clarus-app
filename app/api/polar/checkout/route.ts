@@ -93,8 +93,10 @@ export async function POST(request: Request) {
       }
     }
 
-    // Get the origin for redirect URLs
-    const origin = request.headers.get("origin") || "https://clarusapp.io"
+    // FIX-023: Validate redirect origin to prevent open redirect to arbitrary external domains
+    const allowedOrigins = ["https://clarusapp.io", "http://localhost:3000", "http://localhost:3001"]
+    const rawOrigin = request.headers.get("origin") || "https://clarusapp.io"
+    const origin = allowedOrigins.includes(rawOrigin) ? rawOrigin : "https://clarusapp.io"
 
     // Create Polar checkout session
     const checkout = await polar.checkouts.create({

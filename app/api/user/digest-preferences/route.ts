@@ -1,12 +1,20 @@
 import { NextResponse } from "next/server"
-import { authenticateRequest } from "@/lib/auth"
+import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { digestPreferencesSchema, parseBody } from "@/lib/schemas"
+import { checkRateLimit } from "@/lib/validation"
 
 /**
  * GET /api/user/digest-preferences
  * Get current user's digest preferences
  */
-export async function GET() {
+export async function GET(request: Request) {
+  // Rate limiting — 30 req/min per IP
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = checkRateLimit(`digest-prefs:${clientIp}`, 30, 60000)
+  if (!rateLimit.allowed) {
+    return AuthErrors.rateLimit(rateLimit.resetIn)
+  }
+
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
 
@@ -33,6 +41,13 @@ export async function GET() {
  * Update digest preferences
  */
 export async function PATCH(request: Request) {
+  // Rate limiting — 10 writes/min per IP
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = checkRateLimit(`digest-prefs-write:${clientIp}`, 10, 60000)
+  if (!rateLimit.allowed) {
+    return AuthErrors.rateLimit(rateLimit.resetIn)
+  }
+
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
 

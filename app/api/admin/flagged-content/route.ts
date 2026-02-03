@@ -37,7 +37,10 @@ export async function GET() {
     reported: items.filter(f => f.status === "reported").length,
   }
 
-  return NextResponse.json({ items, counts })
+  // FIX-014: Prevent caching of sensitive admin/user-specific data
+  const response = NextResponse.json({ items, counts })
+  response.headers.set("Cache-Control", "no-store, private")
+  return response
 }
 
 const updateSchema = z.object({

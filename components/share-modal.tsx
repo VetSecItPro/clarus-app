@@ -136,8 +136,11 @@ export function ShareModal({
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
           />
 
-          {/* Modal */}
+          {/* Modal — FIX-305: added role, aria-modal, aria-labelledby */}
           <motion.div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="share-modal-title"
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -156,15 +159,17 @@ export function ShareModal({
                     )}
                   </div>
                   <div>
-                    <h3 className="text-white font-semibold">Share Analysis</h3>
+                    <h3 id="share-modal-title" className="text-white font-semibold">Share Analysis</h3>
                     <p className="text-white/50 text-xs">
                       {activeTab === "link" ? "Share via link" : "Send via email"}
                     </p>
                   </div>
                 </div>
+                {/* FIX-301: added aria-label for icon-only close button */}
                 <button
                   onClick={handleClose}
                   disabled={isSending}
+                  aria-label="Close share dialog"
                   className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.08] transition-all disabled:opacity-50"
                 >
                   <X className="w-5 h-5" />
@@ -212,14 +217,18 @@ export function ShareModal({
                   <div className="space-y-3">
                     {shareUrl ? (
                       <div className="flex items-center gap-2">
+                        {/* FIX-310: added aria-label for read-only URL input */}
                         <input
                           type="text"
                           readOnly
                           value={shareUrl}
+                          aria-label="Shareable link URL"
                           className="flex-1 px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white text-sm font-mono truncate"
                         />
+                        {/* FIX-303: added dynamic aria-label for copy link button */}
                         <button
                           onClick={handleCopyLink}
+                          aria-label={linkCopied ? "Link copied" : "Copy link to clipboard"}
                           className="flex-shrink-0 px-4 py-3 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/30 transition-all"
                         >
                           {linkCopied ? (
@@ -255,9 +264,11 @@ export function ShareModal({
                 ) : (
                   /* Email tab */
                   <>
+                    {/* FIX-322: added htmlFor/id associations for label/input pairs */}
                     <div>
-                      <label className="block text-white/60 text-sm mb-2">Recipient Email</label>
+                      <label htmlFor="share-email" className="block text-white/60 text-sm mb-2">Recipient Email</label>
                       <input
+                        id="share-email"
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
@@ -267,8 +278,9 @@ export function ShareModal({
                       />
                     </div>
                     <div>
-                      <label className="block text-white/60 text-sm mb-2">Personal Message (optional)</label>
+                      <label htmlFor="share-message" className="block text-white/60 text-sm mb-2">Personal Message (optional)</label>
                       <textarea
+                        id="share-message"
                         value={message}
                         onChange={(e) => setMessage(e.target.value)}
                         placeholder="Hey, thought you might find this interesting..."

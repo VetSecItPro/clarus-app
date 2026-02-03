@@ -2,15 +2,11 @@
 
 import { useState, type FormEvent, useEffect } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { useRouter } from "next/navigation"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-// import { getSupabaseBrowserClient } from "@/lib/supabase/client" // Remove this line
-import { supabase } from "@/lib/supabase" // Add this line
+import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, Lock, Eye, EyeOff, ArrowRight } from "lucide-react"
 
 export default function UpdatePasswordPage() {
   const [password, setPassword] = useState("")
@@ -19,23 +15,20 @@ export default function UpdatePasswordPage() {
   const [message, setMessage] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isSessionReady, setIsSessionReady] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const router = useRouter()
-  // Remove: const supabase = getSupabaseBrowserClient()
-  // The global `supabase` import will be used.
 
   useEffect(() => {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((event, _session) => {
       if (event === "PASSWORD_RECOVERY") {
-        // This event is triggered when the user lands on this page after clicking the reset link.
-        // The session is now available, and we can allow the password update.
         setIsSessionReady(true)
       }
     })
 
     // Check if there's already a session when the component mounts
-    // This handles the case where the user is already in the password recovery flow
     async function checkSession() {
       const { data } = await supabase.auth.getSession()
       if (data.session) {
@@ -84,7 +77,6 @@ export default function UpdatePasswordPage() {
     } else {
       setMessage("Your password has been updated successfully! You can now log in with your new password.")
       toast.success("Password updated successfully!")
-      // Optionally sign the user out and redirect to login
       setTimeout(() => {
         supabase.auth.signOut()
         router.push("/login")
@@ -94,77 +86,143 @@ export default function UpdatePasswordPage() {
 
   if (!isSessionReady) {
     return (
-      <div className="min-h-screen bg-[#121212] flex items-center justify-center text-gray-300">
-        <p>Waiting for password recovery session...</p>
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="animate-pulse text-white/40 text-sm">Waiting for password recovery session...</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-[#1a1a1a] border-gray-700 text-gray-200">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center text-[#F0F0F0]">Update Your Password</CardTitle>
-          <CardDescription className="text-center text-gray-400">Enter your new password below.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleUpdatePassword} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="password" className="text-gray-300">
-                New Password
-              </Label>
-              <Input
+    <div className="min-h-screen bg-black flex items-center justify-center p-6">
+      <div className="w-full max-w-xs animate-[fadeInUp_0.6s_ease-out]">
+        {/* Logo */}
+        <Link href="/" className="flex justify-center mb-8 hover:opacity-80 transition-opacity">
+          <Image
+            src="/clarus-email-logo.png"
+            alt="Clarus"
+            width={140}
+            height={48}
+            className="h-10 w-auto"
+          />
+        </Link>
+
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-white mb-2">Update Your Password</h1>
+          <p className="text-white/50 text-sm">
+            Enter your new password below.
+          </p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handleUpdatePassword} className="space-y-4">
+          {/* Password field */}
+          <div className="space-y-1.5">
+            <label htmlFor="password" className="block text-xs font-medium text-white/70">
+              New Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <input
                 id="password"
-                type="password"
-                placeholder="••••••••"
+                type={showPassword ? "text" : "password"}
+                placeholder="Enter new password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="bg-gray-800 border-gray-600 text-gray-200 focus:ring-gray-500 placeholder-gray-500"
+                className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirm-password" className="text-gray-300">
-                Confirm New Password
-              </Label>
-              <Input
+          </div>
+
+          {/* Confirm Password field */}
+          <div className="space-y-1.5">
+            <label htmlFor="confirm-password" className="block text-xs font-medium text-white/70">
+              Confirm New Password
+            </label>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <input
                 id="confirm-password"
-                type="password"
-                placeholder="••••••••"
+                type={showConfirmPassword ? "text" : "password"}
+                placeholder="Confirm new password"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
-                className="bg-gray-800 border-gray-600 text-gray-200 focus:ring-gray-500 placeholder-gray-500"
+                className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
               />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                aria-label={showConfirmPassword ? "Hide password" : "Show password"}
+              >
+                {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
             </div>
+          </div>
 
-            {error && (
-              <div className="flex items-center p-3 text-sm text-red-400 bg-red-900/30 rounded-md border border-red-700/50">
-                <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
+          {/* Error message */}
+          {error && (
+            <div className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
+              <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-            {message && (
-              <div className="flex items-center p-3 text-sm text-green-400 bg-green-900/30 rounded-md border border-green-700/50">
-                <CheckCircle2 className="w-5 h-5 mr-2 flex-shrink-0" />
-                <span>{message}</span>
-              </div>
-            )}
+          {/* Success message */}
+          {message && (
+            <div className="flex items-center p-3 text-xs text-green-400 bg-green-500/10 rounded-lg border border-green-500/20 animate-[fadeIn_0.3s_ease-out]">
+              <CheckCircle2 className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span>{message}</span>
+            </div>
+          )}
 
-            <Button type="submit" className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200" disabled={isLoading}>
-              {isLoading ? "Updating..." : "Update Password"}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-400">
-            <Link href="/login" className="font-medium text-blue-400 hover:underline">
-              Back to Log In
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
+          {/* Submit button */}
+          <div className="flex justify-center pt-2">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="px-8 h-9 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group shadow-lg shadow-[#1d9bf0]/25 hover:shadow-xl hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5"
+            >
+              {isLoading ? (
+                "Updating..."
+              ) : (
+                <>
+                  Update Password
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+
+        {/* Footer */}
+        <p className="mt-6 text-center text-xs text-white/40">
+          <Link href="/login" className="text-[#1d9bf0] hover:text-[#1a8cd8] font-medium transition-colors">
+            Back to Log In
+          </Link>
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }

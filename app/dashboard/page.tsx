@@ -1,19 +1,31 @@
+// LEGACY: This dashboard page is orphaned — it is not linked from the main app navigation.
+// It only cross-references /add-content (also orphaned). Scheduled for removal (FIX-313).
 "use client"
 
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
-import type { Tables } from "@/types/database.types"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { ListChecks, PlusCircle, AlertTriangle } from "lucide-react"
 
+// PERF: FIX-205 — local type matching the partial select (only columns we display)
+interface DashboardContentItem {
+  id: string
+  title: string | null
+  url: string
+  type: string | null
+  thumbnail_url: string | null
+  date_added: string | null
+  is_bookmarked: boolean | null
+}
+
 // This component assumes it's rendered within an authenticated context
 // (e.g., wrapped by a withAuth HOC or similar protection)
 
 export default function DashboardPage() {
-  const [contentItems, setContentItems] = useState<Tables<"content">[]>([])
+  const [contentItems, setContentItems] = useState<DashboardContentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
@@ -32,11 +44,12 @@ export default function DashboardPage() {
         return
       }
 
-      // RLS: "Users can select their own content"
+      // PERF: FIX-205 — select only needed columns and limit results
       const { data, error: fetchError } = await supabase
         .from("content")
-        .select("*")
+        .select("id, title, url, type, thumbnail_url, date_added, is_bookmarked")
         .order("date_added", { ascending: false })
+        .limit(20)
 
       if (fetchError) {
         console.error("Error fetching content:", fetchError)
@@ -97,7 +110,7 @@ export default function DashboardPage() {
   )
 }
 
-function ContentItem({ item }: { item: Tables<"content"> }) {
+function ContentItem({ item }: { item: DashboardContentItem }) {
   return (
     <Card>
       <CardHeader>

@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
+import { timingSafeEqual } from "crypto"
 import type { Database, Json, Tables, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
 import { validateContentId, checkRateLimit } from "@/lib/validation"
 import { logApiUsage, logProcessingMetrics, createTimer } from "@/lib/api-usage"
@@ -1421,19 +1422,24 @@ async function findCachedAnalysis(
   )
   if (validCandidates.length === 0) return null
 
-  // Check each candidate for a completed summary in the target language
-  for (const candidate of validCandidates) {
-    const { data: summary } = await supabase
-      .from("summaries")
-      .select("*")
-      .eq("content_id", candidate.id)
-      .eq("language", targetLanguage)
-      .eq("processing_status", "complete")
-      .single()
+  // Batch-fetch summaries for all candidates in a single query (avoids N+1)
+  const candidateIds = validCandidates.map((c) => c.id)
+  const { data: summaries } = await supabase
+    .from("summaries")
+    .select("*")
+    .in("content_id", candidateIds)
+    .eq("language", targetLanguage)
+    .eq("processing_status", "complete")
 
-    if (summary) {
-      console.log(`API: [cache] FULL HIT — found completed analysis from content ${candidate.id}`)
-      return { type: "full", content: candidate, summary }
+  if (summaries && summaries.length > 0) {
+    // Match summaries back to candidates in order (prefer freshest candidate)
+    const summaryByContentId = new Map(summaries.map((s) => [s.content_id, s]))
+    for (const candidate of validCandidates) {
+      const summary = summaryByContentId.get(candidate.id)
+      if (summary) {
+        console.log(`API: [cache] FULL HIT — found completed analysis from content ${candidate.id}`)
+        return { type: "full", content: candidate, summary }
+      }
     }
   }
 
@@ -1551,9 +1557,17 @@ export async function POST(req: NextRequest) {
     )
   }
 
-  // Authentication: accept either session auth (browser) or internal service token (server-to-server)
-  const authHeader = req.headers.get("authorization")
-  const isInternalCall = authHeader === `Bearer ${supabaseKey}`
+  // SECURITY: Use dedicated internal API secret, not service role key — FIX-007 (service role key was leaked as bearer token)
+  // FIX-006: Use timingSafeEqual to prevent timing attacks on internal API secret comparison
+  const internalSecret = process.env.INTERNAL_API_SECRET
+  const authHeader = req.headers.get("authorization") || ""
+  let isInternalCall = false
+  if (internalSecret) {
+    const expectedHeader = `Bearer ${internalSecret}`
+    const headerBuffer = Buffer.from(authHeader)
+    const expectedBuffer = Buffer.from(expectedHeader)
+    isInternalCall = headerBuffer.length === expectedBuffer.length && timingSafeEqual(headerBuffer, expectedBuffer)
+  }
   let authenticatedUserId: string | null = null
 
   if (!isInternalCall) {

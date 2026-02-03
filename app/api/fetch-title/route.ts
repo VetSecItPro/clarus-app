@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
-import { authenticateRequest } from "@/lib/auth"
-import { validateUrl } from "@/lib/validation"
+import { authenticateRequest, AuthErrors } from "@/lib/auth"
+import { validateUrl, checkRateLimit } from "@/lib/validation"
 
 const FETCH_TIMEOUT = 5_000
 
@@ -11,6 +11,13 @@ const FETCH_TIMEOUT = 5_000
  * before the full analysis completes.
  */
 export async function POST(request: NextRequest) {
+  // Rate limiting — this endpoint makes outbound fetches, so cap at 30/min per IP
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = checkRateLimit(`fetch-title:${clientIp}`, 30, 60000)
+  if (!rateLimit.allowed) {
+    return AuthErrors.rateLimit(rateLimit.resetIn)
+  }
+
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
 

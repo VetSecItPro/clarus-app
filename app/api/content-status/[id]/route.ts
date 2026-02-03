@@ -1,7 +1,6 @@
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { validateContentId, checkRateLimit } from "@/lib/validation"
+import { authenticateRequest } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
 
@@ -34,42 +33,14 @@ export async function GET(
 
     const contentId = idValidation.sanitized!
 
-    // Get authenticated user
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        db: {
-          schema: "clarus",
-        },
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
-
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser()
-
-    if (authError || !user) {
-      return NextResponse.json(
-        { error: "Authentication required" },
-        { status: 401 }
-      )
+    // Authenticate using centralized helper
+    const auth = await authenticateRequest()
+    if (!auth.success) {
+      return auth.response
     }
 
     // Fetch content
-    const { data: content, error: contentError } = await supabase
+    const { data: content, error: contentError } = await auth.supabase
       .from("content")
       .select("id, title, url, type, user_id, thumbnail_url, author, duration")
       .eq("id", contentId)
@@ -80,7 +51,7 @@ export async function GET(
     }
 
     // Check ownership (user can only access their own content status)
-    if (content.user_id !== user.id) {
+    if (content.user_id !== auth.user.id) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
@@ -88,7 +59,7 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const lang = searchParams.get("language") || "en"
 
-    const { data: summary } = await supabase
+    const { data: summary } = await auth.supabase
       .from("summaries")
       .select(
         "processing_status, triage, brief_overview, mid_length_summary, detailed_summary, truth_check, action_items, language"

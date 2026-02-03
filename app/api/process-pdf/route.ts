@@ -271,11 +271,9 @@ export async function POST(req: NextRequest) {
 
     const contentId = contentData.id
 
-    // Trigger async processing (same as URL processing)
-    // Construct base URL from request headers for local dev compatibility
-    const protocol = req.headers.get("x-forwarded-proto") || "http"
-    const host = req.headers.get("host") || "localhost:3000"
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || `${protocol}://${host}`
+    // SECURITY: Use env-based URL only, never request headers — FIX-019 (Host header injection leaked service role key via SSRF)
+    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
+      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
 
     const processResponse = await fetch(
       `${baseUrl}/api/process-content`,
@@ -283,7 +281,8 @@ export async function POST(req: NextRequest) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
+          // SECURITY: Use dedicated internal secret, not service role key — FIX-007
+          "Authorization": `Bearer ${process.env.INTERNAL_API_SECRET}`,
         },
         body: JSON.stringify({
           content_id: contentId,

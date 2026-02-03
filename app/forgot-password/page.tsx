@@ -2,22 +2,16 @@
 
 import { useState, type FormEvent } from "react"
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-// import { getSupabaseBrowserClient } from "@/lib/supabase/client" // Remove this line
-import { supabase } from "@/lib/supabase" // Add this line
+import Image from "next/image"
+import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
-import { AlertCircle, CheckCircle2 } from "lucide-react"
+import { AlertCircle, CheckCircle2, Mail, ArrowRight } from "lucide-react"
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("")
   const [message, setMessage] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
-  // Remove: const supabase = getSupabaseBrowserClient()
-  // The global `supabase` import will be used.
 
   const handlePasswordReset = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -45,59 +39,102 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#121212] flex flex-col items-center justify-center p-4">
-      <Card className="w-full max-w-md bg-[#1a1a1a] border-gray-700 text-gray-200">
-        <CardHeader>
-          <CardTitle className="text-2xl font-bold text-center text-[#F0F0F0]">Forgot Password</CardTitle>
-          <CardDescription className="text-center text-gray-400">
+    <div className="min-h-screen bg-black flex items-center justify-center p-6">
+      <div className="w-full max-w-xs animate-[fadeInUp_0.6s_ease-out]">
+        {/* Logo */}
+        <Link href="/" className="flex justify-center mb-8 hover:opacity-80 transition-opacity">
+          <Image
+            src="/clarus-email-logo.png"
+            alt="Clarus"
+            width={140}
+            height={48}
+            className="h-10 w-auto"
+          />
+        </Link>
+
+        {/* Header */}
+        <div className="text-center mb-6">
+          <h1 className="text-2xl font-bold text-white mb-2">Forgot Password</h1>
+          <p className="text-white/50 text-sm">
             Enter your email to receive a password reset link.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handlePasswordReset} className="space-y-6">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-gray-300">
-                Email
-              </Label>
-              <Input
+          </p>
+        </div>
+
+        {/* Form */}
+        <form onSubmit={handlePasswordReset} className="space-y-4">
+          {/* Email field */}
+          <div className="space-y-1.5">
+            <label htmlFor="email" className="block text-xs font-medium text-white/70">
+              Email address
+            </label>
+            <div className="relative">
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <input
                 id="email"
                 type="email"
                 placeholder="you@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="bg-gray-800 border-gray-600 text-gray-200 focus:ring-gray-500 placeholder-gray-500"
+                className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
               />
             </div>
+          </div>
 
-            {error && (
-              <div className="flex items-center p-3 text-sm text-red-400 bg-red-900/30 rounded-md border border-red-700/50">
-                <AlertCircle className="w-5 h-5 mr-2 flex-shrink-0" />
-                <span>{error}</span>
-              </div>
-            )}
+          {/* Error message */}
+          {error && (
+            <div className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
+              <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
-            {message && (
-              <div className="flex items-center p-3 text-sm text-green-400 bg-green-900/30 rounded-md border border-green-700/50">
-                <CheckCircle2 className="w-5 h-5 mr-2 flex-shrink-0" />
-                <span>{message}</span>
-              </div>
-            )}
+          {/* Success message */}
+          {message && (
+            <div className="flex items-center p-3 text-xs text-green-400 bg-green-500/10 rounded-lg border border-green-500/20 animate-[fadeIn_0.3s_ease-out]">
+              <CheckCircle2 className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span>{message}</span>
+            </div>
+          )}
 
-            <Button type="submit" className="w-full bg-gray-700 hover:bg-gray-600 text-gray-200" disabled={isLoading}>
-              {isLoading ? "Sending..." : "Send Reset Email"}
-            </Button>
-          </form>
-        </CardContent>
-        <CardFooter className="flex justify-center">
-          <p className="text-sm text-gray-400">
-            Remember your password?{" "}
-            <Link href="/login" className="font-medium text-blue-400 hover:underline">
-              Log In
-            </Link>
-          </p>
-        </CardFooter>
-      </Card>
+          {/* Submit button */}
+          <div className="flex justify-center pt-2">
+            <button
+              type="submit"
+              disabled={isLoading}
+              className="px-8 h-9 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group shadow-lg shadow-[#1d9bf0]/25 hover:shadow-xl hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5"
+            >
+              {isLoading ? (
+                "Sending..."
+              ) : (
+                <>
+                  Send Reset Email
+                  <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
+                </>
+              )}
+            </button>
+          </div>
+        </form>
+
+        {/* Footer */}
+        <p className="mt-6 text-center text-xs text-white/40">
+          Remember your password?{" "}
+          <Link href="/login" className="text-[#1d9bf0] hover:text-[#1a8cd8] font-medium transition-colors">
+            Log In
+          </Link>
+        </p>
+      </div>
+
+      <style>{`
+        @keyframes fadeInUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; }
+          to { opacity: 1; }
+        }
+      `}</style>
     </div>
   )
 }
