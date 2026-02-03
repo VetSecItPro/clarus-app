@@ -32,7 +32,7 @@ export async function prefetchContent(contentId: string): Promise<void> {
       .select(`
         id, title, url, type, thumbnail_url, date_added, user_id, author,
         is_bookmarked, tags, detected_tone, full_text,
-        summaries(id, content_id, processing_status, brief_overview, mid_length_summary, detailed_summary, triage, truth_check, action_items, key_takeaways)
+        summaries(id, content_id, processing_status, brief_overview, mid_length_summary, detailed_summary, triage, truth_check, action_items)
       `)
       .eq("id", contentId)
       .single()

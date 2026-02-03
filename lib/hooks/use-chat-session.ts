@@ -244,7 +244,7 @@ export function useChatSession({
           .select("id, full_text, title")
           .eq("url", url)
           .eq("user_id", userId)
-          .order("created_at", { ascending: false })
+          .order("date_added", { ascending: false })
           .limit(1)
           .maybeSingle()
 
