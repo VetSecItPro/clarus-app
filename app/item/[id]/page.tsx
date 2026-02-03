@@ -36,6 +36,7 @@ import type { Session } from "@supabase/supabase-js"
 import { type AnalysisLanguage, getLanguageConfig, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
 import { LanguageSelector } from "@/components/ui/language-selector"
 import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
+import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
 
 // Dynamic imports for below-fold and conditional components (reduces initial bundle)
 const InlineChat = dynamic(() => import("@/components/inline-chat").then(m => ({ default: m.InlineChat })), { ssr: false })
@@ -169,6 +170,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const upgradeModal = useUpgradeModal()
 
   const isDesktop = useIsDesktop()
+  const { startTracking: startAnalysisTracking, clearTracking: clearAnalysisTracking, pausePolling, resumePolling } = useActiveAnalysis()
 
   // Analysis language — read from content record or localStorage
   const [analysisLanguage, setAnalysisLanguage] = useState<AnalysisLanguage>(() => {
@@ -388,6 +390,10 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
       if (isContentProcessing(contentData)) {
         setIsPolling(true)
+        // Ensure global tracking is active for this content
+        if (contentData) {
+          startAnalysisTracking(contentId, contentData.title || "Processing...", contentData.type)
+        }
       }
     }
 
@@ -399,7 +405,15 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         pollingIntervalRef.current = null
       }
     }
-  }, [contentId, session?.user?.id, fetchContentData, isContentProcessing])
+  }, [contentId, session?.user?.id, fetchContentData, isContentProcessing, startAnalysisTracking])
+
+  // Pause global analysis polling while on this page (page has its own polling)
+  useEffect(() => {
+    pausePolling()
+    return () => {
+      resumePolling()
+    }
+  }, [pausePolling, resumePolling])
 
   useEffect(() => {
     if (!isPolling) {
@@ -415,6 +429,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       const stillProcessing = await pollContentAndUpdate()
       if (!stillProcessing) {
         setIsPolling(false)
+        clearAnalysisTracking()
         toast.success("Analysis complete!")
         return
       }
@@ -429,6 +444,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         const stillProcessing = await pollContentAndUpdate()
         if (!stillProcessing) {
           setIsPolling(false)
+          clearAnalysisTracking()
           toast.success("Analysis complete!")
         }
       }
@@ -456,7 +472,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       clearTimeout(maxPollingTimeout)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [isPolling, pollContentAndUpdate, item?.type, item?.summary?.processing_status])
+  }, [isPolling, pollContentAndUpdate, item?.type, item?.summary?.processing_status, clearAnalysisTracking])
 
   useEffect(() => {
     const fetchDomainStats = async () => {
