@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { Loader2, CheckCircle2 } from "lucide-react"
+import { Loader2, Sparkles } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
@@ -35,25 +35,22 @@ export function ActiveAnalysisNavLink({ variant }: ActiveAnalysisNavLinkProps) {
               className={cn(
                 "flex flex-col items-center transition-all duration-200",
                 isComplete
-                  ? "text-emerald-400"
+                  ? "text-white"
                   : "text-[#1d9bf0]"
               )}
             >
               {isComplete ? (
-                <CheckCircle2 className="w-6 h-6" />
+                <Sparkles className="w-6 h-6" />
               ) : (
                 <Loader2 className="w-6 h-6 animate-spin" />
               )}
               <span className="text-[11px] mt-1 font-medium opacity-100">
-                {isComplete ? "Ready" : "Analyzing"}
+                {isComplete ? "Current" : "Analyzing"}
               </span>
             </div>
             {/* Active indicator dot */}
             <div
-              className={cn(
-                "absolute -top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full",
-                isComplete ? "bg-emerald-400" : "bg-[#1d9bf0]"
-              )}
+              className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#1d9bf0]"
             />
           </Link>
         </motion.div>
@@ -79,17 +76,17 @@ export function ActiveAnalysisNavLink({ variant }: ActiveAnalysisNavLinkProps) {
             className={cn(
               "flex items-center gap-2 transition-all duration-200",
               isComplete
-                ? "text-emerald-400"
+                ? "text-white"
                 : "text-[#1d9bf0]"
             )}
           >
             {isComplete ? (
-              <CheckCircle2 className="w-4 h-4" />
+              <Sparkles className="w-4 h-4" />
             ) : (
               <Loader2 className="w-4 h-4 animate-spin" />
             )}
             <span className="text-sm font-medium whitespace-nowrap">
-              {isComplete ? "Ready" : "Analyzing..."}
+              {isComplete ? "Current" : "Analyzing..."}
             </span>
           </div>
           {/* Animated underline */}
@@ -97,7 +94,7 @@ export function ActiveAnalysisNavLink({ variant }: ActiveAnalysisNavLinkProps) {
             className={cn(
               "absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] rounded-full w-8 opacity-100 transition-colors duration-300",
               isComplete
-                ? "bg-emerald-400"
+                ? "bg-gradient-to-r from-[#1d9bf0] to-[#06b6d4]"
                 : "bg-gradient-to-r from-[#1d9bf0] to-[#06b6d4] animate-pulse"
             )}
           />
