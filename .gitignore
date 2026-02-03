@@ -41,3 +41,10 @@ _chrome-extension-disabled/
 scripts/*prompts*.sql
 scripts/*prompt*.sql
 docs/archive/VAJRA_PROMPT*
+
+# Security audit reports — contain vulnerability details
+.security-audit.json
+.security-reports/
+
+# Local dev tool config
+.mcp.json

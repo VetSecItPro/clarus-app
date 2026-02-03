@@ -108,7 +108,6 @@ function setCorsHeaders(response: NextResponse, origin: string | null) {
   // Allow Chrome extension origins and the main site
   const allowedOrigins = [
     "https://clarusapp.io",
-    "https://clarusapp.io",
     "http://localhost:3000", // Development
     "http://localhost:3456", // Clarus dev port
   ]

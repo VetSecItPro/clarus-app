@@ -8,13 +8,6 @@ AI-powered content analysis for clarity and understanding.
 
 > **THIS IS MANDATORY. VIOLATING THESE RULES WILL BREAK OTHER PROJECTS.**
 
-### Supabase Project Info
-- **Project ID**: `srqmutgamvktxqmylied`
-- **Project URL**: `https://srqmutgamvktxqmylied.supabase.co`
-- **MCP**: Configured in `.mcp.json`
-
-### Isolation Rules
-
 **This Supabase project is SHARED with other applications.** Clarus is reusing an existing Supabase instance to avoid additional costs.
 
 | Rule | Description |
@@ -42,6 +35,9 @@ clarus.processing_metrics
 clarus.active_chat_prompt
 clarus.active_summarizer_prompt
 clarus.analysis_prompts
+clarus.usage_tracking
+clarus.claims
+clarus.flagged_content
 ```
 
 **Code doesn't need prefixes** - the search_path is configured so `SELECT * FROM users` automatically resolves to `clarus.users`.
@@ -56,161 +52,24 @@ If you connect to this Supabase project and see tables like `users`, `content`, 
 
 ---
 
-## Links & Resources
-
-| Resource | URL | Status |
-|----------|-----|--------|
-| **Production** | https://clarusapp.io | ✅ Live |
-| **GitHub Repo** | https://github.com/VetSecItPro/clarus-app | ✅ Active |
-| **Vercel Project** | https://vercel.com/vetsecitpro/clarus-app | ✅ Deployed |
-| **Supabase Project** | https://supabase.com/dashboard/project/srqmutgamvktxqmylied | ✅ Shared instance |
-
----
-
-## Services to Configure
-
-### 1. Domain (Hostinger)
-- **Domain**: clarusapp.io
-- **Status**: ✅ Purchased
-- **Action**: Configure DNS to point to Vercel after project setup
-
-### 2. GitHub
-- **Repo**: https://github.com/VetSecItPro/clarus-app
-- **Status**: ✅ Complete
-- **Env vars needed**: None (public repo)
-
-### 3. Vercel (Hosting)
-- **Dashboard**: https://vercel.com/vetsecitpro/clarus-app
-- **Status**: ✅ Deployed and live at clarusapp.io
-- **Domain**: clarusapp.io (DNS configured, HTTPS active)
-- **Env vars**: All configured in Vercel dashboard
-
-### 4. Supabase (Database + Auth)
-- **Dashboard**: https://supabase.com/dashboard/project/srqmutgamvktxqmylied
-- **Project ID**: `srqmutgamvktxqmylied`
-- **Status**: ✅ Using shared instance
-- **⚠️ CRITICAL**: This is a SHARED Supabase project. See "Database Isolation Rules" at the top of this file.
-- **Actions**:
-  1. ~~Create new Supabase project~~ (REUSING EXISTING - tables must use `clarus_` prefix)
-  2. Run `scripts/000-full-schema.sql` to create Clarus tables (with `clarus_` prefix)
-  3. Run `scripts/000b-insert-prompts.sql` to seed AI prompts
-  4. Run `scripts/023-add-fulltext-search.sql` for search
-  5. Enable Google OAuth in Auth settings
-  6. Configure email templates
-- **Env vars needed**:
-  - `NEXT_PUBLIC_SUPABASE_URL` - `https://srqmutgamvktxqmylied.supabase.co`
-  - `NEXT_PUBLIC_SUPABASE_ANON_KEY` - Anon key (from Supabase dashboard)
-  - `SUPABASE_SERVICE_ROLE_KEY` - Service role key (from Supabase dashboard)
-
-### 5. OpenRouter (AI/LLM)
-- **Dashboard**: https://openrouter.ai/settings/keys
-- **Status**: ✅ Configured
-- **Env var**: `OPENROUTER_API_KEY` (set in `.env.local` and Vercel)
-
-### 6. Polar (Payments)
-- **Dashboard**: https://polar.sh/dashboard
-- **Status**: ❌ Needs account (NOT ACTIVE YET)
-- **Actions**:
-  1. Create Polar account
-  2. Create organization
-  3. Create product "Clarus Starter" with monthly ($18) and annual ($144) variants
-  4. Create product "Clarus Pro" with monthly ($29) and annual ($279) variants
-  5. Set up webhook endpoint: `https://clarusapp.io/api/polar/webhook`
-  6. Get access token from Settings → Developers
-- **Env vars needed**:
-  - `POLAR_ACCESS_TOKEN` - Access token
-  - `POLAR_WEBHOOK_SECRET` - Webhook signing secret
-  - `POLAR_ORGANIZATION_ID` - Organization ID
-  - `POLAR_PRODUCT_STARTER_MONTHLY` - Starter monthly product ID ($18/mo)
-  - `POLAR_PRODUCT_STARTER_ANNUAL` - Starter annual product ID ($144/yr)
-  - `POLAR_PRODUCT_PRO_MONTHLY` - Pro monthly product ID ($29/mo)
-  - `POLAR_PRODUCT_PRO_ANNUAL` - Pro annual product ID ($279/yr)
-  - `POLAR_PRODUCT_DAY_PASS` - Day Pass one-time product ID ($10)
-
-### 7. Firecrawl (Web Scraping)
-- **Dashboard**: https://www.firecrawl.dev/app
-- **Status**: ✅ Configured
-- **Env var**: `FIRECRAWL_API_KEY` (set in `.env.local` and Vercel)
-
-### 8. Supadata (YouTube Transcripts)
-- **Dashboard**: https://supadata.ai/dashboard
-- **Status**: ✅ Configured
-- **Env var**: `SUPADATA_API_KEY` (set in `.env.local` and Vercel)
-
-### 9. Tavily (Web Search for AI)
-- **Dashboard**: https://tavily.com/dashboard
-- **Status**: ✅ Configured
-- **Env var**: `TAVILY_API_KEY` (set in `.env.local` and Vercel)
-
-### 10. Resend (Transactional Email)
-- **Dashboard**: https://resend.com/emails
-- **Status**: ✅ Configured
-- **Env var**: `RESEND_API_KEY` (set in `.env.local` and Vercel)
-
-### 11. AssemblyAI (Podcast Transcription)
-- **Dashboard**: https://www.assemblyai.com/app
-- **Status**: ❌ Needs API key configured
-- **Actions**:
-  1. Create AssemblyAI account
-  2. Get API key from dashboard
-  3. Add `ASSEMBLYAI_API_KEY` to `.env.local` and Vercel
-- **Env var**: `ASSEMBLYAI_API_KEY` (required for podcast analysis)
-- **Pricing**: $0.17/hr ($0.15 transcription + $0.02 speaker diarization)
-- **Features**: Speaker diarization, language detection, webhook callbacks
-
----
-
-## All Environment Variables
-
-```env
-# Supabase (SHARED INSTANCE - only use clarus_ prefixed tables!)
-NEXT_PUBLIC_SUPABASE_URL=https://srqmutgamvktxqmylied.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-
-# OpenRouter (AI)
-OPENROUTER_API_KEY=sk-or-...
-
-# Polar (Payments)
-POLAR_ACCESS_TOKEN=polar_at_...
-POLAR_WEBHOOK_SECRET=...
-POLAR_ORGANIZATION_ID=...
-POLAR_PRODUCT_STARTER_MONTHLY=...
-POLAR_PRODUCT_STARTER_ANNUAL=...
-POLAR_PRODUCT_PRO_MONTHLY=...
-POLAR_PRODUCT_PRO_ANNUAL=...
-POLAR_PRODUCT_DAY_PASS=...
-
-# Firecrawl (Web Scraping)
-FIRECRAWL_API_KEY=fc-...
-
-# Supadata (YouTube Transcripts)
-SUPADATA_API_KEY=...
-
-# Tavily (Web Search)
-TAVILY_API_KEY=tvly-...
-
-# Resend (Email)
-RESEND_API_KEY=re_...
-
-# AssemblyAI (Podcast Transcription)
-ASSEMBLYAI_API_KEY=...
-```
-
----
-
 ## Tech Stack
 
 - **Framework**: Next.js 15 (App Router)
 - **Database**: Supabase/Postgres
 - **Auth**: Supabase Auth (Email + Google OAuth)
-- **Payments**: Polar (not active yet)
+- **Payments**: Polar
 - **AI**: OpenRouter (Gemini 2.5 Flash)
 - **Scraping**: Firecrawl (articles), Supadata (YouTube)
 - **Transcription**: AssemblyAI (podcasts, speaker diarization)
 - **Search**: Tavily (web search for AI context)
 - **Email**: Resend
 - **Hosting**: Vercel
+
+---
+
+## Environment Variables
+
+All secrets are managed in `.env.local` (local) and Vercel dashboard (production). See `.env.example` for required variable names. **Never commit actual values.**
 
 ---
 
@@ -227,45 +86,6 @@ export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm typecheck
 export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm lint
 export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm build
 ```
-
----
-
-## Database Tables
-
-**⚠️ All Clarus tables live in the `clarus` SCHEMA (not `public`) to avoid conflicts with other projects sharing this Supabase instance.**
-
-```
-users                    -- clarus.users (user profiles)
-content                  -- clarus.content (analyzed URLs, podcast_transcript_id for AssemblyAI)
-summaries                -- clarus.summaries (AI analysis results)
-content_ratings          -- clarus.content_ratings (user feedback)
-chat_threads             -- clarus.chat_threads (per-content chat)
-chat_messages            -- clarus.chat_messages (chat history)
-hidden_content           -- clarus.hidden_content (user-hidden items)
-domains                  -- clarus.domains (domain statistics)
-api_usage                -- clarus.api_usage (API tracking)
-processing_metrics       -- clarus.processing_metrics (performance)
-active_chat_prompt       -- clarus.active_chat_prompt (chat config)
-active_summarizer_prompt -- clarus.active_summarizer_prompt (summarizer config)
-analysis_prompts         -- clarus.analysis_prompts (AI prompts)
-usage_tracking           -- clarus.usage_tracking (monthly usage per user, podcast_analyses_count)
-claims                   -- clarus.claims (extracted claims for cross-referencing)
-flagged_content          -- clarus.flagged_content (content moderation flags)
-```
-
-### Migration Scripts (Run in Order)
-1. `scripts/100-create-clarus-schema.sql` - **RUN FIRST** - Creates `clarus` schema and sets search_path
-2. `scripts/000-full-schema.sql` - Creates all tables in the `clarus` schema
-3. `scripts/000b-insert-prompts.sql` - AI prompts data (includes Gemini 2.5 Flash models)
-4. `scripts/023-add-fulltext-search.sql` - Full-text search indexes
-5. `scripts/030-switch-to-gemini-flash.sql` - Switch all prompts to Gemini 2.5 Flash (applied 2026-01-31)
-6. `scripts/031-create-flagged-content.sql` - Content moderation flagged_content table (applied 2026-01-31)
-7. `scripts/204-add-podcast-analyses.sql` - Podcast analysis columns + updated increment_usage (applied 2026-01-31)
-8. `scripts/033-add-tone-detection.sql` - Auto-tone detection column + {{TONE}} in 4 prose prompts (applied 2026-01-31)
-9. `scripts/205-add-day-pass-expires.sql` - Day pass expiration column on users table (applied 2026-02-01)
-10. `scripts/206-set-search-path-on-functions.sql` - Set search_path = clarus, extensions on all 10 functions (applied 2026-02-01)
-
-**Tables are created in the `clarus` schema. Code references them without prefix (e.g., `users` not `clarus.users`).**
 
 ---
 
@@ -297,13 +117,13 @@ flagged_content          -- clarus.flagged_content (content moderation flags)
 
 ## Payment Integration (Polar)
 
-Polar replaced Stripe on 2026-01-28. Key files:
-- `lib/polar.ts` - SDK setup with placeholder product IDs
+Key files:
+- `lib/polar.ts` - SDK setup
 - `app/api/polar/checkout/route.ts` - Checkout session creation
 - `app/api/polar/webhook/route.ts` - Webhook event handling
 - `app/api/polar/portal/route.ts` - Customer portal access
 
-Database column: `users.polar_customer_id` (not stripe_customer_id)
+Database column: `users.polar_customer_id`
 
 ---
 
@@ -329,15 +149,6 @@ Database column: `users.polar_customer_id` (not stripe_customer_id)
 
 Annual discount: up to 33% off ($144/yr Starter saves $72, $279/yr Pro saves $69).
 
-### Day Pass ($10 one-time)
-- 24-hour premium access, one-time payment (not a subscription)
-- Uses `day_pass_expires_at` column on users table for expiration
-- Cannot buy if already on active subscription (starter/pro)
-- Cannot stack — must wait for current pass to expire
-- On expiration, user reverts to free tier (content stays in library)
-- Polar product: one-time (not recurring) — `POLAR_PRODUCT_DAY_PASS`
-- Webhook: handled in `checkout.updated` (no subscription events for one-time products)
-
 **Rules:**
 - Do NOT add a Team/Enterprise tier until team features are built
 - Do NOT change prices, limits, or feature gating without explicit approval
@@ -349,24 +160,19 @@ Annual discount: up to 33% off ($144/yr Starter saves $72, $279/yr Pro saves $69
 
 ## AI Models
 
-> **Switched from Claude (Anthropic) to Gemini 2.5 Flash (Google) on 2026-01-30.**
-> **Reason: 7x cheaper per analysis ($0.032 vs $0.225). Quality is adequate for content analysis.**
-
-| Component | Model | Cost (per 1M tokens) |
-|-----------|-------|---------------------|
-| 6 analysis sections | `google/gemini-2.5-flash` | $0.30 in / $2.50 out |
-| Summarizer | `google/gemini-2.5-flash` | $0.30 in / $2.50 out |
-| Chat | `google/gemini-2.5-flash` | $0.30 in / $2.50 out |
-| Keyword extraction | `google/gemini-2.5-flash-lite` | $0.10 in / $0.40 out |
+| Component | Model |
+|-----------|-------|
+| 6 analysis sections | `google/gemini-2.5-flash` |
+| Summarizer | `google/gemini-2.5-flash` |
+| Chat | `google/gemini-2.5-flash` |
+| Keyword extraction | `google/gemini-2.5-flash-lite` |
+| Tone detection | `google/gemini-2.5-flash-lite` |
 
 - Models configured in database (`analysis_prompts`, `active_chat_prompt`, `active_summarizer_prompt`)
 - Fallback models in code default to `google/gemini-2.5-flash`
-- Legacy Claude pricing kept in `lib/api-usage.ts` for historical cost tracking
-- Migration script: `scripts/030-switch-to-gemini-flash.sql`
+- AI prompts are stored in the database, not in the codebase
 
 **Content Safety:** All prompts include mandatory CONTENT_REFUSED guardrails for CSAM, terrorism, weapons manufacturing. Content about politics, conspiracy theories, controversial opinions IS allowed.
-
-**Speaker Attribution:** All analysis prompts attribute claims/arguments to specific speakers by name for video/podcast content. Makes analysis more intimate and useful.
 
 ---
 
@@ -379,92 +185,21 @@ Annual discount: up to 33% off ($144/yr Starter saves $72, $279/yr Pro saves $69
 - Layer 3: AI model refusal detection (Gemini safety refusals)
 - Layer 4: Admin dashboard moderation queue + NCMEC CyberTipline reporting
 - All flagged content preserved with legal hold (non-deletable)
-- Penalty for not reporting: $150K first offense, $300K subsequent
 
 ---
 
-## Clarus Session Work
+## Migration Scripts (Run in Order)
 
-> **Last Updated**: 2026-02-01 (Session 7)
-> **All implementation plans complete.** Historical docs archived to `docs/archive/`.
+1. `scripts/100-create-clarus-schema.sql` - Creates `clarus` schema and sets search_path
+2. `scripts/000-full-schema.sql` - Creates all tables in the `clarus` schema
+3. `scripts/023-add-fulltext-search.sql` - Full-text search indexes
+4. Additional numbered migration scripts as needed
 
-### Completed (All Sessions)
+**Prompt data is managed directly in the database, not in migration files.**
 
-| Task | PR | Status |
-|------|-----|--------|
-| Security hardening: Zod validation, auth helpers, security headers | #3 | Merged |
-| Optimize CI workflow (PR-only triggers, concurrency, combined jobs) | #4 | Merged |
-| Add clarus schema isolation for shared Supabase | #5 | Merged |
-| Code cleanup, TypeScript fixes, Polar migration | #6 | Merged |
-| Configure MCP servers (Vercel, Supabase) | - | Done |
-| Dead code cleanup (1,481+ lines) | #13, #14 | Merged |
-| Perf: middleware auth bypass, caching, CSS animations, ISR | #15 | Merged |
-| Landing page overhaul (hero, features, personas, CTA, SEO) | #17 | Merged |
-| Gemini 2.5 Flash, hard caps, honest landing page, content safety | #18 | Merged |
-| Content moderation pipeline (3-layer screening + admin queue) | #18 | Merged |
-| NCMEC reporting mechanism (flagged_content table + admin review) | #18 | Merged |
-| Admin dashboard enhancements (tier breakdown + moderation queue) | #18 | Merged |
-| Weekly discovery newsletter (/discover page + cron + email) | #18 | Merged |
-| In-product paywall detection warning | #18 | Merged |
-| SEO feature pages (8 pages + shared layout) | #18 | Merged |
-| Database migration — switch live prompts to Gemini 2.5 Flash | - | Applied |
-| Perf: framer-motion removal from auth pages, expanded public routes | #19 | Merged |
-| CLAUDE.md session documentation update | #20 | Merged |
-| Vercel deployment + custom domain (clarusapp.io) | - | Done |
-| All external services configured (OpenRouter, Firecrawl, Supadata, Tavily, Resend) | - | Done |
-| Podcast analysis — AssemblyAI transcription + separate tier gating | - | Code complete, needs API key |
-| Auto-detect content tone before analysis | #22 | Merged |
-| SEO articles section (15 articles, /articles + /articles/[slug]) | #23 | Merged |
-| Demo page cleanup | #24 | Merged |
-| Performance optimization sweep batch 1 (20 items) | #25 | Merged |
-| Performance optimization sweep batch 2 (5 items: Tavily retry, cache headers, dynamic imports, score filter, WebP logo) | #26 | Merged |
-| Analysis progress bar (6-segment, color-coded, real-time section tracking) | #30 | Merged |
-| Pre-launch security hardening (9 fixes — see Security Hardening section below) | #31 | Pending |
+---
 
-### Performance Optimization Summary
+## Notes
 
-25 of 27 items completed. 2 deferred (won't fix):
-- Item page monolith split — code well-organized, dynamic imports already addressed bundle size
-- Chat virtualization — tier caps limit to 50 messages max, virtualization only benefits 100+ items
-
-Full checklist archived at `docs/archive/clarus-optimize-feb26.md`.
-
-### Security Hardening (Session 7 — 2026-02-01)
-
-Full security audit performed. 9 fixes applied:
-
-| # | Fix | File | Severity |
-|---|-----|------|----------|
-| 1 | Polar product ID validation — `isPolarConfigured()` helper, fail-fast if env missing | `lib/polar.ts` | Critical |
-| 2 | Polar webhook — verify secret before reading body, return 401 on bad signature, 503 if unconfigured | `app/api/polar/webhook/route.ts` | Critical |
-| 3 | AssemblyAI webhook — token now mandatory (503 if missing), always validated | `app/api/assemblyai-webhook/route.ts` | Critical |
-| 4 | Admin auth — removed env var bypass, always checks DB `is_admin` column, 5min cache | `lib/auth.ts` | Critical |
-| 5 | Search SQL injection — escape `%`, `_`, `\` in ILIKE fallback patterns | `app/api/search/route.ts` | High |
-| 6 | PDF magic byte verification — validates `%PDF-` header and `PK` for Office docs server-side | `app/api/process-pdf/route.ts` | High |
-| 7 | Discover endpoint rate limiting — 30 req/min per IP on public endpoint | `app/api/discover/route.ts` | High |
-| 8 | Removed `ignoreBuildErrors` and `ignoreDuringBuilds` from next.config — build now validates types+lint | `next.config.mjs` | Medium |
-| 9 | Sanitized error responses — removed `error.message` leak from search API 500 responses | `app/api/search/route.ts` | Medium |
-
-### TODO (Owner Actions — Not Code)
-
-1. ~~AssemblyAI API key~~ — Done, configured in `.env.local` and Vercel
-2. ~~Polar payments~~ — Done, all product IDs and credentials configured in `.env.local`
-3. **Verify Polar env vars in Vercel dashboard** — Ensure all `POLAR_*` vars from `.env.local` are set in Vercel production environment
-4. **Verify `ASSEMBLYAI_WEBHOOK_TOKEN`** — Must be set in Vercel for webhook to accept callbacks
-5. **Verify `is_admin` column** — Ensure your user has `is_admin = true` in clarus.users (env var bypass removed)
-
-### Archived Plans
-
-All historical implementation plans have been completed and moved to `docs/archive/`:
-- `vajra-new-plan-jan26.md` — Master implementation plan (workstreams 1-6, all completed)
-- `clarus-optimize-feb26.md` — Performance optimization checklist (25/27 done, 2 deferred)
-- `vajra-optimization-21dec.md` — Early brainstorming doc (Dec 2025)
-- `PRD-streaming-analysis.md` — Streaming analysis PRD (fully implemented)
-- `vajra-implementation.md` — Phase 0-3 tracker (fully implemented)
-- Feature docs, workflow docs, prompt docs (all superseded by current code)
-
-### Notes
-
-- Supabase project ID: `srqmutgamvktxqmylied`
-- Tables in `public` schema belong to OTHER projects - DO NOT TOUCH
+- Tables in `public` schema belong to OTHER projects — DO NOT TOUCH
 - All Clarus tables go in the `clarus` schema (search_path handles this automatically)
