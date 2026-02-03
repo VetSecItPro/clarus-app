@@ -27,3 +27,7 @@ pnpm dev
 ```
 
 Visit [https://clarusapp.io](https://clarusapp.io)
+
+## License
+
+This is proprietary software. All rights reserved. No license is granted to use, copy, modify, or distribute this code. See the source code for reference only.
