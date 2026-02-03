@@ -121,6 +121,12 @@ body {
   text-align: right;
 }
 
+/* Arabic text needs slightly larger font sizes for readability */
+[dir="rtl"] {
+  font-size: 105%;
+  line-height: 1.8;
+}
+
 /* Auto direction detection - let browser handle RTL */
 [dir="auto"] {
   unicode-bidi: plaintext;
