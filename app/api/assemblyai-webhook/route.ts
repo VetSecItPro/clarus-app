@@ -1,8 +1,12 @@
 import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
+import { timingSafeEqual } from "crypto"
 import type { Database } from "@/types/database.types"
 import { formatTranscript, type AssemblyAIWebhookPayload } from "@/lib/assemblyai"
 import { logApiUsage } from "@/lib/api-usage"
+
+// PERF: FIX-213 — set maxDuration for serverless function (webhook + retry loop needs time)
+export const maxDuration = 60
 
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -27,9 +31,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 })
   }
 
-  // Validate webhook token from query parameter (set when submitting to AssemblyAI)
-  const urlToken = req.nextUrl.searchParams.get("token")
-  if (urlToken !== webhookToken) {
+  // FIX-004: Use timingSafeEqual to prevent timing attacks on webhook token comparison
+  const urlToken = req.nextUrl.searchParams.get("token") || ""
+  const tokenBuffer = Buffer.from(urlToken)
+  const expectedBuffer = Buffer.from(webhookToken)
+  if (tokenBuffer.length !== expectedBuffer.length || !timingSafeEqual(tokenBuffer, expectedBuffer)) {
     console.error("WEBHOOK: Invalid webhook token")
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
@@ -147,7 +153,11 @@ export async function POST(req: NextRequest) {
     metadata: { speaker_count, duration_seconds },
   })
 
-  // Trigger AI analysis with retry logic (3 attempts with exponential backoff)
+  // PERF: FIX-212 — This self-HTTP-call to /api/process-content is a serverless anti-pattern.
+  // It invokes a new serverless function via HTTP instead of calling the logic directly.
+  // TODO: Extract process-content into a shared lib function (e.g., lib/process-content.ts)
+  // and call it directly here to avoid the extra HTTP round-trip, cold start, and retry overhead.
+  // For now, this works correctly — just costs an unnecessary network hop per analysis.
   const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL
     ? `https://${process.env.VERCEL_URL}`
     : "http://localhost:3000")
@@ -160,7 +170,8 @@ export async function POST(req: NextRequest) {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+          // SECURITY: Use dedicated internal secret, not service role key — FIX-007
+          "Authorization": `Bearer ${process.env.INTERNAL_API_SECRET}`,
         },
         body: JSON.stringify({ content_id: content.id }),
       })

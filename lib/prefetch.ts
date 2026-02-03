@@ -9,6 +9,7 @@ import { mutate } from "swr"
 import { supabase } from "@/lib/supabase"
 
 // Track which content has been prefetched to avoid duplicate requests
+const MAX_PREFETCH_CACHE_SIZE = 200
 const prefetchedContent = new Set<string>()
 
 /**
@@ -18,6 +19,10 @@ const prefetchedContent = new Set<string>()
 export async function prefetchContent(contentId: string): Promise<void> {
   // Skip if already prefetched
   if (prefetchedContent.has(contentId)) return
+  // Prevent unbounded growth of the tracking set
+  if (prefetchedContent.size >= MAX_PREFETCH_CACHE_SIZE) {
+    prefetchedContent.clear()
+  }
   prefetchedContent.add(contentId)
 
   try {

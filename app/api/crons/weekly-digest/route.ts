@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server"
+import { timingSafeEqual } from "crypto"
 import { getAdminClient } from "@/lib/auth"
 import { sendWeeklyDigestEmail } from "@/lib/email"
 import type { TriageData } from "@/types/database.types"
@@ -21,19 +22,24 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 })
   }
 
-  if (authHeader !== `Bearer ${cronSecret}`) {
+  // FIX-005: Use timingSafeEqual to prevent timing attacks on cron secret comparison
+  const expectedHeader = `Bearer ${cronSecret}`
+  const headerBuffer = Buffer.from(authHeader || "")
+  const expectedBuffer = Buffer.from(expectedHeader)
+  if (headerBuffer.length !== expectedBuffer.length || !timingSafeEqual(headerBuffer, expectedBuffer)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
   const supabase = getAdminClient()
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-  // Find users with digest enabled
+  // PERF: FIX-207 — limit users query to prevent unbounded fetch
   const { data: users, error: usersError } = await supabase
     .from("users")
     .select("id, email, name, digest_enabled")
     .eq("digest_enabled", true)
     .not("email", "is", null)
+    .limit(500)
 
   if (usersError) {
     console.error("Failed to fetch users:", usersError)

@@ -146,7 +146,11 @@ export function UpgradeModal({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
           >
+            {/* FIX-305: added role, aria-modal, aria-labelledby */}
             <motion.div
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby="upgrade-modal-title"
               className="w-full max-w-md bg-gray-900 border border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden"
               initial={{ scale: 0.95, y: 20 }}
               animate={{ scale: 1, y: 0 }}
@@ -158,10 +162,12 @@ export function UpgradeModal({
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08]">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-amber-400" />
-                  <h2 className="text-white font-semibold text-lg">Upgrade Your Plan</h2>
+                  <h2 id="upgrade-modal-title" className="text-white font-semibold text-lg">Upgrade Your Plan</h2>
                 </div>
+                {/* FIX-302: added aria-label for icon-only close button */}
                 <button
                   onClick={onClose}
+                  aria-label="Close upgrade dialog"
                   className="p-1.5 rounded-lg hover:bg-white/[0.08] text-white/40 hover:text-white/80 transition-colors"
                 >
                   <X className="w-4 h-4" />

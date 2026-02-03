@@ -1,14 +1,6 @@
-import { createClient } from "@supabase/supabase-js"
-import { createServerClient } from "@supabase/ssr"
-import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
 import { checkRateLimit } from "@/lib/validation"
-
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { db: { schema: "clarus" } }
-)
+import { authenticateRequest } from "@/lib/auth"
 
 // GET all unique tags for the authenticated user's content
 export async function GET(request: Request) {
@@ -23,38 +15,15 @@ export async function GET(request: Request) {
       )
     }
 
-    // Get authenticated user
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        db: {
-          schema: "clarus",
-        },
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
+    // SECURITY: Use session client with RLS, not admin client — FIX-015 (admin client bypassed RLS)
+    const auth = await authenticateRequest()
+    if (!auth.success) return auth.response
 
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ success: false, error: "Authentication required" }, { status: 401 })
-    }
-
-    // Fetch tags only from user's own content
-    const { data: contentData, error: contentError } = await supabaseAdmin
+    // Fetch tags only from user's own content (RLS enforces ownership)
+    const { data: contentData, error: contentError } = await auth.supabase
       .from("content")
       .select("tags")
-      .eq("user_id", user.id)
+      .eq("user_id", auth.user.id)
       .not("tags", "eq", "{}")
       .limit(500)
 

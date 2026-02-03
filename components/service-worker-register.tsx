@@ -1,8 +1,10 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 
 export function ServiceWorkerRegister() {
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
   useEffect(() => {
     if (
       typeof window !== "undefined" &&
@@ -15,13 +17,20 @@ export function ServiceWorkerRegister() {
           console.log("SW registered:", registration.scope)
 
           // Check for updates periodically
-          setInterval(() => {
+          intervalRef.current = setInterval(() => {
             registration.update()
           }, 60 * 60 * 1000) // Check every hour
         })
         .catch((error) => {
           console.log("SW registration failed:", error)
         })
+    }
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current)
+        intervalRef.current = null
+      }
     }
   }, [])
 

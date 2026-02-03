@@ -15,7 +15,7 @@ const UUID_V4_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[
 // Dangerous URL schemes
 const DANGEROUS_SCHEMES = ["javascript:", "data:", "vbscript:", "file:"]
 
-// Internal IPs for SSRF protection
+// SECURITY: Internal IPs for SSRF protection — FIX-008 (added decimal/octal/hex IP bypass protection)
 const INTERNAL_HOSTNAMES = [
   "localhost",
   "127.0.0.1",
@@ -24,6 +24,10 @@ const INTERNAL_HOSTNAMES = [
   "[::1]",
   "169.254.169.254",       // Cloud metadata endpoint (AWS/GCP/Azure)
   "metadata.google.internal",
+  "2130706433",            // 127.0.0.1 in decimal notation
+  "0x7f000001",            // 127.0.0.1 in hex notation
+  "017700000001",          // 127.0.0.1 in octal notation
+  "0177.0.0.1",            // 127.0.0.1 in octal dotted
 ]
 
 // XSS patterns to strip

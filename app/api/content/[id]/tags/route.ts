@@ -125,11 +125,13 @@ export async function PATCH(
       const tier = await getUserTier(auth.supabase, auth.user.id)
       const tagLimit = TIER_LIMITS[tier].tags
 
-      // Get all unique tags across user's content
+      // PERF: FIX-209 — filter out empty tags and limit to prevent unbounded fetch
       const { data: allContent } = await auth.supabase
         .from("content")
         .select("tags")
         .eq("user_id", auth.user.id)
+        .not("tags", "eq", "{}")
+        .limit(5000)
 
       const allUniqueTags = new Set<string>()
       allContent?.forEach(c => {

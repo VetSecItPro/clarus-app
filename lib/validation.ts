@@ -46,7 +46,7 @@ export function validateUrl(url: string): ValidationResult {
       return { isValid: false, error: 'Only HTTP and HTTPS URLs are allowed' }
     }
 
-    // Check for localhost/internal IPs (SSRF protection)
+    // SECURITY: SSRF protection — FIX-008 (added decimal/octal/hex IP bypass + all-numeric hostname check)
     const hostname = parsed.hostname.toLowerCase()
     if (
       hostname === 'localhost' ||
@@ -60,7 +60,10 @@ export function validateUrl(url: string): ValidationResult {
       hostname.includes('::ffff:') ||
       (() => { const m = hostname.match(/^172\.(\d+)\./); return m ? Number(m[1]) >= 16 && Number(m[1]) <= 31 : false })() ||
       hostname === '::1' ||
-      hostname === '[::1]'
+      hostname === '[::1]' ||
+      /^\d+$/.test(hostname) || // Block decimal IP notation (e.g., 2130706433 = 127.0.0.1)
+      /^0[xX]/.test(hostname) || // Block hex IP notation
+      /^0\d/.test(hostname) // Block octal IP notation
     ) {
       return { isValid: false, error: 'Internal URLs are not allowed' }
     }

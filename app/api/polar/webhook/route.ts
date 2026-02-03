@@ -8,14 +8,18 @@ import {
   sendPaymentFailedEmail,
 } from "@/lib/email"
 
-// Use service role for webhook to bypass RLS
-const supabaseAdmin = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { db: { schema: "clarus" } }
-)
+// FIX-020: Create Supabase admin client inside handler to avoid stale module-level connections
+function createSupabaseAdmin() {
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.SUPABASE_SERVICE_ROLE_KEY!,
+    { db: { schema: "clarus" } }
+  )
+}
 
-async function getUserEmailAndName(userId: string): Promise<{ email: string; name?: string } | null> {
+type AdminClient = ReturnType<typeof createSupabaseAdmin>
+
+async function getUserEmailAndName(supabaseAdmin: AdminClient, userId: string): Promise<{ email: string; name?: string } | null> {
   const { data, error } = await supabaseAdmin
     .from("users")
     .select("email, display_name")
@@ -26,7 +30,7 @@ async function getUserEmailAndName(userId: string): Promise<{ email: string; nam
   return { email: data.email, name: data.display_name }
 }
 
-async function findUserByCustomerId(customerId: string): Promise<string | undefined> {
+async function findUserByCustomerId(supabaseAdmin: AdminClient, customerId: string): Promise<string | undefined> {
   const { data, error } = await supabaseAdmin.from("users").select("id").eq("polar_customer_id", customerId).single()
 
   if (error && error.code !== "PGRST116") {
@@ -37,6 +41,7 @@ async function findUserByCustomerId(customerId: string): Promise<string | undefi
 }
 
 async function updateUserSubscription(
+  supabaseAdmin: AdminClient,
   userId: string,
   updates: {
     subscription_status?: string
@@ -107,6 +112,9 @@ export async function POST(request: Request) {
     throw err
   }
 
+  // FIX-020: Create Supabase admin client inside handler (not module-level) to avoid stale connections
+  const supabaseAdmin = createSupabaseAdmin()
+
   try {
     switch (event.type) {
       case "checkout.created": {
@@ -123,7 +131,7 @@ export async function POST(request: Request) {
 
           let userId = metadataUserId
           if (!userId && customerId) {
-            userId = await findUserByCustomerId(customerId)
+            userId = await findUserByCustomerId(supabaseAdmin, customerId)
           }
 
           if (userId && customerId) {
@@ -134,14 +142,14 @@ export async function POST(request: Request) {
           // Handle day pass activation (one-time purchase — no subscription events fire)
           if (metaTier === "day_pass" && userId) {
             const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
-            await updateUserSubscription(userId, {
+            await updateUserSubscription(supabaseAdmin, userId, {
               tier: "day_pass",
               day_pass_expires_at: expiresAt,
             })
             console.log(`[Polar Webhook] Day pass activated for user ${userId}, expires ${expiresAt}`)
 
             // Send confirmation email
-            const user = await getUserEmailAndName(userId)
+            const user = await getUserEmailAndName(supabaseAdmin, userId)
             if (user) {
               await sendSubscriptionStartedEmail(
                 user.email,
@@ -165,7 +173,7 @@ export async function POST(request: Request) {
 
         let userId: string | undefined = metadataUserId
         if (!userId && customerId) {
-          userId = await findUserByCustomerId(customerId)
+          userId = await findUserByCustomerId(supabaseAdmin, customerId)
         }
 
         if (!userId) {
@@ -199,7 +207,7 @@ export async function POST(request: Request) {
         // Set tier to the paid tier when active/trialing, reset to free when canceled
         const effectiveTier = (status === "active" || status === "trialing") ? tier : "free"
 
-        await updateUserSubscription(userId, {
+        await updateUserSubscription(supabaseAdmin, userId, {
           subscription_status: status,
           subscription_id: subscription.id,
           tier: effectiveTier,
@@ -210,7 +218,7 @@ export async function POST(request: Request) {
         })
 
         // Send subscription emails
-        const user = await getUserEmailAndName(userId)
+        const user = await getUserEmailAndName(supabaseAdmin, userId)
         if (user) {
           if (event.type === "subscription.created" && status === "active") {
             await sendSubscriptionStartedEmail(
@@ -243,17 +251,17 @@ export async function POST(request: Request) {
 
         let userId: string | undefined = metadataUserId
         if (!userId && customerId) {
-          userId = await findUserByCustomerId(customerId)
+          userId = await findUserByCustomerId(supabaseAdmin, customerId)
         }
 
         if (userId) {
-          await updateUserSubscription(userId, {
+          await updateUserSubscription(supabaseAdmin, userId, {
             subscription_status: "canceled",
             tier: "free",
             subscription_ends_at: new Date().toISOString(),
           })
 
-          const user = await getUserEmailAndName(userId)
+          const user = await getUserEmailAndName(supabaseAdmin, userId)
           if (user) {
             const tier = resolveTier(subscription.metadata, subscription.productId)
             const endDate = subscription.currentPeriodEnd
