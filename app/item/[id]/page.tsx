@@ -170,7 +170,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const upgradeModal = useUpgradeModal()
 
   const isDesktop = useIsDesktop()
-  const { startTracking: startAnalysisTracking, clearTracking: clearAnalysisTracking, pausePolling, resumePolling } = useActiveAnalysis()
+  const { startTracking: startAnalysisTracking, pausePolling, resumePolling } = useActiveAnalysis()
 
   // Analysis language — read from content record or localStorage
   const [analysisLanguage, setAnalysisLanguage] = useState<AnalysisLanguage>(() => {
@@ -429,7 +429,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       const stillProcessing = await pollContentAndUpdate()
       if (!stillProcessing) {
         setIsPolling(false)
-        clearAnalysisTracking()
         toast.success("Analysis complete!")
         return
       }
@@ -444,7 +443,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         const stillProcessing = await pollContentAndUpdate()
         if (!stillProcessing) {
           setIsPolling(false)
-          clearAnalysisTracking()
           toast.success("Analysis complete!")
         }
       }
@@ -472,7 +470,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       clearTimeout(maxPollingTimeout)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [isPolling, pollContentAndUpdate, item?.type, item?.summary?.processing_status, clearAnalysisTracking])
+  }, [isPolling, pollContentAndUpdate, item?.type, item?.summary?.processing_status])
 
   useEffect(() => {
     const fetchDomainStats = async () => {

@@ -19,6 +19,7 @@ interface ActiveAnalysis {
   title: string
   type: string | null
   startedAt: number // Date.now()
+  completedAt: number | null // Date.now() when analysis finished
 }
 
 interface ActiveAnalysisContextValue {
@@ -33,10 +34,10 @@ interface ActiveAnalysisContextValue {
 // ── Constants ──────────────────────────────────────
 
 const STORAGE_KEY = "clarus:active-analysis"
-const TTL_MS = 30 * 60 * 1000 // 30 minutes
+const PROCESSING_TTL_MS = 30 * 60 * 1000 // 30 minutes for in-progress analyses
+const COMPLETED_TTL_MS = 24 * 60 * 60 * 1000 // 24 hours for completed analyses
 const POLL_INTERVAL_MS = 5000
 const MAX_CONSECUTIVE_ERRORS = 3
-const COMPLETE_DISPLAY_MS = 8000 // Show "Ready" state for 8s then clear
 
 // ── Helpers ────────────────────────────────────────
 
@@ -46,8 +47,10 @@ function loadFromStorage(): ActiveAnalysis | null {
     const raw = localStorage.getItem(STORAGE_KEY)
     if (!raw) return null
     const parsed: ActiveAnalysis = JSON.parse(raw)
-    // Expire if older than TTL
-    if (Date.now() - parsed.startedAt > TTL_MS) {
+    // Use longer TTL for completed analyses (24h vs 30min)
+    const ttl = parsed.completedAt ? COMPLETED_TTL_MS : PROCESSING_TTL_MS
+    const anchor = parsed.completedAt || parsed.startedAt
+    if (Date.now() - anchor > ttl) {
       localStorage.removeItem(STORAGE_KEY)
       return null
     }
@@ -90,7 +93,6 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
 
   const consecutiveErrorsRef = useRef(0)
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const clearTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Track whether we've already fired the toast for the current analysis
   const toastFiredRef = useRef<string | null>(null)
 
@@ -99,6 +101,9 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
     const stored = loadFromStorage()
     if (stored) {
       setActiveAnalysis(stored)
+      if (stored.completedAt) {
+        setIsComplete(true)
+      }
     }
   }, [])
 
@@ -106,11 +111,6 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
 
   const startTracking = useCallback(
     (contentId: string, title: string, type?: string | null) => {
-      // Clear any previous complete/clear timers
-      if (clearTimerRef.current) {
-        clearTimeout(clearTimerRef.current)
-        clearTimerRef.current = null
-      }
       setIsComplete(false)
       consecutiveErrorsRef.current = 0
       toastFiredRef.current = null
@@ -120,6 +120,7 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
         title,
         type: type ?? null,
         startedAt: Date.now(),
+        completedAt: null,
       }
       setActiveAnalysis(analysis)
       saveToStorage(analysis)
@@ -133,10 +134,6 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
     if (pollTimerRef.current) {
       clearTimeout(pollTimerRef.current)
       pollTimerRef.current = null
-    }
-    if (clearTimerRef.current) {
-      clearTimeout(clearTimerRef.current)
-      clearTimerRef.current = null
     }
     setActiveAnalysis(null)
     setIsComplete(false)
@@ -164,18 +161,20 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
 
   const handleCompletion = useCallback(
     (analysis: ActiveAnalysis, updatedTitle?: string) => {
-      // Update title if the API returned a real one
-      if (updatedTitle && updatedTitle !== analysis.title) {
-        const updated = { ...analysis, title: updatedTitle }
-        setActiveAnalysis(updated)
+      // Persist as "Current" — update title + mark completed
+      const updated: ActiveAnalysis = {
+        ...analysis,
+        title: updatedTitle || analysis.title,
+        completedAt: Date.now(),
       }
-
+      setActiveAnalysis(updated)
+      saveToStorage(updated)
       setIsComplete(true)
 
       // Fire toast only once per analysis
       if (toastFiredRef.current !== analysis.contentId) {
         toastFiredRef.current = analysis.contentId
-        const displayTitle = updatedTitle || analysis.title
+        const displayTitle = updated.title
         const truncatedTitle =
           displayTitle.length > 50
             ? displayTitle.substring(0, 50) + "…"
@@ -188,13 +187,6 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
           duration: 6000,
         })
       }
-
-      // Auto-clear after delay
-      clearTimerRef.current = setTimeout(() => {
-        setActiveAnalysis(null)
-        setIsComplete(false)
-        clearStorage()
-      }, COMPLETE_DISPLAY_MS)
     },
     [router]
   )
@@ -210,8 +202,8 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
       return
     }
 
-    // Check TTL expiry
-    if (Date.now() - activeAnalysis.startedAt > TTL_MS) {
+    // Check TTL expiry for in-progress analyses
+    if (Date.now() - activeAnalysis.startedAt > PROCESSING_TTL_MS) {
       clearTracking()
       return
     }
@@ -284,7 +276,6 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     return () => {
       if (pollTimerRef.current) clearTimeout(pollTimerRef.current)
-      if (clearTimerRef.current) clearTimeout(clearTimerRef.current)
     }
   }, [])
 
