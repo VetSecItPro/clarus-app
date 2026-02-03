@@ -109,10 +109,10 @@ function extractTranslatablePayload(summary: TranslatableFields): Record<string,
 
 /**
  * Merge translated text fields back into the full summary structure,
- * preserving all numeric/enum values from the English original.
+ * preserving all numeric/enum values from the source.
  */
 function mergeTranslatedFields(
-  englishSummary: Record<string, unknown>,
+  sourceSummary: Record<string, unknown>,
   translated: Record<string, unknown>,
 ): Record<string, unknown> {
   const result: Record<string, unknown> = {}
@@ -120,11 +120,11 @@ function mergeTranslatedFields(
   // brief_overview — simple text
   result.brief_overview = typeof translated.brief_overview === "string"
     ? translated.brief_overview
-    : englishSummary.brief_overview
+    : sourceSummary.brief_overview
 
   // triage — merge translated text into original structure
-  if (englishSummary.triage && typeof englishSummary.triage === "object") {
-    const originalTriage = englishSummary.triage as Record<string, unknown>
+  if (sourceSummary.triage && typeof sourceSummary.triage === "object") {
+    const originalTriage = sourceSummary.triage as Record<string, unknown>
     const translatedTriage = (translated.triage && typeof translated.triage === "object")
       ? translated.triage as Record<string, unknown>
       : {}
@@ -136,12 +136,12 @@ function mergeTranslatedFields(
       estimated_value: translatedTriage.estimated_value ?? originalTriage.estimated_value,
     }
   } else {
-    result.triage = englishSummary.triage
+    result.triage = sourceSummary.triage
   }
 
   // truth_check — merge translated issues/claims/strengths
-  if (englishSummary.truth_check && typeof englishSummary.truth_check === "object") {
-    const originalTc = englishSummary.truth_check as Record<string, unknown>
+  if (sourceSummary.truth_check && typeof sourceSummary.truth_check === "object") {
+    const originalTc = sourceSummary.truth_check as Record<string, unknown>
     const translatedTc = (translated.truth_check && typeof translated.truth_check === "object")
       ? translated.truth_check as Record<string, unknown>
       : {}
@@ -175,29 +175,29 @@ function mergeTranslatedFields(
       sources_quality: typeof translatedTc.sources_quality === "string" ? translatedTc.sources_quality : originalTc.sources_quality,
     }
   } else {
-    result.truth_check = englishSummary.truth_check
+    result.truth_check = sourceSummary.truth_check
   }
 
   // action_items — merge translated title/description
-  if (Array.isArray(englishSummary.action_items) && Array.isArray(translated.action_items)) {
-    result.action_items = (englishSummary.action_items as Array<Record<string, unknown>>).map((item, i) => ({
+  if (Array.isArray(sourceSummary.action_items) && Array.isArray(translated.action_items)) {
+    result.action_items = (sourceSummary.action_items as Array<Record<string, unknown>>).map((item, i) => ({
       ...item,
       title: (translated.action_items as Array<Record<string, unknown>>)[i]?.title ?? item.title,
       description: (translated.action_items as Array<Record<string, unknown>>)[i]?.description ?? item.description,
     }))
   } else {
-    result.action_items = englishSummary.action_items
+    result.action_items = sourceSummary.action_items
   }
 
   // mid_length_summary — simple text
   result.mid_length_summary = typeof translated.mid_length_summary === "string"
     ? translated.mid_length_summary
-    : englishSummary.mid_length_summary
+    : sourceSummary.mid_length_summary
 
   // detailed_summary — simple text
   result.detailed_summary = typeof translated.detailed_summary === "string"
     ? translated.detailed_summary
-    : englishSummary.detailed_summary
+    : sourceSummary.detailed_summary
 
   return result
 }
@@ -209,13 +209,15 @@ function mergeTranslatedFields(
 async function translateViaAI(
   payload: Record<string, unknown>,
   targetLang: AnalysisLanguage,
+  sourceLang: AnalysisLanguage,
   userId: string | null,
   contentId: string,
 ): Promise<{ translated: Record<string, unknown>; model: string; tokensIn: number; tokensOut: number }> {
   const langConfig = getLanguageConfig(targetLang)
   const models = ["google/gemini-2.5-flash-lite", "google/gemini-2.5-flash"]
 
-  const systemPrompt = `You are a professional translator. Translate the JSON values from English to ${langConfig.name} (${langConfig.nativeName}).
+  const sourceLangName = sourceLang === "en" ? "English" : getLanguageConfig(sourceLang).name
+  const systemPrompt = `You are a professional translator. Translate the JSON values from ${sourceLangName} to ${langConfig.name} (${langConfig.nativeName}).
 
 Rules:
 - Translate ALL text string values naturally, not word-for-word
@@ -390,10 +392,6 @@ export async function POST(
       return AuthErrors.badRequest("Invalid or missing language code")
     }
 
-    if (targetLang === "en") {
-      return AuthErrors.badRequest("Cannot translate to English — English is the source language")
-    }
-
     // 6. Tier gate — non-English requires Starter+
     const { data: userData } = await auth.supabase
       .from("users")
@@ -429,21 +427,21 @@ export async function POST(
       )
     }
 
-    // 8. Fetch English source summary
-    const { data: englishSummary, error: engError } = await auth.supabase
+    // 8. Fetch source summary — prefer English, fall back to any completed language
+    const { data: allSummaries, error: sumError } = await auth.supabase
       .from("summaries")
       .select("*")
       .eq("content_id", idResult.data)
-      .eq("language", "en")
-      .maybeSingle()
+      .eq("processing_status", "complete")
+      .neq("language", targetLang)
 
-    if (engError || !englishSummary) {
-      return AuthErrors.badRequest("No English analysis found. Analyze content first before translating.")
+    if (sumError || !allSummaries || allSummaries.length === 0) {
+      return AuthErrors.badRequest("No completed analysis found. Analyze content first before translating.")
     }
 
-    if (englishSummary.processing_status !== "complete") {
-      return AuthErrors.badRequest("English analysis is still processing. Please wait for it to complete.")
-    }
+    // Prefer English source for best translation quality, fall back to any available
+    const sourceSummary = allSummaries.find(s => s.language === "en") || allSummaries[0]
+    const sourceLanguage = sourceSummary.language as AnalysisLanguage
 
     if (!openRouterApiKey) {
       return AuthErrors.serverError()
@@ -469,12 +467,12 @@ export async function POST(
 
     // 10. Extract translatable fields and call AI
     const translatablePayload = extractTranslatablePayload({
-      brief_overview: englishSummary.brief_overview,
-      triage: englishSummary.triage as TranslatableFields["triage"],
-      truth_check: englishSummary.truth_check as TranslatableFields["truth_check"],
-      action_items: englishSummary.action_items as TranslatableFields["action_items"],
-      mid_length_summary: englishSummary.mid_length_summary,
-      detailed_summary: englishSummary.detailed_summary,
+      brief_overview: sourceSummary.brief_overview,
+      triage: sourceSummary.triage as TranslatableFields["triage"],
+      truth_check: sourceSummary.truth_check as TranslatableFields["truth_check"],
+      action_items: sourceSummary.action_items as TranslatableFields["action_items"],
+      mid_length_summary: sourceSummary.mid_length_summary,
+      detailed_summary: sourceSummary.detailed_summary,
     })
 
     let translatedResult: Awaited<ReturnType<typeof translateViaAI>>
@@ -482,6 +480,7 @@ export async function POST(
       translatedResult = await translateViaAI(
         translatablePayload,
         targetLang,
+        sourceLanguage,
         auth.user.id,
         idResult.data,
       )
@@ -503,12 +502,12 @@ export async function POST(
     // 11. Merge translated text with English numeric/structural data
     const merged = mergeTranslatedFields(
       {
-        brief_overview: englishSummary.brief_overview,
-        triage: englishSummary.triage,
-        truth_check: englishSummary.truth_check,
-        action_items: englishSummary.action_items,
-        mid_length_summary: englishSummary.mid_length_summary,
-        detailed_summary: englishSummary.detailed_summary,
+        brief_overview: sourceSummary.brief_overview,
+        triage: sourceSummary.triage,
+        truth_check: sourceSummary.truth_check,
+        action_items: sourceSummary.action_items,
+        mid_length_summary: sourceSummary.mid_length_summary,
+        detailed_summary: sourceSummary.detailed_summary,
       },
       translatedResult.translated,
     )

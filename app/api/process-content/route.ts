@@ -11,6 +11,7 @@ import { submitPodcastTranscription } from "@/lib/assemblyai"
 import { authenticateRequest } from "@/lib/auth"
 import { isValidLanguage, getLanguageDirective, type AnalysisLanguage } from "@/lib/languages"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
+import { NonRetryableError, classifyError, getUserFriendlyError } from "@/lib/error-sanitizer"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -446,8 +447,8 @@ async function getYouTubeMetadata(url: string, apiKey: string, userId?: string |
         const contentType = response.headers.get("content-type")
         if (!contentType || !contentType.includes("application/json")) {
           const errorText = await response.text()
-          console.error(`Supadata Metadata API Error: Expected JSON, got ${contentType}. Response: ${errorText}`)
-          throw new Error(`Supadata Metadata API Error: Expected JSON, got ${contentType}.`)
+          console.error(`Metadata API error: Expected JSON, got ${contentType}. Response: ${errorText}`)
+          throw new NonRetryableError("Video metadata response was invalid")
         }
         const data: SupadataYouTubeResponse = await response.json()
 
@@ -478,11 +479,8 @@ async function getYouTubeMetadata(url: string, apiKey: string, userId?: string |
 
       if (response.status >= 400 && response.status < 500) {
         const errorText = await response.text()
-        const errorMessage = `Supadata Metadata API Client Error (${
-          response.status
-        }) for url ${url}: ${errorText.substring(0, 200)}. Not retrying.`
-        console.error(errorMessage)
-        throw new Error(errorMessage)
+        console.error(`Metadata API error (${response.status}) for content ${url}: ${errorText.substring(0, 200)}`)
+        throw new NonRetryableError("Video metadata could not be retrieved")
       }
 
       const errorText = await response.text()
@@ -492,12 +490,12 @@ async function getYouTubeMetadata(url: string, apiKey: string, userId?: string |
         }s...`,
       )
     } catch (error: unknown) {
-      const msg = getErrorMessage(error)
-      if (msg.includes("Client Error")) {
+      if (error instanceof NonRetryableError) {
         throw error
       }
+      const msg = getErrorMessage(error)
       console.warn(
-        `Error on attempt ${attempt} calling Supadata YouTube Metadata API for ${url}: ${msg}. Retrying in ${
+        `Metadata API attempt ${attempt} failed for ${url}: ${msg}. Retrying in ${
           delay / 1000
         }s...`,
       )
@@ -508,8 +506,7 @@ async function getYouTubeMetadata(url: string, apiKey: string, userId?: string |
     }
   }
 
-  const finalErrorMessage = `Failed to fetch YouTube metadata for ${url} after ${retries} attempts.`
-  console.error(finalErrorMessage)
+  console.error(`Metadata API failed for ${url} after ${retries} attempts`)
 
   // Log failed API call
   logApiUsage({
@@ -519,10 +516,10 @@ async function getYouTubeMetadata(url: string, apiKey: string, userId?: string |
     operation: "metadata",
     responseTimeMs: timer.elapsed(),
     status: "error",
-    errorMessage: finalErrorMessage,
+    errorMessage: `Metadata fetch failed after ${retries} attempts`,
   })
 
-  throw new Error(finalErrorMessage)
+  throw new Error("Video metadata unavailable after multiple attempts")
 }
 
 // Helper to format milliseconds to MM:SS or H:MM:SS
@@ -560,8 +557,8 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
         const contentType = response.headers.get("content-type")
         if (!contentType || !contentType.includes("application/json")) {
           const errorText = await response.text()
-          console.error(`Supadata Transcript API Error: Expected JSON, got ${contentType}. Response: ${errorText}`)
-          throw new Error(`Supadata Transcript API Error: Expected JSON, got ${contentType}.`)
+          console.error(`Transcript API error: Expected JSON, got ${contentType}. Response: ${errorText}`)
+          throw new NonRetryableError("Video transcript response was invalid")
         }
         const data = await response.json()
 
@@ -624,11 +621,8 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
 
       if (response.status >= 400 && response.status < 500) {
         const errorText = await response.text()
-        const errorMessage = `Supadata Transcript API Client Error (${
-          response.status
-        }) for url ${url}: ${errorText.substring(0, 200)}. Not retrying.`
-        console.error(errorMessage)
-        throw new Error(errorMessage)
+        console.error(`Transcript API error (${response.status}) for content ${url}: ${errorText.substring(0, 200)}`)
+        throw new NonRetryableError("Video transcript could not be retrieved")
       }
 
       const errorText = await response.text()
@@ -638,12 +632,12 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
         }s...`,
       )
     } catch (error: unknown) {
-      const msg = getErrorMessage(error)
-      if (msg.includes("Client Error")) {
+      if (error instanceof NonRetryableError) {
         throw error
       }
+      const msg = getErrorMessage(error)
       console.warn(
-        `Error on attempt ${attempt} calling Supadata YouTube Transcript API for ${url}: ${msg}. Retrying in ${
+        `Transcript API attempt ${attempt} failed for ${url}: ${msg}. Retrying in ${
           delay / 1000
         }s...`,
       )
@@ -654,8 +648,7 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
     }
   }
 
-  const finalErrorMessage = `Failed to fetch YouTube transcript for ${url} after ${retries} attempts.`
-  console.error(finalErrorMessage)
+  console.error(`Transcript API failed for ${url} after ${retries} attempts`)
 
   // Log failed API call
   logApiUsage({
@@ -665,10 +658,10 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
     operation: "transcript",
     responseTimeMs: timer.elapsed(),
     status: "error",
-    errorMessage: finalErrorMessage,
+    errorMessage: `Transcript fetch failed after ${retries} attempts`,
   })
 
-  throw new Error(finalErrorMessage)
+  throw new Error("Video transcript unavailable after multiple attempts")
 }
 
 async function scrapeArticle(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<ScrapedArticleData> {
@@ -716,18 +709,15 @@ async function scrapeArticle(url: string, apiKey: string, userId?: string | null
             thumbnail_url: result.data.metadata?.ogImage || null,
           }
         } else {
-          throw new Error(result.error || "FireCrawl API indicated failure.")
+          console.error("Scrape API indicated failure:", result.error)
+          throw new NonRetryableError("Article content could not be extracted")
         }
       }
 
       if (response.status >= 400 && response.status < 500) {
         const errorText = await response.text()
-        const errorMessage = `FireCrawl API Client Error (${response.status}) for url ${url}: ${errorText.substring(
-          0,
-          200,
-        )}. Not retrying.`
-        console.error(errorMessage)
-        throw new Error(errorMessage)
+        console.error(`Scrape API error (${response.status}) for content ${url}: ${errorText.substring(0, 200)}`)
+        throw new NonRetryableError("Article content could not be retrieved")
       }
 
       const errorText = await response.text()
@@ -737,12 +727,12 @@ async function scrapeArticle(url: string, apiKey: string, userId?: string | null
         }s...`,
       )
     } catch (error: unknown) {
-      const msg = getErrorMessage(error)
-      if (msg.includes("Client Error")) {
+      if (error instanceof NonRetryableError) {
         throw error
       }
+      const msg = getErrorMessage(error)
       console.warn(
-        `Error on attempt ${attempt} calling FireCrawl API for ${url}: ${msg}. Retrying in ${
+        `Scrape API attempt ${attempt} failed for ${url}: ${msg}. Retrying in ${
           delay / 1000
         }s...`,
       )
@@ -753,8 +743,7 @@ async function scrapeArticle(url: string, apiKey: string, userId?: string | null
     }
   }
 
-  const finalErrorMessage = `Failed to scrape article with FireCrawl for ${url} after ${retries} attempts.`
-  console.error(finalErrorMessage)
+  console.error(`Scrape API failed for ${url} after ${retries} attempts`)
 
   // Log failed API call
   logApiUsage({
@@ -764,10 +753,10 @@ async function scrapeArticle(url: string, apiKey: string, userId?: string | null
     operation: "scrape",
     responseTimeMs: timer.elapsed(),
     status: "error",
-    errorMessage: finalErrorMessage,
+    errorMessage: `Scrape failed after ${retries} attempts`,
   })
 
-  throw new Error(finalErrorMessage)
+  throw new Error("Article content unavailable after multiple attempts")
 }
 
 interface ModelSummary {
@@ -1060,8 +1049,8 @@ async function generateSectionWithAI(
 
       if (!response.ok) {
         const errorBody = await response.text()
-        lastError = `API Error (${response.status}): ${errorBody}`
-        console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
+        console.warn(`API: [${promptType}] Attempt ${attempt} failed: HTTP ${response.status} — ${errorBody.substring(0, 200)}`)
+        lastError = "AI analysis service returned an error"
         retryCount++
 
         // Don't retry on 4xx errors (client errors)
@@ -1126,8 +1115,8 @@ async function generateSectionWithAI(
 
           return { content: parsedContent }
         } catch (parseError) {
-          lastError = `JSON parse error: ${parseError}`
-          console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
+          console.warn(`API: [${promptType}] Attempt ${attempt} JSON parse error:`, parseError)
+          lastError = "AI analysis returned an invalid response"
           if (attempt < maxRetries) {
             const delay = 5000 * Math.pow(2, attempt - 1)
             await new Promise((resolve) => setTimeout(resolve, delay))
@@ -1202,7 +1191,7 @@ async function generateSectionWithAI(
     errorMessage: lastError,
   })
 
-  return { content: null, error: `All ${maxRetries} attempts failed. Last error: ${lastError}` }
+  return { content: null, error: "AI analysis failed after multiple attempts" }
 }
 
 async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null): Promise<string | null> {
@@ -1914,13 +1903,17 @@ export async function POST(req: NextRequest) {
       }
     }
   } catch (error: unknown) {
-    const msg = getErrorMessage(error)
-    console.error(`API: Final text processing error for content ID ${content.id}:`, msg)
-    const failure_reason = `PROCESSING_FAILED::${content.type?.toUpperCase() || "UNKNOWN"}::${msg}`
+    const rawMsg = getErrorMessage(error)
+    const contentType = content.type?.toUpperCase() || "UNKNOWN"
+    console.error(`API: Text processing error for content ${content.id}:`, rawMsg)
+
+    const errorCategory = classifyError(rawMsg)
+    const failure_reason = `PROCESSING_FAILED::${contentType}::${errorCategory}`
     await supabase.from("content").update({ full_text: failure_reason }).eq("id", content.id)
 
+    const userMessage = getUserFriendlyError(contentType, errorCategory)
     return NextResponse.json(
-      { success: false, message: `Content processing failed: ${msg}`, content_id: content.id },
+      { success: false, message: userMessage, content_id: content.id },
       { status: 200 },
     )
   }

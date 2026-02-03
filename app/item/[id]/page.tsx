@@ -57,6 +57,45 @@ interface ContentWithSummary extends ContentItem {
   summary?: SummaryItem | null
 }
 
+/**
+ * Parses PROCESSING_FAILED::TYPE::CATEGORY into user-friendly text.
+ * Handles both new category codes (e.g. TRANSCRIPT_FAILED) and
+ * legacy data where CATEGORY may be raw vendor error text.
+ */
+function parseProcessingError(fullText: string, contentType: string | null): string {
+  const parts = fullText.split("::")
+  const type = parts[1] || contentType?.toUpperCase() || "CONTENT"
+  const category = parts[2] || "UNKNOWN"
+
+  const typeLabel: Record<string, string> = {
+    YOUTUBE: "video",
+    ARTICLE: "article",
+    PODCAST: "podcast",
+    PDF: "document",
+    DOCUMENT: "document",
+    X_POST: "post",
+    TRANSCRIPTION: "podcast",
+  }
+  const label = typeLabel[type] || "content"
+
+  const messages: Record<string, string> = {
+    SCRAPE_FAILED: `We couldn't extract the ${label} content. It may be behind a login or paywall.`,
+    TRANSCRIPT_FAILED: `We couldn't retrieve the transcript. The ${label} may not have captions available.`,
+    METADATA_FAILED: `We couldn't access this ${label}'s details. It may be private or unavailable.`,
+    TRANSCRIPTION_FAILED: `Transcription failed. The audio may be too short or in an unsupported format.`,
+    TRANSCRIPTION_EMPTY: `The transcription completed but no speech was detected.`,
+    OCR_FAILED: `We couldn't extract text from this document.`,
+    AI_ANALYSIS_FAILED: `Our analysis service encountered an error. Please try regenerating.`,
+    RATE_LIMITED: `Our service is temporarily busy. Please try again in a few minutes.`,
+    TIMEOUT: `Processing took too long. Please try again.`,
+    CONTENT_UNAVAILABLE: `This ${label} appears to be unavailable or restricted.`,
+    CONTENT_POLICY_VIOLATION: `This content could not be processed due to our content policy.`,
+  }
+
+  // Known category → clean message; unknown (legacy raw text) → generic fallback
+  return messages[category] || `We couldn't process this ${label}. Please try again.`
+}
+
 function ItemDetailPageContent({ contentId, session }: { contentId: string; session: Session }) {
   const [item, setItem] = useState<ContentWithSummary | null>(null)
   const [loading, setLoading] = useState(true)
@@ -299,7 +338,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     setIsPdf(contentData.url?.endsWith(".pdf") || false)
 
     if (contentData.full_text?.startsWith("PROCESSING_FAILED::")) {
-      setProcessingError(contentData.full_text)
+      setProcessingError(parseProcessingError(contentData.full_text, contentData.type))
     }
 
     if (showLoadingState) setLoading(false)
@@ -502,22 +541,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     setAnalysisLanguage(newLang)
     localStorage.setItem(LANGUAGE_STORAGE_KEY, newLang)
 
-    // Switching back to English — re-fetch English summary
-    if (newLang === "en") {
-      const { data: enSummary } = await supabase
-        .from("summaries")
-        .select("*")
-        .eq("content_id", item.id)
-        .eq("language", "en")
-        .maybeSingle()
-
-      if (enSummary) {
-        setItem(prev => prev ? { ...prev, summary: enSummary } : null)
-      }
-      return
-    }
-
-    // Check if a completed translation already exists (instant switch)
+    // Check if a completed summary already exists for the target language
     const { data: existingSummary } = await supabase
       .from("summaries")
       .select("*")
@@ -530,7 +554,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       return
     }
 
-    // No translation yet — call the translate API
+    // No summary in target language — call the translate API
     setIsTranslating(true)
     try {
       const res = await fetch(`/api/content/${item.id}/translate`, {
