@@ -78,11 +78,11 @@ export async function POST(req: NextRequest) {
 
   // Handle transcription failure
   if (status === "error") {
-    console.error(`WEBHOOK: Transcription failed for ${content.id}: ${payload.error}`)
+    console.error(`WEBHOOK: Raw AssemblyAI error for ${content.id}:`, payload.error)
 
     await supabase
       .from("content")
-      .update({ full_text: `PROCESSING_FAILED::TRANSCRIPTION::${payload.error || "Unknown error"}` })
+      .update({ full_text: "PROCESSING_FAILED::TRANSCRIPTION::TRANSCRIPTION_FAILED" })
       .eq("id", content.id)
 
     await supabase
@@ -109,7 +109,7 @@ export async function POST(req: NextRequest) {
 
     await supabase
       .from("content")
-      .update({ full_text: "PROCESSING_FAILED::TRANSCRIPTION::Empty transcript" })
+      .update({ full_text: "PROCESSING_FAILED::TRANSCRIPTION::TRANSCRIPTION_EMPTY" })
       .eq("id", content.id)
 
     await supabase

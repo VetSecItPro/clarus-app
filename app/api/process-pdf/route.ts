@@ -83,8 +83,8 @@ async function extractTextWithOCR(buffer: Buffer, filename: string): Promise<str
   const result = await response.json()
 
   if (result.IsErroredOnProcessing) {
-    console.error("OCR processing error:", result.ErrorMessage)
-    throw new Error(result.ErrorMessage?.[0] || "Failed to process PDF with OCR")
+    console.error("OCR processing error details:", result.ErrorMessage)
+    throw new Error("Failed to process PDF with OCR")
   }
 
   // Combine text from all pages
