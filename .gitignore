@@ -48,3 +48,11 @@ docs/archive/VAJRA_PROMPT*
 
 # Local dev tool config
 .mcp.json
+
+# Planning, progress tracking, and audit docs — internal only
+docs/archive/
+*-audit-findings*.md
+*-plan*.md
+*-implementation*.md
+*-optimize*.md
+*-session*.md
