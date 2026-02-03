@@ -142,7 +142,7 @@ function setSecurityHeaders(response: NextResponse) {
   // Permissions policy - restrict powerful features
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=(), interest-cohort=()"
+    "camera=(), microphone=(), geolocation=()"
   )
 
   // Content Security Policy

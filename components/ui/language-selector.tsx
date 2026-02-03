@@ -19,6 +19,8 @@ interface LanguageSelectorProps {
   disabled?: boolean
   /** Compact mode for inline use in input bar */
   compact?: boolean
+  /** Direction the dropdown opens. Default "up" for chat bar, "down" for nav bar. */
+  dropdownDirection?: "up" | "down"
 }
 
 export function LanguageSelector({
@@ -27,6 +29,7 @@ export function LanguageSelector({
   multiLanguageEnabled,
   disabled = false,
   compact = false,
+  dropdownDirection = "up",
 }: LanguageSelectorProps) {
   const [isOpen, setIsOpen] = useState(false)
   const containerRef = useRef<HTMLDivElement>(null)
@@ -84,7 +87,10 @@ export function LanguageSelector({
 
       {/* Dropdown */}
       {isOpen && (
-        <div className="absolute bottom-full mb-2 right-0 z-50 w-52 rounded-xl bg-zinc-900 border border-white/[0.1] shadow-xl overflow-hidden">
+        <div className={cn(
+          "absolute right-0 z-50 w-52 rounded-xl bg-zinc-900 border border-white/[0.1] shadow-xl overflow-hidden",
+          dropdownDirection === "up" ? "bottom-full mb-2" : "top-full mt-2"
+        )}>
           <div className="px-3 py-2 border-b border-white/[0.06]">
             <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider">
               Analysis Language
