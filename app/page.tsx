@@ -21,6 +21,7 @@ import {
 import { useChatSession } from "@/lib/hooks/use-chat-session"
 import { type AnalysisLanguage, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
+import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
 
 const rotatingPrompts = [
   "What do you want to explore today?",
@@ -73,10 +74,13 @@ function HomePageContent({ session }: HomePageProps) {
   // Track when we're navigating to /item/[id] to prevent chat view flash
   const [isNavigating, setIsNavigating] = useState(false)
 
+  const { startTracking } = useActiveAnalysis()
+
   // Stable callback for content navigation
   const onContentCreated = useCallback((id: string) => {
+    startTracking(id, "Processing...", null)
     router.push(`/item/${id}`)
-  }, [router])
+  }, [router, startTracking])
 
   // Chat session hook
   const {

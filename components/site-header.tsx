@@ -11,6 +11,7 @@ import { supabase } from "@/lib/supabase"
 import { getCachedSession } from "@/components/with-auth"
 import { normalizeTier } from "@/lib/tier-limits"
 import { InstantTooltip } from "@/components/ui/tooltip"
+import { ActiveAnalysisNavLink } from "@/components/active-analysis-nav-link"
 import type { UserTier } from "@/types/database.types"
 
 const navItems = [
@@ -111,32 +112,35 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
           {/* Navigation - absolutely centered */}
           {showNav && (
             <nav className="absolute left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-1">
-              {navItems.map((item) => {
+              {navItems.map((item, index) => {
                 const isActive = pathname === item.href
                 const Icon = item.icon
                 return (
-                  <Link
-                    key={item.label}
-                    href={item.href}
-                    prefetch={true}
-                    className="relative px-4 py-2 group"
-                  >
-                    <div className={cn(
-                      "flex items-center gap-2 transition-all duration-200",
-                      isActive ? "text-white" : "text-white/50 group-hover:text-white/90"
-                    )}>
-                      <Icon className={cn(
-                        "w-4 h-4 transition-colors duration-200",
-                        isActive ? "text-[#1d9bf0]" : "group-hover:text-[#1d9bf0]/70"
+                  <span key={item.label} className="contents">
+                    <Link
+                      href={item.href}
+                      prefetch={true}
+                      className="relative px-4 py-2 group"
+                    >
+                      <div className={cn(
+                        "flex items-center gap-2 transition-all duration-200",
+                        isActive ? "text-white" : "text-white/50 group-hover:text-white/90"
+                      )}>
+                        <Icon className={cn(
+                          "w-4 h-4 transition-colors duration-200",
+                          isActive ? "text-[#1d9bf0]" : "group-hover:text-[#1d9bf0]/70"
+                        )} />
+                        <span className="text-sm font-medium">{item.label}</span>
+                      </div>
+                      {/* Animated underline */}
+                      <div className={cn(
+                        "absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] bg-gradient-to-r from-[#1d9bf0] to-[#06b6d4] rounded-full transition-all duration-300",
+                        isActive ? "w-8 opacity-100" : "w-0 opacity-0 group-hover:w-6 group-hover:opacity-60"
                       )} />
-                      <span className="text-sm font-medium">{item.label}</span>
-                    </div>
-                    {/* Animated underline */}
-                    <div className={cn(
-                      "absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] bg-gradient-to-r from-[#1d9bf0] to-[#06b6d4] rounded-full transition-all duration-300",
-                      isActive ? "w-8 opacity-100" : "w-0 opacity-0 group-hover:w-6 group-hover:opacity-60"
-                    )} />
-                  </Link>
+                    </Link>
+                    {/* Active analysis link between Home and Library */}
+                    {index === 0 && <ActiveAnalysisNavLink variant="desktop" />}
+                  </span>
                 )
               })}
             </nav>
