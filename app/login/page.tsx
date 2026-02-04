@@ -66,8 +66,9 @@ export default function LoginPage() {
       // Set auth cache with session so homepage doesn't need to re-fetch
       setAuthCache(session, subscriptionStatus)
       toast.success("Login successful!")
-      router.push("/")
-      router.refresh()
+      // Use replace instead of push to prevent back-button returning to login
+      // Don't call router.refresh() — it races with navigation and can block redirect
+      router.replace("/")
     } else {
       // Edge case: login succeeded but no session returned
       setError("Login succeeded but session not established. Please try again.")
