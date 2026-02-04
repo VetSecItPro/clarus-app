@@ -26,6 +26,7 @@ interface ActiveAnalysisContextValue {
   activeAnalysis: ActiveAnalysis | null
   isComplete: boolean
   startTracking: (contentId: string, title: string, type?: string | null) => void
+  markComplete: (contentId: string, title?: string) => void
   clearTracking: () => void
   pausePolling: () => void
   resumePolling: () => void
@@ -157,6 +158,26 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
     setIsPaused(false)
   }, [])
 
+  // ── Mark complete (called by item page when its polling detects completion)
+
+  const markComplete = useCallback(
+    (contentId: string, title?: string) => {
+      // Only mark complete if this is the currently tracked content
+      if (!activeAnalysis || activeAnalysis.contentId !== contentId) return
+      if (isComplete) return // Already complete
+
+      const updated: ActiveAnalysis = {
+        ...activeAnalysis,
+        title: title || activeAnalysis.title,
+        completedAt: Date.now(),
+      }
+      setActiveAnalysis(updated)
+      saveToStorage(updated)
+      setIsComplete(true)
+    },
+    [activeAnalysis, isComplete]
+  )
+
   // ── Completion handler ─────────────────────────
 
   const handleCompletion = useCallback(
@@ -285,6 +306,7 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
         activeAnalysis,
         isComplete,
         startTracking,
+        markComplete,
         clearTracking,
         pausePolling,
         resumePolling,
