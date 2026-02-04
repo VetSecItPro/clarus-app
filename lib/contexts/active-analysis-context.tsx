@@ -96,14 +96,28 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
   const pollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Track whether we've already fired the toast for the current analysis
   const toastFiredRef = useRef<string | null>(null)
+  // Refs to avoid stale closures in callbacks
+  const activeAnalysisRef = useRef<ActiveAnalysis | null>(null)
+  const isCompleteRef = useRef(false)
+
+  // Keep refs in sync with state (for stable callbacks)
+  useEffect(() => {
+    activeAnalysisRef.current = activeAnalysis
+  }, [activeAnalysis])
+
+  useEffect(() => {
+    isCompleteRef.current = isComplete
+  }, [isComplete])
 
   // Hydrate from localStorage on mount
   useEffect(() => {
     const stored = loadFromStorage()
     if (stored) {
       setActiveAnalysis(stored)
+      activeAnalysisRef.current = stored
       if (stored.completedAt) {
         setIsComplete(true)
+        isCompleteRef.current = true
       }
     }
   }, [])
@@ -113,6 +127,7 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
   const startTracking = useCallback(
     (contentId: string, title: string, type?: string | null) => {
       setIsComplete(false)
+      isCompleteRef.current = false
       consecutiveErrorsRef.current = 0
       toastFiredRef.current = null
 
@@ -124,6 +139,7 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
         completedAt: null,
       }
       setActiveAnalysis(analysis)
+      activeAnalysisRef.current = analysis
       saveToStorage(analysis)
     },
     []
@@ -137,7 +153,9 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
       pollTimerRef.current = null
     }
     setActiveAnalysis(null)
+    activeAnalysisRef.current = null
     setIsComplete(false)
+    isCompleteRef.current = false
     setIsPaused(false)
     consecutiveErrorsRef.current = 0
     toastFiredRef.current = null
@@ -159,23 +177,30 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
   }, [])
 
   // ── Mark complete (called by item page when its polling detects completion)
+  // Uses refs to avoid stale closure issues — this function is stable across renders
 
   const markComplete = useCallback(
     (contentId: string, title?: string) => {
+      // Use refs to get current values (avoids stale closure)
+      const currentAnalysis = activeAnalysisRef.current
+      const currentIsComplete = isCompleteRef.current
+
       // Only mark complete if this is the currently tracked content
-      if (!activeAnalysis || activeAnalysis.contentId !== contentId) return
-      if (isComplete) return // Already complete
+      if (!currentAnalysis || currentAnalysis.contentId !== contentId) return
+      if (currentIsComplete) return // Already complete
 
       const updated: ActiveAnalysis = {
-        ...activeAnalysis,
-        title: title || activeAnalysis.title,
+        ...currentAnalysis,
+        title: title || currentAnalysis.title,
         completedAt: Date.now(),
       }
       setActiveAnalysis(updated)
+      activeAnalysisRef.current = updated
       saveToStorage(updated)
       setIsComplete(true)
+      isCompleteRef.current = true
     },
-    [activeAnalysis, isComplete]
+    [] // Empty deps — uses refs for latest values
   )
 
   // ── Completion handler ─────────────────────────
@@ -189,8 +214,10 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
         completedAt: Date.now(),
       }
       setActiveAnalysis(updated)
+      activeAnalysisRef.current = updated
       saveToStorage(updated)
       setIsComplete(true)
+      isCompleteRef.current = true
 
       // Fire toast only once per analysis
       if (toastFiredRef.current !== analysis.contentId) {
@@ -254,6 +281,7 @@ export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
           const updated = { ...activeAnalysis, title: data.title }
           if (data.type) updated.type = data.type
           setActiveAnalysis(updated)
+          activeAnalysisRef.current = updated
           saveToStorage(updated)
         }
 
