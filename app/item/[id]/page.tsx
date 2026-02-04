@@ -170,7 +170,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const upgradeModal = useUpgradeModal()
 
   const isDesktop = useIsDesktop()
-  const { startTracking: startAnalysisTracking, pausePolling, resumePolling } = useActiveAnalysis()
+  const { startTracking: startAnalysisTracking, markComplete: markAnalysisComplete, pausePolling, resumePolling } = useActiveAnalysis()
 
   // Analysis language — read from content record or localStorage
   const [analysisLanguage, setAnalysisLanguage] = useState<AnalysisLanguage>(() => {
@@ -228,6 +228,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     })
       .then(response => {
         if (!response.ok) throw new Error("Failed to regenerate")
+        markAnalysisComplete(item.id, item.title || undefined)
         toast.success("Analysis complete!")
       })
       .catch(() => {
@@ -238,7 +239,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       })
 
     setIsPolling(true)
-  }, [item, regenerationCount, analysisLanguage])
+  }, [item, regenerationCount, analysisLanguage, markAnalysisComplete])
 
   const handleToggleBookmark = useCallback(async () => {
     if (!item || isTogglingBookmark) return
@@ -394,6 +395,9 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         if (contentData) {
           startAnalysisTracking(contentId, contentData.title || "Processing...", contentData.type)
         }
+      } else if (contentData) {
+        // Content is already complete — mark it as complete in the global tracker
+        markAnalysisComplete(contentId, contentData.title || undefined)
       }
     }
 
@@ -405,7 +409,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         pollingIntervalRef.current = null
       }
     }
-  }, [contentId, session?.user?.id, fetchContentData, isContentProcessing, startAnalysisTracking])
+  }, [contentId, session?.user?.id, fetchContentData, isContentProcessing, startAnalysisTracking, markAnalysisComplete])
 
   // Pause global analysis polling while on this page (page has its own polling)
   useEffect(() => {
@@ -429,6 +433,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       const stillProcessing = await pollContentAndUpdate()
       if (!stillProcessing) {
         setIsPolling(false)
+        markAnalysisComplete(contentId, item?.title || undefined)
         toast.success("Analysis complete!")
         return
       }
@@ -443,6 +448,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         const stillProcessing = await pollContentAndUpdate()
         if (!stillProcessing) {
           setIsPolling(false)
+          markAnalysisComplete(contentId, item?.title || undefined)
           toast.success("Analysis complete!")
         }
       }
@@ -470,7 +476,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       clearTimeout(maxPollingTimeout)
       document.removeEventListener("visibilitychange", handleVisibilityChange)
     }
-  }, [isPolling, pollContentAndUpdate, item?.type, item?.summary?.processing_status])
+  }, [isPolling, pollContentAndUpdate, item?.type, item?.title, item?.summary?.processing_status, contentId, markAnalysisComplete])
 
   useEffect(() => {
     const fetchDomainStats = async () => {
