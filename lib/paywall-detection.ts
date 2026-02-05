@@ -1,6 +1,13 @@
 /**
- * Paywall detection for scraped content.
- * Detects known paywalled domains and suspiciously short scraped content.
+ * @module paywall-detection
+ * @description Paywall detection for scraped web content.
+ *
+ * Identifies when an article may be behind a paywall by checking the
+ * URL against a list of known paywalled domains and analyzing whether
+ * the scraped text is suspiciously short (indicating truncation).
+ *
+ * When a paywall is detected, a warning message is included in the
+ * analysis so users understand the analysis may be based on incomplete text.
  */
 
 /** Domains known to have paywalls on most content */
@@ -36,7 +43,10 @@ const PAYWALLED_DOMAINS = new Set([
 const MIN_ARTICLE_LENGTH = 500
 
 /**
- * Check if a URL belongs to a known paywalled domain.
+ * Checks whether a URL belongs to a domain known to paywall most of its content.
+ *
+ * @param url - The URL to check
+ * @returns `true` if the domain is in the known paywall list
  */
 export function isPaywalledDomain(url: string): boolean {
   try {
@@ -48,8 +58,27 @@ export function isPaywalledDomain(url: string): boolean {
 }
 
 /**
- * Detect if scraped content is likely truncated by a paywall.
- * Returns a warning message if paywall is detected, null otherwise.
+ * Detects whether scraped content is likely truncated by a paywall.
+ *
+ * Combines domain knowledge (is this a known paywalled site?) with
+ * content length heuristics (is the scraped text suspiciously short?)
+ * to produce a user-facing warning message.
+ *
+ * Skips detection for content types that are not web articles
+ * (YouTube, PDF, documents).
+ *
+ * @param url - The source URL of the content
+ * @param scrapedText - The text extracted from the page, or null
+ * @param contentType - The content type string (e.g., `"article"`, `"youtube"`)
+ * @returns A warning message string if paywall is likely, or `null` if no concerns
+ *
+ * @example
+ * ```ts
+ * const warning = detectPaywallTruncation(content.url, fullText, "article")
+ * if (warning) {
+ *   // Include warning in the analysis output for the user
+ * }
+ * ```
  */
 export function detectPaywallTruncation(
   url: string,

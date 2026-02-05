@@ -1,3 +1,18 @@
+/**
+ * @module api-usage
+ * @description API usage tracking and cost estimation for all external services.
+ *
+ * Logs every external API call (OpenRouter, Firecrawl, Supadata, Tavily,
+ * AssemblyAI) to the `api_usage` and `processing_metrics` tables for
+ * cost monitoring and debugging. Cost estimates are calculated from
+ * per-model token pricing or per-request flat rates.
+ *
+ * Logging is fire-and-forget -- failures are caught and logged to stderr
+ * so they never break the primary request flow.
+ *
+ * @see {@link lib/usage.ts} for user-facing usage limit enforcement
+ */
+
 import { createClient } from "@supabase/supabase-js"
 
 // Server-side Supabase client with service role for logging
@@ -11,7 +26,13 @@ const supabaseAdmin = createClient(
   }
 )
 
-// API pricing (per 1M tokens or per request)
+/**
+ * Per-model and per-service pricing used to estimate costs.
+ *
+ * OpenRouter prices are per 1M tokens (input/output separately).
+ * Other services use flat per-request rates. Legacy models are
+ * retained for accurate cost tracking of historical usage.
+ */
 export const API_PRICING = {
   openrouter: {
     // Gemini 2.5 pricing via OpenRouter (primary models)
@@ -42,7 +63,10 @@ export const API_PRICING = {
   },
 }
 
+/** Identifier for the external service being called. */
 export type ApiName = "openrouter" | "supadata" | "firecrawl" | "tavily" | "polar" | "supabase" | "vercel" | "assemblyai"
+
+/** Specific operation within a service (for granular cost tracking). */
 export type ApiOperation =
   | "analyze" | "chat" | "summarize" | "tone_detection" | "translate"  // openrouter
   | "transcript" | "metadata"          // supadata
@@ -68,7 +92,16 @@ interface LogApiUsageParams {
 }
 
 /**
- * Calculate estimated cost based on API and usage
+ * Calculates the estimated USD cost of an API call based on the service,
+ * operation, and token counts.
+ *
+ * For OpenRouter, cost is computed from per-model input/output token
+ * pricing. For other services, a flat per-request rate is used.
+ * For AssemblyAI, `tokensInput` is repurposed to pass audio duration
+ * in seconds.
+ *
+ * @param params - The API call details needed for cost calculation
+ * @returns Estimated cost in USD (may be 0 for free operations)
  */
 export function calculateCost(params: {
   apiName: ApiName
@@ -111,7 +144,29 @@ export function calculateCost(params: {
 }
 
 /**
- * Log API usage to the database
+ * Persists an API usage record to the `api_usage` table.
+ *
+ * Automatically calculates the estimated cost and merges the model name
+ * into the metadata object. This function is fire-and-forget -- errors
+ * are logged but never thrown.
+ *
+ * @param params - The API call details to log
+ *
+ * @example
+ * ```ts
+ * const timer = createTimer()
+ * const result = await callOpenRouter(...)
+ * await logApiUsage({
+ *   userId, contentId,
+ *   apiName: "openrouter",
+ *   operation: "analyze",
+ *   tokensInput: result.usage.input,
+ *   tokensOutput: result.usage.output,
+ *   modelName: "google/gemini-2.5-flash",
+ *   responseTimeMs: timer.elapsed(),
+ *   status: "success",
+ * })
+ * ```
  */
 export async function logApiUsage(params: LogApiUsageParams): Promise<void> {
   try {
@@ -149,7 +204,13 @@ export async function logApiUsage(params: LogApiUsageParams): Promise<void> {
 }
 
 /**
- * Log processing metrics for a summary section
+ * Persists per-section processing metrics to the `processing_metrics` table.
+ *
+ * Tracks how long each analysis section (e.g., triage, truth_check) took
+ * to process, enabling performance monitoring and model comparison.
+ * Fire-and-forget -- errors are logged but never thrown.
+ *
+ * @param params - The section processing details to log
  */
 export async function logProcessingMetrics(params: {
   summaryId?: string
@@ -184,7 +245,16 @@ export async function logProcessingMetrics(params: {
 }
 
 /**
- * Helper to measure execution time
+ * Creates a simple stopwatch for measuring API call duration.
+ *
+ * @returns An object with an `elapsed()` method that returns milliseconds since creation
+ *
+ * @example
+ * ```ts
+ * const timer = createTimer()
+ * await someApiCall()
+ * console.log(`Took ${timer.elapsed()}ms`)
+ * ```
  */
 export function createTimer() {
   const start = Date.now()

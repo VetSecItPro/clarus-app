@@ -1,6 +1,17 @@
 /**
- * AssemblyAI integration for podcast transcription with speaker diarization.
- * Two-phase pipeline: submit → webhook callback.
+ * @module assemblyai
+ * @description AssemblyAI integration for podcast transcription with speaker diarization.
+ *
+ * Implements a two-phase pipeline:
+ * 1. **Submit** -- POST the audio URL to AssemblyAI with webhook callback
+ * 2. **Webhook** -- Receive the completed transcript, format with speaker labels
+ *
+ * Speaker diarization is enabled by default to attribute statements to
+ * individual speakers, which is critical for accurate claim attribution
+ * in the analysis pipeline.
+ *
+ * @see {@link lib/utils.ts} isPodcastUrl for URL detection that routes to this pipeline
+ * @see {@link lib/api-usage.ts} for cost tracking (billed per second of audio)
  */
 
 const ASSEMBLYAI_API_URL = "https://api.assemblyai.com/v2/transcript"
@@ -9,14 +20,19 @@ interface SubmitTranscriptionResult {
   transcript_id: string
 }
 
-interface AssemblyAIUtterance {
+/** A single speaker utterance from AssemblyAI's diarization output. */
+export interface AssemblyAIUtterance {
   speaker: string
   text: string
   start: number
   end: number
 }
 
-interface AssemblyAIWebhookPayload {
+/**
+ * The payload received from AssemblyAI via webhook when transcription completes.
+ * Also re-exported for use by the webhook API route handler.
+ */
+export interface AssemblyAIWebhookPayload {
   transcript_id: string
   status: "completed" | "error"
   error?: string
@@ -31,8 +47,27 @@ interface FormattedTranscript {
 }
 
 /**
- * Submit an audio URL to AssemblyAI for transcription.
- * Returns the transcript_id for tracking; the result arrives via webhook.
+ * Submits an audio URL to AssemblyAI for asynchronous transcription.
+ *
+ * The transcription runs asynchronously on AssemblyAI's servers. When
+ * complete, AssemblyAI sends the result to the provided webhook URL.
+ * Speaker diarization and language detection are enabled by default.
+ *
+ * @param audioUrl - The publicly accessible URL of the audio file
+ * @param webhookUrl - The URL AssemblyAI should POST the result to when complete
+ * @param apiKey - The AssemblyAI API key
+ * @returns An object containing the `transcript_id` for tracking
+ * @throws Error if the AssemblyAI API returns a non-200 response
+ *
+ * @example
+ * ```ts
+ * const { transcript_id } = await submitPodcastTranscription(
+ *   audioUrl,
+ *   `${process.env.NEXT_PUBLIC_APP_URL}/api/assemblyai-webhook`,
+ *   process.env.ASSEMBLYAI_API_KEY!
+ * )
+ * // Store transcript_id for matching when webhook arrives
+ * ```
  */
 export async function submitPodcastTranscription(
   audioUrl: string,
@@ -65,8 +100,14 @@ export async function submitPodcastTranscription(
 }
 
 /**
- * Format AssemblyAI webhook response into a readable transcript
+ * Formats an AssemblyAI webhook payload into a readable transcript
  * with timestamps and speaker labels.
+ *
+ * Each utterance is formatted as `[MM:SS] Speaker A: text` with
+ * double newlines between utterances for readability.
+ *
+ * @param payload - The webhook payload from AssemblyAI
+ * @returns A formatted transcript with full text, duration, and speaker count
  */
 export function formatTranscript(
   payload: AssemblyAIWebhookPayload,
@@ -99,5 +140,3 @@ function formatMs(ms: number): string {
   }
   return `${minutes}:${seconds.toString().padStart(2, "0")}`
 }
-
-export type { AssemblyAIWebhookPayload, AssemblyAIUtterance }

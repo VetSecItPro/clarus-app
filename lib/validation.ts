@@ -1,6 +1,13 @@
 /**
- * Input Validation & Sanitization Library
- * Protects against SQL injection, XSS, and other common attacks
+ * @module validation
+ * @description Input validation and sanitization for user-supplied data.
+ *
+ * Provides URL validation with SSRF protection, UUID validation,
+ * chat message sanitization, and in-memory rate limiting.
+ * Used by API routes that accept user input before any database
+ * or external-service interaction.
+ *
+ * @see {@link lib/schemas.ts} for Zod-based request body validation
  */
 
 // UUID v4 regex pattern
@@ -9,6 +16,12 @@ const UUID_REGEX = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9
 // Dangerous URL schemes that could execute code
 const DANGEROUS_SCHEMES = ['javascript:', 'data:', 'vbscript:', 'file:']
 
+/**
+ * Result of a validation check.
+ *
+ * When `isValid` is `true`, `sanitized` contains the cleaned value.
+ * When `isValid` is `false`, `error` contains a user-safe message.
+ */
 export interface ValidationResult {
   isValid: boolean
   error?: string
@@ -16,7 +29,24 @@ export interface ValidationResult {
 }
 
 /**
- * Validates and sanitizes a URL
+ * Validates and sanitizes a URL for content processing.
+ *
+ * Checks for dangerous schemes (javascript:, data:, etc.), enforces
+ * HTTPS/HTTP-only, and blocks SSRF vectors including private IP ranges
+ * (RFC 1918), cloud metadata endpoints, localhost, and obfuscated IP
+ * notations (decimal, hex, octal).
+ *
+ * @param url - The raw URL string to validate
+ * @returns A {@link ValidationResult} with the canonicalized URL or an error message
+ *
+ * @example
+ * ```ts
+ * const result = validateUrl("https://example.com/article?ref=twitter")
+ * if (!result.isValid) {
+ *   return NextResponse.json({ error: result.error }, { status: 400 })
+ * }
+ * // Use result.sanitized for downstream processing
+ * ```
  */
 export function validateUrl(url: string): ValidationResult {
   if (!url || typeof url !== 'string') {
@@ -75,7 +105,19 @@ export function validateUrl(url: string): ValidationResult {
 }
 
 /**
- * Validates a UUID (v4)
+ * Validates a UUID v4 string.
+ *
+ * Used for content IDs, user IDs, and other database primary keys
+ * before they are included in database queries.
+ *
+ * @param id - The string to validate as a UUID v4
+ * @returns A {@link ValidationResult} with the lowercased UUID or an error message
+ *
+ * @example
+ * ```ts
+ * const result = validateUUID(req.params.id)
+ * if (!result.isValid) return AuthErrors.badRequest(result.error)
+ * ```
  */
 export function validateUUID(id: string): ValidationResult {
   if (!id || typeof id !== 'string') {
@@ -92,14 +134,34 @@ export function validateUUID(id: string): ValidationResult {
 }
 
 /**
- * Validates and sanitizes a content ID
+ * Validates a content ID (alias for {@link validateUUID}).
+ *
+ * Provides a semantically meaningful name when validating content
+ * record identifiers in API routes.
+ *
+ * @param contentId - The content ID string to validate
+ * @returns A {@link ValidationResult} with the validated ID or an error message
  */
 export function validateContentId(contentId: string): ValidationResult {
   return validateUUID(contentId)
 }
 
 /**
- * Validates chat message input
+ * Validates and sanitizes a chat message before storage or AI processing.
+ *
+ * Strips `<script>` tags and inline event handlers to prevent stored XSS,
+ * while preserving legitimate text content (including discussions about
+ * security topics).
+ *
+ * @param message - The raw chat message from the user
+ * @returns A {@link ValidationResult} with the sanitized message or an error
+ *
+ * @example
+ * ```ts
+ * const result = validateChatMessage(body.message)
+ * if (!result.isValid) return AuthErrors.badRequest(result.error)
+ * // Pass result.sanitized to the AI prompt
+ * ```
  */
 export function validateChatMessage(message: string): ValidationResult {
   if (!message || typeof message !== 'string') {
@@ -144,6 +206,26 @@ function evictExpiredEntries() {
   }
 }
 
+/**
+ * Checks whether a request from the given identifier is within rate limits.
+ *
+ * Uses an in-memory sliding-window counter. Expired entries are evicted
+ * every 1,000 calls, and the map is hard-capped at {@link MAX_RATE_LIMIT_ENTRIES}
+ * to bound memory usage in long-lived serverless instances.
+ *
+ * @param identifier - A unique key for the requester (e.g., user ID or IP address)
+ * @param maxRequests - Maximum requests allowed within the window (default: 100)
+ * @param windowMs - Window duration in milliseconds (default: 60,000 = 1 minute)
+ * @returns An object with `allowed`, `remaining` count, and `resetIn` milliseconds
+ *
+ * @example
+ * ```ts
+ * const limit = checkRateLimit(userId, 10, 60_000)
+ * if (!limit.allowed) {
+ *   return AuthErrors.rateLimit(limit.resetIn)
+ * }
+ * ```
+ */
 export function checkRateLimit(
   identifier: string,
   maxRequests: number = 100,

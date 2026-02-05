@@ -1,13 +1,18 @@
 /**
- * Content moderation pre-screening.
+ * @module content-screening
+ * @description Content moderation pipeline with three detection layers.
  *
- * Three detection layers:
- *   1. URL screening — block known illegal content domains
- *   2. Keyword pre-screening — detect prohibited content patterns before AI
- *   3. AI refusal detection — catch CONTENT_REFUSED responses from AI
+ * Screens user-submitted content for illegal material before it reaches
+ * the AI analysis pipeline:
+ *   1. **URL screening** -- block known illegal content domains
+ *   2. **Keyword pre-screening** -- detect prohibited content patterns in scraped text
+ *   3. **AI refusal detection** -- catch `CONTENT_REFUSED` responses from the AI model
  *
- * When flagged, content is logged to the flagged_content table for admin review.
- * CSAM flags carry a legal reporting obligation under 18 U.S.C. § 2258A.
+ * When flagged, content is logged to the `flagged_content` table for admin
+ * review. CSAM flags carry a legal reporting obligation under
+ * 18 U.S.C. section 2258A (ESPs must report apparent CSAM to NCMEC).
+ *
+ * @see {@link lib/prompt-sanitizer.ts} for prompt injection defense (different concern)
  */
 
 import { createClient } from "@supabase/supabase-js"
@@ -18,11 +23,22 @@ import { createHash } from "crypto"
 // Types
 // ============================================
 
+/** How severe the moderation flag is -- determines whether content is blocked. */
 export type FlagSeverity = "critical" | "high" | "medium"
+
+/** Which detection layer produced the flag. */
 export type FlagSource = "url_screening" | "keyword_screening" | "ai_refusal"
+
+/** Category of prohibited content detected. */
 export type FlagCategory = "csam" | "terrorism" | "weapons" | "trafficking"
+
+/** Current review status of a flagged content record. */
 export type FlagStatus = "pending" | "reviewed" | "reported" | "dismissed"
 
+/**
+ * A single moderation flag with its source, severity, and reason.
+ * Multiple flags can be generated for a single piece of content.
+ */
 export interface ContentFlag {
   source: FlagSource
   severity: FlagSeverity
@@ -30,6 +46,10 @@ export interface ContentFlag {
   reason: string
 }
 
+/**
+ * Result of running the content screening pipeline.
+ * When `blocked` is `true`, the content should not be sent to AI analysis.
+ */
 export interface ScreeningResult {
   blocked: boolean
   flags: ContentFlag[]
@@ -41,7 +61,7 @@ export interface ScreeningResult {
 
 /**
  * Domains associated with illegal content distribution.
- * This list is intentionally sparse — it targets known vectors,
+ * This list is intentionally sparse -- it targets known vectors,
  * not a comprehensive blocklist. The AI refusal layer catches the rest.
  */
 const BLOCKED_DOMAIN_PATTERNS: Array<{ pattern: RegExp; categories: FlagCategory[]; severity: FlagSeverity }> = [
@@ -51,6 +71,12 @@ const BLOCKED_DOMAIN_PATTERNS: Array<{ pattern: RegExp; categories: FlagCategory
   { pattern: /(?:darknet|deepweb|hidden.wiki)/i, categories: ["csam", "trafficking"], severity: "critical" },
 ]
 
+/**
+ * Screens a URL against known blocked domain patterns (Layer 1).
+ *
+ * @param url - The URL to screen
+ * @returns A {@link ContentFlag} if the domain matches a blocked pattern, or `null` if clean
+ */
 export function screenUrl(url: string): ContentFlag | null {
   let hostname: string
   try {
@@ -155,6 +181,16 @@ const KEYWORD_PATTERNS: KeywordPattern[] = [
   },
 ]
 
+/**
+ * Screens scraped text against prohibited content keyword patterns (Layer 2).
+ *
+ * Only scans the first 50KB to avoid regex DoS on very large documents.
+ * Deduplicates flags by category to avoid redundant entries when multiple
+ * patterns match the same content category.
+ *
+ * @param text - The scraped text content to screen
+ * @returns An array of {@link ContentFlag} objects (empty if clean)
+ */
 export function screenText(text: string): ContentFlag[] {
   if (!text || text.length < 50) return []
 
@@ -187,10 +223,14 @@ export function screenText(text: string): ContentFlag[] {
 // ============================================
 
 /**
- * Check if an AI analysis section returned a CONTENT_REFUSED response.
+ * Checks whether an AI analysis section returned a `CONTENT_REFUSED` response (Layer 3).
+ *
  * The AI prompts are configured to return either:
- *   - JSON: {"refused": true, "reason": "..."}
- *   - Text: "CONTENT_REFUSED: ..."
+ *   - JSON: `{"refused": true, "reason": "..."}`
+ *   - Text: `"CONTENT_REFUSED: ..."`
+ *
+ * @param sectionContent - The raw AI output (string or parsed JSON object)
+ * @returns A {@link ContentFlag} if refusal is detected, or `null` if the content was analyzed normally
  */
 export function detectAiRefusal(sectionContent: unknown): ContentFlag | null {
   if (!sectionContent) return null
@@ -260,10 +300,25 @@ function getAdminClient() {
   return _adminClient
 }
 
+/**
+ * Generates a SHA-256 hash of content text for deduplication and forensic matching.
+ *
+ * @param text - The content text to hash
+ * @returns The hex-encoded SHA-256 digest
+ */
 export function hashContent(text: string): string {
   return createHash("sha256").update(text).digest("hex")
 }
 
+/**
+ * Persists a moderation flag to the `flagged_content` table for admin review.
+ *
+ * Stores the flag details along with a content hash and preview text.
+ * Fire-and-forget -- errors are logged but never thrown to avoid
+ * disrupting the request flow.
+ *
+ * @param params - The flag details and associated content metadata
+ */
 export async function persistFlag(params: {
   contentId?: string | null
   userId?: string | null
@@ -305,11 +360,29 @@ export async function persistFlag(params: {
 // ============================================
 
 /**
- * Run all pre-AI screening checks on a URL and its scraped content.
- * Call this after scraping but before sending to AI.
+ * Runs all pre-AI screening checks on a URL and its scraped content.
  *
- * Returns { blocked: true } if content should not be analyzed.
- * Flags are persisted to the database automatically.
+ * Call this after scraping but before sending content to the AI model.
+ * Combines Layer 1 (URL screening) and Layer 2 (keyword screening),
+ * persists all flags to the database, and returns a blocking decision.
+ *
+ * Content is blocked if any flag has `"critical"` or `"high"` severity.
+ *
+ * @param params - The URL, scraped text, and associated metadata
+ * @returns A {@link ScreeningResult} with the blocking decision and all flags
+ *
+ * @example
+ * ```ts
+ * const screening = await screenContent({
+ *   url: content.url,
+ *   scrapedText: fullText,
+ *   contentId: content.id,
+ *   userId: user.id,
+ * })
+ * if (screening.blocked) {
+ *   return NextResponse.json({ error: "Content policy violation" }, { status: 451 })
+ * }
+ * ```
  */
 export async function screenContent(params: {
   url: string

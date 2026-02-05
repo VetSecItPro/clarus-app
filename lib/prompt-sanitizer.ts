@@ -1,8 +1,8 @@
 /**
- * Prompt Injection Defense
+ * @module prompt-sanitizer
+ * @description Prompt injection defense for the AI analysis pipeline.
  *
- * Sanitizes user-provided content before it enters AI prompts.
- * Defends against:
+ * Sanitizes user-provided content before it enters AI prompts. Defends against:
  *   - XML delimiter breakout (closing/opening tags to escape wrappers)
  *   - Instruction override attempts ("ignore previous instructions", "system:", etc.)
  *   - Control characters and zero-width characters used to hide payloads
@@ -12,6 +12,8 @@
  *   - XML wrapper for user content in prompts
  *   - Instruction anchoring (repeated at end of prompt)
  *   - Output monitoring for injection leakage detection
+ *
+ * @see {@link lib/content-screening.ts} for content moderation (different concern)
  */
 
 // ============================================
@@ -83,8 +85,23 @@ interface SanitizeOptions {
 /**
  * Sanitizes user-provided text before inserting it into an AI prompt.
  *
- * Does NOT block or reject content -- it neutralizes dangerous patterns
- * so the AI can still analyze the content without following injected instructions.
+ * Does **not** block or reject content -- it neutralizes dangerous patterns
+ * so the AI can still analyze the content without following injected
+ * instructions. Detected injection patterns are wrapped in `[BLOCKED:...]`
+ * brackets rather than removed, preserving the content for analysis.
+ *
+ * Processing steps (in order):
+ * 1. Strip control characters (preserving newline, carriage return, tab)
+ * 2. Strip zero-width / invisible Unicode characters
+ * 3. Escape XML-like delimiters that could break wrapper tags
+ * 4. Detect and neutralize injection patterns
+ * 5. Truncate to maximum length
+ *
+ * @param input - The raw user content to sanitize
+ * @param options - Optional configuration for length limits and logging
+ * @returns The sanitized string, safe for inclusion in AI prompts
+ *
+ * @see {@link sanitizeChatMessage} for a convenience wrapper with tighter limits
  */
 export function sanitizeForPrompt(input: string, options: SanitizeOptions = {}): string {
   const {
@@ -139,7 +156,14 @@ export function sanitizeForPrompt(input: string, options: SanitizeOptions = {}):
 }
 
 /**
- * Convenience wrapper for chat messages with tighter limits.
+ * Convenience wrapper for chat messages with tighter length limits.
+ *
+ * Chat messages are capped at 5,000 characters (vs. 100,000 for
+ * scraped content) since user-typed input is shorter and more likely
+ * to contain injection attempts.
+ *
+ * @param input - The raw chat message to sanitize
+ * @returns The sanitized message, safe for inclusion in chat prompts
  */
 export function sanitizeChatMessage(input: string): string {
   return sanitizeForPrompt(input, {
@@ -153,9 +177,14 @@ export function sanitizeChatMessage(input: string): string {
 // ============================================
 
 /**
- * Wraps user content in XML delimiters with instruction anchoring.
- * This creates a clear boundary between system instructions and user content,
- * making it harder for injected text to be interpreted as instructions.
+ * Wraps user content in XML delimiters for clear boundary separation.
+ *
+ * Creates a `<user_content>` / `</user_content>` boundary between
+ * system instructions and user-provided text, making it harder for
+ * injected text to be interpreted as instructions by the AI model.
+ *
+ * @param content - The sanitized user content to wrap
+ * @returns The content wrapped in XML delimiter tags
  */
 export function wrapUserContent(content: string): string {
   return `<user_content>
@@ -165,8 +194,10 @@ ${content}
 
 /**
  * Instruction anchoring text to append at the END of prompts.
+ *
  * Repeating critical instructions after user content helps resist
  * injection attempts that try to override earlier instructions.
+ * This is a defense-in-depth measure alongside sanitization.
  */
 export const INSTRUCTION_ANCHOR = `
 
@@ -193,7 +224,15 @@ const OUTPUT_LEAKAGE_PATTERNS: Array<{ pattern: RegExp; label: string }> = [
 
 /**
  * Checks AI output for signs that prompt injection may have succeeded.
- * Returns detected patterns for logging/monitoring. Does NOT block the response.
+ *
+ * Scans the model's response for patterns that indicate it followed
+ * injected instructions rather than performing its analysis task.
+ * Returns detected pattern labels for logging and monitoring.
+ * Does **not** block the response -- this is an observability tool.
+ *
+ * @param output - The AI model's response text
+ * @param sectionType - The analysis section name (for log context)
+ * @returns Array of detected leakage pattern labels (empty if clean)
  */
 export function detectOutputLeakage(
   output: string,

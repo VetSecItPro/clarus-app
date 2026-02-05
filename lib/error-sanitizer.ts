@@ -1,14 +1,33 @@
 /**
- * Error sanitization utilities.
+ * @module error-sanitizer
+ * @description Error classification and user-facing message generation.
  *
- * Prevents information disclosure by mapping raw vendor errors
- * to a closed set of generic categories before they reach the
- * database or API responses.
+ * Prevents information disclosure by mapping raw vendor error strings
+ * (which may contain API keys, internal URLs, or stack traces) to a
+ * closed set of generic categories before they reach the database or
+ * API responses.
+ *
+ * Two-layer approach:
+ * 1. Throw sites use {@link NonRetryableError} for known 4xx errors
+ * 2. {@link classifyError} acts as a catch-all for anything that slips through
+ *
+ * @see {@link lib/auth.ts} AuthErrors for HTTP response factories
  */
 
-// Custom error class for 4xx (non-retryable) vendor errors.
-// Replaces fragile `msg.includes("Client Error")` string checks
-// with proper type discrimination via `instanceof`.
+/**
+ * Custom error class for 4xx (non-retryable) vendor errors.
+ *
+ * Replaces fragile `msg.includes("Client Error")` string checks
+ * with proper type discrimination via `instanceof`. When caught,
+ * these errors should be returned to the user without retry.
+ *
+ * @example
+ * ```ts
+ * if (response.status === 404) {
+ *   throw new NonRetryableError("Content not found on remote server")
+ * }
+ * ```
+ */
 export class NonRetryableError extends Error {
   constructor(message: string) {
     super(message)
@@ -16,6 +35,10 @@ export class NonRetryableError extends Error {
   }
 }
 
+/**
+ * The closed set of error categories used across the application.
+ * Each category maps to a user-friendly message via {@link getUserFriendlyError}.
+ */
 export type ErrorCategory =
   | "SCRAPE_FAILED"
   | "TRANSCRIPT_FAILED"
@@ -31,9 +54,21 @@ export type ErrorCategory =
   | "UNKNOWN"
 
 /**
- * Maps a raw error message to a generic category.
- * Used as Layer 2 — even if a throw site is missed, this
- * catch-all prevents raw vendor text from reaching users.
+ * Maps a raw error message to a generic {@link ErrorCategory}.
+ *
+ * Acts as a catch-all safety net: even if a throw site forgets to
+ * classify an error, this function prevents raw vendor text from
+ * reaching the user. Pattern matching is case-insensitive and
+ * checks for common vendor-specific keywords.
+ *
+ * @param rawMessage - The unfiltered error message string
+ * @returns The most specific matching {@link ErrorCategory}, or `"UNKNOWN"`
+ *
+ * @example
+ * ```ts
+ * const category = classifyError(error.message)
+ * const userMsg = getUserFriendlyError("ARTICLE", category)
+ * ```
  */
 export function classifyError(rawMessage: string): ErrorCategory {
   const msg = rawMessage.toLowerCase()
@@ -87,8 +122,15 @@ export function classifyError(rawMessage: string): ErrorCategory {
 }
 
 /**
- * Maps (contentType, errorCategory) → plain-English message.
- * Used for API responses and frontend display.
+ * Generates a user-friendly error message from a content type and error category.
+ *
+ * Messages are intentionally vague about internal implementation details
+ * while being specific enough to help users understand what went wrong
+ * and what they can do about it.
+ *
+ * @param contentType - The content type string (e.g., `"YOUTUBE"`, `"ARTICLE"`, `"PODCAST"`)
+ * @param errorCategory - An {@link ErrorCategory} string (from {@link classifyError})
+ * @returns A plain-English message suitable for display in the UI
  */
 export function getUserFriendlyError(contentType: string, errorCategory: string): string {
   const typeLabel: Record<string, string> = {
