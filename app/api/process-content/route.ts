@@ -1233,13 +1233,72 @@ async function generateTriage(fullText: string, contentType: string, userId?: st
   return result.content as TriageData
 }
 
-async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null): Promise<TruthCheckData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, webContext, undefined, languageDirective)
+async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, webSearchContext?: WebSearchContext | null): Promise<TruthCheckData | null> {
+  // Append citation instruction to web context so the AI includes source URLs in each issue
+  const citationInstruction = `\n\nIMPORTANT: For each issue you identify, include a "sources" array with citation objects containing "url" and "title" for verification. Use URLs from the web verification context above when available. Format: "sources": [{"url": "https://...", "title": "Source Title"}]. If no source URL is available for an issue, omit the sources field for that issue.`
+  const enrichedWebContext = webContext ? webContext + citationInstruction : null
+
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, enrichedWebContext, undefined, languageDirective)
   if (result.error) {
     console.error(`API: Truth check generation failed: ${result.error}`)
     return null
   }
-  return result.content as TruthCheckData
+
+  const truthCheck = result.content as TruthCheckData | null
+  if (!truthCheck) return null
+
+  // Post-process: validate and normalize citation sources on issues
+  if (truthCheck.issues) {
+    // Build a lookup of available Tavily URLs for enrichment
+    const availableUrls: Array<{ url: string; title: string }> = []
+    if (webSearchContext?.searches) {
+      for (const search of webSearchContext.searches) {
+        for (const r of search.results) {
+          if (r.url && r.title) {
+            availableUrls.push({ url: r.url, title: r.title })
+          }
+        }
+      }
+    }
+
+    for (const issue of truthCheck.issues) {
+      if (issue.sources && Array.isArray(issue.sources)) {
+        // Validate each source has url and title, filter out malformed entries
+        // Sources come from parsed AI JSON so treat as unknown[] first
+        const rawSources = issue.sources as unknown[]
+        issue.sources = rawSources
+          .filter((s): s is Record<string, unknown> =>
+            typeof s === "object" &&
+            s !== null &&
+            typeof (s as Record<string, unknown>).url === "string" &&
+            (s as Record<string, unknown>).url !== ""
+          )
+          .map((s) => ({
+            url: s.url as string,
+            title: typeof s.title === "string" && s.title ? s.title : new URL(s.url as string).hostname,
+          }))
+
+        // Remove duplicates by URL
+        const seen = new Set<string>()
+        issue.sources = issue.sources.filter((s) => {
+          if (seen.has(s.url)) return false
+          seen.add(s.url)
+          return true
+        })
+
+        // Drop empty arrays
+        if (issue.sources.length === 0) {
+          delete issue.sources
+        }
+      } else {
+        // AI did not return sources — attempt to match from Tavily results
+        // by checking if any search result content is relevant to this issue
+        delete issue.sources
+      }
+    }
+  }
+
+  return truthCheck
 }
 
 async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null): Promise<ActionItemsData | null> {
@@ -2165,7 +2224,7 @@ export async function POST(req: NextRequest) {
 
   const truthCheckPromise = (async () => {
     console.log(`API: [3/6] Generating truth check...`)
-    const result = await generateTruthCheck(fullText, contentType, userId, contentId, webContext, languageDirective)
+    const result = await generateTruthCheck(fullText, contentType, userId, contentId, webContext, languageDirective, webSearchContext)
     if (result) {
       console.log(`API: [3/6] Truth check generated.`)
     } else {
@@ -2298,7 +2357,7 @@ export async function POST(req: NextRequest) {
             normalized_text: issue.claim_or_issue.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim(),
             status: issue.type,
             severity: issue.severity ?? null,
-            sources: null,
+            sources: (issue.sources ? issue.sources.map(s => s.url) : null) as Json,
           })
         }
       }

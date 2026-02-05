@@ -165,6 +165,9 @@ function generateMarkdown(content: Record<string, unknown>, summary: Record<stri
         if (issue.timestamp) {
           lines.push(`   - Timestamp: ${issue.timestamp}`)
         }
+        if (issue.sources && issue.sources.length > 0) {
+          lines.push(`   - Sources: ${issue.sources.map(s => `[${s.title}](${s.url})`).join(", ")}`)
+        }
         lines.push("")
       }
     }
