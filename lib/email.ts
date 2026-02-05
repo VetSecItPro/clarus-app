@@ -29,6 +29,7 @@ import { WeeklyDigestEmail } from "@/emails/weekly-digest"
 import type { WeeklyInsights } from "@/types/database.types"
 import { ShareAnalysisEmail } from "@/emails/share-analysis"
 import { DiscoveryNewsletterEmail } from "@/emails/discovery-newsletter"
+import { NewEpisodeEmail } from "@/emails/new-episode"
 
 // Lazy initialization to avoid build errors when API key is missing
 let resendClient: Resend | null = null
@@ -196,6 +197,27 @@ export async function sendShareAnalysisEmail(
     })
   )
   return sendEmail(to, "Clarus - Someone Shared an Analysis With You", html)
+}
+
+// ==================== Podcast Episode Notifications ====================
+
+/** Sends a notification email when new podcast episodes are detected. */
+export async function sendNewEpisodeEmail(
+  to: string,
+  userName: string | undefined,
+  episodes: Array<{
+    title: string
+    podcastName: string
+    date: string | null
+    duration: string | null
+  }>,
+  podcastCount: number
+) {
+  const html = await render(
+    NewEpisodeEmail({ userName, episodes, podcastCount })
+  )
+  const episodeWord = episodes.length === 1 ? "Episode" : "Episodes"
+  return sendEmail(to, `Clarus - ${episodes.length} New Podcast ${episodeWord}`, html)
 }
 
 // ==================== Contact Form ====================

@@ -298,6 +298,21 @@ export const exportSchema = z.object({
   id: uuidSchema,
 })
 
+/**
+ * Add podcast subscription request
+ */
+export const addPodcastSubscriptionSchema = z.object({
+  feed_url: safeUrlSchema,
+})
+
+/**
+ * Podcast episodes query params
+ */
+export const podcastEpisodesQuerySchema = z.object({
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+})
+
 // ===========================================
 // COLLECTION SCHEMAS
 // ===========================================
