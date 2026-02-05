@@ -56,8 +56,6 @@ async function extractTextWithOCR(buffer: Buffer, filename: string): Promise<str
     )
   }
 
-  console.log("Starting OCR extraction via OCR.space...")
-
   // Create form data with the PDF
   const formData = new FormData()
   formData.append("file", new Blob([new Uint8Array(buffer)], { type: "application/pdf" }), filename)
@@ -100,7 +98,6 @@ async function extractTextWithOCR(buffer: Buffer, filename: string): Promise<str
     throw new Error("OCR could not extract any text from this PDF")
   }
 
-  console.log(`OCR extracted ${extractedText.length} characters`)
   return extractedText
 }
 
@@ -205,7 +202,6 @@ export async function POST(req: NextRequest) {
       const textResult = await parser.getText()
       pdfText = textResult.text || textResult.pages.map((p: { text: string }) => p.text).join("\n\n")
       await parser.destroy()
-      console.log(`pdf-parse extracted ${pdfText.length} characters`)
     } catch (pdfError) {
       console.error("pdf-parse failed:", pdfError)
       // Will try OCR below
@@ -213,7 +209,6 @@ export async function POST(req: NextRequest) {
 
     // Step 2: If pdf-parse didn't get enough text, try OCR
     if (!pdfText || pdfText.trim().length < LIMITS.MIN_TEXT_LENGTH) {
-      console.log("Text extraction insufficient, attempting OCR...")
       try {
         pdfText = await extractTextWithOCR(buffer, file.name)
         usedOCR = true

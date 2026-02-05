@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { authenticateAdmin, getAdminClient } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/validation"
 
 // Real pricing — must match Polar product configuration
 const PRICING = {
@@ -32,6 +33,15 @@ export async function GET() {
     const auth = await authenticateAdmin()
     if (!auth.success) {
       return auth.response
+    }
+
+    // SECURITY: FIX-SEC-013 — Rate limit admin MRR endpoint
+    const rateCheck = checkRateLimit(`admin-mrr:${auth.user.id}`, 30, 60000)
+    if (!rateCheck.allowed) {
+      return NextResponse.json(
+        { error: "Too many requests. Please try again later." },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rateCheck.resetIn / 1000)) } }
+      )
     }
 
     const supabaseAdmin = getAdminClient()
@@ -138,8 +148,9 @@ export async function GET() {
       dayPassCount,
     }
 
+    // SECURITY: FIX-SEC-019 — Prevent caching of sensitive financial admin data
     return NextResponse.json(mrrData, {
-      headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" },
+      headers: { "Cache-Control": "private, no-store" },
     })
   } catch (error: unknown) {
     console.error("Error fetching MRR data:", error)

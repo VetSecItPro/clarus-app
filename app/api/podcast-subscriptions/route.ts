@@ -23,9 +23,16 @@ export async function GET() {
   if (!auth.success) return auth.response
   const { user, supabase } = auth
 
+  // SECURITY: FIX-SEC-010 — Rate limit GET requests for podcast subscriptions
+  const rateCheck = checkRateLimit(`podcast-sub-get:${user.id}`, 60, 60000)
+  if (!rateCheck.allowed) {
+    return AuthErrors.rateLimit(rateCheck.resetIn)
+  }
+
+  // PERF: FIX-PERF-008 — select explicit columns instead of .select('*')
   const { data: subscriptions, error } = await supabase
     .from("podcast_subscriptions")
-    .select("*")
+    .select("id, feed_url, podcast_name, podcast_image_url, last_checked_at, last_episode_date, is_active, created_at")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
 

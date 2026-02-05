@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useCallback } from "react"
+import dynamic from "next/dynamic"
 import { useRouter } from "next/navigation"
 import { motion } from "framer-motion"
 import { toast } from "sonner"
@@ -13,8 +14,10 @@ import {
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
-import { CompareSelector } from "@/components/compare/compare-selector"
-import { CompareResults } from "@/components/compare/compare-results"
+
+// PERF: FIX-PERF-005 — lazy-load compare components to reduce initial bundle > 200kB
+const CompareSelector = dynamic(() => import("@/components/compare/compare-selector").then(m => ({ default: m.CompareSelector })), { ssr: false })
+const CompareResults = dynamic(() => import("@/components/compare/compare-results").then(m => ({ default: m.CompareResults })), { ssr: false })
 
 interface ComparisonSource {
   id: string

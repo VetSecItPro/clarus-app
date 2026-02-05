@@ -28,7 +28,7 @@ import type { UserTier } from "@/types/database.types"
 // PERF: FIX-PERF-001 — Dynamic import LandingPage to reduce authenticated user's bundle
 const LandingPage = dynamic(
   () => import("@/components/landing/landing-page").then(mod => mod.LandingPage),
-  { loading: () => <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" /></div> }
+  { loading: () => <div className="min-h-screen bg-black flex items-center justify-center"><div role="status" aria-label="Loading"><Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" /><span className="sr-only">Loading...</span></div></div> }
 )
 
 const rotatingPrompts = [
@@ -459,7 +459,11 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+        {/* A11Y: FIX-FE-012 — loading spinner accessibility */}
+        <div role="status" aria-label="Loading">
+          <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+          <span className="sr-only">Loading...</span>
+        </div>
       </div>
     )
   }

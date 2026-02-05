@@ -8,6 +8,7 @@ import {
   RefreshCw, ChevronDown, ChevronUp,
   Shield, Eye, XCircle, Flag, Loader2
 } from "lucide-react"
+// PERF: FIX-PERF-004 — recharts tree-shaking handled by optimizePackageImports in next.config.mjs
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart as RechartsPie, Pie, Cell, BarChart, Bar

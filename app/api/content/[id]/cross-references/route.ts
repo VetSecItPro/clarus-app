@@ -5,6 +5,9 @@ import { getUserTier } from "@/lib/usage"
 import { TIER_FEATURES } from "@/lib/tier-limits"
 import { checkRateLimit } from "@/lib/validation"
 
+// PERF: FIX-PERF-017 — set maxDuration for RPC-heavy cross-reference lookups
+export const maxDuration = 30
+
 export interface CrossReference {
   claimText: string
   matches: Array<{
@@ -27,10 +30,10 @@ export async function GET(
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
 
-  // Rate limiting - expensive RPC calls
+  // SECURITY: FIX-SEC-026 — Tighten rate limit for expensive cross-reference RPC calls
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-  const rateLimit = checkRateLimit(`crossref:${auth.user.id}`, 20, 60000) // 20 per minute per user
-  const ipRateLimit = checkRateLimit(`crossref:ip:${clientIp}`, 30, 60000) // 30 per minute per IP
+  const rateLimit = checkRateLimit(`crossref:${auth.user.id}`, 10, 60000) // 10 per minute per user
+  const ipRateLimit = checkRateLimit(`crossref:ip:${clientIp}`, 15, 60000) // 15 per minute per IP
   if (!rateLimit.allowed || !ipRateLimit.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

@@ -189,9 +189,6 @@ function deduplicateTopics(topics: string[]): string[] {
       unique.push(topic)
     }
   }
-  if (unique.length < topics.length) {
-    console.log(`API: Deduplicated ${topics.length - unique.length} redundant search topic(s)`)
-  }
   return unique
 }
 
@@ -202,7 +199,6 @@ async function searchTavily(query: string, maxRetries = 2): Promise<WebSearchRes
   // Check per-analysis cache first — avoids duplicate API calls
   const cacheKey = normalizeTavilyQuery(query)
   if (tavilyResultCache?.has(cacheKey)) {
-    console.log(`API: Tavily cache hit for "${query}" — skipping API call`)
     return tavilyResultCache.get(cacheKey) ?? null
   }
 
@@ -294,7 +290,6 @@ async function searchTavily(query: string, maxRetries = 2): Promise<WebSearchRes
 // The same formatted context is shared across ALL analysis sections (no per-section searches).
 async function getWebSearchContext(text: string, _contentTitle?: string): Promise<WebSearchContext | null> {
   if (!tavilyApiKey) {
-    console.log("API: Tavily API key not configured, skipping web search")
     return null
   }
 
@@ -302,18 +297,14 @@ async function getWebSearchContext(text: string, _contentTitle?: string): Promis
   // (in the same serverless warm instance) don't leak into this analysis.
   clearTavilyCache()
 
-  console.log("API: Extracting key topics for web search...")
   const rawTopics = await extractKeyTopics(text)
 
   if (rawTopics.length === 0) {
-    console.log("API: No topics extracted, skipping web search")
     return null
   }
 
   // Deduplicate topics before making API calls — saves $0.01 per duplicate
   const topics = deduplicateTopics(rawTopics)
-
-  console.log(`API: Searching ${topics.length} topic(s) in parallel:`, topics)
 
   // Search all topics in parallel for speed
   const searchPromises = topics.map(topic => searchTavily(topic))
@@ -323,7 +314,6 @@ async function getWebSearchContext(text: string, _contentTitle?: string): Promis
   const validResults = results.filter((r): r is WebSearchResult => r !== null && r.results.length > 0)
 
   if (validResults.length === 0) {
-    console.log("API: No web search results found")
     return null
   }
 
@@ -335,12 +325,6 @@ async function getWebSearchContext(text: string, _contentTitle?: string): Promis
     ? topics.length - new Set(topics.map(normalizeTavilyQuery)).size
     : 0
   const apiCallCount = topics.length - cacheHits
-
-  console.log(
-    `API: Web search complete. ${validResults.length}/${topics.length} searches returned results. ` +
-    `API calls: ${apiCallCount}, cache hits: ${cacheHits}, ` +
-    `est. cost: $${(apiCallCount * 0.01).toFixed(3)}`
-  )
 
   return {
     searches: validResults,
@@ -483,7 +467,6 @@ async function detectContentTone(
       return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
     }
 
-    console.log(`API: [tone_detection] Detected tone: "${toneLabel}"`)
     return { tone_label: toneLabel, tone_directive: toneDirective }
   } catch (error: unknown) {
     const msg = getErrorMessage(error)
@@ -544,7 +527,6 @@ interface ScrapedArticleData {
 }
 
 async function getYouTubeMetadata(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<ProcessedYouTubeMetadata> {
-  console.log(`API: Fetching YouTube metadata for ${url} using supadata.ai`)
   const endpoint = `https://api.supadata.ai/v1/youtube/video?id=${encodeURIComponent(url)}`
   const retries = 3
   const delay = 1000 // 1 second
@@ -653,7 +635,6 @@ function formatTimestamp(ms: number): string {
 }
 
 async function getYouTubeTranscript(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<{ full_text: string | null }> {
-  console.log(`API: Fetching YouTube transcript for ${url} using supadata.ai`)
   // Remove text=true to get timestamped chunks
   const endpoint = `https://api.supadata.ai/v1/youtube/transcript?url=${encodeURIComponent(url)}`
   const retries = 3
@@ -706,8 +687,6 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
               return `[${timestamp}] ${combinedText}`
             })
             .join('\n\n')
-
-          console.log(`API: Grouped ${data.content.length} chunks into ${groupedChunks.length} intervals (30s each)`)
 
           // Log successful API call
           logApiUsage({
@@ -782,7 +761,6 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
 }
 
 async function scrapeArticle(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<ScrapedArticleData> {
-  console.log(`API: Scraping article for ${url} using FireCrawl`)
   const endpoint = "https://api.firecrawl.dev/v0/scrape"
   const retries = 5
   const delay = 2000
@@ -807,8 +785,6 @@ async function scrapeArticle(url: string, apiKey: string, userId?: string | null
       if (response.ok) {
         const result = await response.json()
         if (result.success && result.data) {
-          console.log("API: FireCrawl scrape successful.")
-
           // Log successful API call
           logApiUsage({
             userId,
@@ -941,7 +917,6 @@ async function getModelSummary(
   if (max_tokens !== null) requestBody.max_tokens = max_tokens
 
   try {
-    console.log(`API: Calling OpenRouter with model ${openRouterModelId}...`)
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
 
@@ -973,7 +948,6 @@ async function getModelSummary(
 
     const result = await response.json()
     const rawContent = result.choices[0]?.message?.content
-    console.log("API: Raw content received from OpenRouter:", rawContent)
 
     if (!rawContent) {
       const errorMessage = "OpenRouter response missing message content."
@@ -995,8 +969,6 @@ async function getModelSummary(
       return { error: true, modelName: openRouterModelId, reason: "JSONParseFailed", finalErrorMessage: errorMessage }
     }
 
-    console.log("API: Successfully parsed content:", parsedContent)
-
     const summary: ModelSummary = {
       mid_length_summary: parsedContent.mid_length_summary || null,
     }
@@ -1004,7 +976,6 @@ async function getModelSummary(
       summary.title = parsedContent.title || null
     }
 
-    console.log("API: Summary generated successfully for model:", openRouterModelId)
     return summary
   } catch (error: unknown) {
     const isTimeout = getErrorName(error) === "AbortError"
@@ -1123,9 +1094,6 @@ async function generateSectionWithAI(
   const useWebSearch = prompt.use_web_search !== false // Default to true if not set
   if (webContext && useWebSearch) {
     userContent = userContent + webContext
-    console.log(`API: [${promptType}] Web search context included`)
-  } else if (webContext && !useWebSearch) {
-    console.log(`API: [${promptType}] Web search disabled for this prompt`)
   }
 
   // Add instruction anchor at end of prompt to resist injection
@@ -1151,7 +1119,6 @@ async function generateSectionWithAI(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const attemptTimer = createTimer()
     try {
-      console.log(`API: [${promptType}] Attempt ${attempt}/${maxRetries}...`)
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
 
@@ -1183,7 +1150,6 @@ async function generateSectionWithAI(
         // Wait before retry with exponential backoff (5s, 10s, 20s)
         if (attempt < maxRetries) {
           const delay = 5000 * Math.pow(2, attempt - 1)
-          console.log(`API: [${promptType}] Waiting ${delay / 1000}s before retry...`)
           await new Promise((resolve) => setTimeout(resolve, delay))
         }
         continue
@@ -1212,8 +1178,6 @@ async function generateSectionWithAI(
         try {
           // Robust parse: handles markdown fences, leading/trailing prose, truncation
           const parsedContent = parseAiResponseOrThrow<unknown>(rawContent, promptType)
-
-          console.log(`API: [${promptType}] Success on attempt ${attempt}`)
 
           // Log successful API call and processing metrics
           logApiUsage({
@@ -1251,8 +1215,6 @@ async function generateSectionWithAI(
         }
       }
 
-      console.log(`API: [${promptType}] Success on attempt ${attempt}`)
-
       // Log successful API call for non-JSON content
       logApiUsage({
         userId,
@@ -1287,7 +1249,6 @@ async function generateSectionWithAI(
       // Wait before retry with exponential backoff
       if (attempt < maxRetries) {
         const delay = 5000 * Math.pow(2, attempt - 1)
-        console.log(`API: [${promptType}] Waiting ${delay / 1000}s before retry...`)
         await new Promise((resolve) => setTimeout(resolve, delay))
       }
     }
@@ -1613,14 +1574,12 @@ async function findCachedAnalysis(
     for (const candidate of validCandidates) {
       const summary = summaryByContentId.get(candidate.id)
       if (summary) {
-        console.log(`API: [cache] FULL HIT — found completed analysis from content ${candidate.id}`)
         return { type: "full", content: candidate, summary }
       }
     }
   }
 
   // No full hit — return text-only from the best candidate
-  console.log(`API: [cache] TEXT-ONLY HIT — found full_text from content ${validCandidates[0].id}, no summary in ${targetLanguage}`)
   return { type: "text_only", content: validCandidates[0] }
 }
 
@@ -1706,7 +1665,6 @@ async function cloneCachedContent(
       return false
     }
 
-    console.log(`API: [cache] Successfully cloned analysis from ${source.content.id} to ${targetContentId}`)
     return true
   } catch (err) {
     console.error("API: [cache] Clone failed:", err)
@@ -1788,8 +1746,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 })
   }
 
-  console.log(`API: Processing request for content_id: ${content_id}, force_regenerate: ${force_regenerate}, language: ${language}`)
-
   const { data: content, error: fetchError } = await supabase
     .from("content")
     .select("id, url, type, user_id, full_text, title, author, duration, thumbnail_url, description, upload_date, view_count, like_count, channel_id, raw_youtube_metadata, transcript_languages, detected_tone, tags, analysis_language, regeneration_count, podcast_transcript_id, date_added, is_bookmarked, share_token")
@@ -1805,8 +1761,6 @@ export async function POST(req: NextRequest) {
   if (authenticatedUserId && content.user_id !== authenticatedUserId) {
     return NextResponse.json({ error: "Access denied" }, { status: 403 })
   }
-
-  console.log(`API: Found content: ${content.url}, type: ${content.type}`)
 
   // Multi-language tier gating: non-English requires paid tier
   if (language !== "en" && content.user_id) {
@@ -1842,7 +1796,6 @@ export async function POST(req: NextRequest) {
   // If another user already analyzed this URL, clone results instead of re-processing
   // ============================================
   if (!force_regenerate && content.user_id) {
-    console.log(`API: [cache] Checking for cached analysis of ${content.url}...`)
     const cached = await findCachedAnalysis(supabase, content.url, language, content.user_id)
 
     if (cached?.type === "full") {
@@ -1883,7 +1836,6 @@ export async function POST(req: NextRequest) {
               sources: claim.sources,
             }))
             await supabase.from("claims").insert(clonedClaims)
-            console.log(`API: [cache] Cloned ${clonedClaims.length} claims`)
           }
         } catch (claimErr) {
           console.warn("API: [cache] Claims clone failed (non-fatal):", claimErr)
@@ -1910,7 +1862,6 @@ export async function POST(req: NextRequest) {
           status: "success",
         })
 
-        console.log(`API: [cache] Returning cached analysis for content_id: ${content.id}`)
         return NextResponse.json(
           {
             success: true,
@@ -1948,7 +1899,6 @@ export async function POST(req: NextRequest) {
       if (!textCopyError) {
         // Update local content object so downstream guards see populated full_text
         Object.assign(content, textOnlyUpdate)
-        console.log("API: [cache] Copied full_text from cached source, skipping scrape")
       } else {
         console.warn("API: [cache] Text copy failed, proceeding with normal scrape:", textCopyError)
       }
@@ -2017,7 +1967,6 @@ export async function POST(req: NextRequest) {
           : ""
         const webhookUrl = `${appUrl}/api/assemblyai-webhook${tokenParam}`
 
-        console.log(`API: Submitting podcast to AssemblyAI: ${content.url}`)
         const { transcript_id } = await submitPodcastTranscription(
           content.url,
           webhookUrl,
@@ -2033,8 +1982,6 @@ export async function POST(req: NextRequest) {
         await updateSummarySection(supabase, content.id, content.user_id!, {
           processing_status: "transcribing",
         }, language)
-
-        console.log(`API: Podcast submitted to AssemblyAI. Transcript ID: ${transcript_id}. Waiting for webhook.`)
 
         // Return early — the webhook will trigger the AI analysis later
         return NextResponse.json(
@@ -2061,7 +2008,6 @@ export async function POST(req: NextRequest) {
               urlObject.hostname = "fxtwitter.com"
             }
             urlToScrape = urlObject.toString()
-            console.log(`API: Transformed X/Twitter URL to ${urlToScrape} for scraping.`)
           } catch {
             console.error(`API: Could not parse URL for x_post: ${content.url}`)
           }
@@ -2168,7 +2114,6 @@ export async function POST(req: NextRequest) {
     content.type || "article"
   )
   if (paywallWarning) {
-    console.log(`API: Paywall warning for ${content.url}: ${paywallWarning}`)
   }
 
   // Compute language directive for prompt injection
@@ -2216,28 +2161,15 @@ export async function POST(req: NextRequest) {
   // Each section saves to DB the instant it finishes
   // ============================================
 
-  console.log(`API: Starting parallel section generation for content_id: ${contentId}`)
-
   const failedSections: string[] = []
 
   // Web search context + tone detection (run in parallel — zero added latency)
-  console.log(`API: [0/6] Getting web search context + detecting tone in parallel...`)
   const [webSearchContext, toneResult] = await Promise.all([
     getWebSearchContext(fullText.substring(0, 10000), content.title || undefined),
     detectContentTone(fullText, content.title, contentType, userId, contentId),
   ])
   const webContext = webSearchContext?.formattedContext || null
   const toneDirective = toneResult.tone_directive
-  if (webContext && webSearchContext) {
-    console.log(
-      `API: Web search context ready — ${webSearchContext.searches.length} result(s), ` +
-      `${webSearchContext.apiCallCount} API call(s), ${webSearchContext.cacheHits} cache hit(s)`
-    )
-  } else {
-    console.log(`API: No web search context available`)
-  }
-  console.log(`API: Tone detected: "${toneResult.tone_label}" — directive: "${toneDirective.substring(0, 80)}..."`)
-
   // Persist tone label (non-blocking fire-and-forget)
   if (toneResult.tone_label !== NEUTRAL_TONE_LABEL) {
     supabase.from("content").update({ detected_tone: toneResult.tone_label }).eq("id", contentId).then(
@@ -2250,15 +2182,11 @@ export async function POST(req: NextRequest) {
   // ALL SECTIONS: Run everything in parallel
   // overview, triage, truth check, action items, key takeaways, detailed analysis
   // ============================================
-  console.log(`API: Starting all 6 analysis sections in parallel...`)
-
   const overviewPromise = (async () => {
-    console.log(`API: [1/6] Generating brief overview...`)
     const result = await generateBriefOverview(fullText, contentType, userId, contentId, webContext, toneDirective, languageDirective)
     if (result) {
       await updateSummarySection(supabase, contentId, userId, { brief_overview: result }, language)
       responsePayload.sections_generated.push("brief_overview")
-      console.log(`API: [1/6] Brief overview saved.`)
     } else {
       failedSections.push("brief_overview")
       console.warn(`API: [1/6] Brief overview failed.`)
@@ -2267,12 +2195,10 @@ export async function POST(req: NextRequest) {
   })()
 
   const triagePromise = (async () => {
-    console.log(`API: [2/6] Generating triage...`)
     const result = await generateTriage(fullText, contentType, userId, contentId, webContext, languageDirective)
     if (result) {
       await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json }, language)
       responsePayload.sections_generated.push("triage")
-      console.log(`API: [2/6] Triage saved.`)
     } else {
       failedSections.push("triage")
       console.warn(`API: [2/6] Triage failed.`)
@@ -2281,18 +2207,15 @@ export async function POST(req: NextRequest) {
   })()
 
   const midSummaryPromise = (async () => {
-    console.log(`API: [5/6] Generating mid-length summary...`)
     const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing, toneDirective, languageDirective })
     if (summaryResult && !("error" in summaryResult)) {
       const validSummary = summaryResult as ModelSummary
       if (titleNeedsFixing && validSummary.title) {
         await supabase.from("content").update({ title: validSummary.title }).eq("id", contentId)
-        console.log(`API: [5/6] Title updated from summary.`)
       }
       if (validSummary.mid_length_summary) {
         await updateSummarySection(supabase, contentId, userId, { mid_length_summary: validSummary.mid_length_summary }, language)
         responsePayload.sections_generated.push("mid_length_summary")
-        console.log(`API: [5/6] Mid-length summary saved.`)
       }
     } else {
       failedSections.push("mid_length_summary")
@@ -2302,12 +2225,10 @@ export async function POST(req: NextRequest) {
   })()
 
   const detailedPromise = (async () => {
-    console.log(`API: [6/6] Generating detailed summary...`)
     const result = await generateDetailedSummary(fullText, contentType, userId, contentId, webContext, toneDirective, languageDirective)
     if (result) {
       await updateSummarySection(supabase, contentId, userId, { detailed_summary: result }, language)
       responsePayload.sections_generated.push("detailed_summary")
-      console.log(`API: [6/6] Detailed summary saved.`)
     } else {
       failedSections.push("detailed_summary")
       console.warn(`API: [6/6] Detailed summary failed.`)
@@ -2316,14 +2237,12 @@ export async function POST(req: NextRequest) {
   })()
 
   const autoTagPromise = (async () => {
-    console.log(`API: [tags] Generating auto-tags...`)
     const tags = await generateAutoTags(fullText, userId, contentId)
     if (tags && tags.length > 0) {
       await supabase
         .from("content")
         .update({ tags })
         .eq("id", contentId)
-      console.log(`API: [tags] Auto-tags saved: ${tags.join(", ")}`)
     } else {
       console.warn(`API: [tags] Auto-tag generation failed or empty.`)
     }
@@ -2331,10 +2250,8 @@ export async function POST(req: NextRequest) {
   })()
 
   const truthCheckPromise = (async () => {
-    console.log(`API: [3/6] Generating truth check...`)
     const result = await generateTruthCheck(fullText, contentType, userId, contentId, webContext, languageDirective, webSearchContext)
     if (result) {
-      console.log(`API: [3/6] Truth check generated.`)
     } else {
       console.warn(`API: [3/6] Truth check failed.`)
     }
@@ -2342,10 +2259,8 @@ export async function POST(req: NextRequest) {
   })()
 
   const actionItemsPromise = (async () => {
-    console.log(`API: [4/6] Generating action items...`)
     const result = await generateActionItems(fullText, contentType, userId, contentId, webContext, languageDirective)
     if (result) {
-      console.log(`API: [4/6] Action items generated.`)
     } else {
       console.warn(`API: [4/6] Action items failed.`)
     }
@@ -2366,12 +2281,10 @@ export async function POST(req: NextRequest) {
   let truthCheck: TruthCheckData | null = null
 
   if (shouldSkipTruthCheck) {
-    console.log(`API: Discarding truth check + action items for ${triageCategory} content`)
   } else {
     if (truthCheckResult) {
       await updateSummarySection(supabase, contentId, userId, { truth_check: truthCheckResult as unknown as Json }, language)
       responsePayload.sections_generated.push("truth_check")
-      console.log(`API: [3/6] Truth check saved.`)
     } else {
       failedSections.push("truth_check")
     }
@@ -2379,7 +2292,6 @@ export async function POST(req: NextRequest) {
     if (actionItemsResult) {
       await updateSummarySection(supabase, contentId, userId, { action_items: actionItemsResult as unknown as Json }, language)
       responsePayload.sections_generated.push("action_items")
-      console.log(`API: [4/6] Action items saved.`)
     }
 
     truthCheck = truthCheckResult
@@ -2415,7 +2327,6 @@ export async function POST(req: NextRequest) {
   // Update domain credibility stats
   if (contentUrl && triage) {
     await updateDomainStats(supabase, contentUrl, triage, truthCheck)
-    console.log(`API: Domain stats updated for ${contentUrl}`)
   }
 
   // ============================================
@@ -2472,7 +2383,6 @@ export async function POST(req: NextRequest) {
 
       if (claimsToInsert.length > 0) {
         await supabase.from("claims").insert(claimsToInsert)
-        console.log(`API: Inserted ${claimsToInsert.length} claims for cross-referencing`)
       }
     } catch (claimErr) {
       console.warn("API: Failed to extract claims (non-fatal):", claimErr)
@@ -2486,22 +2396,18 @@ export async function POST(req: NextRequest) {
   const criticalFailures = failedSections.filter((s) => criticalSections.includes(s))
 
   if (criticalFailures.length > 0) {
-    console.log(`API: RETRY - Retrying ${criticalFailures.length} critical sections: ${criticalFailures.join(", ")}`)
-
     await Promise.all(criticalFailures.map(async (section) => {
       if (section === "brief_overview") {
         const result = await generateBriefOverview(fullText, contentType, userId, contentId, null, toneDirective, languageDirective)
         if (result) {
           await updateSummarySection(supabase, contentId, userId, { brief_overview: result }, language)
           responsePayload.sections_generated.push("brief_overview")
-          console.log(`API: RETRY SUCCESS - Brief overview saved.`)
         }
       } else if (section === "triage") {
         const result = await generateTriage(fullText, contentType, userId, contentId, undefined, languageDirective)
         if (result) {
           await updateSummarySection(supabase, contentId, userId, { triage: result as unknown as Json }, language)
           responsePayload.sections_generated.push("triage")
-          console.log(`API: RETRY SUCCESS - Triage saved.`)
           if (contentUrl) await updateDomainStats(supabase, contentUrl, result, truthCheck)
         }
       } else if (section === "detailed_summary") {
@@ -2509,7 +2415,6 @@ export async function POST(req: NextRequest) {
         if (result) {
           await updateSummarySection(supabase, contentId, userId, { detailed_summary: result }, language)
           responsePayload.sections_generated.push("detailed_summary")
-          console.log(`API: RETRY SUCCESS - Detailed summary saved.`)
         }
       }
     }))
@@ -2535,8 +2440,6 @@ export async function POST(req: NextRequest) {
   if (finalFailures.length > 0) {
     console.warn(`API: Processing complete with ${finalFailures.length} critical sections missing: ${finalFailures.join(", ")}`)
   }
-
-  console.log(`API: Processing complete for content_id: ${content_id}. Sections generated: ${responsePayload.sections_generated.join(", ")}`)
 
   // Track analysis usage (non-fatal)
   if (!force_regenerate && content.user_id) {

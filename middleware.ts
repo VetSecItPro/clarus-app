@@ -105,17 +105,32 @@ function setCacheHeaders(response: NextResponse, pathname: string) {
 }
 
 function setCorsHeaders(response: NextResponse, origin: string | null) {
-  // Allow Chrome extension origins and the main site
+  // Allow the main site origin
   const allowedOrigins = [
     "https://clarusapp.io",
-    "http://localhost:3000", // Development
-    "http://localhost:3456", // Clarus dev port
   ]
 
-  // Check if origin is a Chrome extension or in allowed list
+  // SECURITY: FIX-SEC-022 — Only allow localhost origins in non-production environments
+  if (process.env.NODE_ENV !== "production") {
+    allowedOrigins.push("http://localhost:3000", "http://localhost:3456")
+  }
+
+  // SECURITY: FIX-SEC-021 — Restrict chrome-extension CORS to specific extension ID when configured
+  let isChromeExtensionAllowed = false
+  if (origin?.startsWith("chrome-extension://")) {
+    const allowedExtensionId = process.env.CLARUS_CHROME_EXTENSION_ID
+    if (allowedExtensionId) {
+      isChromeExtensionAllowed = origin === `chrome-extension://${allowedExtensionId}`
+    } else {
+      // Backward compatible: allow any chrome extension if env var not set
+      isChromeExtensionAllowed = true
+    }
+  }
+
+  // Check if origin is allowed
   const isAllowed =
     origin &&
-    (origin.startsWith("chrome-extension://") || allowedOrigins.includes(origin))
+    (isChromeExtensionAllowed || allowedOrigins.includes(origin))
 
   if (isAllowed && origin) {
     response.headers.set("Access-Control-Allow-Origin", origin)
@@ -139,10 +154,11 @@ function setSecurityHeaders(response: NextResponse) {
   // Referrer policy - don't leak URLs to third parties
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
 
+  // FE: FIX-FE-009 — allow microphone=(self) for voice input feature
   // Permissions policy - restrict powerful features
   response.headers.set(
     "Permissions-Policy",
-    "camera=(), microphone=(), geolocation=()"
+    "camera=(), microphone=(self), geolocation=()"
   )
 
   // Content Security Policy

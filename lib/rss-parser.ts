@@ -249,6 +249,24 @@ function parseAtom(xml: string, feedUrl: string): ParsedFeed {
   }
 }
 
+// SECURITY: FIX-SEC-006 — SSRF protection for RSS feed fetching
+function isPrivateUrl(urlStr: string): boolean {
+  try {
+    const url = new URL(urlStr)
+    const hostname = url.hostname.toLowerCase()
+    // Block private/internal IPs (RFC 1918, link-local, loopback)
+    if (/^(127\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.|192\.168\.|0\.|169\.254\.|::1|fc|fd|fe80)/i.test(hostname)) return true
+    if (hostname === 'localhost' || hostname === 'metadata.google.internal') return true
+    // Block cloud metadata endpoints
+    if (hostname === '169.254.169.254') return true
+    // Block IPv6-mapped IPv4
+    if (hostname.includes('::ffff:')) return true
+    // Block decimal/hex/octal IP notations
+    if (/^\d+$/.test(hostname) || /^0[xX]/.test(hostname) || /^0\d/.test(hostname)) return true
+    return false
+  } catch { return true }
+}
+
 /**
  * Fetches and parses a podcast RSS or Atom feed.
  *
@@ -257,6 +275,11 @@ function parseAtom(xml: string, feedUrl: string): ParsedFeed {
  * @throws Error if the feed cannot be fetched or is not a valid podcast feed
  */
 export async function fetchAndParseFeed(feedUrl: string): Promise<ParsedFeed> {
+  // SECURITY: FIX-SEC-006 — Block SSRF attempts to internal/private URLs
+  if (isPrivateUrl(feedUrl)) {
+    throw new Error("Internal or private URLs are not allowed for feed subscriptions")
+  }
+
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
 

@@ -7,6 +7,9 @@ interface SWRProviderProps {
   children: ReactNode
 }
 
+// PERF: FIX-PERF-007 — cap SWR cache size to prevent unbounded memory growth
+const MAX_CACHE_ENTRIES = 200
+
 export function SWRProvider({ children }: SWRProviderProps) {
   return (
     <SWRConfig
@@ -21,9 +24,10 @@ export function SWRProvider({ children }: SWRProviderProps) {
         keepPreviousData: true,
         // Retry failed requests
         errorRetryCount: 2,
-        // Cache data in localStorage for persistence
+        // Cache data in sessionStorage for persistence with max size eviction
         provider: () => {
           const map = new Map()
+          const insertionOrder: string[] = []
 
           // Try to restore from sessionStorage on mount
           if (typeof window !== 'undefined') {
@@ -31,8 +35,12 @@ export function SWRProvider({ children }: SWRProviderProps) {
               const cached = sessionStorage.getItem('swr-cache')
               if (cached) {
                 const parsed = JSON.parse(cached)
-                Object.entries(parsed).forEach(([key, value]) => {
+                const entries = Object.entries(parsed)
+                // Only restore up to MAX_CACHE_ENTRIES
+                const toRestore = entries.slice(-MAX_CACHE_ENTRIES)
+                toRestore.forEach(([key, value]) => {
                   map.set(key, value)
+                  insertionOrder.push(key)
                 })
               }
             } catch {
@@ -54,6 +62,22 @@ export function SWRProvider({ children }: SWRProviderProps) {
 
             // Save on page unload
             window.addEventListener('beforeunload', save)
+          }
+
+          // Wrap the Map to intercept set() for eviction
+          const originalSet = map.set.bind(map)
+          map.set = (key: string, value: unknown) => {
+            if (!map.has(key)) {
+              insertionOrder.push(key)
+            }
+            // Evict oldest entries when over limit
+            while (insertionOrder.length > MAX_CACHE_ENTRIES) {
+              const oldest = insertionOrder.shift()
+              if (oldest && oldest !== key) {
+                map.delete(oldest)
+              }
+            }
+            return originalSet(key, value)
           }
 
           return map

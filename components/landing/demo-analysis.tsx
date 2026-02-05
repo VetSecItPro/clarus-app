@@ -533,6 +533,7 @@ function DeepDiveContent() {
               <span className="text-[#1d9bf0] text-sm font-mono mt-0.5 shrink-0">
                 {trimmed.charAt(0)}.
               </span>
+              {/* SECURITY: FIX-SEC-005 — dangerouslySetInnerHTML is safe here because content comes from hardcoded demo-analysis-data.ts (developer-controlled, not user input) */}
               <span
                 className="text-sm text-white/65 leading-relaxed"
                 dangerouslySetInnerHTML={{
@@ -552,6 +553,7 @@ function DeepDiveContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: 0.05 * Math.min(i, 10) }}
             className="text-sm text-white/65 leading-relaxed"
+            // SECURITY: FIX-SEC-005 — safe: content from hardcoded demo-analysis-data.ts, not user input
             dangerouslySetInnerHTML={{
               __html: trimmed
                 .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white/90 font-medium">$1</strong>')

@@ -319,6 +319,7 @@ export function ChatInputBar({
             >
               <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
                 <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                {/* PERF: FIX-PERF-012 — unoptimized kept: favicons come from arbitrary user-submitted domains */}
                 <NextImage
                   src={urlPreview.favicon}
                   alt=""
@@ -539,6 +540,7 @@ export function ChatInputBar({
             <button
               onClick={handleSubmit}
               disabled={!canSubmit}
+              aria-label="Send message" // A11Y: FIX-FE-003 — aria-label on icon-only send button
               className={cn(
                 "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
                 canSubmit

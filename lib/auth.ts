@@ -92,6 +92,8 @@ export async function authenticateRequest(): Promise<AuthResult | AuthError> {
     } = await supabase.auth.getUser()
 
     if (authError || !user) {
+      // SECURITY: FIX-SEC-016 — Log auth failures for security monitoring
+      console.warn(`[SECURITY] Auth failure: reason=invalid_or_missing_session error=${authError?.message ?? "no user"}`)
       return {
         success: false,
         response: NextResponse.json(
@@ -102,7 +104,9 @@ export async function authenticateRequest(): Promise<AuthResult | AuthError> {
     }
 
     return { success: true, user, supabase }
-  } catch {
+  } catch (err) {
+    // SECURITY: FIX-SEC-016 — Log auth failures for security monitoring
+    console.warn(`[SECURITY] Auth failure: reason=exception error=${err instanceof Error ? err.message : "unknown"}`)
     return {
       success: false,
       response: NextResponse.json(
@@ -138,6 +142,8 @@ export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
   const cached = adminCache.get(auth.user.id)
   if (cached && cached.expires > Date.now()) {
     if (!cached.isAdmin) {
+      // SECURITY: FIX-SEC-016 — Log admin access denial for security monitoring
+      console.warn(`[SECURITY] Admin auth failure: user=${auth.user.id} reason=not_admin (cached)`)
       return {
         success: false,
         response: NextResponse.json(
@@ -167,6 +173,8 @@ export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
   adminCache.set(auth.user.id, { isAdmin, expires: Date.now() + 5 * 60 * 1000 })
 
   if (!isAdmin) {
+    // SECURITY: FIX-SEC-016 — Log admin access denial for security monitoring
+    console.warn(`[SECURITY] Admin auth failure: user=${auth.user.id} reason=not_admin (db_check)`)
     return {
       success: false,
       response: NextResponse.json(

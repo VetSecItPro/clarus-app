@@ -13,6 +13,7 @@ const nextConfig = {
     minimumCacheTTL: 60 * 60 * 24 * 30,
   },
   experimental: {
+    // PERF: FIX-PERF-006 — enable tree-shaking for recharts and other large packages
     optimizePackageImports: ['lucide-react', 'framer-motion', 'date-fns', 'recharts'],
     // Cache client-side navigations for faster page transitions
     staleTimes: {

@@ -7,7 +7,7 @@
 
 import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
-import { validateUUID } from "@/lib/validation"
+import { validateUUID, checkRateLimit } from "@/lib/validation"
 import { parseQuery, podcastEpisodesQuerySchema } from "@/lib/schemas"
 
 /**
@@ -21,6 +21,12 @@ export async function GET(
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user, supabase } = auth
+
+  // SECURITY: FIX-SEC-012 — Rate limit episode listing requests
+  const rateCheck = checkRateLimit(`podcast-episodes:${user.id}`, 60, 60000)
+  if (!rateCheck.allowed) {
+    return AuthErrors.rateLimit(rateCheck.resetIn)
+  }
 
   const { id } = await params
   const idCheck = validateUUID(id)
@@ -47,10 +53,10 @@ export async function GET(
     return AuthErrors.notFound("Subscription")
   }
 
-  // Fetch episodes
+  // PERF: FIX-PERF-009 — select explicit columns instead of .select('*')
   const { data: episodes, error: epError, count } = await supabase
     .from("podcast_episodes")
-    .select("*", { count: "exact" })
+    .select("id, subscription_id, episode_title, episode_url, episode_date, duration_seconds, description, is_notified, content_id, created_at", { count: "exact" })
     .eq("subscription_id", subscription.id)
     .order("episode_date", { ascending: false, nullsFirst: false })
     .range(offset, offset + limit - 1)

@@ -72,8 +72,6 @@ export async function POST(request: Request) {
       .eq("user_id", auth.user.id)
       .maybeSingle()
 
-    let voteChange = 0
-
     if (existingVote) {
       if (existingVote.vote === vote) {
         // Same vote = remove vote (toggle off)
@@ -86,9 +84,6 @@ export async function POST(request: Request) {
           console.error("Vote delete error:", deleteError)
           return AuthErrors.serverError()
         }
-
-        // Reverse the existing vote
-        voteChange = -existingVote.vote
       } else {
         // Different vote = update
         const { error: updateError } = await adminClient
@@ -100,9 +95,6 @@ export async function POST(request: Request) {
           console.error("Vote update error:", updateError)
           return AuthErrors.serverError()
         }
-
-        // Swing from old vote to new vote
-        voteChange = vote - existingVote.vote
       }
     } else {
       // New vote
@@ -118,20 +110,16 @@ export async function POST(request: Request) {
         console.error("Vote insert error:", insertError)
         return AuthErrors.serverError()
       }
-
-      voteChange = vote
     }
 
-    // Update denormalized vote_score
-    const currentScore = (
-      await adminClient
-        .from("content")
-        .select("vote_score")
-        .eq("id", contentId)
-        .single()
-    ).data?.vote_score ?? 0
+    // SECURITY: FIX-SEC-008 — Recompute vote_score from source of truth (votes table) to prevent race conditions
+    // Instead of read-then-write, derive the score from all current votes
+    const { data: allVotes } = await adminClient
+      .from("content_votes")
+      .select("vote")
+      .eq("content_id", contentId)
 
-    const newScore = currentScore + voteChange
+    const newScore = allVotes?.reduce((sum, v) => sum + (v.vote ?? 0), 0) ?? 0
 
     const { error: scoreError } = await adminClient
       .from("content")

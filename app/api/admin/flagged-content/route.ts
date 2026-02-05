@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateAdmin, getAdminClient } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/validation"
 import { z } from "zod"
 import { parseBody } from "@/lib/schemas"
 
@@ -14,6 +15,15 @@ import { parseBody } from "@/lib/schemas"
 export async function GET() {
   const auth = await authenticateAdmin()
   if (!auth.success) return auth.response
+
+  // SECURITY: FIX-SEC-015 — Rate limit admin flagged content endpoint
+  const rateCheck = checkRateLimit(`admin-flagged:${auth.user.id}`, 30, 60000)
+  if (!rateCheck.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rateCheck.resetIn / 1000)) } }
+    )
+  }
 
   const supabase = getAdminClient()
 
@@ -87,6 +97,9 @@ export async function PATCH(request: NextRequest) {
     console.error("Failed to update flagged content:", error)
     return NextResponse.json({ error: "Failed to update" }, { status: 500 })
   }
+
+  // SECURITY: FIX-SEC-018 — Audit log for admin actions on flagged content
+  console.warn(`[ADMIN_AUDIT] action=${status} admin=${auth.user.id} content=${id}`)
 
   return NextResponse.json({ success: true })
 }

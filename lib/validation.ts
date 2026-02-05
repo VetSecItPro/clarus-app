@@ -247,6 +247,8 @@ export function checkRateLimit(
   }
 
   if (record.count >= maxRequests) {
+    // SECURITY: FIX-SEC-017 — Log rate limit hits for security monitoring
+    console.warn(`[SECURITY] Rate limit exceeded: key=${identifier}`)
     return { allowed: false, remaining: 0, resetIn: record.resetTime - now }
   }
 

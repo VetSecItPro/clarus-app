@@ -5,6 +5,9 @@ import { getUserTier, getUsageCounts } from "@/lib/usage"
 import { TIER_LIMITS, getCurrentPeriod, getLimitForField } from "@/lib/tier-limits"
 import { getYouTubeVideoId, isXUrl, isPodcastUrl } from "@/lib/utils"
 
+// PERF: FIX-PERF-015 — set maxDuration for long-running bulk import processing
+export const maxDuration = 300
+
 /** Maximum URLs allowed in a single request (hard cap regardless of tier) */
 const ABSOLUTE_MAX_URLS = 15
 
@@ -182,21 +185,30 @@ export async function POST(request: NextRequest) {
 
   const period = getCurrentPeriod()
 
+  // PERF: FIX-PERF-018 — batch duplicate check with IN clause instead of N+1 individual queries
+  const allUrls = deduplicatedUrls.map(u => u.url)
+  const { data: existingContent } = await auth.supabase
+    .from("content")
+    .select("id, url")
+    .in("url", allUrls)
+    .eq("user_id", userId)
+
+  const existingByUrl = new Map<string, string>()
+  if (existingContent) {
+    for (const item of existingContent) {
+      if (!existingByUrl.has(item.url)) {
+        existingByUrl.set(item.url, item.id)
+      }
+    }
+  }
+
   for (const { url, type } of deduplicatedUrls) {
     try {
-      // Check if user already has this URL
-      const { data: existing } = await auth.supabase
-        .from("content")
-        .select("id")
-        .eq("url", url)
-        .eq("user_id", userId)
-        .order("date_added", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (existing) {
+      // Check if user already has this URL (using pre-fetched batch result)
+      const existingId = existingByUrl.get(url)
+      if (existingId) {
         // Content already exists — include it in results so user can track it
-        results.push({ url, contentId: existing.id, type })
+        results.push({ url, contentId: existingId, type })
         continue
       }
 

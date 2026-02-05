@@ -8,6 +8,9 @@ import { isValidLanguage, getLanguageConfig, type AnalysisLanguage } from "@/lib
 import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
 import { sanitizeForPrompt, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
 
+// PERF: FIX-PERF-016 — set maxDuration for serverless function timeout
+export const maxDuration = 60
+
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 const AI_CALL_TIMEOUT_MS = 60000 // 60 seconds — translations are faster than full analysis
 
