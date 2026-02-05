@@ -18,6 +18,7 @@ import {
   Tag,
   X,
   Star,
+  GitCompareArrows,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -30,7 +31,8 @@ import {
 import { cn } from "@/lib/utils"
 import { useLibrary, type LibraryItem } from "@/lib/hooks/use-library"
 import { ChatThreadCard } from "@/components/chat"
-import type { TriageData } from "@/types/database.types"
+import type { TriageData, UserTier } from "@/types/database.types"
+import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
 
 type HistoryItem = LibraryItem
 type LibraryPageProps = WithAuthInjectedProps
@@ -142,6 +144,25 @@ function LibraryPageContent({ session }: LibraryPageProps) {
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const [localItems, setLocalItems] = useState<HistoryItem[]>([])
   const [scoreFilter, setScoreFilter] = useState("all")
+  const [userTier, setUserTier] = useState<UserTier>("free")
+
+  // Fetch user tier for feature gating
+  useEffect(() => {
+    const fetchTier = async () => {
+      if (!session?.user?.id) return
+      const { data } = await supabase
+        .from("users")
+        .select("tier, day_pass_expires_at")
+        .eq("id", session.user.id)
+        .single()
+      if (data) {
+        setUserTier(normalizeTier(data.tier, data.day_pass_expires_at))
+      }
+    }
+    fetchTier()
+  }, [session])
+
+  const canCompare = TIER_FEATURES[userTier].comparativeAnalysis
 
   // Sync bookmarkOnly with URL params
   useEffect(() => {
@@ -267,13 +288,24 @@ function LibraryPageContent({ session }: LibraryPageProps) {
 
       <main className="flex-1 max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
         {/* Header */}
-        <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl font-semibold text-white">
-            Library
-          </h1>
-          <p className="text-white/50 text-xs sm:text-sm">
-            Your analyzed content
-          </p>
+        <div className="flex items-center justify-between mb-4 sm:mb-6">
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-white">
+              Library
+            </h1>
+            <p className="text-white/50 text-xs sm:text-sm">
+              Your analyzed content
+            </p>
+          </div>
+          {canCompare && (
+            <Link
+              href="/compare"
+              className="flex items-center gap-2 px-4 py-2 bg-white/[0.06] border border-white/[0.08] rounded-full text-sm text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
+            >
+              <GitCompareArrows className="w-4 h-4" />
+              <span className="hidden sm:inline">Compare</span>
+            </Link>
+          )}
         </div>
 
         {/* Search & Filter Bar */}
