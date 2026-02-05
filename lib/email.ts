@@ -26,6 +26,7 @@ import { SubscriptionStartedEmail } from "@/emails/subscription-started"
 import { PaymentFailedEmail } from "@/emails/payment-failed"
 import { SubscriptionCancelledEmail } from "@/emails/subscription-cancelled"
 import { WeeklyDigestEmail } from "@/emails/weekly-digest"
+import type { WeeklyInsights } from "@/types/database.types"
 import { ShareAnalysisEmail } from "@/emails/share-analysis"
 import { DiscoveryNewsletterEmail } from "@/emails/discovery-newsletter"
 
@@ -132,17 +133,18 @@ export async function sendSubscriptionCancelledEmail(
 
 // ==================== Engagement Emails ====================
 
-/** Sends the weekly digest summarizing the user's analysis activity. */
+/** Sends the weekly digest summarizing the user's analysis activity, optionally with AI insights. */
 export async function sendWeeklyDigestEmail(
   to: string,
   userName: string | undefined,
   weekOf: string,
   totalAnalyses: number,
   topAnalyses: Array<{ title: string; url: string; qualityScore: number }>,
-  avgQualityScore: number
+  avgQualityScore: number,
+  insights?: WeeklyInsights
 ) {
   const html = await render(
-    WeeklyDigestEmail({ userName, weekOf, totalAnalyses, topAnalyses, avgQualityScore })
+    WeeklyDigestEmail({ userName, weekOf, totalAnalyses, topAnalyses, avgQualityScore, insights })
   )
   return sendEmail(to, "Clarus - Your Weekly Digest", html)
 }
