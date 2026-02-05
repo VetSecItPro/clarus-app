@@ -969,6 +969,14 @@ export interface Database {
   }
 }
 
+// AI-generated insights for weekly digest emails
+export interface WeeklyInsights {
+  trending_topics: Array<{ topic: string; count: number }>
+  contradictions: Array<{ claim_a: string; source_a: string; claim_b: string; source_b: string }>
+  time_saved_minutes: number
+  recommended_revisits: Array<{ title: string; content_id: string; reason: string }>
+}
+
 // Content type for URL/source detection
 export type ContentType = "youtube" | "article" | "x_post" | "podcast" | "pdf" | "document"
 
