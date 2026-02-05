@@ -4,21 +4,23 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Home, Clock, Compass } from "lucide-react"
+import { Home, Clock, Compass, Podcast } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { supabase } from "@/lib/supabase"
 import { getCachedSession } from "@/components/with-auth"
-import { normalizeTier } from "@/lib/tier-limits"
+import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
 import { InstantTooltip } from "@/components/ui/tooltip"
 import { ActiveAnalysisNavLink } from "@/components/active-analysis-nav-link"
 import type { UserTier } from "@/types/database.types"
 
-const navItems = [
+const baseNavItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Clock },
   { href: "/discover", label: "Discover", icon: Compass },
 ]
+
+const podcastNavItem = { href: "/podcasts", label: "Podcasts", icon: Podcast }
 
 const TIER_BADGE_CONFIG: Record<UserTier, { label: string; bg: string; text: string; border: string } | null> = {
   free: { label: "Free", bg: "bg-white/[0.06]", text: "text-white/50", border: "border-white/[0.08]" },
@@ -71,6 +73,10 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
 
   const badgeConfig = userTier ? TIER_BADGE_CONFIG[userTier] : null
 
+  // Build nav items dynamically based on tier (Podcasts visible for Starter+)
+  const showPodcasts = userTier ? TIER_FEATURES[userTier].podcastSubscriptions : false
+  const navItems = showPodcasts ? [...baseNavItems, podcastNavItem] : baseNavItems
+
   return (
     <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-white/[0.06] hidden sm:block">
       <div className="px-4 lg:px-6">
@@ -114,7 +120,7 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
           {showNav && (
             <nav className="absolute left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-1">
               {navItems.map((item, index) => {
-                const isActive = pathname === item.href
+                const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
                 const Icon = item.icon
                 return (
                   <span key={item.label} className="contents">

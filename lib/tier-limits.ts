@@ -35,6 +35,7 @@ export interface TierLimits {
   tags: number
   library: number
   podcastAnalyses: number
+  podcastSubscriptions: number
   bulkImportBatchSize: number
   collections: number
 }
@@ -51,6 +52,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     tags: 3,
     library: 25,
     podcastAnalyses: 0,
+    podcastSubscriptions: 0,
     bulkImportBatchSize: 2,
     collections: 3,
   },
@@ -64,6 +66,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     tags: 50,
     library: 500,
     podcastAnalyses: 10,
+    podcastSubscriptions: 3,
     bulkImportBatchSize: 5,
     collections: 50,
   },
@@ -77,6 +80,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     tags: 100,
     library: 5000,
     podcastAnalyses: 30,
+    podcastSubscriptions: 10,
     bulkImportBatchSize: 15,
     collections: 100,
   },
@@ -90,6 +94,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     tags: 10,
     library: 25,
     podcastAnalyses: 3,
+    podcastSubscriptions: 1,
     bulkImportBatchSize: 5,
     collections: 10,
   },
@@ -189,6 +194,7 @@ export const TIER_FEATURES: Record<UserTier, {
   priorityProcessing: boolean
   multiLanguageAnalysis: boolean
   comparativeAnalysis: boolean
+  podcastSubscriptions: boolean
 }> = {
   free: {
     shareLinks: false,
@@ -198,6 +204,7 @@ export const TIER_FEATURES: Record<UserTier, {
     priorityProcessing: false,
     multiLanguageAnalysis: false,
     comparativeAnalysis: false,
+    podcastSubscriptions: false,
   },
   starter: {
     shareLinks: true,
@@ -207,6 +214,7 @@ export const TIER_FEATURES: Record<UserTier, {
     priorityProcessing: false,
     multiLanguageAnalysis: true,
     comparativeAnalysis: false,
+    podcastSubscriptions: true,
   },
   pro: {
     shareLinks: true,
@@ -216,6 +224,7 @@ export const TIER_FEATURES: Record<UserTier, {
     priorityProcessing: true,
     multiLanguageAnalysis: true,
     comparativeAnalysis: true,
+    podcastSubscriptions: true,
   },
   day_pass: {
     shareLinks: true,
@@ -225,5 +234,6 @@ export const TIER_FEATURES: Record<UserTier, {
     priorityProcessing: false,
     multiLanguageAnalysis: true,
     comparativeAnalysis: true,
+    podcastSubscriptions: true,
   },
 }

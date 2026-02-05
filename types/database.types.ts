@@ -964,6 +964,107 @@ export interface Database {
           },
         ]
       }
+      podcast_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          feed_url: string
+          podcast_name: string
+          podcast_image_url: string | null
+          last_checked_at: string | null
+          last_episode_date: string | null
+          check_frequency_hours: number
+          is_active: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          feed_url: string
+          podcast_name: string
+          podcast_image_url?: string | null
+          last_checked_at?: string | null
+          last_episode_date?: string | null
+          check_frequency_hours?: number
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          feed_url?: string
+          podcast_name?: string
+          podcast_image_url?: string | null
+          last_checked_at?: string | null
+          last_episode_date?: string | null
+          check_frequency_hours?: number
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      podcast_episodes: {
+        Row: {
+          id: string
+          subscription_id: string
+          episode_title: string
+          episode_url: string
+          episode_date: string | null
+          duration_seconds: number | null
+          description: string | null
+          is_notified: boolean
+          content_id: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          subscription_id: string
+          episode_title: string
+          episode_url: string
+          episode_date?: string | null
+          duration_seconds?: number | null
+          description?: string | null
+          is_notified?: boolean
+          content_id?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          subscription_id?: string
+          episode_title?: string
+          episode_url?: string
+          episode_date?: string | null
+          duration_seconds?: number | null
+          description?: string | null
+          is_notified?: boolean
+          content_id?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "podcast_episodes_subscription_id_fkey"
+            columns: ["subscription_id"]
+            referencedRelation: "podcast_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "podcast_episodes_content_id_fkey"
+            columns: ["content_id"]
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flagged_content: {
         Row: {
           id: string
