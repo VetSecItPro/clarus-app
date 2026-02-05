@@ -1,5 +1,17 @@
+/**
+ * @module article-helpers
+ * @description Blog article category configuration for the `/blog` section.
+ *
+ * Maps each article category to its display label, icon component,
+ * and color scheme. Used by the blog index, article cards, and
+ * category filter chips.
+ *
+ * @see {@link lib/data/blog-articles.ts} for the article content data
+ */
+
 import { Youtube, ShieldCheck, Zap, Sparkles, BookOpen } from "lucide-react"
 
+/** The five blog article categories. */
 export type ArticleCategory =
   | "content-analysis"
   | "fact-checking"
@@ -7,6 +19,7 @@ export type ArticleCategory =
   | "ai-tools"
   | "research"
 
+/** Display configuration for each article category (label, icon, colors). */
 export const categoryConfig: Record<
   ArticleCategory,
   { label: string; icon: typeof Youtube; color: string; bg: string }
@@ -43,6 +56,7 @@ export const categoryConfig: Record<
   },
 }
 
+/** All category values in display order, used for filter chip rendering. */
 export const allCategories: ArticleCategory[] = [
   "content-analysis",
   "fact-checking",

@@ -1,5 +1,24 @@
+/**
+ * @module blog-articles
+ * @description Static blog article data for the `/blog` section.
+ *
+ * Contains the full HTML content, metadata, and FAQ structured data for
+ * all blog articles. Articles are organized into five categories:
+ * content-analysis, fact-checking, productivity, ai-tools, and research.
+ *
+ * This data is used for:
+ *   - Static page generation at build time (`generateStaticParams`)
+ *   - JSON-LD structured data (FAQPage schema) for SEO
+ *   - Related article recommendations on each article page
+ *   - The blog index page with category filtering
+ *
+ * @see {@link lib/utils/article-helpers.ts} for category display configuration
+ * @see {@link app/blog/} for the blog page components
+ */
+
 import type { ArticleCategory } from "@/lib/utils/article-helpers"
 
+/** Shape of a blog article with full HTML content and FAQ structured data. */
 export interface BlogArticle {
   slug: string
   title: string
@@ -1145,10 +1164,26 @@ export const blogArticles: BlogArticle[] = [
   },
 ]
 
+/**
+ * Finds a blog article by its URL slug.
+ *
+ * @param slug - The URL-safe slug (e.g., `"why-most-people-miss-the-point-of-long-youtube-videos"`)
+ * @returns The matching article, or `undefined` if no match
+ */
 export function getArticleBySlug(slug: string): BlogArticle | undefined {
   return blogArticles.find((a) => a.slug === slug)
 }
 
+/**
+ * Returns related articles for a given article slug.
+ *
+ * Prioritizes articles from the same category, then fills remaining
+ * slots with articles from other categories. Excludes the current article.
+ *
+ * @param currentSlug - The slug of the article to find related content for
+ * @param limit - Maximum number of related articles to return (default 3)
+ * @returns An array of related articles, up to `limit` items
+ */
 export function getRelatedArticles(
   currentSlug: string,
   limit = 3
@@ -1166,10 +1201,12 @@ export function getRelatedArticles(
   return [...sameCategory, ...otherCategory].slice(0, limit)
 }
 
+/** Returns all articles marked as `featured: true` for the blog hero section. */
 export function getFeaturedArticles(): BlogArticle[] {
   return blogArticles.filter((a) => a.featured)
 }
 
+/** Returns all article slugs for `generateStaticParams` in the blog route. */
 export function getAllSlugs(): string[] {
   return blogArticles.map((a) => a.slug)
 }

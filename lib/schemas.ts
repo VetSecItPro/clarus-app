@@ -1,6 +1,20 @@
 /**
- * Zod Schemas for API Input Validation
- * Centralized validation schemas for all API routes
+ * @module schemas
+ * @description Centralized Zod validation schemas for all API routes.
+ *
+ * Every API request body and query parameter set passes through a schema
+ * defined here before touching business logic. This ensures:
+ *   - Type-safe parsing with runtime validation
+ *   - SSRF protection on URL inputs (blocks internal IPs, cloud metadata endpoints)
+ *   - XSS sanitization on text inputs (strips script tags and event handlers)
+ *   - Email header injection prevention
+ *   - UUID v4 format enforcement with case normalization
+ *
+ * Schemas are composed from reusable base schemas (`uuidSchema`, `safeUrlSchema`,
+ * `emailSchema`, etc.) into API-specific request schemas (`processContentSchema`,
+ * `chatRequestSchema`, etc.).
+ *
+ * @see {@link lib/validation.ts} for the older imperative validation utilities
  */
 
 import { z } from "zod"
@@ -289,8 +303,21 @@ export const exportSchema = z.object({
 // ===========================================
 
 /**
- * Parse and validate request body with Zod schema
- * Returns { success: true, data } or { success: false, error }
+ * Parses and validates a request body against a Zod schema.
+ *
+ * Returns a discriminated union: check `success` before accessing `data` or `error`.
+ * Error messages are joined from all Zod issues for display in API responses.
+ *
+ * @param schema - The Zod schema to validate against
+ * @param body - The raw request body (typically from `await request.json()`)
+ * @returns `{ success: true, data }` on valid input, `{ success: false, error }` on invalid
+ *
+ * @example
+ * ```ts
+ * const result = parseBody(processContentSchema, await request.json())
+ * if (!result.success) return NextResponse.json({ error: result.error }, { status: 400 })
+ * const { content_id } = result.data
+ * ```
  */
 export function parseBody<T extends z.ZodSchema>(
   schema: T,
@@ -306,7 +333,14 @@ export function parseBody<T extends z.ZodSchema>(
 }
 
 /**
- * Parse query parameters from URLSearchParams
+ * Parses and validates URL query parameters against a Zod schema.
+ *
+ * Converts `URLSearchParams` to a plain object before passing to the schema,
+ * so schemas can use `z.coerce` for numeric parameters.
+ *
+ * @param schema - The Zod schema to validate against
+ * @param searchParams - The URLSearchParams from the request URL
+ * @returns `{ success: true, data }` on valid input, `{ success: false, error }` on invalid
  */
 export function parseQuery<T extends z.ZodSchema>(
   schema: T,

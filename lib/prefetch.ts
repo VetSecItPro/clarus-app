@@ -1,20 +1,37 @@
 /**
- * Prefetch utilities for blazing fast navigation
+ * @module prefetch
+ * @description SWR cache prefetch utilities for instant page transitions.
  *
- * These utilities help pre-load data before the user navigates,
- * making page transitions feel instant.
+ * Pre-loads content and library data into the SWR cache before the user
+ * navigates, so the destination page renders immediately from cache
+ * rather than showing a loading skeleton.
+ *
+ * Tracks previously prefetched content IDs in a bounded `Set` (max 200)
+ * to avoid duplicate Supabase queries. The set is cleared when it reaches
+ * capacity or when the user logs out.
+ *
+ * @see {@link lib/hooks/use-library.ts} for the library data hook that reads from cache
+ * @see {@link lib/hooks/use-chat-session.ts} for the chat session that reads content status
  */
 
 import { mutate } from "swr"
 import { supabase } from "@/lib/supabase"
 
-// Track which content has been prefetched to avoid duplicate requests
+/** Maximum number of content IDs to track before clearing the prefetch cache. */
 const MAX_PREFETCH_CACHE_SIZE = 200
 const prefetchedContent = new Set<string>()
 
 /**
- * Prefetch content data for a specific content ID.
- * This loads the content into SWR cache before navigation.
+ * Prefetches a single content item and its summary into the SWR cache.
+ *
+ * Skips the fetch if the content was already prefetched. Clears the
+ * tracking set when it reaches {@link MAX_PREFETCH_CACHE_SIZE} to
+ * prevent unbounded memory growth.
+ *
+ * Failures are silently caught -- prefetching is an optimization,
+ * not a requirement. The page will fetch the data normally on mount.
+ *
+ * @param contentId - The UUID of the content item to prefetch
  */
 export async function prefetchContent(contentId: string): Promise<void> {
   // Skip if already prefetched
@@ -48,8 +65,13 @@ export async function prefetchContent(contentId: string): Promise<void> {
 }
 
 /**
- * Prefetch library items for a user.
- * Called when navigating to the library page.
+ * Prefetches the first page of a user's library into the SWR cache.
+ *
+ * Called when the user hovers or begins navigating to the library page.
+ * Populates the default library cache key (no filters, date descending,
+ * page 0) so the initial render is instant.
+ *
+ * @param userId - The UUID of the user whose library to prefetch
  */
 export async function prefetchLibrary(userId: string): Promise<void> {
   try {
@@ -71,7 +93,8 @@ export async function prefetchLibrary(userId: string): Promise<void> {
 }
 
 /**
- * Clear prefetch cache when user logs out
+ * Clears the prefetch tracking set.
+ * Call this on logout to avoid stale cache entries from the previous user session.
  */
 export function clearPrefetchCache(): void {
   prefetchedContent.clear()

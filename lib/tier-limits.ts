@@ -1,10 +1,18 @@
 /**
- * Tier configuration and limit definitions
- * Defines what each tier (free/starter/pro) can access
+ * @module tier-limits
+ * @description Pricing tier definitions, usage limits, and feature flags.
+ *
+ * Central source of truth for what each subscription tier (free, starter,
+ * pro, day_pass) can access. All tiers enforce hard caps -- there is no
+ * "unlimited" tier to prevent abuse.
+ *
+ * @see {@link lib/usage.ts} for runtime limit checking and increment logic
+ * @see {@link app/pricing/page.tsx} for the customer-facing pricing page
  */
 
 import type { UserTier } from "@/types/database.types"
 
+/** Database column names used in the `usage_tracking` table. */
 export type UsageField =
   | "analyses_count"
   | "chat_messages_count"
@@ -13,6 +21,10 @@ export type UsageField =
   | "bookmarks_count"
   | "podcast_analyses_count"
 
+/**
+ * Monthly usage limits for a single tier.
+ * Every value is a hard cap enforced server-side.
+ */
 export interface TierLimits {
   analyses: number
   chatMessagesMonthly: number
@@ -88,18 +100,43 @@ const FIELD_TO_LIMIT: Record<UsageField, keyof TierLimits> = {
   podcast_analyses_count: "podcastAnalyses",
 }
 
-/** Get the limit value for a specific usage field and tier */
+/**
+ * Returns the numeric limit for a specific usage field and tier.
+ *
+ * @param tier - The user's current subscription tier
+ * @param field - The database column name for the usage counter
+ * @returns The maximum allowed value for this field on the given tier
+ *
+ * @example
+ * ```ts
+ * const maxAnalyses = getLimitForField("free", "analyses_count") // 5
+ * ```
+ */
 export function getLimitForField(tier: UserTier, field: UsageField): number {
   return TIER_LIMITS[tier][FIELD_TO_LIMIT[field]]
 }
 
-/** Check if a usage count has reached the tier limit */
+/**
+ * Checks whether a usage count has reached or exceeded the tier limit.
+ *
+ * @param tier - The user's current subscription tier
+ * @param field - The usage field to check
+ * @param currentCount - The user's current count for this field
+ * @returns `true` if the user has hit or exceeded their limit
+ */
 export function isAtLimit(tier: UserTier, field: UsageField, currentCount: number): boolean {
   const limit = getLimitForField(tier, field)
   return currentCount >= limit
 }
 
-/** Get the current period string (YYYY-MM) */
+/**
+ * Returns the current billing period as a `YYYY-MM` string in UTC.
+ *
+ * Used as the partition key in the `usage_tracking` table so that
+ * counters reset automatically each calendar month.
+ *
+ * @returns The current period string, e.g. `"2026-02"`
+ */
 export function getCurrentPeriod(): string {
   const now = new Date()
   const year = now.getUTCFullYear()
@@ -107,8 +144,22 @@ export function getCurrentPeriod(): string {
   return `${year}-${month}`
 }
 
-/** Normalize a tier string from the database to a valid UserTier.
- *  For day_pass, checks expiration — returns "free" if expired. */
+/**
+ * Normalizes a raw tier string from the database to a valid {@link UserTier}.
+ *
+ * Handles edge cases: `null`/`undefined` default to `"free"`, and
+ * `"day_pass"` is downgraded to `"free"` if the pass has expired.
+ *
+ * @param tier - The raw tier value from the `users` table (may be null)
+ * @param dayPassExpiresAt - ISO timestamp for day pass expiration (if applicable)
+ * @returns A valid {@link UserTier} string
+ *
+ * @example
+ * ```ts
+ * const tier = normalizeTier(user.tier, user.day_pass_expires_at)
+ * // "day_pass" with expired timestamp -> "free"
+ * ```
+ */
 export function normalizeTier(tier: string | null | undefined, dayPassExpiresAt?: string | null): UserTier {
   if (tier === "starter" || tier === "pro") return tier
   if (tier === "day_pass") {
@@ -118,7 +169,13 @@ export function normalizeTier(tier: string | null | undefined, dayPassExpiresAt?
   return "free"
 }
 
-/** Feature flags per tier (non-usage-based gating) */
+/**
+ * Boolean feature flags per tier for non-usage-based gating.
+ *
+ * Unlike {@link TIER_LIMITS} which track numeric counters, these flags
+ * control binary access to features that are either enabled or disabled
+ * for a given tier.
+ */
 export const TIER_FEATURES: Record<UserTier, {
   shareLinks: boolean
   exports: boolean

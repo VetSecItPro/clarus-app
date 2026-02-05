@@ -1,3 +1,20 @@
+/**
+ * @module use-speech
+ * @description Web Speech API hooks for voice input and text-to-speech.
+ *
+ * Provides two complementary hooks:
+ *   - {@link useSpeechToText} -- microphone input via the SpeechRecognition API
+ *   - {@link useTextToSpeech} -- spoken output via the SpeechSynthesis API
+ *
+ * Both hooks detect browser support at mount time and expose an `isSupported`
+ * flag so the UI can conditionally render voice controls. Error messages are
+ * mapped to user-friendly strings (e.g., "Microphone access denied").
+ *
+ * The speech-to-text hook supports both single-utterance and continuous
+ * modes. In continuous mode, final transcripts accumulate across pauses
+ * and the combined result is delivered via `onResult` when the user stops.
+ */
+
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
@@ -54,6 +71,7 @@ interface SpeechRecognitionConstructor {
 // Speech-to-Text Hook (Web Speech API)
 // ============================================
 
+/** Configuration options for {@link useSpeechToText}. */
 interface UseSpeechToTextOptions {
   onResult?: (transcript: string) => void
   onError?: (error: string) => void
@@ -69,6 +87,19 @@ interface UseSpeechToTextReturn {
   transcript: string
 }
 
+/**
+ * Provides speech-to-text functionality via the Web Speech Recognition API.
+ *
+ * In non-continuous mode, each recognized utterance fires `onResult` immediately.
+ * In continuous mode, transcripts accumulate until `stopListening` is called,
+ * then the full accumulated text is delivered via `onResult`.
+ *
+ * The `transcript` state always reflects the latest recognized text (including
+ * interim results) for real-time display in the UI.
+ *
+ * @param options - Configuration for callbacks, language, and continuous mode
+ * @returns State and controls for the speech recognition session
+ */
 export function useSpeechToText(options: UseSpeechToTextOptions = {}): UseSpeechToTextReturn {
   const { onResult, onError, continuous = false, language = "en-US" } = options
   const [isListening, setIsListening] = useState(false)
@@ -203,6 +234,7 @@ export function useSpeechToText(options: UseSpeechToTextOptions = {}): UseSpeech
 // Text-to-Speech Hook (Web Speech API)
 // ============================================
 
+/** Configuration options for {@link useTextToSpeech}. */
 interface UseTextToSpeechOptions {
   rate?: number
   pitch?: number
@@ -218,6 +250,16 @@ interface UseTextToSpeechReturn {
   voices: SpeechSynthesisVoice[]
 }
 
+/**
+ * Provides text-to-speech functionality via the Web SpeechSynthesis API.
+ *
+ * Loads available voices at mount time and exposes them for voice selection.
+ * Defaults to a high-quality English voice (Google or Samantha) if available.
+ * Cancels any ongoing speech when a new `speak` call is made or on unmount.
+ *
+ * @param options - Configuration for rate, pitch, volume, and preferred voice
+ * @returns State and controls for the speech synthesis session
+ */
 export function useTextToSpeech(options: UseTextToSpeechOptions = {}): UseTextToSpeechReturn {
   const { rate = 1, pitch = 1, volume = 1, voice } = options
   const [isSpeaking, setIsSpeaking] = useState(false)

@@ -1,17 +1,34 @@
 /**
- * Multi-language analysis support for Clarus.
- * Defines supported languages, types, and prompt directive generators.
+ * @module languages
+ * @description Multi-language analysis support for the AI pipeline.
+ *
+ * Defines the 11 supported analysis languages with their ISO 639-1 codes,
+ * native names, text direction (LTR/RTL), and display flags. Used by:
+ *   - The language selector dropdown in the chat UI
+ *   - The API processing pipeline to inject language directives into prompts
+ *   - The translation endpoint for re-analyzing existing content
+ *
+ * Language directives are injected into AI prompts via the `{{LANGUAGE}}`
+ * template variable in database-stored prompt templates.
+ *
+ * @see {@link lib/hooks/use-chat-session.ts} for client-side language selection
  */
 
+/**
+ * ISO 639-1 language codes supported by the analysis pipeline.
+ * English is the default; all others trigger a language directive in AI prompts.
+ */
 export type AnalysisLanguage =
   | "en" | "ar" | "es" | "fr" | "de"
   | "pt" | "ja" | "ko" | "zh" | "it" | "nl"
 
+/** Full configuration for a supported language, used by the language selector UI. */
 export interface LanguageConfig {
   code: AnalysisLanguage
   name: string
   nativeName: string
   flag: string
+  /** Text direction -- only Arabic (`ar`) is RTL currently. */
   dir: "ltr" | "rtl"
 }
 
@@ -33,19 +50,40 @@ export const SUPPORTED_LANGUAGES: LanguageConfig[] = [
 /** Language code set for fast validation */
 const LANGUAGE_CODES = new Set<string>(SUPPORTED_LANGUAGES.map(l => l.code))
 
-/** Check if a string is a valid AnalysisLanguage code */
+/**
+ * Type guard that checks whether a string is a valid {@link AnalysisLanguage} code.
+ *
+ * @param code - The string to validate
+ * @returns `true` if the code matches a supported language
+ */
 export function isValidLanguage(code: string): code is AnalysisLanguage {
   return LANGUAGE_CODES.has(code)
 }
 
-/** Get config for a language code. Returns English config if code is invalid. */
+/**
+ * Looks up the full configuration for a language code.
+ * Falls back to English if the code is invalid or unsupported.
+ *
+ * @param code - An ISO 639-1 language code
+ * @returns The matching {@link LanguageConfig}, or the English config as fallback
+ */
 export function getLanguageConfig(code: string): LanguageConfig {
   return SUPPORTED_LANGUAGES.find(l => l.code === code) || SUPPORTED_LANGUAGES[0]
 }
 
 /**
- * Generate the prompt directive for a given language code.
- * This string replaces {{LANGUAGE}} in analysis prompt templates.
+ * Generates the AI prompt directive for a given language code.
+ *
+ * For English, returns a simple "Write your analysis in English."
+ * For all other languages, returns a detailed directive requiring the
+ * AI to write the entire output in the target language, including
+ * headers, bullets, and prose. Technical terms and proper nouns may
+ * remain in English.
+ *
+ * This string replaces `{{LANGUAGE}}` in database-stored prompt templates.
+ *
+ * @param code - The target analysis language
+ * @returns A prompt directive string to inject into the AI prompt
  */
 export function getLanguageDirective(code: AnalysisLanguage): string {
   if (code === "en") {

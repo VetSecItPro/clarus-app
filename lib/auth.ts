@@ -1,6 +1,16 @@
 /**
- * Authentication & Authorization Helpers
- * Centralized auth utilities for API routes
+ * @module auth
+ * @description Authentication and authorization helpers for API routes.
+ *
+ * Provides cookie-based session authentication, admin verification with
+ * a short-lived cache, content ownership checks, and a service-role
+ * Supabase client for privileged operations.
+ *
+ * All API routes should call {@link authenticateRequest} (or
+ * {@link authenticateAdmin} for admin endpoints) before performing any
+ * database operations on behalf of a user.
+ *
+ * @see {@link lib/supabase-middleware.ts} for the middleware-level client
  */
 
 import { createServerClient } from "@supabase/ssr"
@@ -13,20 +23,41 @@ import type { Database } from "@/types/database.types"
 const adminCache = new Map<string, { isAdmin: boolean; expires: number }>()
 const MAX_ADMIN_CACHE_SIZE = 500
 
+/**
+ * Successful authentication result containing the verified user
+ * and a Supabase client scoped to their session.
+ */
 export interface AuthResult {
   success: true
   user: User
   supabase: SupabaseClient<Database>
 }
 
+/**
+ * Failed authentication result containing a pre-built NextResponse
+ * that the API route can return directly.
+ */
 export interface AuthError {
   success: false
   response: NextResponse
 }
 
 /**
- * Authenticate a request using session cookies
- * Returns the authenticated user and a Supabase client
+ * Authenticates an incoming request using Supabase session cookies.
+ *
+ * Uses `supabase.auth.getUser()` (server-side JWT verification) rather
+ * than `getSession()` to prevent token forgery.  Returns either an
+ * {@link AuthResult} with the verified user and a scoped Supabase client,
+ * or an {@link AuthError} with a 401 response.
+ *
+ * @returns A discriminated union -- check `result.success` before accessing fields
+ *
+ * @example
+ * ```ts
+ * const auth = await authenticateRequest()
+ * if (!auth.success) return auth.response
+ * const { user, supabase } = auth
+ * ```
  */
 export async function authenticateRequest(): Promise<AuthResult | AuthError> {
   try {
@@ -83,8 +114,21 @@ export async function authenticateRequest(): Promise<AuthResult | AuthError> {
 }
 
 /**
- * Authenticate request and verify admin status
- * Always checks is_admin column in database (single source of truth)
+ * Authenticates a request and verifies the user has admin privileges.
+ *
+ * First calls {@link authenticateRequest}, then checks the `is_admin`
+ * column in the database (the single source of truth).  Results are
+ * cached for 5 minutes to avoid repeated DB hits within the same
+ * serverless runtime.
+ *
+ * @returns A discriminated union -- 401 for unauthenticated, 403 for non-admin
+ *
+ * @example
+ * ```ts
+ * const auth = await authenticateAdmin()
+ * if (!auth.success) return auth.response
+ * // Proceed with admin-only logic
+ * ```
  */
 export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
   const auth = await authenticateRequest()
@@ -135,12 +179,30 @@ export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
   return auth
 }
 
-/** Fields returned by verifyContentOwnership — intentionally narrower than the full Row */
+/** Fields returned by {@link verifyContentOwnership} -- intentionally narrower than the full Row. */
 export type ContentOwnershipFields = Pick<
   Database["clarus"]["Tables"]["content"]["Row"],
   "id" | "user_id" | "title" | "url" | "type" | "thumbnail_url" | "tags" | "is_bookmarked" | "date_added" | "share_token" | "author" | "duration" | "detected_tone"
 >
 
+/**
+ * Verifies that a specific content record exists and belongs to the given user.
+ *
+ * Prevents IDOR (Insecure Direct Object Reference) attacks by ensuring
+ * the authenticated user owns the content they are trying to access.
+ *
+ * @param supabase - An authenticated Supabase client (from {@link authenticateRequest})
+ * @param userId - The authenticated user's ID
+ * @param contentId - The content record ID to verify
+ * @returns Either `{ owned: true, content }` or `{ owned: false, response }` with a 404/403
+ *
+ * @example
+ * ```ts
+ * const ownership = await verifyContentOwnership(supabase, user.id, contentId)
+ * if (!ownership.owned) return ownership.response
+ * // Safe to use ownership.content
+ * ```
+ */
 export async function verifyContentOwnership(
   supabase: SupabaseClient<Database>,
   userId: string,
@@ -176,8 +238,13 @@ export async function verifyContentOwnership(
 }
 
 /**
- * Get admin Supabase client (bypasses RLS)
- * ONLY use when you've already verified authorization in code
+ * Creates a Supabase client with the service role key (bypasses RLS).
+ *
+ * **Security:** Only use after authorization has already been verified
+ * in application code. This client can read and write any row in the
+ * `clarus` schema regardless of RLS policies.
+ *
+ * @returns A Supabase client configured with service-role credentials
  */
 export function getAdminClient(): SupabaseClient<Database> {
   return createClient<Database>(
@@ -192,8 +259,14 @@ export function getAdminClient(): SupabaseClient<Database> {
 }
 
 /**
- * Check if a user is an admin (checks cache, falls back to DB)
- * For use in non-async contexts — prefer authenticateAdmin() in API routes
+ * Synchronously checks whether a user ID is cached as an admin.
+ *
+ * Returns `false` if the user is not in the cache or the cache entry
+ * has expired.  For authoritative checks, use {@link authenticateAdmin}
+ * instead.
+ *
+ * @param userId - The user ID to check
+ * @returns `true` only if a non-expired cache entry confirms admin status
  */
 export function isAdmin(userId: string): boolean {
   const cached = adminCache.get(userId)
@@ -205,7 +278,16 @@ export function isAdmin(userId: string): boolean {
 }
 
 /**
- * Standard error responses
+ * Pre-built error response factories for common HTTP error codes.
+ *
+ * Keeps error message wording consistent across all API routes and
+ * prevents information leakage by using generic messages.
+ *
+ * @example
+ * ```ts
+ * return AuthErrors.notFound("Content")  // { error: "Content not found" }, 404
+ * return AuthErrors.rateLimit(30000)      // Retry-After: 30
+ * ```
  */
 export const AuthErrors = {
   unauthorized: () =>
