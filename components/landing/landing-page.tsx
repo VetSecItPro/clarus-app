@@ -5,6 +5,7 @@ import { HeroSection } from "./hero-section"
 import { ProductPreview } from "./product-preview"
 import { SocialProofBar } from "./social-proof-bar"
 import { HowItWorks } from "./how-it-works"
+import { DemoAnalysis } from "./demo-analysis"
 import { FeatureGrid } from "./feature-grid"
 import { AudienceSection } from "./audience-section"
 import { CTASection } from "./cta-section"
@@ -20,6 +21,7 @@ export function LandingPage() {
         <ProductPreview />
         <SocialProofBar />
         <HowItWorks />
+        <DemoAnalysis />
         <FeatureGrid />
         <AudienceSection />
         <CTASection />
