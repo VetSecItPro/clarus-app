@@ -74,20 +74,23 @@ export async function POST(request: Request) {
       return AuthErrors.badRequest(validation.error)
     }
 
-    // Check tier limit for collections
-    const tier = await getUserTier(auth.supabase, auth.user.id)
+    // PERF: Parallelize tier check and collection count instead of sequential queries
+    const [tier, countResult] = await Promise.all([
+      getUserTier(auth.supabase, auth.user.id),
+      auth.supabase
+        .from("collections")
+        .select("id", { count: "exact", head: true })
+        .eq("user_id", auth.user.id),
+    ])
+
     const collectionsLimit = TIER_LIMITS[tier].collections
 
-    const { count, error: countError } = await auth.supabase
-      .from("collections")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", auth.user.id)
-
-    if (countError) {
-      console.error("Collections count error:", countError)
+    if (countResult.error) {
+      console.error("Collections count error:", countResult.error)
       return AuthErrors.serverError()
     }
 
+    const count = countResult.count
     if ((count ?? 0) >= collectionsLimit) {
       return NextResponse.json(
         {

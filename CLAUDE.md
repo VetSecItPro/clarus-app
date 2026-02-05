@@ -139,6 +139,15 @@ When multiple feature branches exist simultaneously:
 - **No `any` types** - use proper TypeScript types always
 - **Respect dependencies and order of precedence** - when multiple changes touch shared files, merge strategically so nothing gets overwritten
 
+### Context Recovery (Multi-Agent Sessions)
+
+When a session runs out of context mid-fix, check 3 things to resume:
+1. **`git diff`** for code changes already made by agents (live in working tree)
+2. **`list_migrations`** (Supabase MCP) for DB changes already applied
+3. **`.security-audit.json`** for tracking state (which findings are open vs resolved)
+
+The agents' work survives even if the orchestrating session doesn't — changes live in the working tree and database. A new session just needs to verify, fill gaps, and ship.
+
 ---
 
 ## Payment Integration (Polar)

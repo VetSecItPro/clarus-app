@@ -133,40 +133,60 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // 5. Verify user owns all content items and fetch summaries
-    const contentItems: ContentWithSummary[] = []
+    // PERF: Batch-fetch all content and summaries with IN clauses instead of N+1 sequential queries
+    const validContentIds = contentIds as string[]
 
-    for (const contentId of contentIds as string[]) {
-      const { data: content, error: contentError } = await supabase
+    const [contentResult, summaryResult] = await Promise.all([
+      supabase
         .from("content")
         .select("id, title, url, type")
-        .eq("id", contentId)
-        .eq("user_id", user.id)
-        .single()
+        .in("id", validContentIds)
+        .eq("user_id", user.id),
+      supabase
+        .from("summaries")
+        .select("content_id, brief_overview, truth_check, triage")
+        .in("content_id", validContentIds)
+        .eq("user_id", user.id),
+    ])
 
-      if (contentError || !content) {
+    if (contentResult.error || !contentResult.data) {
+      return NextResponse.json(
+        { error: "Failed to fetch content" },
+        { status: 500 }
+      )
+    }
+
+    // Verify all requested items were found (user owns them all)
+    const foundContentMap = new Map(contentResult.data.map(c => [c.id, c]))
+    for (const contentId of validContentIds) {
+      if (!foundContentMap.has(contentId)) {
         return NextResponse.json(
           { error: `Content not found: ${contentId}` },
           { status: 404 }
         )
       }
+    }
 
-      // Fetch summary for this content item
-      const { data: summary } = await supabase
-        .from("summaries")
-        .select("brief_overview, truth_check, triage")
-        .eq("content_id", contentId)
-        .eq("user_id", user.id)
-        .single()
+    // Build summary lookup
+    const summaryMap = new Map(
+      (summaryResult.data ?? []).map(s => [s.content_id, s])
+    )
 
-      contentItems.push({
+    const contentItems: ContentWithSummary[] = validContentIds.map(id => {
+      const content = foundContentMap.get(id)!
+      const summary = summaryMap.get(id)
+      return {
         id: content.id,
         title: content.title,
         url: content.url,
         type: content.type,
-        summary: summary ?? null,
-      })
-    }
+        summary: summary ? {
+          brief_overview: summary.brief_overview,
+          truth_check: summary.truth_check,
+          triage: summary.triage,
+        } : null,
+      }
+    })
 
     // Verify all items have summaries
     const missingAnalysis = contentItems.find((item) => !item.summary?.brief_overview)

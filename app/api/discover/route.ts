@@ -1,5 +1,6 @@
+// SECURITY: FIX-SEC-027 — Use authenticated client instead of admin client for public reads
 import { NextResponse } from "next/server"
-import { authenticateRequest, AuthErrors, getAdminClient } from "@/lib/auth"
+import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import type { TriageData } from "@/types/database.types"
 import { checkRateLimit } from "@/lib/validation"
 import { z } from "zod"
@@ -54,11 +55,10 @@ export async function GET(request: Request) {
   const { page, limit, sort, type, topic } = parsed.data
 
   try {
-    const adminClient = getAdminClient()
     const offset = (page - 1) * limit
 
-    // Build the query for public content
-    let query = adminClient
+    // Build the query for public content (uses authenticated client — RLS allows reading is_public=true)
+    let query = auth.supabase
       .from("content")
       .select("id, title, url, type, vote_score, date_added, share_token, user_id")
       .eq("is_public", true)
@@ -69,9 +69,10 @@ export async function GET(request: Request) {
       query = query.eq("type", type)
     }
 
-    // Topic filter (search in title)
+    // SECURITY: FIX-SEC-003 — Escape LIKE special characters to prevent injection
     if (topic) {
-      query = query.ilike("title", `%${topic}%`)
+      const escapedTopic = topic.replace(/[%_\\]/g, '\\$&')
+      query = query.ilike("title", `%${escapedTopic}%`)
     }
 
     // Sorting
@@ -102,28 +103,31 @@ export async function GET(request: Request) {
       })
     }
 
-    // Fetch summaries for the content
+    // PERF: Parallelize 3 independent follow-up queries instead of running sequentially
     const contentIds = publicContent.map(c => c.id)
-    const { data: summaries } = await adminClient
-      .from("summaries")
-      .select("content_id, brief_overview, triage")
-      .in("content_id", contentIds)
-      .eq("processing_status", "complete")
-      .eq("language", "en")
-
-    // Fetch author names
     const userIds = [...new Set(publicContent.map(c => c.user_id).filter(Boolean))] as string[]
-    const { data: users } = await adminClient
-      .from("users")
-      .select("id, name")
-      .in("id", userIds)
 
-    // Fetch current user's votes
-    const { data: userVotes } = await adminClient
-      .from("content_votes")
-      .select("content_id, vote")
-      .eq("user_id", auth.user.id)
-      .in("content_id", contentIds)
+    const [
+      { data: summaries },
+      { data: users },
+      { data: userVotes },
+    ] = await Promise.all([
+      auth.supabase
+        .from("summaries")
+        .select("content_id, brief_overview, triage")
+        .in("content_id", contentIds)
+        .eq("processing_status", "complete")
+        .eq("language", "en"),
+      auth.supabase
+        .from("users")
+        .select("id, name")
+        .in("id", userIds),
+      auth.supabase
+        .from("content_votes")
+        .select("content_id, vote")
+        .eq("user_id", auth.user.id)
+        .in("content_id", contentIds),
+    ])
 
     const userVoteMap = new Map(
       userVotes?.map(v => [v.content_id, v.vote]) ?? []
@@ -177,11 +181,15 @@ export async function GET(request: Request) {
       })
     }
 
-    return NextResponse.json({
-      items,
-      page,
-      hasMore: publicContent.length === limit,
-    })
+    // PERF: Cache discover feed for 30s to reduce DB hits from repeated browsing
+    return NextResponse.json(
+      {
+        items,
+        page,
+        hasMore: publicContent.length === limit,
+      },
+      { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } }
+    )
   } catch (error) {
     console.error("Discover API error:", error)
     return AuthErrors.serverError()

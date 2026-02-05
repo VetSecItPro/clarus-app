@@ -1,0 +1,2300 @@
+/**
+ * @module lib/process-content
+ * @description Core content processing pipeline extracted from the API route.
+ *
+ * This module contains all the AI analysis logic for processing content:
+ * - YouTube video metadata and transcript extraction
+ * - Article scraping via Firecrawl
+ * - Podcast transcription via AssemblyAI
+ * - Web search context via Tavily
+ * - AI-powered analysis sections via OpenRouter
+ * - Cross-user content caching
+ * - Domain credibility tracking
+ * - Claim extraction for cross-referencing
+ *
+ * The main export is `processContent()` which can be called directly
+ * by internal routes instead of making an HTTP fetch to /api/process-content.
+ *
+ * @see {@link app/api/process-content/route.ts} for the HTTP wrapper
+ */
+
+import { createClient } from "@supabase/supabase-js"
+import type { Database, Json, Tables, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
+import { logApiUsage, logProcessingMetrics, createTimer } from "@/lib/api-usage"
+import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { detectPaywallTruncation } from "@/lib/paywall-detection"
+import { screenContent, detectAiRefusal, persistFlag } from "@/lib/content-screening"
+import { submitPodcastTranscription } from "@/lib/assemblyai"
+import { getLanguageDirective, type AnalysisLanguage } from "@/lib/languages"
+import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
+import { NonRetryableError, classifyError, getUserFriendlyError } from "@/lib/error-sanitizer"
+import { normalizeUrl } from "@/lib/utils"
+import { sanitizeForPrompt, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
+import { parseAiResponseOrThrow } from "@/lib/ai-response-parser"
+
+// ============================================
+// ENVIRONMENT VARIABLES
+// ============================================
+const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+const supadataApiKey = process.env.SUPADATA_API_KEY
+const openRouterApiKey = process.env.OPENROUTER_API_KEY
+const firecrawlApiKey = process.env.FIRECRAWL_API_KEY
+const tavilyApiKey = process.env.TAVILY_API_KEY
+const assemblyAiApiKey = process.env.ASSEMBLYAI_API_KEY
+
+// Timeout for individual AI API calls (2 minutes per call)
+const AI_CALL_TIMEOUT_MS = 120000
+
+// ============================================
+// ERROR CLASS
+// ============================================
+
+/**
+ * Custom error class for content processing failures.
+ * Carries HTTP status code and optional upgrade/tier info.
+ */
+export class ProcessContentError extends Error {
+  constructor(
+    message: string,
+    public readonly statusCode: number,
+    public readonly upgradeRequired?: boolean,
+    public readonly tier?: string
+  ) {
+    super(message)
+    this.name = "ProcessContentError"
+  }
+}
+
+// ============================================
+// INTERFACES
+// ============================================
+
+/**
+ * Options for the processContent function.
+ */
+export interface ProcessContentOptions {
+  /** The content ID to process (UUID) */
+  contentId: string
+  /** User ID for ownership verification. Null for internal/webhook calls. */
+  userId: string | null
+  /** Target language for analysis output */
+  language?: AnalysisLanguage
+  /** If true, regenerate even if content already has analysis */
+  forceRegenerate?: boolean
+  /** If true, skip scraping (used when full_text is already populated, e.g., PDFs) */
+  skipScraping?: boolean
+}
+
+/**
+ * Result returned by processContent on success.
+ */
+export interface ProcessContentResult {
+  success: boolean
+  cached: boolean
+  contentId: string
+  sectionsGenerated: string[]
+  language: string
+  message?: string
+  transcriptId?: string
+  paywallWarning?: string | null
+}
+
+// ============================================
+// HELPER FUNCTIONS
+// ============================================
+
+function getErrorMessage(error: unknown): string {
+  if (error instanceof Error) return error.message
+  if (typeof error === "string") return error
+  return "Unknown error"
+}
+
+function getErrorName(error: unknown): string {
+  if (error instanceof Error) return error.name
+  return ""
+}
+
+// ============================================
+// WEB SEARCH INTEGRATION (Tavily)
+// ============================================
+
+interface WebSearchResult {
+  query: string
+  answer?: string
+  results: Array<{
+    title: string
+    url: string
+    content: string
+  }>
+}
+
+interface WebSearchContext {
+  searches: WebSearchResult[]
+  formattedContext: string
+  timestamp: string
+  apiCallCount: number
+  cacheHits: number
+}
+
+interface TavilySearchResult {
+  title: string
+  url: string
+  content?: string
+}
+
+interface TavilyApiResponse {
+  answer?: string
+  results?: TavilySearchResult[]
+}
+
+// Per-analysis Tavily result cache
+let tavilyResultCache: Map<string, WebSearchResult> | null = null
+
+function clearTavilyCache(): void {
+  tavilyResultCache = null
+}
+
+function normalizeTavilyQuery(query: string): string {
+  return query
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ")
+    .replace(/[?.!,]+$/, "")
+}
+
+// Analysis prompts type
+type AnalysisPrompt = Tables<"analysis_prompts">
+
+// Cache for prompts (refreshed on each request batch)
+let promptsCache: Map<string, AnalysisPrompt> | null = null
+
+async function fetchPromptFromDB(promptType: string): Promise<AnalysisPrompt | null> {
+  if (!supabaseUrl || !supabaseKey) {
+    console.error("Supabase not configured for prompt fetch")
+    return null
+  }
+
+  if (promptsCache?.has(promptType)) {
+    return promptsCache.get(promptType) || null
+  }
+
+  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey, { db: { schema: "clarus" } })
+
+  const { data, error } = await supabaseAdmin
+    .from("analysis_prompts")
+    .select("id, prompt_type, name, description, system_content, user_content_template, model_name, temperature, max_tokens, expect_json, is_active, use_web_search, created_at, updated_at")
+    .eq("prompt_type", promptType)
+    .eq("is_active", true)
+    .single()
+
+  if (error || !data) {
+    console.error(`Failed to fetch prompt ${promptType}:`, error?.message)
+    return null
+  }
+
+  if (!promptsCache) promptsCache = new Map()
+  promptsCache.set(promptType, data)
+
+  return data
+}
+
+function clearPromptsCache() {
+  promptsCache = null
+}
+
+async function extractKeyTopics(text: string): Promise<string[]> {
+  if (!openRouterApiKey) return []
+
+  const prompt = await fetchPromptFromDB("keyword_extraction")
+  if (!prompt) return []
+
+  const truncatedText = text.substring(0, 8000)
+  const sanitizedText = sanitizeForPrompt(truncatedText, { context: "keyword-extraction" })
+  const userContent = prompt.user_content_template.replace("{{CONTENT}}", wrapUserContent(sanitizedText)) + INSTRUCTION_ANCHOR
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: prompt.model_name,
+        messages: [
+          { role: "system", content: prompt.system_content },
+          { role: "user", content: userContent }
+        ],
+        temperature: prompt.temperature,
+        max_tokens: prompt.max_tokens,
+        response_format: { type: "json_object" }
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn("API: Topic extraction failed, skipping web search")
+      return []
+    }
+
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+    if (!content) return []
+
+    const parsed = parseAiResponseOrThrow<Record<string, unknown> | unknown[]>(content, "keyword_extraction")
+    const rawTopics: unknown[] = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray((parsed as Record<string, unknown>).queries)
+        ? (parsed as Record<string, unknown>).queries as unknown[]
+        : Array.isArray((parsed as Record<string, unknown>).topics)
+          ? (parsed as Record<string, unknown>).topics as unknown[]
+          : []
+
+    return rawTopics.slice(0, 3).filter((t: unknown): t is string => typeof t === 'string' && t.length > 2)
+  } catch (error) {
+    console.warn("API: Topic extraction error:", error)
+    return []
+  }
+}
+
+function deduplicateTopics(topics: string[]): string[] {
+  const seen = new Set<string>()
+  const unique: string[] = []
+  for (const topic of topics) {
+    const normalized = normalizeTavilyQuery(topic)
+    if (!seen.has(normalized)) {
+      seen.add(normalized)
+      unique.push(topic)
+    }
+  }
+  return unique
+}
+
+async function searchTavily(query: string, maxRetries = 2): Promise<WebSearchResult | null> {
+  if (!tavilyApiKey) return null
+
+  const cacheKey = normalizeTavilyQuery(query)
+  if (tavilyResultCache?.has(cacheKey)) {
+    return tavilyResultCache.get(cacheKey) ?? null
+  }
+
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    const timer = createTimer()
+    try {
+      const response = await fetch("https://api.tavily.com/search", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: tavilyApiKey,
+          query,
+          search_depth: "basic",
+          include_answer: true,
+          include_raw_content: false,
+          max_results: 3,
+        }),
+      })
+
+      if (!response.ok) {
+        if (attempt < maxRetries && (response.status >= 500 || response.status === 429)) {
+          const delay = Math.min(1000 * Math.pow(2, attempt), 4000)
+          console.warn(`API: Tavily search failed for "${query}" (HTTP ${response.status}), retrying in ${delay}ms...`)
+          await new Promise(resolve => setTimeout(resolve, delay))
+          continue
+        }
+        console.warn(`API: Tavily search failed for "${query}" after ${attempt + 1} attempt(s)`)
+        await logApiUsage({
+          apiName: "tavily",
+          operation: "search",
+          responseTimeMs: timer.elapsed(),
+          status: "error",
+          errorMessage: `HTTP ${response.status}`,
+        })
+        return null
+      }
+
+      const data = await response.json()
+
+      await logApiUsage({
+        apiName: "tavily",
+        operation: "search",
+        responseTimeMs: timer.elapsed(),
+        status: "success",
+        metadata: { query, resultsCount: data.results?.length || 0, attempts: attempt + 1 },
+      })
+
+      const result: WebSearchResult = {
+        query,
+        answer: data.answer,
+        results: ((data as TavilyApiResponse).results || []).slice(0, 3).map((r) => ({
+          title: r.title,
+          url: r.url,
+          content: r.content?.substring(0, 500) || "",
+        })),
+      }
+
+      if (!tavilyResultCache) tavilyResultCache = new Map()
+      tavilyResultCache.set(cacheKey, result)
+
+      return result
+    } catch (error) {
+      if (attempt < maxRetries) {
+        const delay = Math.min(1000 * Math.pow(2, attempt), 4000)
+        console.warn(`API: Tavily search error for "${query}" (attempt ${attempt + 1}), retrying in ${delay}ms...`, error)
+        await new Promise(resolve => setTimeout(resolve, delay))
+        continue
+      }
+      console.warn(`API: Tavily search error for "${query}" after ${attempt + 1} attempt(s):`, error)
+      return null
+    }
+  }
+  return null
+}
+
+function formatWebContext(searches: WebSearchResult[]): string {
+  const lines: string[] = [
+    "\n\n---",
+    "## REAL-TIME WEB VERIFICATION CONTEXT",
+    "The following information was retrieved from web searches to help verify claims:",
+    ""
+  ]
+
+  for (const search of searches) {
+    lines.push(`### Search: "${search.query}"`)
+    if (search.answer) {
+      lines.push(`**Summary:** ${search.answer}`)
+    }
+    for (const result of search.results) {
+      lines.push(`- [${result.title}](${result.url})`)
+      if (result.content) {
+        lines.push(`  ${result.content.substring(0, 200)}...`)
+      }
+    }
+    lines.push("")
+  }
+
+  lines.push("---")
+  lines.push("Use this web context to verify claims. If something conflicts with web results, note the discrepancy.")
+  lines.push("")
+
+  return lines.join("\n")
+}
+
+async function getWebSearchContext(text: string, _contentTitle?: string): Promise<WebSearchContext | null> {
+  if (!tavilyApiKey) {
+    return null
+  }
+
+  clearTavilyCache()
+
+  const rawTopics = await extractKeyTopics(text)
+
+  if (rawTopics.length === 0) {
+    return null
+  }
+
+  const topics = deduplicateTopics(rawTopics)
+
+  const searchPromises = topics.map(topic => searchTavily(topic))
+  const results = await Promise.all(searchPromises)
+
+  const validResults = results.filter((r): r is WebSearchResult => r !== null && r.results.length > 0)
+
+  if (validResults.length === 0) {
+    return null
+  }
+
+  const formattedContext = formatWebContext(validResults)
+
+  const cacheHits = tavilyResultCache
+    ? topics.length - new Set(topics.map(normalizeTavilyQuery)).size
+    : 0
+  const apiCallCount = topics.length - cacheHits
+
+  return {
+    searches: validResults,
+    formattedContext,
+    timestamp: new Date().toISOString(),
+    apiCallCount,
+    cacheHits,
+  }
+}
+
+// ============================================
+// TONE DETECTION
+// ============================================
+
+const NEUTRAL_TONE_DIRECTIVE = "The content uses a standard informational tone. Write your analysis in a clear, neutral voice."
+const NEUTRAL_TONE_LABEL = "neutral"
+
+interface ToneDetectionResult {
+  tone_label: string
+  tone_directive: string
+}
+
+async function detectContentTone(
+  fullText: string,
+  contentTitle: string | null,
+  contentType: string,
+  userId?: string | null,
+  contentId?: string | null,
+): Promise<ToneDetectionResult> {
+  if (!openRouterApiKey) {
+    return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+  }
+
+  const prompt = await fetchPromptFromDB("tone_detection")
+  if (!prompt) {
+    return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+  }
+
+  const timer = createTimer()
+  const sample = fullText.substring(0, 2000)
+  const sanitizedSample = sanitizeForPrompt(sample, { context: "tone-detection" })
+  const sanitizedTitle = contentTitle ? sanitizeForPrompt(contentTitle, { context: "tone-detection-title", maxLength: 500 }) : ""
+  const titleLine = sanitizedTitle ? `Title: ${sanitizedTitle}\n` : ""
+  const userContent = prompt.user_content_template
+    .replace("{{TITLE_LINE}}", titleLine)
+    .replace("{{TYPE}}", contentType)
+    .replace("{{CONTENT}}", wrapUserContent(sanitizedSample)) + INSTRUCTION_ANCHOR
+
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000)
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterApiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://clarusapp.io",
+        "X-Title": "Clarus",
+      },
+      body: JSON.stringify({
+        model: prompt.model_name,
+        messages: [
+          { role: "system", content: prompt.system_content },
+          { role: "user", content: userContent },
+        ],
+        temperature: prompt.temperature,
+        max_tokens: prompt.max_tokens,
+        response_format: { type: "json_object" },
+      }),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      console.warn(`API: [tone_detection] HTTP ${response.status}`)
+      return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+    }
+
+    const data = await response.json()
+    const rawContent = data.choices?.[0]?.message?.content
+    const usage = data.usage || {}
+
+    if (!rawContent) {
+      return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+    }
+
+    logApiUsage({
+      userId,
+      contentId,
+      apiName: "openrouter",
+      operation: "tone_detection",
+      tokensInput: usage.prompt_tokens || 0,
+      tokensOutput: usage.completion_tokens || 0,
+      modelName: prompt.model_name,
+      responseTimeMs: timer.elapsed(),
+      status: "success",
+      metadata: { section: "tone_detection" },
+    })
+
+    const parsed = parseAiResponseOrThrow<Record<string, unknown>>(rawContent, "tone_detection")
+    const toneLabel = typeof parsed.tone_label === "string" ? parsed.tone_label.trim() : NEUTRAL_TONE_LABEL
+    const toneDirective = typeof parsed.tone_directive === "string" ? parsed.tone_directive.trim() : NEUTRAL_TONE_DIRECTIVE
+
+    if (!toneLabel || !toneDirective) {
+      return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+    }
+
+    return { tone_label: toneLabel, tone_directive: toneDirective }
+  } catch (error: unknown) {
+    const msg = getErrorMessage(error)
+    console.warn(`API: [tone_detection] Failed (non-fatal): ${msg}`)
+
+    logApiUsage({
+      userId,
+      contentId,
+      apiName: "openrouter",
+      operation: "tone_detection",
+      modelName: prompt.model_name,
+      responseTimeMs: timer.elapsed(),
+      status: "error",
+      errorMessage: msg,
+      metadata: { section: "tone_detection" },
+    })
+
+    return { tone_label: NEUTRAL_TONE_LABEL, tone_directive: NEUTRAL_TONE_DIRECTIVE }
+  }
+}
+
+// ============================================
+// YOUTUBE FUNCTIONS
+// ============================================
+
+interface SupadataYouTubeResponse {
+  id: string
+  title: string
+  description: string
+  duration: number
+  channel: {
+    id: string
+    name: string
+  }
+  tags: string[]
+  thumbnail: string
+  uploadDate: string
+  viewCount: number
+  likeCount: number
+  transcriptLanguages: string[]
+}
+
+interface ProcessedYouTubeMetadata {
+  title: string | null
+  author: string | null
+  duration: number | null
+  thumbnail_url: string | null
+  description: string | null
+  upload_date: string | null
+  view_count: number | null
+  like_count: number | null
+  channel_id: string | null
+  transcript_languages: string[] | null
+  raw_youtube_metadata: Json | null
+}
+
+async function getYouTubeMetadata(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<ProcessedYouTubeMetadata> {
+  const endpoint = `https://api.supadata.ai/v1/youtube/video?id=${encodeURIComponent(url)}`
+  const retries = 3
+  const delay = 1000
+  const timer = createTimer()
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 30000)
+      const response = await fetch(endpoint, {
+        headers: { "x-api-key": apiKey },
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+
+      if (response.ok) {
+        const contentType = response.headers.get("content-type")
+        if (!contentType || !contentType.includes("application/json")) {
+          const errorText = await response.text()
+          console.error(`Metadata API error: Expected JSON, got ${contentType}. Response: ${errorText}`)
+          throw new NonRetryableError("Video metadata response was invalid")
+        }
+        const data: SupadataYouTubeResponse = await response.json()
+
+        logApiUsage({
+          userId,
+          contentId,
+          apiName: "supadata",
+          operation: "metadata",
+          responseTimeMs: timer.elapsed(),
+          status: "success",
+        })
+
+        return {
+          title: data.title,
+          author: data.channel?.name,
+          duration: data.duration,
+          thumbnail_url: data.thumbnail,
+          description: data.description,
+          upload_date: data.uploadDate,
+          view_count: data.viewCount,
+          like_count: data.likeCount,
+          channel_id: data.channel?.id,
+          transcript_languages: data.transcriptLanguages,
+          raw_youtube_metadata: data as unknown as Json,
+        }
+      }
+
+      if (response.status >= 400 && response.status < 500) {
+        const errorText = await response.text()
+        console.error(`Metadata API error (${response.status}) for content ${url}: ${errorText.substring(0, 200)}`)
+        throw new NonRetryableError("Video metadata could not be retrieved")
+      }
+
+      const errorText = await response.text()
+      console.warn(
+        `Supadata Metadata API Server Error (${response.status}) on attempt ${attempt} for ${url}: ${errorText}. Retrying in ${
+          delay / 1000
+        }s...`,
+      )
+    } catch (error: unknown) {
+      if (error instanceof NonRetryableError) {
+        throw error
+      }
+      const msg = getErrorMessage(error)
+      console.warn(
+        `Metadata API attempt ${attempt} failed for ${url}: ${msg}. Retrying in ${
+          delay / 1000
+        }s...`,
+      )
+    }
+
+    if (attempt < retries) {
+      await new Promise((res) => setTimeout(res, delay))
+    }
+  }
+
+  console.error(`Metadata API failed for ${url} after ${retries} attempts`)
+
+  logApiUsage({
+    userId,
+    contentId,
+    apiName: "supadata",
+    operation: "metadata",
+    responseTimeMs: timer.elapsed(),
+    status: "error",
+    errorMessage: `Metadata fetch failed after ${retries} attempts`,
+  })
+
+  throw new Error("Video metadata unavailable after multiple attempts")
+}
+
+function formatTimestamp(ms: number): string {
+  const totalSeconds = Math.floor(ms / 1000)
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+
+  if (hours > 0) {
+    return `${hours}:${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`
+  }
+  return `${minutes}:${seconds.toString().padStart(2, '0')}`
+}
+
+async function getYouTubeTranscript(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<{ full_text: string | null }> {
+  const endpoint = `https://api.supadata.ai/v1/youtube/transcript?url=${encodeURIComponent(url)}`
+  const retries = 3
+  const delay = 1000
+  const timer = createTimer()
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeout = setTimeout(() => controller.abort(), 60000)
+      const response = await fetch(endpoint, {
+        headers: { "x-api-key": apiKey },
+        signal: controller.signal,
+      })
+      clearTimeout(timeout)
+
+      if (response.ok) {
+        const contentType = response.headers.get("content-type")
+        if (!contentType || !contentType.includes("application/json")) {
+          const errorText = await response.text()
+          console.error(`Transcript API error: Expected JSON, got ${contentType}. Response: ${errorText}`)
+          throw new NonRetryableError("Video transcript response was invalid")
+        }
+        const data = await response.json()
+
+        if (Array.isArray(data.content)) {
+          const INTERVAL_MS = 30000
+          const groupedChunks: { timestamp: number; texts: string[] }[] = []
+
+          for (const chunk of data.content as { text: string; offset: number }[]) {
+            const intervalStart = Math.floor(chunk.offset / INTERVAL_MS) * INTERVAL_MS
+
+            let group = groupedChunks.find(g => g.timestamp === intervalStart)
+            if (!group) {
+              group = { timestamp: intervalStart, texts: [] }
+              groupedChunks.push(group)
+            }
+            group.texts.push(chunk.text)
+          }
+
+          groupedChunks.sort((a, b) => a.timestamp - b.timestamp)
+          const formattedText = groupedChunks
+            .map(group => {
+              const timestamp = formatTimestamp(group.timestamp)
+              const combinedText = group.texts.join(' ')
+              return `[${timestamp}] ${combinedText}`
+            })
+            .join('\n\n')
+
+          logApiUsage({
+            userId,
+            contentId,
+            apiName: "supadata",
+            operation: "transcript",
+            responseTimeMs: timer.elapsed(),
+            status: "success",
+          })
+
+          return { full_text: formattedText }
+        }
+
+        logApiUsage({
+          userId,
+          contentId,
+          apiName: "supadata",
+          operation: "transcript",
+          responseTimeMs: timer.elapsed(),
+          status: "success",
+        })
+
+        return { full_text: data.content }
+      }
+
+      if (response.status >= 400 && response.status < 500) {
+        const errorText = await response.text()
+        console.error(`Transcript API error (${response.status}) for content ${url}: ${errorText.substring(0, 200)}`)
+        throw new NonRetryableError("Video transcript could not be retrieved")
+      }
+
+      const errorText = await response.text()
+      console.warn(
+        `Supadata Transcript API Server Error (${response.status}) on attempt ${attempt} for ${url}: ${errorText}. Retrying in ${
+          delay / 1000
+        }s...`,
+      )
+    } catch (error: unknown) {
+      if (error instanceof NonRetryableError) {
+        throw error
+      }
+      const msg = getErrorMessage(error)
+      console.warn(
+        `Transcript API attempt ${attempt} failed for ${url}: ${msg}. Retrying in ${
+          delay / 1000
+        }s...`,
+      )
+    }
+
+    if (attempt < retries) {
+      await new Promise((res) => setTimeout(res, delay))
+    }
+  }
+
+  console.error(`Transcript API failed for ${url} after ${retries} attempts`)
+
+  logApiUsage({
+    userId,
+    contentId,
+    apiName: "supadata",
+    operation: "transcript",
+    responseTimeMs: timer.elapsed(),
+    status: "error",
+    errorMessage: `Transcript fetch failed after ${retries} attempts`,
+  })
+
+  throw new Error("Video transcript unavailable after multiple attempts")
+}
+
+// ============================================
+// ARTICLE SCRAPING
+// ============================================
+
+interface ScrapedArticleData {
+  title: string | null
+  full_text: string | null
+  description: string | null
+  thumbnail_url: string | null
+}
+
+async function scrapeArticle(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<ScrapedArticleData> {
+  const endpoint = "https://api.firecrawl.dev/v0/scrape"
+  const retries = 5
+  const delay = 2000
+  const timer = createTimer()
+
+  for (let attempt = 1; attempt <= retries; attempt++) {
+    try {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          url: url,
+          pageOptions: {
+            onlyMainContent: true,
+          },
+        }),
+      })
+
+      if (response.ok) {
+        const result = await response.json()
+        if (result.success && result.data) {
+          logApiUsage({
+            userId,
+            contentId,
+            apiName: "firecrawl",
+            operation: "scrape",
+            responseTimeMs: timer.elapsed(),
+            status: "success",
+          })
+
+          return {
+            title: result.data.metadata?.title || null,
+            full_text: result.data.markdown || result.data.content || null,
+            description: result.data.metadata?.description || null,
+            thumbnail_url: result.data.metadata?.ogImage || null,
+          }
+        } else {
+          console.error("Scrape API indicated failure:", result.error)
+          throw new NonRetryableError("Article content could not be extracted")
+        }
+      }
+
+      if (response.status >= 400 && response.status < 500) {
+        const errorText = await response.text()
+        console.error(`Scrape API error (${response.status}) for content ${url}: ${errorText.substring(0, 200)}`)
+        throw new NonRetryableError("Article content could not be retrieved")
+      }
+
+      const errorText = await response.text()
+      console.warn(
+        `FireCrawl API Server Error (${response.status}) on attempt ${attempt} for ${url}: ${errorText}. Retrying in ${
+          delay / 1000
+        }s...`,
+      )
+    } catch (error: unknown) {
+      if (error instanceof NonRetryableError) {
+        throw error
+      }
+      const msg = getErrorMessage(error)
+      console.warn(
+        `Scrape API attempt ${attempt} failed for ${url}: ${msg}. Retrying in ${
+          delay / 1000
+        }s...`,
+      )
+    }
+
+    if (attempt < retries) {
+      await new Promise((res) => setTimeout(res, delay))
+    }
+  }
+
+  console.error(`Scrape API failed for ${url} after ${retries} attempts`)
+
+  logApiUsage({
+    userId,
+    contentId,
+    apiName: "firecrawl",
+    operation: "scrape",
+    responseTimeMs: timer.elapsed(),
+    status: "error",
+    errorMessage: `Scrape failed after ${retries} attempts`,
+  })
+
+  throw new Error("Article content unavailable after multiple attempts")
+}
+
+// ============================================
+// SUMMARIZER
+// ============================================
+
+interface ModelSummary {
+  mid_length_summary: string | null
+  title?: string | null
+}
+
+interface ModelProcessingError {
+  error: true
+  modelName: string
+  reason: string
+  finalErrorMessage?: string
+}
+
+interface OpenRouterRequestBody {
+  model: string
+  messages: Array<{ role: string; content: string }>
+  response_format?: { type: string }
+  temperature?: number
+  top_p?: number
+  max_tokens?: number
+}
+
+interface ParsedModelSummaryResponse {
+  mid_length_summary?: string
+  title?: string
+}
+
+async function getModelSummary(
+  textToSummarize: string,
+  options: { shouldExtractTitle?: boolean; toneDirective?: string | null; languageDirective?: string | null } = {},
+): Promise<ModelSummary | ModelProcessingError> {
+  const { shouldExtractTitle = false, toneDirective, languageDirective } = options
+
+  if (!openRouterApiKey) {
+    const msg = "OpenRouter API key is not configured."
+    console.error(msg)
+    return { error: true, modelName: "N/A", reason: "ClientNotInitialized", finalErrorMessage: msg }
+  }
+  if (!supabaseUrl || !supabaseKey) {
+    const msg = "Supabase URL or Key not configured for fetching prompt in getModelSummary."
+    console.error(msg)
+    return { error: true, modelName: "N/A", reason: "ClientNotInitialized", finalErrorMessage: msg }
+  }
+  const supabaseAdmin = createClient<Database>(supabaseUrl, supabaseKey, { db: { schema: "clarus" } })
+
+  const { data: promptData, error: promptError } = await supabaseAdmin
+    .from("active_summarizer_prompt")
+    .select("system_content, user_content_template, temperature, top_p, max_tokens, model_name")
+    .eq("id", 1)
+    .single()
+
+  if (promptError || !promptData) {
+    const msg = `Failed to fetch summarizer prompt from DB: ${promptError?.message}`
+    console.error(msg)
+    return { error: true, modelName: "N/A", reason: "PromptFetchFailed", finalErrorMessage: msg }
+  }
+
+  const { system_content, user_content_template, temperature, top_p, max_tokens, model_name } = promptData
+
+  const openRouterModelId = model_name || "google/gemini-2.5-flash"
+  const sanitizedSummaryText = sanitizeForPrompt(textToSummarize, { context: "summarizer" })
+  const finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}")
+    .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
+    .replace("{{LANGUAGE}}", languageDirective || "Write your analysis in English.")
+    .replace("{{TEXT_TO_SUMMARIZE}}", wrapUserContent(sanitizedSummaryText)) + INSTRUCTION_ANCHOR
+
+  const requestBody: OpenRouterRequestBody = {
+    model: openRouterModelId,
+    messages: [
+      { role: "system", content: system_content || "" },
+      { role: "user", content: finalUserPrompt },
+    ],
+    response_format: { type: "json_object" },
+  }
+
+  if (temperature !== null) requestBody.temperature = temperature
+  if (top_p !== null) requestBody.top_p = top_p
+  if (max_tokens !== null) requestBody.max_tokens = max_tokens
+
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
+
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterApiKey}`,
+        "Content-Type": "application/json",
+        "HTTP-Referer": "https://clarusapp.io",
+        "X-Title": "Clarus",
+      },
+      body: JSON.stringify(requestBody),
+      signal: controller.signal,
+    })
+
+    clearTimeout(timeoutId)
+
+    if (!response.ok) {
+      const errorBody = await response.text()
+      const errorMessage = `OpenRouter API Error (${response.status}): ${errorBody}`
+      console.error(errorMessage)
+      return {
+        error: true,
+        modelName: openRouterModelId,
+        reason: `APIError_${response.status}`,
+        finalErrorMessage: errorMessage,
+      }
+    }
+
+    const result = await response.json()
+    const rawContent = result.choices[0]?.message?.content
+
+    if (!rawContent) {
+      const errorMessage = "OpenRouter response missing message content."
+      console.error(errorMessage, result)
+      return { error: true, modelName: openRouterModelId, reason: "InvalidResponse", finalErrorMessage: errorMessage }
+    }
+
+    if (typeof rawContent === "string") {
+      detectOutputLeakage(rawContent, "summarizer")
+    }
+
+    let parsedContent: ParsedModelSummaryResponse
+    try {
+      parsedContent = parseAiResponseOrThrow<ParsedModelSummaryResponse>(rawContent, "summarizer")
+    } catch (parseError: unknown) {
+      const errorMessage = `Failed to parse JSON from model response. Error: ${getErrorMessage(parseError)}`
+      console.error(errorMessage, "Raw content was:", rawContent)
+      return { error: true, modelName: openRouterModelId, reason: "JSONParseFailed", finalErrorMessage: errorMessage }
+    }
+
+    const summary: ModelSummary = {
+      mid_length_summary: parsedContent.mid_length_summary || null,
+    }
+    if (shouldExtractTitle) {
+      summary.title = parsedContent.title || null
+    }
+
+    return summary
+  } catch (error: unknown) {
+    const isTimeout = getErrorName(error) === "AbortError"
+    const msg = getErrorMessage(error)
+    console.error(`Failed to process summary with OpenRouter: ${isTimeout ? "Request timed out" : msg}`)
+    return {
+      error: true,
+      modelName: openRouterModelId,
+      reason: isTimeout ? "Timeout" : "RequestFailed",
+      finalErrorMessage: isTimeout ? "Request timed out after 2 minutes" : msg,
+    }
+  }
+}
+
+// ============================================
+// SECTION GENERATION
+// ============================================
+
+interface SectionGenerationResult {
+  content: unknown
+  error?: string
+}
+
+async function generateSectionWithAI(
+  textToAnalyze: string,
+  promptType: string,
+  contentType?: string,
+  maxRetries: number = 3,
+  userId?: string | null,
+  contentId?: string | null,
+  webContext?: string | null,
+  toneDirective?: string | null,
+  languageDirective?: string | null,
+): Promise<SectionGenerationResult> {
+  if (!openRouterApiKey) {
+    return { content: null, error: "OpenRouter API key not configured" }
+  }
+
+  const prompt = await fetchPromptFromDB(promptType)
+  if (!prompt) {
+    return { content: null, error: `Prompt not found for type: ${promptType}` }
+  }
+
+  const sanitizedContent = sanitizeForPrompt(textToAnalyze, { context: `analysis-${promptType}` })
+
+  let userContent = prompt.user_content_template
+    .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
+    .replace("{{LANGUAGE}}", languageDirective || "Write your analysis in English.")
+    .replace("{{CONTENT}}", wrapUserContent(sanitizedContent))
+    .replace("{{TYPE}}", contentType || "article")
+
+  const useWebSearch = prompt.use_web_search !== false
+  if (webContext && useWebSearch) {
+    userContent = userContent + webContext
+  }
+
+  userContent = userContent + INSTRUCTION_ANCHOR
+
+  const requestBody: OpenRouterRequestBody = {
+    model: prompt.model_name,
+    messages: [
+      { role: "system", content: prompt.system_content },
+      { role: "user", content: userContent },
+    ],
+  }
+
+  if (prompt.temperature !== null) requestBody.temperature = prompt.temperature
+  if (prompt.max_tokens !== null) requestBody.max_tokens = prompt.max_tokens
+  if (prompt.expect_json) requestBody.response_format = { type: "json_object" }
+
+  let lastError: string = ""
+  let retryCount = 0
+  const timer = createTimer()
+
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    const attemptTimer = createTimer()
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
+
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openRouterApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://clarusapp.io",
+          "X-Title": "Clarus",
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      })
+
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorBody = await response.text()
+        console.warn(`API: [${promptType}] Attempt ${attempt} failed: HTTP ${response.status} — ${errorBody.substring(0, 200)}`)
+        lastError = "AI analysis service returned an error"
+        retryCount++
+
+        if (response.status >= 400 && response.status < 500) {
+          return { content: null, error: lastError }
+        }
+
+        if (attempt < maxRetries) {
+          const delay = 5000 * Math.pow(2, attempt - 1)
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        }
+        continue
+      }
+
+      const result = await response.json()
+      const rawContent = result.choices[0]?.message?.content
+      const usage = result.usage || {}
+
+      if (!rawContent) {
+        lastError = "No content in API response"
+        console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
+        if (attempt < maxRetries) {
+          const delay = 5000 * Math.pow(2, attempt - 1)
+          await new Promise((resolve) => setTimeout(resolve, delay))
+        }
+        continue
+      }
+
+      if (typeof rawContent === "string") {
+        detectOutputLeakage(rawContent, promptType)
+      }
+
+      if (prompt.expect_json) {
+        try {
+          const parsedContent = parseAiResponseOrThrow<unknown>(rawContent, promptType)
+
+          logApiUsage({
+            userId,
+            contentId,
+            apiName: "openrouter",
+            operation: "analyze",
+            tokensInput: usage.prompt_tokens || 0,
+            tokensOutput: usage.completion_tokens || 0,
+            modelName: prompt.model_name,
+            responseTimeMs: attemptTimer.elapsed(),
+            status: "success",
+          })
+          logProcessingMetrics({
+            contentId: contentId || undefined,
+            userId,
+            sectionType: promptType,
+            modelName: prompt.model_name,
+            tokensInput: usage.prompt_tokens || 0,
+            tokensOutput: usage.completion_tokens || 0,
+            processingTimeMs: attemptTimer.elapsed(),
+            retryCount,
+            status: "success",
+          })
+
+          return { content: parsedContent }
+        } catch (parseError) {
+          console.warn(`API: [${promptType}] Attempt ${attempt} JSON parse error:`, parseError)
+          lastError = "AI analysis returned an invalid response"
+          if (attempt < maxRetries) {
+            const delay = 5000 * Math.pow(2, attempt - 1)
+            await new Promise((resolve) => setTimeout(resolve, delay))
+          }
+          continue
+        }
+      }
+
+      logApiUsage({
+        userId,
+        contentId,
+        apiName: "openrouter",
+        operation: "analyze",
+        tokensInput: usage.prompt_tokens || 0,
+        tokensOutput: usage.completion_tokens || 0,
+        modelName: prompt.model_name,
+        responseTimeMs: attemptTimer.elapsed(),
+        status: "success",
+      })
+      logProcessingMetrics({
+        contentId: contentId || undefined,
+        userId,
+        sectionType: promptType,
+        modelName: prompt.model_name,
+        tokensInput: usage.prompt_tokens || 0,
+        tokensOutput: usage.completion_tokens || 0,
+        processingTimeMs: attemptTimer.elapsed(),
+        retryCount,
+        status: "success",
+      })
+
+      return { content: rawContent }
+    } catch (error: unknown) {
+      const isTimeout = getErrorName(error) === "AbortError"
+      lastError = isTimeout ? "Request timed out after 2 minutes" : getErrorMessage(error)
+      console.warn(`API: [${promptType}] Attempt ${attempt} failed: ${lastError}`)
+      retryCount++
+
+      if (attempt < maxRetries) {
+        const delay = 5000 * Math.pow(2, attempt - 1)
+        await new Promise((resolve) => setTimeout(resolve, delay))
+      }
+    }
+  }
+
+  console.error(`API: [${promptType}] All ${maxRetries} attempts failed. Last error: ${lastError}`)
+
+  logApiUsage({
+    userId,
+    contentId,
+    apiName: "openrouter",
+    operation: "analyze",
+    modelName: prompt.model_name,
+    responseTimeMs: timer.elapsed(),
+    status: "error",
+    errorMessage: lastError,
+  })
+  logProcessingMetrics({
+    contentId: contentId || undefined,
+    userId,
+    sectionType: promptType,
+    modelName: prompt.model_name,
+    processingTimeMs: timer.elapsed(),
+    retryCount,
+    status: "error",
+    errorMessage: lastError,
+  })
+
+  return { content: null, error: "AI analysis failed after multiple attempts" }
+}
+
+async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective)
+  if (result.error) {
+    console.error(`API: Brief overview generation failed: ${result.error}`)
+    return null
+  }
+  return typeof result.content === "string" ? result.content : null
+}
+
+async function generateTriage(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null): Promise<TriageData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", contentType, 3, userId, contentId, webContext, undefined, languageDirective)
+  if (result.error) {
+    console.error(`API: Triage generation failed: ${result.error}`)
+    return null
+  }
+  return result.content as TriageData
+}
+
+async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, webSearchContext?: WebSearchContext | null): Promise<TruthCheckData | null> {
+  const citationInstruction = `\n\nIMPORTANT: For each issue you identify, include a "sources" array with citation objects containing "url" and "title" for verification. Use URLs from the web verification context above when available. Format: "sources": [{"url": "https://...", "title": "Source Title"}]. If no source URL is available for an issue, omit the sources field for that issue.`
+  const enrichedWebContext = webContext ? webContext + citationInstruction : null
+
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, enrichedWebContext, undefined, languageDirective)
+  if (result.error) {
+    console.error(`API: Truth check generation failed: ${result.error}`)
+    return null
+  }
+
+  const truthCheck = result.content as TruthCheckData | null
+  if (!truthCheck) return null
+
+  if (truthCheck.issues) {
+    const availableUrls: Array<{ url: string; title: string }> = []
+    if (webSearchContext?.searches) {
+      for (const search of webSearchContext.searches) {
+        for (const r of search.results) {
+          if (r.url && r.title) {
+            availableUrls.push({ url: r.url, title: r.title })
+          }
+        }
+      }
+    }
+
+    for (const issue of truthCheck.issues) {
+      if (issue.sources && Array.isArray(issue.sources)) {
+        const rawSources = issue.sources as unknown[]
+        issue.sources = rawSources
+          .filter((s): s is Record<string, unknown> =>
+            typeof s === "object" &&
+            s !== null &&
+            typeof (s as Record<string, unknown>).url === "string" &&
+            (s as Record<string, unknown>).url !== ""
+          )
+          .map((s) => ({
+            url: s.url as string,
+            title: typeof s.title === "string" && s.title ? s.title : new URL(s.url as string).hostname,
+          }))
+
+        const seen = new Set<string>()
+        issue.sources = issue.sources.filter((s) => {
+          if (seen.has(s.url)) return false
+          seen.add(s.url)
+          return true
+        })
+
+        if (issue.sources.length === 0) {
+          delete issue.sources
+        }
+      } else {
+        delete issue.sources
+      }
+    }
+  }
+
+  return truthCheck
+}
+
+async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null): Promise<ActionItemsData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, 3, userId, contentId, webContext, undefined, languageDirective)
+  if (result.error) {
+    console.error(`API: Action items generation failed: ${result.error}`)
+    return null
+  }
+  const content = result.content as { action_items?: ActionItemsData } | ActionItemsData | null
+  if (content && typeof content === "object" && "action_items" in content && content.action_items) {
+    return content.action_items
+  }
+  return content as ActionItemsData
+}
+
+async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective)
+  if (result.error) {
+    console.error(`API: Detailed summary generation failed: ${result.error}`)
+    return null
+  }
+  return typeof result.content === "string" ? result.content : null
+}
+
+async function generateAutoTags(
+  fullText: string,
+  userId?: string | null,
+  contentId?: string | null,
+): Promise<string[] | null> {
+  const result = await generateSectionWithAI(
+    fullText.substring(0, 10000),
+    "auto_tags",
+    undefined,
+    2,
+    userId,
+    contentId,
+  )
+  if (result.error) {
+    console.error(`API: Auto-tag generation failed: ${result.error}`)
+    return null
+  }
+  const content = result.content as { tags?: string[] } | null
+  if (content && Array.isArray(content.tags)) {
+    return content.tags
+      .map((t: string) => t.toLowerCase().trim().replace(/-/g, " "))
+      .filter((t: string) => t.length > 0 && t.length <= 50)
+      .slice(0, 5)
+  }
+  return null
+}
+
+// ============================================
+// DATABASE HELPERS
+// ============================================
+
+async function updateSummarySection(
+  supabase: ReturnType<typeof createClient<Database>>,
+  contentId: string,
+  userId: string,
+  updates: Partial<Database["clarus"]["Tables"]["summaries"]["Update"]>,
+  summaryLanguage: string = "en",
+) {
+  const { error } = await supabase
+    .from("summaries")
+    .upsert(
+      {
+        content_id: contentId,
+        user_id: userId,
+        language: summaryLanguage,
+        updated_at: new Date().toISOString(),
+        ...updates,
+      },
+      { onConflict: "content_id,language" },
+    )
+
+  if (error) {
+    console.error(`Failed to update summary section:`, error)
+    return false
+  }
+  return true
+}
+
+function extractDomain(url: string): string | null {
+  try {
+    const urlObj = new URL(url)
+    return urlObj.hostname.replace("www.", "")
+  } catch {
+    return null
+  }
+}
+
+async function updateDomainStats(
+  supabase: ReturnType<typeof createClient<Database>>,
+  url: string,
+  triage: TriageData | null,
+  truthCheck: TruthCheckData | null
+) {
+  const domain = extractDomain(url)
+  if (!domain) return
+
+  const qualityScore = triage?.quality_score || 0
+  const rating = truthCheck?.overall_rating
+
+  const { error } = await supabase.rpc("upsert_domain_stats", {
+    p_domain: domain,
+    p_quality_score: qualityScore,
+    p_accurate: rating === "Accurate" ? 1 : 0,
+    p_mostly_accurate: rating === "Mostly Accurate" ? 1 : 0,
+    p_mixed: rating === "Mixed" ? 1 : 0,
+    p_questionable: rating === "Questionable" ? 1 : 0,
+    p_unreliable: rating === "Unreliable" ? 1 : 0,
+  })
+
+  if (error) {
+    console.warn(`Domain stats RPC failed, using fallback:`, error)
+    await supabase.from("domains").upsert({
+      domain,
+      total_analyses: 1,
+      total_quality_score: qualityScore,
+      ...(rating === "Accurate" && { accurate_count: 1 }),
+      ...(rating === "Mostly Accurate" && { mostly_accurate_count: 1 }),
+      ...(rating === "Mixed" && { mixed_count: 1 }),
+      ...(rating === "Questionable" && { questionable_count: 1 }),
+      ...(rating === "Unreliable" && { unreliable_count: 1 }),
+      last_seen: new Date().toISOString(),
+    }, { onConflict: "domain" })
+  }
+}
+
+// ============================================
+// CROSS-USER CONTENT CACHE
+// ============================================
+
+const CACHE_STALENESS_DAYS = 14
+
+interface CachedSourceFull {
+  type: "full"
+  content: Tables<"content">
+  summary: Tables<"summaries">
+}
+
+interface CachedSourceTextOnly {
+  type: "text_only"
+  content: Tables<"content">
+}
+
+type CachedSource = CachedSourceFull | CachedSourceTextOnly | null
+
+async function findCachedAnalysis(
+  supabase: ReturnType<typeof createClient<Database>>,
+  url: string,
+  targetLanguage: string,
+  currentUserId: string,
+): Promise<CachedSource> {
+  if (url.startsWith("pdf://") || url.startsWith("file://")) return null
+
+  const normalizedUrlValue = normalizeUrl(url)
+  const stalenessDate = new Date()
+  stalenessDate.setDate(stalenessDate.getDate() - CACHE_STALENESS_DAYS)
+
+  const { data: candidates, error } = await supabase
+    .from("content")
+    .select("id, url, user_id, full_text, title, author, duration, thumbnail_url, description, upload_date, view_count, like_count, channel_id, raw_youtube_metadata, transcript_languages, detected_tone, tags, analysis_language, type, date_added, is_bookmarked, share_token, podcast_transcript_id, regeneration_count, is_public, vote_score")
+    .eq("url", normalizedUrlValue)
+    .not("full_text", "is", null)
+    .neq("user_id", currentUserId)
+    .gte("date_added", stalenessDate.toISOString())
+    .order("date_added", { ascending: false })
+    .limit(5)
+
+  if (error || !candidates || candidates.length === 0) return null
+
+  const validCandidates = candidates.filter(
+    (c) => c.full_text && !c.full_text.startsWith("PROCESSING_FAILED::")
+  )
+  if (validCandidates.length === 0) return null
+
+  const candidateIds = validCandidates.map((c) => c.id)
+  const { data: summaries } = await supabase
+    .from("summaries")
+    .select("id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language")
+    .in("content_id", candidateIds)
+    .eq("language", targetLanguage)
+    .eq("processing_status", "complete")
+
+  if (summaries && summaries.length > 0) {
+    const summaryByContentId = new Map(summaries.map((s) => [s.content_id, s]))
+    for (const candidate of validCandidates) {
+      const summary = summaryByContentId.get(candidate.id)
+      if (summary) {
+        return { type: "full", content: candidate, summary }
+      }
+    }
+  }
+
+  return { type: "text_only", content: validCandidates[0] }
+}
+
+function buildMetadataCopyPayload(
+  source: Tables<"content">
+): Partial<Database["clarus"]["Tables"]["content"]["Update"]> {
+  const payload: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {}
+
+  if (source.title) payload.title = source.title
+  if (source.author) payload.author = source.author
+  if (source.duration) payload.duration = source.duration
+  if (source.thumbnail_url) payload.thumbnail_url = source.thumbnail_url
+  if (source.description) payload.description = source.description
+  if (source.upload_date) payload.upload_date = source.upload_date
+  if (source.view_count) payload.view_count = source.view_count
+  if (source.like_count) payload.like_count = source.like_count
+  if (source.channel_id) payload.channel_id = source.channel_id
+  if (source.raw_youtube_metadata) payload.raw_youtube_metadata = source.raw_youtube_metadata
+  if (source.transcript_languages) payload.transcript_languages = source.transcript_languages
+
+  return payload
+}
+
+async function cloneCachedContent(
+  supabase: ReturnType<typeof createClient<Database>>,
+  targetContentId: string,
+  targetUserId: string,
+  source: CachedSourceFull,
+  targetLanguage: string,
+): Promise<boolean> {
+  try {
+    const metadataPayload = buildMetadataCopyPayload(source.content)
+    const contentUpdate: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {
+      ...metadataPayload,
+      full_text: source.content.full_text,
+      detected_tone: source.content.detected_tone,
+      tags: source.content.tags,
+      analysis_language: targetLanguage,
+    }
+
+    const { error: contentError } = await supabase
+      .from("content")
+      .update(contentUpdate)
+      .eq("id", targetContentId)
+
+    if (contentError) {
+      console.error("API: [cache] Failed to update target content:", contentError)
+      return false
+    }
+
+    const { error: summaryError } = await supabase
+      .from("summaries")
+      .upsert(
+        {
+          content_id: targetContentId,
+          user_id: targetUserId,
+          language: targetLanguage,
+          brief_overview: source.summary.brief_overview,
+          triage: source.summary.triage,
+          truth_check: source.summary.truth_check,
+          action_items: source.summary.action_items,
+          mid_length_summary: source.summary.mid_length_summary,
+          detailed_summary: source.summary.detailed_summary,
+          model_name: source.summary.model_name,
+          processing_status: "complete",
+          updated_at: new Date().toISOString(),
+        },
+        { onConflict: "content_id,language" },
+      )
+
+    if (summaryError) {
+      console.error("API: [cache] Failed to upsert target summary:", summaryError)
+      return false
+    }
+
+    return true
+  } catch (err) {
+    console.error("API: [cache] Clone failed:", err)
+    return false
+  }
+}
+
+// ============================================
+// MAIN PROCESSING FUNCTION
+// ============================================
+
+/**
+ * Process content by ID. This is the core analysis pipeline.
+ *
+ * @param options - Processing options including contentId, userId, language, etc.
+ * @returns A ProcessContentResult on success
+ * @throws ProcessContentError on failure with appropriate status code
+ */
+export async function processContent(options: ProcessContentOptions): Promise<ProcessContentResult> {
+  const {
+    contentId,
+    userId: authenticatedUserId,
+    language = "en",
+    forceRegenerate = false,
+    skipScraping = false,
+  } = options
+
+  // Validate environment
+  if (!supabaseUrl || !supabaseKey) {
+    throw new ProcessContentError("Server configuration error: Missing database credentials.", 500)
+  }
+
+  if (!supadataApiKey || !openRouterApiKey || !firecrawlApiKey) {
+    throw new ProcessContentError("Server configuration error: Missing API keys.", 500)
+  }
+
+  // Clear prompts cache for fresh prompts each processing batch
+  clearPromptsCache()
+
+  const supabase = createClient<Database>(supabaseUrl, supabaseKey, { db: { schema: "clarus" } })
+
+  // Fetch content record
+  const { data: content, error: fetchError } = await supabase
+    .from("content")
+    .select("id, url, type, user_id, full_text, title, author, duration, thumbnail_url, description, upload_date, view_count, like_count, channel_id, raw_youtube_metadata, transcript_languages, detected_tone, tags, analysis_language, regeneration_count, podcast_transcript_id, date_added, is_bookmarked, share_token")
+    .eq("id", contentId)
+    .single()
+
+  if (fetchError || !content) {
+    console.error(`API: Error fetching content by ID ${contentId}:`, fetchError)
+    throw new ProcessContentError("Content not found", 404)
+  }
+
+  // Verify ownership for authenticated calls
+  if (authenticatedUserId && content.user_id !== authenticatedUserId) {
+    throw new ProcessContentError("Access denied", 403)
+  }
+
+  // Multi-language tier gating
+  if (language !== "en" && content.user_id) {
+    const { data: userData } = await supabase
+      .from("users")
+      .select("tier, day_pass_expires_at")
+      .eq("id", content.user_id)
+      .single()
+    const userTier = normalizeTier(userData?.tier, userData?.day_pass_expires_at)
+    if (!TIER_FEATURES[userTier].multiLanguageAnalysis) {
+      throw new ProcessContentError(
+        "Multi-language analysis requires a Starter plan or higher.",
+        403,
+        true,
+        userTier
+      )
+    }
+  }
+
+  // Tier-based usage limit check
+  if (!forceRegenerate && content.user_id) {
+    const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
+    const usageCheck = await enforceUsageLimit(supabase, content.user_id, usageField)
+    if (!usageCheck.allowed) {
+      const label = content.type === "podcast" ? "podcast analysis" : "analysis"
+      throw new ProcessContentError(
+        `Monthly ${label} limit reached (${usageCheck.limit}). Upgrade your plan for more.`,
+        403,
+        true,
+        usageCheck.tier
+      )
+    }
+  }
+
+  // Cross-user cache check
+  if (!forceRegenerate && content.user_id) {
+    const cached = await findCachedAnalysis(supabase, content.url, language, content.user_id)
+
+    if (cached?.type === "full") {
+      const cloneSuccess = await cloneCachedContent(
+        supabase,
+        content.id,
+        content.user_id,
+        cached,
+        language,
+      )
+
+      if (cloneSuccess) {
+        // Update domain stats
+        const cachedTriage = cached.summary.triage as TriageData | null
+        const cachedTruthCheck = cached.summary.truth_check as TruthCheckData | null
+        if (content.url) {
+          updateDomainStats(supabase, content.url, cachedTriage, cachedTruthCheck).catch(
+            (err) => console.warn("API: [cache] Domain stats update failed:", err)
+          )
+        }
+
+        // Clone claims
+        try {
+          const { data: sourceClaims } = await supabase
+            .from("claims")
+            .select("claim_text, normalized_text, status, severity, sources")
+            .eq("content_id", cached.content.id)
+
+          if (sourceClaims && sourceClaims.length > 0) {
+            const clonedClaims = sourceClaims.map((claim) => ({
+              content_id: content.id,
+              user_id: content.user_id!,
+              claim_text: claim.claim_text,
+              normalized_text: claim.normalized_text,
+              status: claim.status,
+              severity: claim.severity,
+              sources: claim.sources,
+            }))
+            await supabase.from("claims").insert(clonedClaims)
+          }
+        } catch (claimErr) {
+          console.warn("API: [cache] Claims clone failed (non-fatal):", claimErr)
+        }
+
+        // Increment usage
+        try {
+          const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
+          await incrementUsage(supabase, content.user_id, usageField)
+        } catch (e) {
+          console.error("[usage] Failed to track cached analysis usage:", e)
+        }
+
+        logProcessingMetrics({
+          contentId: content.id,
+          userId: content.user_id,
+          sectionType: "cache_hit",
+          modelName: "none",
+          tokensInput: 0,
+          tokensOutput: 0,
+          processingTimeMs: 0,
+          retryCount: 0,
+          status: "success",
+        })
+
+        return {
+          success: true,
+          cached: true,
+          message: "Content analysis served from cache.",
+          contentId: content.id,
+          sectionsGenerated: [
+            "brief_overview", "triage", "truth_check",
+            "action_items", "mid_length_summary", "detailed_summary",
+          ].filter((s) => {
+            const key = s as keyof typeof cached.summary
+            return cached.summary[key] != null
+          }),
+          language,
+        }
+      }
+      console.warn("API: [cache] Clone failed, falling back to normal pipeline")
+    } else if (cached?.type === "text_only") {
+      const metadataPayload = buildMetadataCopyPayload(cached.content)
+      const textOnlyUpdate: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {
+        ...metadataPayload,
+        full_text: cached.content.full_text,
+        detected_tone: cached.content.detected_tone,
+      }
+
+      const { error: textCopyError } = await supabase
+        .from("content")
+        .update(textOnlyUpdate)
+        .eq("id", content.id)
+
+      if (!textCopyError) {
+        Object.assign(content, textOnlyUpdate)
+      } else {
+        console.warn("API: [cache] Text copy failed, proceeding with normal scrape:", textCopyError)
+      }
+    }
+  }
+
+  // Content fetching (unless skipScraping is true)
+  if (!skipScraping) {
+    try {
+      if (content.type === "youtube") {
+        const shouldFetchYouTubeMetadata =
+          forceRegenerate ||
+          !content.author ||
+          !content.duration ||
+          !content.thumbnail_url ||
+          !content.raw_youtube_metadata
+        if (shouldFetchYouTubeMetadata) {
+          const metadata = await getYouTubeMetadata(content.url, supadataApiKey, content.user_id, content.id)
+          const updatePayload: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {}
+          if (metadata.title) updatePayload.title = metadata.title
+          if (metadata.author) updatePayload.author = metadata.author
+          if (metadata.duration) updatePayload.duration = metadata.duration
+          if (metadata.thumbnail_url) updatePayload.thumbnail_url = metadata.thumbnail_url
+          if (metadata.description) updatePayload.description = metadata.description
+          if (metadata.upload_date) updatePayload.upload_date = metadata.upload_date
+          if (metadata.view_count) updatePayload.view_count = metadata.view_count
+          if (metadata.like_count) updatePayload.like_count = metadata.like_count
+          if (metadata.channel_id) updatePayload.channel_id = metadata.channel_id
+          if (metadata.transcript_languages) updatePayload.transcript_languages = metadata.transcript_languages
+          if (metadata.raw_youtube_metadata) updatePayload.raw_youtube_metadata = metadata.raw_youtube_metadata
+
+          if (Object.keys(updatePayload).length > 0) {
+            const { error: updateMetaError } = await supabase.from("content").update(updatePayload).eq("id", content.id)
+            if (updateMetaError) console.error("API: Error updating YouTube metadata in DB:", updateMetaError)
+            else Object.assign(content, updatePayload)
+          }
+        }
+
+        const shouldFetchYouTubeText = !content.full_text || forceRegenerate
+        if (shouldFetchYouTubeText) {
+          const { full_text } = await getYouTubeTranscript(content.url, supadataApiKey, content.user_id, content.id)
+          if (full_text) {
+            const { error: updateTranscriptError } = await supabase
+              .from("content")
+              .update({ full_text })
+              .eq("id", content.id)
+            if (updateTranscriptError)
+              console.error("API: Error updating YouTube transcript in DB:", updateTranscriptError)
+            else content.full_text = full_text
+          }
+        }
+      } else if (content.type === "podcast") {
+        if (!content.full_text || forceRegenerate) {
+          if (!assemblyAiApiKey) {
+            console.error("API: ASSEMBLYAI_API_KEY not configured")
+            throw new ProcessContentError("Podcast transcription is not configured.", 500)
+          }
+
+          const appUrl = process.env.NEXT_PUBLIC_APP_URL
+            || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
+          const tokenParam = process.env.ASSEMBLYAI_WEBHOOK_TOKEN
+            ? `?token=${process.env.ASSEMBLYAI_WEBHOOK_TOKEN}`
+            : ""
+          const webhookUrl = `${appUrl}/api/assemblyai-webhook${tokenParam}`
+
+          const { transcript_id } = await submitPodcastTranscription(
+            content.url,
+            webhookUrl,
+            assemblyAiApiKey,
+          )
+
+          await supabase
+            .from("content")
+            .update({ podcast_transcript_id: transcript_id })
+            .eq("id", content.id)
+
+          await updateSummarySection(supabase, content.id, content.user_id!, {
+            processing_status: "transcribing",
+          }, language)
+
+          return {
+            success: true,
+            cached: false,
+            message: "Podcast transcription started. Analysis will begin when transcription completes.",
+            contentId: content.id,
+            transcriptId: transcript_id,
+            sectionsGenerated: [],
+            language,
+          }
+        }
+      } else if (content.type === "article" || content.type === "pdf" || content.type === "document" || content.type === "x_post") {
+        const shouldScrape = forceRegenerate || !content.full_text || content.full_text.startsWith("PROCESSING_FAILED::")
+        if (shouldScrape) {
+          let urlToScrape = content.url
+          if (content.type === "x_post") {
+            try {
+              const urlObject = new URL(content.url)
+              if (urlObject.hostname === "x.com") {
+                urlObject.hostname = "fixupx.com"
+              } else if (urlObject.hostname === "twitter.com") {
+                urlObject.hostname = "fxtwitter.com"
+              }
+              urlToScrape = urlObject.toString()
+            } catch {
+              console.error(`API: Could not parse URL for x_post: ${content.url}`)
+            }
+          }
+
+          const scrapedData = await scrapeArticle(urlToScrape, firecrawlApiKey, content.user_id, content.id)
+
+          const updatePayload: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {}
+          if (scrapedData.title) updatePayload.title = scrapedData.title
+          if (scrapedData.full_text) updatePayload.full_text = scrapedData.full_text
+          if (scrapedData.description) updatePayload.description = scrapedData.description
+          if (scrapedData.thumbnail_url) updatePayload.thumbnail_url = scrapedData.thumbnail_url
+          updatePayload.author = null
+          updatePayload.duration = null
+          updatePayload.upload_date = null
+          updatePayload.view_count = null
+          updatePayload.like_count = null
+          updatePayload.channel_id = null
+          updatePayload.transcript_languages = null
+          updatePayload.raw_youtube_metadata = null
+
+          if (Object.keys(updatePayload).length > 0) {
+            const { error: updateArticleError } = await supabase
+              .from("content")
+              .update(updatePayload)
+              .eq("id", content.id)
+            if (updateArticleError) console.error("API: Error updating article data in DB:", updateArticleError)
+            else Object.assign(content, updatePayload)
+          }
+        }
+      }
+    } catch (error: unknown) {
+      const rawMsg = getErrorMessage(error)
+      const contentTypeLabel = content.type?.toUpperCase() || "UNKNOWN"
+      console.error(`API: Text processing error for content ${content.id}:`, rawMsg)
+
+      const errorCategory = classifyError(rawMsg)
+      const failure_reason = `PROCESSING_FAILED::${contentTypeLabel}::${errorCategory}`
+      await supabase.from("content").update({ full_text: failure_reason }).eq("id", content.id)
+
+      const userMessage = getUserFriendlyError(contentTypeLabel, errorCategory)
+      throw new ProcessContentError(userMessage, 200) // 200 because partial success
+    }
+  }
+
+  if (!content.full_text || content.full_text.startsWith("PROCESSING_FAILED::")) {
+    console.warn(
+      `API: No valid full text available for content ID ${content.id}. Skipping summary generation. Reason: ${content.full_text}`,
+    )
+    return {
+      success: true,
+      cached: false,
+      message: "Content processed, but no valid text found for summary.",
+      contentId: content.id,
+      sectionsGenerated: [],
+      language,
+    }
+  }
+
+  // Content moderation pre-screening
+  const screeningResult = await screenContent({
+    url: content.url,
+    scrapedText: content.full_text,
+    contentId: content.id,
+    userId: content.user_id,
+    contentType: content.type,
+    userIp: "internal",
+  })
+
+  if (screeningResult.blocked) {
+    console.warn(`MODERATION: Content blocked for ${content.url} — ${screeningResult.flags.map(f => f.reason).join("; ")}`)
+
+    await supabase.from("content").update({
+      full_text: "PROCESSING_FAILED::CONTENT_POLICY_VIOLATION",
+    }).eq("id", content.id)
+
+    await supabase.from("summaries").upsert({
+      content_id: content.id,
+      user_id: content.user_id!,
+      language,
+      processing_status: "refused",
+      brief_overview: "This content could not be analyzed because it may violate our content policy.",
+      updated_at: new Date().toISOString(),
+    }, { onConflict: "content_id,language" })
+
+    throw new ProcessContentError(
+      "This content cannot be analyzed because it may contain prohibited material.",
+      200
+    )
+  }
+
+  // Paywall detection
+  const paywallWarning = detectPaywallTruncation(
+    content.url,
+    content.full_text,
+    content.type || "article"
+  )
+
+  // Compute language directive
+  const languageDirective = getLanguageDirective(language)
+
+  if (!content.user_id) {
+    console.error(`API: user_id is missing on content object with id ${content.id}. Cannot save summary.`)
+    throw new ProcessContentError("Internal error: user_id missing from content.", 500)
+  }
+
+  const userId = content.user_id
+  const contentIdVal = content.id
+  const contentUrl = content.url
+  const contentType = content.type || "article"
+  const fullText = content.full_text
+
+  const titleNeedsFixing = !content.title || content.title.startsWith("Processing:") || content.title.startsWith("Analyzing:")
+
+  const failedSections: string[] = []
+  const sectionsGenerated: string[] = []
+
+  // Web search context + tone detection (parallel)
+  const [webSearchContext, toneResult] = await Promise.all([
+    getWebSearchContext(fullText.substring(0, 10000), content.title || undefined),
+    detectContentTone(fullText, content.title, contentType, userId, contentIdVal),
+  ])
+  const webContext = webSearchContext?.formattedContext || null
+  const toneDirective = toneResult.tone_directive
+
+  // Persist tone label
+  if (toneResult.tone_label !== NEUTRAL_TONE_LABEL) {
+    supabase.from("content").update({ detected_tone: toneResult.tone_label }).eq("id", contentIdVal).then(
+      () => {},
+      (err) => console.warn("Failed to persist detected_tone:", err)
+    )
+  }
+
+  // All sections in parallel
+  const overviewPromise = (async () => {
+    const result = await generateBriefOverview(fullText, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective)
+    if (result) {
+      await updateSummarySection(supabase, contentIdVal, userId, { brief_overview: result }, language)
+      sectionsGenerated.push("brief_overview")
+    } else {
+      failedSections.push("brief_overview")
+      console.warn(`API: [1/6] Brief overview failed.`)
+    }
+    return result
+  })()
+
+  const triagePromise = (async () => {
+    const result = await generateTriage(fullText, contentType, userId, contentIdVal, webContext, languageDirective)
+    if (result) {
+      await updateSummarySection(supabase, contentIdVal, userId, { triage: result as unknown as Json }, language)
+      sectionsGenerated.push("triage")
+    } else {
+      failedSections.push("triage")
+      console.warn(`API: [2/6] Triage failed.`)
+    }
+    return result
+  })()
+
+  const midSummaryPromise = (async () => {
+    const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing, toneDirective, languageDirective })
+    if (summaryResult && !("error" in summaryResult)) {
+      const validSummary = summaryResult as ModelSummary
+      if (titleNeedsFixing && validSummary.title) {
+        await supabase.from("content").update({ title: validSummary.title }).eq("id", contentIdVal)
+      }
+      if (validSummary.mid_length_summary) {
+        await updateSummarySection(supabase, contentIdVal, userId, { mid_length_summary: validSummary.mid_length_summary }, language)
+        sectionsGenerated.push("mid_length_summary")
+      }
+    } else {
+      failedSections.push("mid_length_summary")
+      console.warn(`API: [5/6] Mid-length summary failed.`)
+    }
+    return summaryResult
+  })()
+
+  const detailedPromise = (async () => {
+    const result = await generateDetailedSummary(fullText, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective)
+    if (result) {
+      await updateSummarySection(supabase, contentIdVal, userId, { detailed_summary: result }, language)
+      sectionsGenerated.push("detailed_summary")
+    } else {
+      failedSections.push("detailed_summary")
+      console.warn(`API: [6/6] Detailed summary failed.`)
+    }
+    return result
+  })()
+
+  const autoTagPromise = (async () => {
+    const tags = await generateAutoTags(fullText, userId, contentIdVal)
+    if (tags && tags.length > 0) {
+      await supabase
+        .from("content")
+        .update({ tags })
+        .eq("id", contentIdVal)
+    } else {
+      console.warn(`API: [tags] Auto-tag generation failed or empty.`)
+    }
+    return tags
+  })()
+
+  const truthCheckPromise = (async () => {
+    const result = await generateTruthCheck(fullText, contentType, userId, contentIdVal, webContext, languageDirective, webSearchContext)
+    if (result) {
+      // Will be saved after triage check
+    } else {
+      console.warn(`API: [3/6] Truth check failed.`)
+    }
+    return result
+  })()
+
+  const actionItemsPromise = (async () => {
+    const result = await generateActionItems(fullText, contentType, userId, contentIdVal, webContext, languageDirective)
+    if (result) {
+      // Will be saved after triage check
+    } else {
+      console.warn(`API: [4/6] Action items failed.`)
+    }
+    return result
+  })()
+
+  const [briefOverview, triage, , detailedSummary, , truthCheckResult, actionItemsResult] = await Promise.all([
+    overviewPromise, triagePromise, midSummaryPromise, detailedPromise, autoTagPromise,
+    truthCheckPromise, actionItemsPromise,
+  ])
+
+  // Post-check: skip saving truth check + action items for music/entertainment
+  const skipCategories = ["music", "entertainment"]
+  const triageCategory = triage?.content_category
+  const shouldSkipTruthCheck = triageCategory && skipCategories.includes(triageCategory)
+
+  let truthCheck: TruthCheckData | null = null
+
+  if (shouldSkipTruthCheck) {
+    // Skip
+  } else {
+    if (truthCheckResult) {
+      await updateSummarySection(supabase, contentIdVal, userId, { truth_check: truthCheckResult as unknown as Json }, language)
+      sectionsGenerated.push("truth_check")
+    } else {
+      failedSections.push("truth_check")
+    }
+
+    if (actionItemsResult) {
+      await updateSummarySection(supabase, contentIdVal, userId, { action_items: actionItemsResult as unknown as Json }, language)
+      sectionsGenerated.push("action_items")
+    }
+
+    truthCheck = truthCheckResult
+  }
+
+  // AI refusal detection
+  const aiSections = [
+    { name: "brief_overview", content: briefOverview },
+    { name: "triage", content: triage },
+    { name: "detailed_summary", content: detailedSummary },
+    { name: "truth_check", content: truthCheck },
+  ]
+
+  for (const section of aiSections) {
+    const refusal = detectAiRefusal(section.content)
+    if (refusal) {
+      await persistFlag({
+        contentId: contentIdVal,
+        userId,
+        url: contentUrl,
+        contentType,
+        flag: refusal,
+        userIp: "internal",
+        scrapedText: fullText,
+      })
+      console.warn(`MODERATION: AI refused [${section.name}] for ${contentUrl}: ${refusal.reason}`)
+    }
+  }
+
+  // Update domain stats
+  if (contentUrl && triage) {
+    await updateDomainStats(supabase, contentUrl, triage, truthCheck)
+  }
+
+  // Claim tracking
+  if (truthCheck && userId) {
+    try {
+      await supabase.from("claims").delete().eq("content_id", contentIdVal)
+
+      const claimsToInsert: Array<{
+        content_id: string
+        user_id: string
+        claim_text: string
+        normalized_text: string
+        status: string
+        severity: string | null
+        sources: Json | null
+      }> = []
+
+      if (truthCheck.claims && truthCheck.claims.length > 0) {
+        for (const claim of truthCheck.claims) {
+          if (!claim.exact_text) continue
+          claimsToInsert.push({
+            content_id: contentIdVal,
+            user_id: userId,
+            claim_text: claim.exact_text,
+            normalized_text: claim.exact_text.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim(),
+            status: claim.status,
+            severity: claim.severity ?? null,
+            sources: (claim.sources ?? null) as Json,
+          })
+        }
+      }
+
+      if (truthCheck.issues && truthCheck.issues.length > 0) {
+        for (const issue of truthCheck.issues) {
+          if (!issue.claim_or_issue) continue
+          claimsToInsert.push({
+            content_id: contentIdVal,
+            user_id: userId,
+            claim_text: issue.claim_or_issue,
+            normalized_text: issue.claim_or_issue.toLowerCase().replace(/[^a-z0-9\s]/g, "").replace(/\s+/g, " ").trim(),
+            status: issue.type,
+            severity: issue.severity ?? null,
+            sources: (issue.sources ? issue.sources.map(s => s.url) : null) as Json,
+          })
+        }
+      }
+
+      if (claimsToInsert.length > 0) {
+        await supabase.from("claims").insert(claimsToInsert)
+      }
+    } catch (claimErr) {
+      console.warn("API: Failed to extract claims (non-fatal):", claimErr)
+    }
+  }
+
+  // Self-healing: retry critical failures once
+  const criticalSections = ["brief_overview", "triage", "detailed_summary"]
+  const criticalFailures = failedSections.filter((s) => criticalSections.includes(s))
+
+  if (criticalFailures.length > 0) {
+    await Promise.all(criticalFailures.map(async (section) => {
+      if (section === "brief_overview") {
+        const result = await generateBriefOverview(fullText, contentType, userId, contentIdVal, null, toneDirective, languageDirective)
+        if (result) {
+          await updateSummarySection(supabase, contentIdVal, userId, { brief_overview: result }, language)
+          sectionsGenerated.push("brief_overview")
+        }
+      } else if (section === "triage") {
+        const result = await generateTriage(fullText, contentType, userId, contentIdVal, undefined, languageDirective)
+        if (result) {
+          await updateSummarySection(supabase, contentIdVal, userId, { triage: result as unknown as Json }, language)
+          sectionsGenerated.push("triage")
+          if (contentUrl) await updateDomainStats(supabase, contentUrl, result, truthCheck)
+        }
+      } else if (section === "detailed_summary") {
+        const result = await generateDetailedSummary(fullText, contentType, userId, contentIdVal, null, toneDirective, languageDirective)
+        if (result) {
+          await updateSummarySection(supabase, contentIdVal, userId, { detailed_summary: result }, language)
+          sectionsGenerated.push("detailed_summary")
+        }
+      }
+    }))
+  }
+
+  // Mark processing complete
+  await updateSummarySection(supabase, contentIdVal, userId, {
+    processing_status: "complete",
+  }, language)
+
+  // Update content.analysis_language
+  supabase.from("content").update({ analysis_language: language }).eq("id", contentIdVal).then(
+    () => {},
+    (err) => console.warn("Failed to update analysis_language:", err)
+  )
+
+  // Track analysis usage
+  if (!forceRegenerate && content.user_id) {
+    try {
+      const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
+      await incrementUsage(supabase, content.user_id, usageField)
+    } catch (e) {
+      console.error("[usage] Failed to track analysis usage:", e)
+    }
+  }
+
+  return {
+    success: true,
+    cached: false,
+    message: "Content processed successfully.",
+    contentId: content.id,
+    sectionsGenerated,
+    language,
+    paywallWarning,
+  }
+}

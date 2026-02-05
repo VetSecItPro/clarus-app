@@ -42,14 +42,29 @@ export async function GET(request: Request) {
     }
 
     const contentId = validation.data.id
+    const lang = searchParams.get("language") || "en"
+
+    // PERF: Parallelize tier check, usage check, ownership verification, and summary fetch
+    const [userDataResult, usageCheck, ownership, summaryResult] = await Promise.all([
+      auth.supabase
+        .from("users")
+        .select("tier, day_pass_expires_at")
+        .eq("id", auth.user.id)
+        .single(),
+      enforceUsageLimit(auth.supabase, auth.user.id, "exports_count"),
+      verifyContentOwnership(auth.supabase, auth.user.id, contentId),
+      auth.supabase
+        .from("summaries")
+        .select("brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status")
+        .eq("content_id", contentId)
+        .eq("language", lang)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ])
 
     // Tier feature check: exports require starter+
-    const { data: userData } = await auth.supabase
-      .from("users")
-      .select("tier, day_pass_expires_at")
-      .eq("id", auth.user.id)
-      .single()
-    const tier = normalizeTier(userData?.tier, userData?.day_pass_expires_at)
+    const tier = normalizeTier(userDataResult.data?.tier, userDataResult.data?.day_pass_expires_at)
     if (!TIER_FEATURES[tier].exports) {
       return new Response(
         JSON.stringify({ error: "Exports require a Starter or Pro plan.", upgrade_required: true, tier }),
@@ -58,7 +73,6 @@ export async function GET(request: Request) {
     }
 
     // Usage limit check
-    const usageCheck = await enforceUsageLimit(auth.supabase, auth.user.id, "exports_count")
     if (!usageCheck.allowed) {
       return new Response(
         JSON.stringify({ error: `Monthly export limit reached (${usageCheck.limit}).`, upgrade_required: true, tier: usageCheck.tier }),
@@ -67,23 +81,12 @@ export async function GET(request: Request) {
     }
 
     // Verify ownership
-    const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, contentId)
     if (!ownership.owned) {
       return ownership.response
     }
 
     const content = ownership.content
-
-    // Fetch summary (filter by language if provided)
-    const lang = searchParams.get("language") || "en"
-    const { data: summary } = await auth.supabase
-      .from("summaries")
-      .select("brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status")
-      .eq("content_id", contentId)
-      .eq("language", lang)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    const summary = summaryResult.data
 
     // Generate PDF
     const pdfBytes = await generatePDF(content, summary)

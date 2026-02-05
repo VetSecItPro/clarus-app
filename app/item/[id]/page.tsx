@@ -12,15 +12,11 @@ import { useRouter } from "next/navigation"
 import { getCachedSession } from "@/components/with-auth"
 import { cn, formatDuration, getYouTubeVideoId, getDomainFromUrl } from "@/lib/utils"
 import { detectPaywallTruncation } from "@/lib/paywall-detection"
-import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { YouTubePlayer, type YouTubePlayerRef } from "@/components/ui/youtube-player"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
-import { TriageCard } from "@/components/ui/triage-card"
-import { TruthCheckCard, type CrossReference } from "@/components/ui/truth-check-card"
-import { ActionItemsCard } from "@/components/ui/action-items-card"
-import { AnalysisProgress } from "@/components/ui/analysis-progress"
+import type { CrossReference } from "@/components/ui/truth-check-card"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { useUpgradeModal } from "@/lib/hooks/use-upgrade-modal"
@@ -35,10 +31,16 @@ import { useIsDesktop } from "@/lib/hooks/use-media-query"
 import type { Session } from "@supabase/supabase-js"
 import { type AnalysisLanguage, getLanguageConfig, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
 import { LanguageSelector } from "@/components/ui/language-selector"
-import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
+// PERF: use shared SWR hook instead of independent Supabase query for tier data
+import { useUserTier } from "@/lib/hooks/use-user-tier"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
 
-// Dynamic imports for below-fold and conditional components (reduces initial bundle)
+// PERF: Dynamic imports — reduce initial bundle by lazy-loading heavy/conditional components
+const MarkdownRenderer = dynamic(() => import("@/components/markdown-renderer").then(m => ({ default: m.MarkdownRenderer })), { ssr: false })
+const AnalysisProgress = dynamic(() => import("@/components/ui/analysis-progress").then(m => ({ default: m.AnalysisProgress })), { ssr: false })
+const TriageCard = dynamic(() => import("@/components/ui/triage-card").then(m => ({ default: m.TriageCard })), { ssr: false })
+const TruthCheckCard = dynamic(() => import("@/components/ui/truth-check-card").then(m => ({ default: m.TruthCheckCard })), { ssr: false })
+const ActionItemsCard = dynamic(() => import("@/components/ui/action-items-card").then(m => ({ default: m.ActionItemsCard })), { ssr: false })
 const InlineChat = dynamic(() => import("@/components/inline-chat").then(m => ({ default: m.InlineChat })), { ssr: false })
 const ShareModal = dynamic(() => import("@/components/share-modal").then(m => ({ default: m.ShareModal })), { ssr: false })
 const UpgradeModal = dynamic(() => import("@/components/upgrade-modal").then(m => ({ default: m.UpgradeModal })), { ssr: false })
@@ -186,7 +188,9 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   })
   const langConfig = getLanguageConfig(analysisLanguage)
   const [isTranslating, setIsTranslating] = useState(false)
-  const [multiLanguageEnabled, setMultiLanguageEnabled] = useState(false)
+  // PERF: shared SWR hook eliminates duplicate tier query (was independent useEffect+fetch)
+  const { features: tierFeatures } = useUserTier(session?.user?.id ?? null)
+  const multiLanguageEnabled = tierFeatures.multiLanguageAnalysis
   // Track the language before a translation attempt so we can revert on failure
   const prevLanguageRef = useRef<AnalysisLanguage>(analysisLanguage)
 
@@ -567,22 +571,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     fetchCrossRefs()
   }, [item?.id, hasTruthCheck])
 
-  // Fetch user tier on mount to determine multi-language access
-  useEffect(() => {
-    if (!session?.user?.id) return
-    const fetchTier = async () => {
-      const { data } = await supabase
-        .from("users")
-        .select("tier, day_pass_expires_at")
-        .eq("id", session.user.id)
-        .single()
-      if (data) {
-        const tier = normalizeTier(data.tier, data.day_pass_expires_at)
-        setMultiLanguageEnabled(TIER_FEATURES[tier].multiLanguageAnalysis)
-      }
-    }
-    fetchTier()
-  }, [session?.user?.id])
+  // PERF: tier fetching moved to useUserTier hook (shared SWR cache)
 
   // Handle language change — fetch existing translation or trigger new one
   const handleLanguageChange = useCallback(async (newLang: AnalysisLanguage) => {
@@ -1156,15 +1145,13 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Link href="/">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08]"
-                        aria-label="Back to home"
-                      >
-                        <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </Button>
+                    {/* FE: FIX-FE-001 — replaced nested Link>Button with Link styled as button */}
+                    <Link
+                      href="/"
+                      className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08] inline-flex items-center justify-center"
+                      aria-label="Back to home"
+                    >
+                      <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent>Back to Library</TooltipContent>

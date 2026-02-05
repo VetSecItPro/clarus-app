@@ -38,8 +38,18 @@ export async function GET(
     )
   }
 
-  // Enforce claim tracking tier gate
-  const tier = await getUserTier(auth.supabase, auth.user.id)
+  const { id } = await params
+  const parsed = uuidSchema.safeParse(id)
+  if (!parsed.success) {
+    return NextResponse.json({ error: "Invalid content ID" }, { status: 400 })
+  }
+
+  // PERF: Parallelize tier check and ownership verification
+  const [tier, ownership] = await Promise.all([
+    getUserTier(auth.supabase, auth.user.id),
+    verifyContentOwnership(auth.supabase, auth.user.id, parsed.data),
+  ])
+
   if (!TIER_FEATURES[tier].claimTracking) {
     return NextResponse.json(
       { error: "Claim tracking requires a Starter or Pro subscription.", upgrade: true },
@@ -47,13 +57,6 @@ export async function GET(
     )
   }
 
-  const { id } = await params
-  const parsed = uuidSchema.safeParse(id)
-  if (!parsed.success) {
-    return NextResponse.json({ error: "Invalid content ID" }, { status: 400 })
-  }
-
-  const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, parsed.data)
   if (!ownership.owned) return ownership.response
 
   // Get claims for this content

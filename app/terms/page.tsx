@@ -17,6 +17,9 @@ export const metadata: Metadata = {
   },
 }
 
+// ISR: revalidate every 24 hours — legal content changes very rarely
+export const revalidate = 86400
+
 export default function TermsPage() {
   return (
     <div className="min-h-screen bg-black flex flex-col">

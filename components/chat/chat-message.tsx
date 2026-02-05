@@ -61,6 +61,7 @@ function UserUrlMessage({ message }: { message: ChatMessageData }) {
                   alt=""
                   width={16}
                   height={16}
+                  sizes="16px"
                   className="w-4 h-4"
                   onError={(e) => {
                     e.currentTarget.style.display = "none"
@@ -115,6 +116,7 @@ function AssistantWrapper({ children }: { children: React.ReactNode }) {
         alt="Clarus"
         width={28}
         height={28}
+        sizes="28px"
         className="flex-shrink-0 w-7 h-7 rounded-full"
       />
       <div className="flex-1 min-w-0">{children}</div>

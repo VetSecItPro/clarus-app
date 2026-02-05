@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
+import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { uuidSchema } from "@/lib/schemas"
 import { checkRateLimit } from "@/lib/validation"
 
@@ -32,19 +32,19 @@ export async function POST(
     const auth = await authenticateRequest()
     if (!auth.success) return auth.response
 
-    // Verify ownership
-    const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, idResult.data)
-    if (!ownership.owned) return ownership.response
-
-    // Get current is_public state
+    // PERF: Combined ownership check and is_public fetch in a single query (was 2 separate queries)
     const { data: currentContent, error: fetchError } = await auth.supabase
       .from("content")
-      .select("is_public")
+      .select("id, user_id, is_public")
       .eq("id", idResult.data)
       .single()
 
     if (fetchError || !currentContent) {
       return AuthErrors.notFound("Content")
+    }
+
+    if (currentContent.user_id !== auth.user.id) {
+      return AuthErrors.forbidden()
     }
 
     // Toggle is_public

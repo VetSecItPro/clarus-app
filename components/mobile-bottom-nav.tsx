@@ -6,11 +6,11 @@ import { Home, Clock, Compass, Podcast } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { ActiveAnalysisNavLink } from "@/components/active-analysis-nav-link"
-import { useState, useEffect } from "react"
-import { supabase } from "@/lib/supabase"
+import { useState } from "react"
 import { getCachedSession } from "@/components/with-auth"
-import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
-import type { UserTier } from "@/types/database.types"
+import { TIER_FEATURES } from "@/lib/tier-limits"
+// PERF: use shared SWR hook instead of independent Supabase query for tier data
+import { useUserTier } from "@/lib/hooks/use-user-tier"
 
 const baseNavItems = [
   { href: "/", label: "Home", icon: Home },
@@ -23,39 +23,16 @@ const podcastNavItem = { href: "/podcasts", label: "Podcasts", icon: Podcast }
 export default function MobileBottomNav() {
   const pathname = usePathname()
   const [settingsOpen, setSettingsOpen] = useState(false)
-  const [userTier, setUserTier] = useState<UserTier | null>(null)
-
-  useEffect(() => {
-    const fetchTier = async () => {
-      const { session } = getCachedSession()
-      const userId = session?.user?.id
-      if (!userId) {
-        const { data: { session: freshSession } } = await supabase.auth.getSession()
-        if (!freshSession?.user) return
-        const { data } = await supabase
-          .from("users")
-          .select("tier, day_pass_expires_at")
-          .eq("id", freshSession.user.id)
-          .single()
-        if (data) setUserTier(normalizeTier(data.tier, data.day_pass_expires_at))
-        return
-      }
-      const { data } = await supabase
-        .from("users")
-        .select("tier, day_pass_expires_at")
-        .eq("id", userId)
-        .single()
-      if (data) setUserTier(normalizeTier(data.tier, data.day_pass_expires_at))
-    }
-    fetchTier()
-  }, [])
+  // PERF: shared SWR hook eliminates duplicate tier query (was independent useEffect+fetch)
+  const { session } = getCachedSession()
+  const { tier: userTier } = useUserTier(session?.user?.id ?? null)
 
   // Hide on auth pages
   if (pathname?.startsWith("/login") || pathname?.startsWith("/signup") || pathname?.startsWith("/forgot-password")) {
     return null
   }
 
-  const showPodcasts = userTier ? TIER_FEATURES[userTier].podcastSubscriptions : false
+  const showPodcasts = TIER_FEATURES[userTier].podcastSubscriptions
   const navItems = showPodcasts ? [...baseNavItems, podcastNavItem] : baseNavItems
 
   return (

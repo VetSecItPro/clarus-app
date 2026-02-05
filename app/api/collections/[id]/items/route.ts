@@ -41,32 +41,32 @@ export async function POST(
       return AuthErrors.badRequest(validation.error)
     }
 
-    // Verify collection ownership
-    const { data: collection, error: collectionError } = await auth.supabase
-      .from("collections")
-      .select("id, user_id")
-      .eq("id", idResult.data)
-      .single()
+    // PERF: Parallelize collection and content ownership checks instead of sequential queries
+    const [collectionResult, contentResult] = await Promise.all([
+      auth.supabase
+        .from("collections")
+        .select("id, user_id")
+        .eq("id", idResult.data)
+        .single(),
+      auth.supabase
+        .from("content")
+        .select("id, user_id")
+        .eq("id", validation.data.content_id)
+        .single(),
+    ])
 
+    const { data: collection, error: collectionError } = collectionResult
     if (collectionError || !collection) {
       return AuthErrors.notFound("Collection")
     }
-
     if (collection.user_id !== auth.user.id) {
       return AuthErrors.forbidden()
     }
 
-    // Verify content ownership
-    const { data: content, error: contentError } = await auth.supabase
-      .from("content")
-      .select("id, user_id")
-      .eq("id", validation.data.content_id)
-      .single()
-
+    const { data: content, error: contentError } = contentResult
     if (contentError || !content) {
       return AuthErrors.notFound("Content")
     }
-
     if (content.user_id !== auth.user.id) {
       return AuthErrors.forbidden()
     }
