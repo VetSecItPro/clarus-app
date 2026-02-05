@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
     // Fetch chat prompt configuration
     const { data: promptData, error: promptError } = await supabaseAdmin
       .from("active_chat_prompt")
-      .select("*")
+      .select("system_content, temperature, top_p, max_tokens, model_name")
       .eq("id", 1)
       .single()
 

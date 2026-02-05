@@ -19,7 +19,7 @@ export async function GET() {
 
   const { data, error } = await supabase
     .from("flagged_content")
-    .select("*")
+    .select("id, content_id, user_id, url, content_type, flag_source, flag_reason, flag_categories, severity, user_ip, content_hash, scraped_text_preview, status, review_notes, reviewed_by, reviewed_at, reported_to, report_reference, reported_at, created_at, updated_at")
     .order("created_at", { ascending: false })
     .limit(100)
 
