@@ -25,6 +25,7 @@ All Clarus tables live in the **`clarus` schema** (not the `public` schema):
 clarus.users
 clarus.content
 clarus.content_ratings
+clarus.content_votes
 clarus.chat_threads
 clarus.chat_messages
 clarus.summaries
@@ -38,6 +39,10 @@ clarus.analysis_prompts
 clarus.usage_tracking
 clarus.claims
 clarus.flagged_content
+clarus.collections
+clarus.collection_items
+clarus.podcast_subscriptions
+clarus.podcast_episodes
 ```
 
 **Code doesn't need prefixes** - the search_path is configured so `SELECT * FROM users` automatically resolves to `clarus.users`.
@@ -99,10 +104,28 @@ export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm build
 4. `gh pr create --title "..." --body "..."`
 5. CI runs → merge after passing
 
+### Parallel Branch Merge Strategy (CRITICAL)
+
+> **Completeness over speed. No code should overwrite other code due to merge ordering.**
+
+When multiple feature branches exist simultaneously:
+
+| Rule | Description |
+|------|-------------|
+| **Identify shared files** | Before merging, check which files each PR touches. Flag overlapping files (especially `lib/tier-limits.ts`, `types/database.types.ts`, `components/site-header.tsx`, `components/mobile-bottom-nav.tsx`). |
+| **Merge docs/tests first** | PRs that only add new files (docs, tests, migrations) have zero conflict risk — merge these first. |
+| **Merge isolated features next** | PRs that create new routes/pages without modifying shared files go second. |
+| **Merge shared-file PRs last** | PRs that modify shared files (nav, types, tier-limits) go last, with a rebase before each merge. |
+| **Rebase before every merge** | After merging PR N, rebase PR N+1 on updated main BEFORE merging. Never merge a stale branch. |
+| **Resolve conflicts manually** | When both branches modify the same file, integrate BOTH changes — never accept one side and discard the other. |
+| **Verify after each merge** | Pull main after each merge and confirm the build still passes before merging the next PR. |
+| **Never remove worktree CWD** | When using git worktrees, always `cd` back to the main repo directory BEFORE removing a worktree. Removing the shell's CWD breaks the entire shell session. |
+
 ---
 
 ## Workflow Rules
 
+- **Completeness over speed** - it's not about fast execution, it's about fully doing all tasks correctly
 - **Always explain what you're doing before doing it**
 - **Always create a todo list for any task**
 - Delete dead/unused code when found
@@ -112,6 +135,7 @@ export PATH="$HOME/.nvm/versions/node/v22.18.0/bin:$PATH" && pnpm build
 - **Fix lint AND TypeScript errors AND logic errors** - all code must fit together properly
 - **Never introduce logic holes or vulnerabilities** - create code that works correctly as a system
 - **No `any` types** - use proper TypeScript types always
+- **Respect dependencies and order of precedence** - when multiple changes touch shared files, merge strategically so nothing gets overwritten
 
 ---
 
@@ -203,3 +227,11 @@ Annual discount: up to 33% off ($144/yr Starter saves $72, $279/yr Pro saves $69
 
 - Tables in `public` schema belong to OTHER projects — DO NOT TOUCH
 - All Clarus tables go in the `clarus` schema (search_path handles this automatically)
+
+---
+
+## Task Tracking
+
+> **All task tracking lives in `clarus-master-todo-list.md` (gitignored).**
+> That file is the single source of truth for what's done, what's pending, and what's planned.
+> Always read it at the start of every Claude Code session.
