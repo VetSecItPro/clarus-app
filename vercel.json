@@ -8,6 +8,10 @@
     {
       "path": "/api/crons/discovery-newsletter",
       "schedule": "0 16 * * 0"
+    },
+    {
+      "path": "/api/crons/check-podcast-feeds",
+      "schedule": "0 */6 * * *"
     }
   ],
   "headers": [
