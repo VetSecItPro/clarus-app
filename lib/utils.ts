@@ -124,3 +124,87 @@ export function getDomainFromUrl(url: string | null): string {
     return "unknown.com"
   }
 }
+
+/**
+ * Tracking and analytics query parameters to strip for URL normalization.
+ * These do not change the content at the URL — only track how the user arrived.
+ */
+const TRACKING_PARAMS = new Set([
+  // UTM parameters
+  "utm_source",
+  "utm_medium",
+  "utm_campaign",
+  "utm_content",
+  "utm_term",
+  // Platform click IDs
+  "fbclid",
+  "gclid",
+  "gclsrc",
+  "dclid",
+  "msclkid",
+  "twclid",
+  "li_fat_id",
+  // Email / newsletter trackers
+  "mc_cid",
+  "mc_eid",
+  // Analytics & referral
+  "ref",
+  "source",
+  "_ga",
+  "_gl",
+  "_hsenc",
+  "_hsmi",
+  // Misc trackers
+  "yclid",
+  "wickedid",
+  "igshid",
+  "s_kwcid",
+  "si",
+])
+
+/**
+ * Normalize a URL for cross-user content cache matching.
+ *
+ * Two URLs that point to the same content should produce the same normalized string,
+ * even if one has tracking parameters, www. prefix, mixed-case hostname, or a trailing slash.
+ *
+ * Returns the original string unchanged if it cannot be parsed as a valid URL
+ * (e.g., `pdf://` scheme used for uploaded PDFs).
+ */
+export function normalizeUrl(raw: string): string {
+  if (!raw) return raw
+
+  // Don't normalize internal scheme URLs (pdf://, etc.)
+  if (raw.startsWith("pdf://")) return raw
+
+  let urlObj: URL
+  try {
+    urlObj = new URL(raw)
+  } catch {
+    // Not a valid URL — return as-is
+    return raw
+  }
+
+  // Lowercase the hostname and strip www. prefix
+  urlObj.hostname = urlObj.hostname.toLowerCase().replace(/^www\./, "")
+
+  // Remove trailing slash from pathname (but keep "/" for root)
+  if (urlObj.pathname.length > 1 && urlObj.pathname.endsWith("/")) {
+    urlObj.pathname = urlObj.pathname.slice(0, -1)
+  }
+
+  // Strip tracking parameters
+  for (const param of TRACKING_PARAMS) {
+    urlObj.searchParams.delete(param)
+  }
+
+  // Sort remaining query parameters alphabetically for consistent ordering
+  urlObj.searchParams.sort()
+
+  // Remove hash fragment (doesn't affect server-side content)
+  urlObj.hash = ""
+
+  // If all query params were stripped, remove the trailing "?"
+  // URL.toString() handles this automatically, but let's be explicit
+  return urlObj.toString()
+}

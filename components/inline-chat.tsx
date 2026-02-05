@@ -302,7 +302,7 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
       setThreadId(threadData.id)
       const { data: messagesData } = await supabase
         .from("chat_messages")
-        .select("*")
+        .select("id, role, content, created_at")
         .eq("thread_id", threadData.id)
         .order("created_at", { ascending: false })
         .limit(50)

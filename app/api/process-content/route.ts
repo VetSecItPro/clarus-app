@@ -12,6 +12,7 @@ import { authenticateRequest } from "@/lib/auth"
 import { isValidLanguage, getLanguageDirective, type AnalysisLanguage } from "@/lib/languages"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { NonRetryableError, classifyError, getUserFriendlyError } from "@/lib/error-sanitizer"
+import { normalizeUrl } from "@/lib/utils"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -791,7 +792,7 @@ async function getModelSummary(
 
   const { data: promptData, error: promptError } = await supabaseAdmin
     .from("active_summarizer_prompt")
-    .select("*")
+    .select("system_content, user_content_template, temperature, top_p, max_tokens, model_name")
     .eq("id", 1)
     .single()
 
@@ -950,7 +951,7 @@ async function fetchPromptFromDB(promptType: string): Promise<AnalysisPrompt | n
 
   const { data, error } = await supabaseAdmin
     .from("analysis_prompts")
-    .select("*")
+    .select("id, prompt_type, name, description, system_content, user_content_template, model_name, temperature, max_tokens, expect_json, is_active, use_web_search, created_at, updated_at")
     .eq("prompt_type", promptType)
     .eq("is_active", true)
     .single()
@@ -1389,14 +1390,16 @@ async function findCachedAnalysis(
   // Never cache-match PDFs (user-uploaded, pdf:// URLs are not shareable)
   if (url.startsWith("pdf://")) return null
 
+  const normalizedUrlValue = normalizeUrl(url)
   const stalenessDate = new Date()
   stalenessDate.setDate(stalenessDate.getDate() - CACHE_STALENESS_DAYS)
 
   // Find content records with same URL, non-null full_text, within staleness window
+  // Uses normalized URL for matching to improve cache hit rate across tracking param variants
   const { data: candidates, error } = await supabase
     .from("content")
-    .select("*")
-    .eq("url", url)
+    .select("id, url, user_id, full_text, title, author, duration, thumbnail_url, description, upload_date, view_count, like_count, channel_id, raw_youtube_metadata, transcript_languages, detected_tone, tags, analysis_language, type, date_added, is_bookmarked, share_token, podcast_transcript_id, regeneration_count")
+    .eq("url", normalizedUrlValue)
     .not("full_text", "is", null)
     .neq("user_id", currentUserId)
     .gte("date_added", stalenessDate.toISOString())
@@ -1415,7 +1418,7 @@ async function findCachedAnalysis(
   const candidateIds = validCandidates.map((c) => c.id)
   const { data: summaries } = await supabase
     .from("summaries")
-    .select("*")
+    .select("id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language")
     .in("content_id", candidateIds)
     .eq("language", targetLanguage)
     .eq("processing_status", "complete")
@@ -1603,7 +1606,11 @@ export async function POST(req: NextRequest) {
 
   console.log(`API: Processing request for content_id: ${content_id}, force_regenerate: ${force_regenerate}, language: ${language}`)
 
-  const { data: content, error: fetchError } = await supabase.from("content").select("*").eq("id", content_id).single()
+  const { data: content, error: fetchError } = await supabase
+    .from("content")
+    .select("id, url, type, user_id, full_text, title, author, duration, thumbnail_url, description, upload_date, view_count, like_count, channel_id, raw_youtube_metadata, transcript_languages, detected_tone, tags, analysis_language, regeneration_count, podcast_transcript_id, date_added, is_bookmarked, share_token")
+    .eq("id", content_id)
+    .single()
 
   if (fetchError || !content) {
     console.error(`API: Error fetching content by ID ${content_id}:`, fetchError)
@@ -1678,7 +1685,7 @@ export async function POST(req: NextRequest) {
         try {
           const { data: sourceClaims } = await supabase
             .from("claims")
-            .select("*")
+            .select("claim_text, normalized_text, status, severity, sources")
             .eq("content_id", cached.content.id)
 
           if (sourceClaims && sourceClaims.length > 0) {

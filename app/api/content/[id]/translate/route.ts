@@ -408,9 +408,10 @@ export async function POST(
     }
 
     // 7. Check if translation already exists
+    const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language"
     const { data: existingTranslation } = await auth.supabase
       .from("summaries")
-      .select("*")
+      .select(summaryColumns)
       .eq("content_id", idResult.data)
       .eq("language", targetLang)
       .maybeSingle()
@@ -430,7 +431,7 @@ export async function POST(
     // 8. Fetch source summary — prefer English, fall back to any completed language
     const { data: allSummaries, error: sumError } = await auth.supabase
       .from("summaries")
-      .select("*")
+      .select("brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language")
       .eq("content_id", idResult.data)
       .eq("processing_status", "complete")
       .neq("language", targetLang)
@@ -528,7 +529,7 @@ export async function POST(
       })
       .eq("content_id", idResult.data)
       .eq("language", targetLang)
-      .select("*")
+      .select(summaryColumns)
       .single()
 
     if (updateError || !updatedSummary) {
