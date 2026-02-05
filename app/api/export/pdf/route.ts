@@ -78,7 +78,7 @@ export async function GET(request: Request) {
     const lang = searchParams.get("language") || "en"
     const { data: summary } = await auth.supabase
       .from("summaries")
-      .select("*")
+      .select("brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status")
       .eq("content_id", contentId)
       .eq("language", lang)
       .order("created_at", { ascending: false })

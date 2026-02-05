@@ -77,7 +77,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
     try {
       const { data, error } = await supabase
         .from("analysis_prompts")
-        .select("*")
+        .select("id, prompt_type, name, description, system_content, user_content_template, model_name, temperature, max_tokens, expect_json, is_active, use_web_search, created_at, updated_at")
         .eq("is_active", true)
 
       if (error) throw error

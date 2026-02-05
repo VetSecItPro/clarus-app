@@ -8,6 +8,7 @@ import { toast } from "sonner"
 import type { ChatMessageData, ChatMessageType } from "@/components/chat"
 import type { TriageData, TruthCheckData } from "@/types/database.types"
 import type { AnalysisLanguage } from "@/lib/languages"
+import { normalizeUrl } from "@/lib/utils"
 
 export type ChatSessionState =
   | "idle" // No content loaded, waiting for URL
@@ -238,11 +239,14 @@ export function useChatSession({
       })
 
       try {
+        // Normalize URL for consistent cache matching (strips tracking params, www., etc.)
+        const normalizedUrlValue = normalizeUrl(url)
+
         // Check if user already has this URL analyzed (reuse content record to skip re-scraping)
         const { data: existingContent } = await supabase
           .from("content")
           .select("id, full_text, title")
-          .eq("url", url)
+          .eq("url", normalizedUrlValue)
           .eq("user_id", userId)
           .order("date_added", { ascending: false })
           .limit(1)
@@ -316,11 +320,11 @@ export function useChatSession({
           contentTitle ||
           `Analyzing: ${url.substring(0, 50)}${url.length > 50 ? "..." : ""}`
 
-        // Create content record
+        // Create content record (store normalized URL for consistent cache matching)
         const { data: newContent, error: insertError } = await supabase
           .from("content")
           .insert([
-            { url, type: urlMeta.type, user_id: userId, title, full_text: null, analysis_language: analysisLanguage },
+            { url: normalizedUrlValue, type: urlMeta.type, user_id: userId, title, full_text: null, analysis_language: analysisLanguage },
           ])
           .select("id")
           .single()
@@ -550,7 +554,7 @@ export function useChatSession({
 
           const { data: messagesData } = await supabase
             .from("chat_messages")
-            .select("*")
+            .select("id, role, content, created_at")
             .eq("thread_id", threadData.id)
             .order("created_at", { ascending: true })
             .limit(50)
