@@ -45,6 +45,7 @@ docs/archive/VAJRA_PROMPT*
 # Security audit reports — contain vulnerability details
 .security-audit.json
 .security-reports/
+docs/security/
 
 # Local dev tool config
 .mcp.json
