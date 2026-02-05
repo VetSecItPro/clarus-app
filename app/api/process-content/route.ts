@@ -1582,7 +1582,7 @@ async function findCachedAnalysis(
   // Uses normalized URL for matching to improve cache hit rate across tracking param variants
   const { data: candidates, error } = await supabase
     .from("content")
-    .select("id, url, user_id, full_text, title, author, duration, thumbnail_url, description, upload_date, view_count, like_count, channel_id, raw_youtube_metadata, transcript_languages, detected_tone, tags, analysis_language, type, date_added, is_bookmarked, share_token, podcast_transcript_id, regeneration_count")
+    .select("id, url, user_id, full_text, title, author, duration, thumbnail_url, description, upload_date, view_count, like_count, channel_id, raw_youtube_metadata, transcript_languages, detected_tone, tags, analysis_language, type, date_added, is_bookmarked, share_token, podcast_transcript_id, regeneration_count, is_public, vote_score")
     .eq("url", normalizedUrlValue)
     .not("full_text", "is", null)
     .neq("user_id", currentUserId)
