@@ -1190,6 +1190,12 @@ export interface Database {
         }
         Returns: undefined
       }
+      get_admin_metrics: {
+        Args: {
+          p_time_range_days?: number
+        }
+        Returns: Record<string, unknown>
+      }
     }
     Enums: { [_ in never]: never }
     CompositeTypes: { [_ in never]: never }

@@ -32,10 +32,19 @@ import {
 } from "date-fns"
 import { cn } from "@/lib/utils"
 import { useLibrary, type LibraryItem } from "@/lib/hooks/use-library"
+import dynamic from "next/dynamic"
 import { ChatThreadCard } from "@/components/chat"
-import { CollectionSidebar } from "@/components/collections/collection-sidebar"
-import { AddToCollectionButton } from "@/components/collections/add-to-collection-button"
 import { useCollections, useCollectionItems } from "@/lib/hooks/use-collections"
+
+// PERF: FIX-PERF-002 — Dynamic import collection components to reduce library page bundle
+const CollectionSidebar = dynamic(
+  () => import("@/components/collections/collection-sidebar").then(mod => mod.CollectionSidebar),
+  { ssr: false }
+)
+const AddToCollectionButton = dynamic(
+  () => import("@/components/collections/add-to-collection-button").then(mod => mod.AddToCollectionButton),
+  { ssr: false }
+)
 import type { TriageData, UserTier } from "@/types/database.types"
 import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
 

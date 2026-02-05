@@ -72,7 +72,8 @@
   },
   "pnpm": {
     "overrides": {
-      "lodash": ">=4.17.23"
+      "lodash": ">=4.17.23",
+      "@isaacs/brace-expansion": ">=5.0.1"
     }
   },
   "devDependencies": {
