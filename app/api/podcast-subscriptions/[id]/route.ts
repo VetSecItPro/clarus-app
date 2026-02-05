@@ -7,7 +7,7 @@
 
 import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
-import { validateUUID } from "@/lib/validation"
+import { validateUUID, checkRateLimit } from "@/lib/validation"
 
 /**
  * DELETE /api/podcast-subscriptions/[id]
@@ -20,6 +20,12 @@ export async function DELETE(
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user, supabase } = auth
+
+  // SECURITY: FIX-SEC-011 — Rate limit DELETE requests for podcast subscriptions
+  const rateCheck = checkRateLimit(`podcast-sub-del:${user.id}`, 60, 60000)
+  if (!rateCheck.allowed) {
+    return AuthErrors.rateLimit(rateCheck.resetIn)
+  }
 
   const { id } = await params
   const idCheck = validateUUID(id)

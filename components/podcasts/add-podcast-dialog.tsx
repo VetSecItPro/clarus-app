@@ -172,6 +172,7 @@ export function AddPodcastDialog({ currentCount, limit, onSubscribed }: AddPodca
                 exit={{ opacity: 0, scale: 0.95 }}
                 className="flex items-center gap-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20"
               >
+                {/* PERF: FIX-PERF-012 — unoptimized kept: podcast artwork comes from arbitrary RSS feed domains */}
                 {preview.podcast_image_url ? (
                   <Image
                     src={preview.podcast_image_url}

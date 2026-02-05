@@ -146,8 +146,6 @@ export async function POST(request: Request) {
               tier: "day_pass",
               day_pass_expires_at: expiresAt,
             })
-            console.log(`[Polar Webhook] Day pass activated for user ${userId}, expires ${expiresAt}`)
-
             // Send confirmation email
             const user = await getUserEmailAndName(supabaseAdmin, userId)
             if (user) {

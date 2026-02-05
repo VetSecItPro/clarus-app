@@ -1,15 +1,18 @@
 "use client"
 
 import { useState, useEffect, useCallback, useRef } from "react"
+import dynamic from "next/dynamic"
 import { TrendingUp, Sparkles, Clock, ArrowUpDown, Play, FileText, Mic, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { DiscoverCard } from "@/components/discover/discover-card"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { supabase } from "@/lib/supabase"
 import { getCachedSession } from "@/components/with-auth"
 import { useRouter } from "next/navigation"
 import type { DiscoverFeedItem } from "@/app/api/discover/route"
+
+// PERF: FIX-PERF-005 — lazy-load DiscoverCard to reduce initial bundle > 200kB
+const DiscoverCard = dynamic(() => import("@/components/discover/discover-card").then(m => ({ default: m.DiscoverCard })), { ssr: false })
 
 type SortOption = "trending" | "newest" | "top"
 type TypeFilter = "all" | "youtube" | "article" | "podcast"
@@ -132,7 +135,11 @@ export default function DiscoverPage() {
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+        {/* A11Y: FIX-FE-012 — loading spinner accessibility */}
+        <div role="status" aria-label="Loading">
+          <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+          <span className="sr-only">Loading...</span>
+        </div>
       </div>
     )
   }
@@ -238,8 +245,9 @@ export default function DiscoverPage() {
             <div ref={sentinelRef} className="h-4" />
 
             {loadingMore && (
-              <div className="flex justify-center py-6">
+              <div className="flex justify-center py-6" role="status" aria-label="Loading more content">
                 <Loader2 className="w-5 h-5 text-[#1d9bf0] animate-spin" />
+                <span className="sr-only">Loading more content...</span>
               </div>
             )}
           </div>

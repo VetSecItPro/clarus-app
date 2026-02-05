@@ -39,6 +39,12 @@ export async function GET(
       return auth.response
     }
 
+    // SECURITY: FIX-SEC-025 — Rate limit GET requests for tags
+    const tagGetLimit = checkRateLimit(`tags-get:${auth.user.id}`, 60, 60000)
+    if (!tagGetLimit.allowed) {
+      return AuthErrors.rateLimit(tagGetLimit.resetIn)
+    }
+
     // Verify ownership
     const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, idResult.data)
     if (!ownership.owned) {

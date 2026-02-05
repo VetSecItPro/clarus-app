@@ -4,6 +4,7 @@ import { Inter, Cormorant_Garamond } from "next/font/google"
 import { Analytics } from "@vercel/analytics/react"
 import { Toaster } from "sonner"
 import CookieConsent from "@/components/cookie-consent"
+import { ConsentGate } from "@/components/consent-gate"
 import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import { SWRProvider } from "@/components/swr-provider"
 import { ActiveAnalysisProvider } from "@/lib/contexts/active-analysis-context"
@@ -152,11 +153,15 @@ export default function RootLayout({
             {children}
           </ActiveAnalysisProvider>
         </SWRProvider>
+        {/* A11Y: FIX-FE-011 — Sonner Toaster has built-in aria-live="polite" and role="status" by default */}
         <Toaster position="top-center" />
         <CookieConsent />
         <ServiceWorkerRegister />
         <WebVitals />
-        <Analytics />
+        {/* FE: FIX-FE-014 — analytics gated behind cookie consent */}
+        <ConsentGate>
+          <Analytics />
+        </ConsentGate>
       </body>
     </html>
   )
