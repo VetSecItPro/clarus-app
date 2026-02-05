@@ -1,3 +1,20 @@
+/**
+ * @module use-library
+ * @description Infinite-scroll library data hook with search, filters, and sorting.
+ *
+ * Powers the `/library` page with paginated content loading using SWR Infinite.
+ * Supports two distinct data paths:
+ *   - **Browse mode** -- queries Supabase directly with server-side filtering
+ *   - **Search mode** -- delegates to the `/api/search` full-text search endpoint
+ *
+ * Client-side post-processing handles score sorting, tag filtering, and
+ * quality score range filtering since these require cross-table data that
+ * cannot be efficiently filtered server-side.
+ *
+ * @see {@link lib/prefetch.ts} prefetchLibrary for cache warming
+ * @see {@link app/api/search/route.ts} for the full-text search endpoint
+ */
+
 "use client"
 
 import { useMemo, useCallback } from "react"
@@ -18,6 +35,7 @@ type SummaryData = {
   } | null
 }
 
+/** A content item enriched with ratings, summaries, and library metadata. */
 export type LibraryItem = ContentItem & {
   content_ratings: { signal_score: number | null }[]
   summaries: SummaryData | SummaryData[]
@@ -234,6 +252,25 @@ const fetcher = async (
   return browseFetcher(options, page)
 }
 
+/**
+ * Provides paginated, filterable, sortable access to the user's content library.
+ *
+ * Internally uses SWR Infinite for cursor-based pagination with automatic
+ * deduplication and background revalidation. Cache keys encode all filter
+ * and sort parameters so changing filters triggers fresh data fetching.
+ *
+ * @param options - Filtering, sorting, and pagination configuration
+ * @returns Library items, loading states, pagination controls, and a refresh function
+ *
+ * @example
+ * ```tsx
+ * const { items, isLoading, hasMore, loadMore } = useLibrary({
+ *   userId: user.id,
+ *   filterType: "article",
+ *   sortBy: "date_desc",
+ * })
+ * ```
+ */
 export function useLibrary(options: UseLibraryOptions) {
   // Memoize key prefix to prevent SWR cache misses from recreated strings
   const keyPrefix = useMemo(() => [

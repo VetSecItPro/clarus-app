@@ -1,3 +1,22 @@
+/**
+ * @module use-chat-session
+ * @description Primary React hook orchestrating the chat-based content analysis flow.
+ *
+ * Manages the full lifecycle of a content analysis session:
+ *   1. **URL submission** -- create a content record and trigger background processing
+ *   2. **Status polling** -- poll `/api/content-status` until initial analysis is ready
+ *   3. **Suggestion handling** -- display post-analysis actions (executive summary, full analysis, truth check)
+ *   4. **AI chat** -- follow-up questions via the Vercel AI SDK streaming endpoint
+ *   5. **PDF upload** -- submit a PDF file for OCR + analysis
+ *
+ * URL deduplication uses {@link normalizeUrl} to avoid re-scraping content the
+ * user has already analyzed. Existing content with a completed summary in the
+ * requested language navigates directly to the item page.
+ *
+ * @see {@link lib/utils.ts} normalizeUrl for URL normalization
+ * @see {@link lib/languages.ts} AnalysisLanguage for multi-language support
+ */
+
 "use client"
 
 import { useState, useCallback, useRef, useEffect } from "react"
@@ -10,6 +29,14 @@ import type { TriageData, TruthCheckData } from "@/types/database.types"
 import type { AnalysisLanguage } from "@/lib/languages"
 import { normalizeUrl } from "@/lib/utils"
 
+/**
+ * The progression of states during a content analysis session.
+ *
+ * - `idle` -- waiting for the user to submit a URL or PDF
+ * - `processing` -- content submitted, background analysis in progress
+ * - `initial_complete` -- initial analysis ready (Quality + TL;DR), showing suggestion buttons
+ * - `chatting` -- user has started asking follow-up questions
+ */
 export type ChatSessionState =
   | "idle" // No content loaded, waiting for URL
   | "processing" // URL submitted, analysis in progress
@@ -48,6 +75,29 @@ interface UrlMeta {
   favicon: string
 }
 
+/**
+ * Orchestrates a complete content analysis chat session.
+ *
+ * Provides state, actions, and computed values for the chat UI. Handles
+ * URL submission with deduplication, PDF upload, status polling with
+ * timeout/error handling, suggestion-driven analysis display, and AI
+ * streaming chat for follow-up questions.
+ *
+ * @param options - Session configuration including user ID, optional initial content, and language
+ * @returns An object with session state, action callbacks, and a reset function
+ *
+ * @example
+ * ```tsx
+ * const session = useChatSession({
+ *   userId: user.id,
+ *   analysisLanguage: "en",
+ *   onContentCreated: (id) => router.push(`/item/${id}`),
+ * })
+ * // session.submitUrl(url, urlMeta) -- start analysis
+ * // session.sendChatMessage(text) -- ask follow-up
+ * // session.reset() -- clear session
+ * ```
+ */
 export function useChatSession({
   userId,
   initialContentId,

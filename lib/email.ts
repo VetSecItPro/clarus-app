@@ -1,3 +1,23 @@
+/**
+ * @module email
+ * @description Transactional email sending via Resend.
+ *
+ * Provides type-safe wrappers for each email template used by Clarus:
+ *   - **Subscription lifecycle** -- welcome, payment failed, cancellation
+ *   - **Engagement** -- weekly digest, discovery newsletter
+ *   - **Sharing** -- share analysis with another user
+ *   - **Contact** -- contact form forwarding to admin inbox
+ *
+ * All emails are rendered server-side using React Email components and
+ * sent through the Resend API. The Resend client is lazily initialized
+ * to avoid build failures when the API key is not configured (e.g., in CI).
+ *
+ * HTML output from user input is escaped via {@link escapeHtml} to prevent
+ * XSS in email clients.
+ *
+ * @see {@link emails/} directory for React Email template components
+ */
+
 import { Resend } from "resend"
 import { render } from "@react-email/components"
 
@@ -11,6 +31,11 @@ import { DiscoveryNewsletterEmail } from "@/emails/discovery-newsletter"
 
 // Lazy initialization to avoid build errors when API key is missing
 let resendClient: Resend | null = null
+
+/**
+ * Returns the singleton Resend client, creating it on first call.
+ * @throws Error if `RESEND_API_KEY` is not configured
+ */
 function getResend(): Resend {
   if (!resendClient) {
     if (!process.env.RESEND_API_KEY) {
@@ -23,6 +48,7 @@ function getResend(): Resend {
 
 const FROM_EMAIL = "Clarus <noreply@clarusapp.io>"
 
+/** Result of an email send attempt. Check `success` before accessing other fields. */
 export interface SendEmailResult {
   success: boolean
   messageId?: string
@@ -59,6 +85,7 @@ async function sendEmail(
 
 // ==================== Subscription Emails ====================
 
+/** Sends a welcome email when a user starts a paid subscription. */
 export async function sendSubscriptionStartedEmail(
   to: string,
   userName: string | undefined,
@@ -73,6 +100,7 @@ export async function sendSubscriptionStartedEmail(
   return sendEmail(to, "Clarus - Welcome to Pro", html)
 }
 
+/** Sends a payment failure notification with retry date and payment update link. */
 export async function sendPaymentFailedEmail(
   to: string,
   userName: string | undefined,
@@ -88,6 +116,7 @@ export async function sendPaymentFailedEmail(
   return sendEmail(to, "Clarus - Payment Failed", html)
 }
 
+/** Sends a cancellation confirmation with access-until date and re-subscribe link. */
 export async function sendSubscriptionCancelledEmail(
   to: string,
   userName: string | undefined,
@@ -103,6 +132,7 @@ export async function sendSubscriptionCancelledEmail(
 
 // ==================== Engagement Emails ====================
 
+/** Sends the weekly digest summarizing the user's analysis activity. */
 export async function sendWeeklyDigestEmail(
   to: string,
   userName: string | undefined,
@@ -119,6 +149,7 @@ export async function sendWeeklyDigestEmail(
 
 // ==================== Discovery Newsletter ====================
 
+/** Sends the discovery newsletter featuring trending shared analyses. */
 export async function sendDiscoveryNewsletterEmail(
   to: string,
   userName: string | undefined,
@@ -140,6 +171,7 @@ export async function sendDiscoveryNewsletterEmail(
 
 // ==================== Sharing Emails ====================
 
+/** Sends an email notifying a recipient that someone shared an analysis with them. */
 export async function sendShareAnalysisEmail(
   to: string,
   senderName: string,
@@ -166,6 +198,10 @@ export async function sendShareAnalysisEmail(
 
 // ==================== Contact Form ====================
 
+/**
+ * Forwards a contact form submission to the admin inbox.
+ * All user input is HTML-escaped before rendering to prevent XSS.
+ */
 export async function sendContactFormEmail(
   senderName: string,
   senderEmail: string,

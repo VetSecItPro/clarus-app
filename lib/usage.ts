@@ -1,6 +1,16 @@
 /**
- * Usage tracking utilities
- * Server-side functions to check and increment usage counters
+ * @module usage
+ * @description Server-side usage tracking and limit enforcement.
+ *
+ * Provides functions to read a user's current tier, fetch monthly usage
+ * counters, check whether an action is within limits, and atomically
+ * increment counters after an action succeeds.
+ *
+ * The increment is performed via the `increment_usage` Postgres RPC
+ * to ensure atomicity under concurrent requests.
+ *
+ * @see {@link lib/tier-limits.ts} for tier definitions and limit values
+ * @see {@link lib/api-usage.ts} for external API cost tracking (different concern)
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js"
@@ -25,7 +35,14 @@ interface UsageCheckResult {
 }
 
 /**
- * Get the user's current tier from the database
+ * Fetches the user's effective subscription tier from the database.
+ *
+ * Handles day-pass expiration by falling back to `"free"` when the
+ * pass has expired.
+ *
+ * @param supabase - An authenticated Supabase client
+ * @param userId - The user ID to look up
+ * @returns The user's effective {@link UserTier}
  */
 export async function getUserTier(
   supabase: SupabaseClient<Database>,
@@ -41,7 +58,15 @@ export async function getUserTier(
 }
 
 /**
- * Get usage counts for the current period
+ * Fetches the user's usage counters for the current (or specified) billing period.
+ *
+ * Returns zero for all fields if no `usage_tracking` row exists yet
+ * (i.e., the user has not performed any actions this period).
+ *
+ * @param supabase - An authenticated Supabase client
+ * @param userId - The user ID to look up
+ * @param period - Optional period override in `YYYY-MM` format (defaults to current month)
+ * @returns An object with all usage counter values
  */
 export async function getUsageCounts(
   supabase: SupabaseClient<Database>,
@@ -68,8 +93,16 @@ export async function getUsageCounts(
 }
 
 /**
- * Check if a user can perform an action based on their tier and current usage.
- * Does NOT increment — use this for pre-flight checks.
+ * Pre-flight check: determines whether a user can perform an action
+ * based on their tier and current usage. Does **not** increment the counter.
+ *
+ * @param supabase - An authenticated Supabase client
+ * @param userId - The user ID to check
+ * @param field - The usage counter field to check
+ * @returns A {@link UsageCheckResult} indicating whether the action is allowed
+ *
+ * @see {@link enforceUsageLimit} for a convenience wrapper
+ * @see {@link incrementUsage} for the post-action increment
  */
 export async function checkUsageLimit(
   supabase: SupabaseClient<Database>,
@@ -93,9 +126,16 @@ export async function checkUsageLimit(
 }
 
 /**
- * Increment a usage counter atomically using the database function.
- * Returns the new count, or null if the increment failed.
- * Call this AFTER the action succeeds (not before).
+ * Atomically increments a usage counter via the `increment_usage` Postgres RPC.
+ *
+ * Call this **after** the action succeeds (not before) to avoid counting
+ * failed attempts. The RPC handles upsert logic for the `usage_tracking`
+ * row, creating it if this is the user's first action in the period.
+ *
+ * @param supabase - An authenticated Supabase client
+ * @param userId - The user ID whose counter to increment
+ * @param field - The usage counter field to increment
+ * @returns The new counter value, or `null` if the increment failed
  */
 export async function incrementUsage(
   supabase: SupabaseClient<Database>,
@@ -119,12 +159,30 @@ export async function incrementUsage(
 }
 
 /**
- * Combined check-and-gate: checks the limit, returns an error message if exceeded.
- * SECURITY: Reads current count to compare against limit — FIX-013 (TOCTOU race condition).
- * The actual increment is atomic via the increment_usage RPC, so concurrent requests
- * that both pass the check will still increment correctly (no data corruption).
- * The worst case is a user slightly exceeding their limit by 1-2 requests under
- * high concurrency, which is acceptable for this use case.
+ * Combined check-and-gate: verifies the limit and returns a typed result
+ * that API routes can use to either proceed or return a 403.
+ *
+ * **Concurrency note (TOCTOU):** The check and the subsequent increment
+ * (via {@link incrementUsage}) are separate operations. Under high
+ * concurrency, a user could slightly exceed their limit by 1--2 requests.
+ * This is acceptable because the increment itself is atomic via the
+ * `increment_usage` RPC, so no data corruption occurs.
+ *
+ * @param supabase - An authenticated Supabase client
+ * @param userId - The user ID to gate
+ * @param field - The usage counter field to check
+ * @returns `{ allowed: true, tier }` or `{ allowed: false, tier, limit, currentCount }`
+ *
+ * @example
+ * ```ts
+ * const gate = await enforceUsageLimit(supabase, userId, "analyses_count")
+ * if (!gate.allowed) {
+ *   return NextResponse.json(
+ *     { error: `You've used ${gate.currentCount}/${gate.limit} analyses this month.` },
+ *     { status: 403 }
+ *   )
+ * }
+ * ```
  */
 export async function enforceUsageLimit(
   supabase: SupabaseClient<Database>,

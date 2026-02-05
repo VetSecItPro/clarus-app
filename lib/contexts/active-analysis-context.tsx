@@ -1,3 +1,24 @@
+/**
+ * @module active-analysis-context
+ * @description React context for tracking the currently active content analysis.
+ *
+ * Provides app-wide awareness of whether an analysis is in progress or
+ * recently completed, enabling features like:
+ *   - A persistent "analyzing..." banner in the nav bar
+ *   - A toast notification with "View" action when analysis completes
+ *   - Automatic navigation to the completed analysis
+ *
+ * State is persisted to `localStorage` so the tracking survives page
+ * refreshes. In-progress analyses expire after 30 minutes; completed
+ * analyses persist for 24 hours.
+ *
+ * The provider polls `/api/content-status/{id}` every 5 seconds to detect
+ * completion. Polling pauses when the user is already on the item page
+ * (to avoid duplicate requests with the page's own polling).
+ *
+ * @see {@link lib/hooks/use-chat-session.ts} for the session-level polling
+ */
+
 "use client"
 
 import {
@@ -76,6 +97,12 @@ function clearStorage(): void {
 
 const ActiveAnalysisContext = createContext<ActiveAnalysisContextValue | null>(null)
 
+/**
+ * Consumes the active analysis context.
+ *
+ * @throws Error if called outside of an {@link ActiveAnalysisProvider}
+ * @returns The current analysis tracking state and control functions
+ */
 export function useActiveAnalysis(): ActiveAnalysisContextValue {
   const ctx = useContext(ActiveAnalysisContext)
   if (!ctx) {
@@ -86,6 +113,13 @@ export function useActiveAnalysis(): ActiveAnalysisContextValue {
 
 // ── Provider ───────────────────────────────────────
 
+/**
+ * Provider component that manages analysis tracking state and polling.
+ *
+ * Wrap this around the app layout to enable analysis tracking across
+ * all pages. Hydrates from localStorage on mount and polls for status
+ * updates until the analysis completes, fails, or expires.
+ */
 export function ActiveAnalysisProvider({ children }: { children: ReactNode }) {
   const router = useRouter()
   const [activeAnalysis, setActiveAnalysis] = useState<ActiveAnalysis | null>(null)
