@@ -14,6 +14,7 @@ import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { NonRetryableError, classifyError, getUserFriendlyError } from "@/lib/error-sanitizer"
 import { normalizeUrl } from "@/lib/utils"
 import { sanitizeForPrompt, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
+import { parseAiResponseOrThrow } from "@/lib/ai-response-parser"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -114,12 +115,18 @@ async function extractKeyTopics(text: string): Promise<string[]> {
     const content = data.choices?.[0]?.message?.content
     if (!content) return []
 
-    // Parse the JSON response
-    const parsed = JSON.parse(content)
-    const topics = Array.isArray(parsed) ? parsed : parsed.queries || parsed.topics || []
+    // Parse the JSON response (robust: handles markdown fences, truncation, etc.)
+    const parsed = parseAiResponseOrThrow<Record<string, unknown> | unknown[]>(content, "keyword_extraction")
+    const rawTopics: unknown[] = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray((parsed as Record<string, unknown>).queries)
+        ? (parsed as Record<string, unknown>).queries as unknown[]
+        : Array.isArray((parsed as Record<string, unknown>).topics)
+          ? (parsed as Record<string, unknown>).topics as unknown[]
+          : []
 
     // Limit to 5 topics max
-    return topics.slice(0, 5).filter((t: unknown) => typeof t === 'string' && t.length > 2)
+    return rawTopics.slice(0, 5).filter((t: unknown): t is string => typeof t === 'string' && t.length > 2)
   } catch (error) {
     console.warn("API: Topic extraction error:", error)
     return []
@@ -363,7 +370,7 @@ async function detectContentTone(
       metadata: { section: "tone_detection" },
     })
 
-    const parsed = JSON.parse(rawContent)
+    const parsed = parseAiResponseOrThrow<Record<string, unknown>>(rawContent, "tone_detection")
     const toneLabel = typeof parsed.tone_label === "string" ? parsed.tone_label.trim() : NEUTRAL_TONE_LABEL
     const toneDirective = typeof parsed.tone_directive === "string" ? parsed.tone_directive.trim() : NEUTRAL_TONE_DIRECTIVE
 
@@ -876,14 +883,7 @@ async function getModelSummary(
 
     let parsedContent: ParsedModelSummaryResponse
     try {
-      const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)\s*```/)
-      if (jsonMatch && jsonMatch[1]) {
-        console.log("API: Found JSON inside markdown block. Parsing...")
-        parsedContent = JSON.parse(jsonMatch[1]) as ParsedModelSummaryResponse
-      } else {
-        console.log("API: No markdown block found. Attempting to parse entire content as JSON...")
-        parsedContent = JSON.parse(rawContent) as ParsedModelSummaryResponse
-      }
+      parsedContent = parseAiResponseOrThrow<ParsedModelSummaryResponse>(rawContent, "summarizer")
     } catch (parseError: unknown) {
       const errorMessage = `Failed to parse JSON from model response. Error: ${getErrorMessage(parseError)}`
       console.error(errorMessage, "Raw content was:", rawContent)
@@ -1105,9 +1105,8 @@ async function generateSectionWithAI(
 
       if (prompt.expect_json) {
         try {
-          // Try to parse JSON, handling markdown code blocks
-          const jsonMatch = rawContent.match(/```json\s*([\s\S]*?)\s*```/)
-          const parsedContent = jsonMatch && jsonMatch[1] ? JSON.parse(jsonMatch[1]) : JSON.parse(rawContent)
+          // Robust parse: handles markdown fences, leading/trailing prose, truncation
+          const parsedContent = parseAiResponseOrThrow<unknown>(rawContent, promptType)
 
           console.log(`API: [${promptType}] Success on attempt ${attempt}`)
 
