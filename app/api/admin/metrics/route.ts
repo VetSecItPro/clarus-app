@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateAdmin, getAdminClient, AuthErrors } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/validation"
 import { z } from "zod"
 import { parseQuery } from "@/lib/schemas"
 
@@ -143,6 +144,12 @@ export async function GET(request: NextRequest) {
     const auth = await authenticateAdmin()
     if (!auth.success) {
       return auth.response
+    }
+
+    // SECURITY: FIX-SEC-014 — Rate limit admin metrics endpoint
+    const rateCheck = checkRateLimit(`admin-metrics:${auth.user.id}`, 30, 60000)
+    if (!rateCheck.allowed) {
+      return AuthErrors.rateLimit(rateCheck.resetIn)
     }
 
     // Validate query parameters

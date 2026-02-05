@@ -91,6 +91,7 @@ export function ArticlePageClient({
       <div className="border-t border-white/[0.06] mb-10" />
 
       {/* Article content */}
+      {/* SECURITY: FIX-SEC-004 — dangerouslySetInnerHTML is safe here because htmlContent comes from static blog-articles.ts (developer-controlled, not user input) */}
       <article
         className="article-content"
         dangerouslySetInnerHTML={{ __html: article.htmlContent }}

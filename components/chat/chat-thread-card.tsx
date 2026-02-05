@@ -116,12 +116,13 @@ export const ChatThreadCard = memo(function ChatThreadCard({
           {/* Thumbnail */}
           {thumbnail_url && (
             <div className="shrink-0 w-16 h-12 sm:w-20 sm:h-14 rounded-lg overflow-hidden bg-white/[0.05] relative">
+              {/* PERF: FIX-PERF-012 — use Next.js image optimization (ytimg.com is in remotePatterns) */}
               <Image
                 src={thumbnail_url}
                 alt=""
                 fill
+                sizes="(max-width: 640px) 64px, 80px"
                 className="object-cover"
-                unoptimized
               />
             </div>
           )}

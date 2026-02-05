@@ -56,8 +56,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid transcript_id" }, { status: 400 })
   }
 
-  console.log(`WEBHOOK: Received AssemblyAI callback for transcript ${transcript_id}, status: ${status}`)
-
   // Look up content by podcast_transcript_id
   const { data: content, error: fetchError } = await supabase
     .from("content")
@@ -128,10 +126,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Empty transcript" })
   }
 
-  console.log(
-    `WEBHOOK: Transcript ready for ${content.id}. Duration: ${duration_seconds}s, Speakers: ${speaker_count}, Length: ${full_text.length} chars`,
-  )
-
   // Save transcript to content
   await supabase
     .from("content")
@@ -165,7 +159,6 @@ export async function POST(req: NextRequest) {
   let analysisTriggered = false
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      console.log(`WEBHOOK: Triggering AI analysis for content ${content.id} (attempt ${attempt}/3)`)
       const analysisResponse = await fetch(`${appUrl}/api/process-content`, {
         method: "POST",
         headers: {
@@ -177,7 +170,6 @@ export async function POST(req: NextRequest) {
       })
 
       if (analysisResponse.ok) {
-        console.log(`WEBHOOK: AI analysis triggered for ${content.id}`)
         analysisTriggered = true
         break
       }

@@ -529,6 +529,7 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
           size="icon"
           className="h-9 w-9 rounded-lg bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:opacity-50 shadow-lg shadow-blue-500/20 flex-shrink-0"
           disabled={isLoading || !localInput.trim()}
+          aria-label="Send message" // A11Y: FIX-FE-004 — aria-label on icon-only send button
         >
           <Send className="w-3.5 h-3.5" />
         </Button>

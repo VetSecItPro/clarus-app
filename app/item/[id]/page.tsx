@@ -17,10 +17,13 @@ import { YouTubePlayer, type YouTubePlayerRef } from "@/components/ui/youtube-pl
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
-import { TriageCard } from "@/components/ui/triage-card"
-import { TruthCheckCard, type CrossReference } from "@/components/ui/truth-check-card"
-import { ActionItemsCard } from "@/components/ui/action-items-card"
+import type { CrossReference } from "@/components/ui/truth-check-card"
 import { AnalysisProgress } from "@/components/ui/analysis-progress"
+
+// PERF: FIX-PERF-003 — lazy-load below-fold analysis cards to reduce initial 361kB bundle
+const TriageCard = dynamic(() => import("@/components/ui/triage-card").then(m => ({ default: m.TriageCard })), { ssr: false })
+const TruthCheckCard = dynamic(() => import("@/components/ui/truth-check-card").then(m => ({ default: m.TruthCheckCard })), { ssr: false })
+const ActionItemsCard = dynamic(() => import("@/components/ui/action-items-card").then(m => ({ default: m.ActionItemsCard })), { ssr: false })
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { useUpgradeModal } from "@/lib/hooks/use-upgrade-modal"
@@ -1156,15 +1159,13 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    <Link href="/">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08]"
-                        aria-label="Back to home"
-                      >
-                        <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                      </Button>
+                    {/* FE: FIX-FE-001 — replaced nested Link>Button with Link styled as button */}
+                    <Link
+                      href="/"
+                      className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08] inline-flex items-center justify-center"
+                      aria-label="Back to home"
+                    >
+                      <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                     </Link>
                   </TooltipTrigger>
                   <TooltipContent>Back to Library</TooltipContent>

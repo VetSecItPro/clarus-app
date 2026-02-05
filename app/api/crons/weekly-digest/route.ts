@@ -73,19 +73,22 @@ export async function GET(request: Request) {
   // Batch fetch all user content and summaries in parallel
   const userIds = eligibleUsers.map(u => u.id)
 
+  // PERF: FIX-PERF-010 — add .limit() to content/summaries queries to prevent unbounded results
   const [contentResult, summariesResult, claimsResult] = await Promise.all([
     supabase
       .from("content")
       .select("id, title, url, user_id, full_text, duration, tags, type")
       .in("user_id", userIds)
       .gte("date_added", sevenDaysAgo)
-      .order("date_added", { ascending: false }),
+      .order("date_added", { ascending: false })
+      .limit(500),
     supabase
       .from("summaries")
       .select("content_id, triage, truth_check, user_id")
       .eq("processing_status", "complete")
       .eq("language", "en")
-      .gte("created_at", sevenDaysAgo),
+      .gte("created_at", sevenDaysAgo)
+      .limit(500),
     supabase
       .from("claims")
       .select("content_id, claim_text, status, user_id")
