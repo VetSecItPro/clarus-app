@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import dynamic from "next/dynamic"
 import { Rss, Trash2, Loader2, Podcast, ExternalLink } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
@@ -9,13 +10,14 @@ import { motion, AnimatePresence } from "framer-motion"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
-import { Button } from "@/components/ui/button"
-import { AddPodcastDialog } from "@/components/podcasts/add-podcast-dialog"
-import { EpisodeList } from "@/components/podcasts/episode-list"
-import { supabase } from "@/lib/supabase"
-import { normalizeTier, TIER_LIMITS, TIER_FEATURES } from "@/lib/tier-limits"
+import { TIER_LIMITS, TIER_FEATURES } from "@/lib/tier-limits"
 import { cn } from "@/lib/utils"
-import type { UserTier } from "@/types/database.types"
+// PERF: use shared SWR hook instead of independent Supabase query for tier data
+import { useUserTier } from "@/lib/hooks/use-user-tier"
+
+// PERF: FIX-PERF-005 — lazy-load dialog and episode list to reduce initial bundle > 200kB
+const AddPodcastDialog = dynamic(() => import("@/components/podcasts/add-podcast-dialog").then(m => ({ default: m.AddPodcastDialog })), { ssr: false })
+const EpisodeList = dynamic(() => import("@/components/podcasts/episode-list").then(m => ({ default: m.EpisodeList })), { ssr: false })
 
 interface Subscription {
   id: string
@@ -39,7 +41,8 @@ function PodcastsPage({ session }: PodcastsPageProps) {
   const [loading, setLoading] = useState(true)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [expandedId, setExpandedId] = useState<string | null>(null)
-  const [userTier, setUserTier] = useState<UserTier>("free")
+  // PERF: shared SWR hook eliminates duplicate tier query (was independent useEffect+fetch)
+  const { tier: userTier } = useUserTier(session?.user?.id ?? null)
 
   const fetchSubscriptions = useCallback(async () => {
     try {
@@ -58,21 +61,6 @@ function PodcastsPage({ session }: PodcastsPageProps) {
   useEffect(() => {
     fetchSubscriptions()
   }, [fetchSubscriptions])
-
-  useEffect(() => {
-    const fetchTier = async () => {
-      if (!session?.user) return
-      const { data } = await supabase
-        .from("users")
-        .select("tier, day_pass_expires_at")
-        .eq("id", session.user.id)
-        .single()
-      if (data) {
-        setUserTier(normalizeTier(data.tier, data.day_pass_expires_at))
-      }
-    }
-    fetchTier()
-  }, [session])
 
   const handleDelete = async (id: string, name: string) => {
     if (deletingId) return
@@ -165,10 +153,12 @@ function PodcastsPage({ session }: PodcastsPageProps) {
               Subscribe to podcast RSS feeds and get notified when new episodes drop.
               Choose which episodes to analyze -- your quota is only used when you decide.
             </p>
-            <Link href="/pricing">
-              <Button>
-                Upgrade to Starter
-              </Button>
+            {/* FE: FIX-FE-002 — replaced nested Link>Button with Link styled as button */}
+            <Link
+              href="/pricing"
+              className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
+            >
+              Upgrade to Starter
             </Link>
           </motion.div>
         )}
@@ -225,12 +215,14 @@ function PodcastsPage({ session }: PodcastsPageProps) {
                     aria-label={`Toggle episodes for ${sub.podcast_name}`}
                   >
                     {/* Podcast artwork */}
+                    {/* PERF: FIX-PERF-012 — unoptimized kept: podcast artwork comes from arbitrary RSS feed domains */}
                     {sub.podcast_image_url ? (
                       <Image
                         src={sub.podcast_image_url}
                         alt={sub.podcast_name}
                         width={56}
                         height={56}
+                        sizes="56px"
                         className="w-14 h-14 rounded-xl object-cover shrink-0"
                         unoptimized
                       />

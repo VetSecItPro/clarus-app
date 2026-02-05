@@ -2,6 +2,9 @@ import type { Metadata } from "next"
 import { blogArticles, getFeaturedArticles } from "@/lib/data/blog-articles"
 import { ArticlesPageClient } from "./ArticlesPageClient"
 
+// ISR: revalidate every hour — blog articles from static data
+export const revalidate = 3600
+
 export const metadata: Metadata = {
   title: "Articles — AI Content Analysis, Fact-Checking & Media Literacy | Clarus",
   description:

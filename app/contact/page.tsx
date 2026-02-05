@@ -23,6 +23,9 @@ export const metadata: Metadata = {
   },
 }
 
+// ISR: revalidate every hour — page structure rarely changes
+export const revalidate = 3600
+
 export default function ContactPage() {
   return (
     <div className="min-h-screen bg-black flex flex-col">

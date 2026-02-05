@@ -1,17 +1,17 @@
 "use client"
 
-import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Home, Clock, Compass, Podcast } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
-import { supabase } from "@/lib/supabase"
 import { getCachedSession } from "@/components/with-auth"
-import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
+import { TIER_FEATURES } from "@/lib/tier-limits"
 import { InstantTooltip } from "@/components/ui/tooltip"
 import { ActiveAnalysisNavLink } from "@/components/active-analysis-nav-link"
+// PERF: use shared SWR hook instead of independent Supabase query for tier data
+import { useUserTier } from "@/lib/hooks/use-user-tier"
 import type { UserTier } from "@/types/database.types"
 
 const baseNavItems = [
@@ -36,45 +36,14 @@ interface SiteHeaderProps {
 
 export default function SiteHeader({ showNav = true, showSettings = true }: SiteHeaderProps) {
   const pathname = usePathname()
-  const [userTier, setUserTier] = useState<UserTier | null>(null)
+  // PERF: shared SWR hook eliminates duplicate tier query (was independent useEffect+fetch)
+  const { session } = getCachedSession()
+  const { tier: userTier } = useUserTier(session?.user?.id ?? null)
 
-  useEffect(() => {
-    const fetchTier = async () => {
-      const { session } = getCachedSession()
-      if (!session?.user) {
-        // Try getting session directly if cache isn't ready
-        const { data: { session: freshSession } } = await supabase.auth.getSession()
-        if (!freshSession?.user) return
-
-        const { data } = await supabase
-          .from("users")
-          .select("tier, day_pass_expires_at")
-          .eq("id", freshSession.user.id)
-          .single()
-
-        if (data) {
-          setUserTier(normalizeTier(data.tier, data.day_pass_expires_at))
-        }
-        return
-      }
-
-      const { data } = await supabase
-        .from("users")
-        .select("tier, day_pass_expires_at")
-        .eq("id", session.user.id)
-        .single()
-
-      if (data) {
-        setUserTier(normalizeTier(data.tier, data.day_pass_expires_at))
-      }
-    }
-    fetchTier()
-  }, [])
-
-  const badgeConfig = userTier ? TIER_BADGE_CONFIG[userTier] : null
+  const badgeConfig = TIER_BADGE_CONFIG[userTier]
 
   // Build nav items dynamically based on tier (Podcasts visible for Starter+)
-  const showPodcasts = userTier ? TIER_FEATURES[userTier].podcastSubscriptions : false
+  const showPodcasts = TIER_FEATURES[userTier].podcastSubscriptions
   const navItems = showPodcasts ? [...baseNavItems, podcastNavItem] : baseNavItems
 
   return (
@@ -89,6 +58,8 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
                 alt="Clarus"
                 width={40}
                 height={40}
+                sizes="40px"
+                priority
                 className="w-10 h-10 transition-all duration-300 group-hover:scale-105"
               />
               {/* Subtle glow effect */}

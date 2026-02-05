@@ -100,6 +100,9 @@ const features = [
   },
 ]
 
+// ISR: revalidate every hour — content changes infrequently
+export const revalidate = 3600
+
 export default function FeaturesIndexPage() {
   return (
     <main className="max-w-5xl mx-auto px-4 lg:px-6 py-16">

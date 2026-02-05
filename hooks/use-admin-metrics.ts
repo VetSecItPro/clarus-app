@@ -57,10 +57,11 @@ export function useAdminMrr({ userId, enabled = true }: { userId: string | null;
     enabled && userId ? `/api/admin/mrr?userId=${userId}` : null,
     fetcher,
     {
-      // MRR doesn't change often, cache longer
+      // PERF: MRR doesn't change often — skip stale revalidation, cache longer
       refreshInterval: 10 * 60 * 1000,
       dedupingInterval: 5 * 60 * 1000,
       revalidateOnFocus: false,
+      revalidateIfStale: false,
     }
   )
 

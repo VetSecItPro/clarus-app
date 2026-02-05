@@ -13,6 +13,7 @@ export function LandingFooter() {
             alt="Clarus"
             width={40}
             height={40}
+            sizes="40px"
             className="w-10 h-10"
           />
           <span className="text-white/90 font-bold text-3xl italic tracking-wide" style={{ fontFamily: 'var(--font-cormorant)' }}>
@@ -28,6 +29,10 @@ export function LandingFooter() {
           <span className="text-white/20">·</span>
           <Link href="/contact" className="hover:text-white/70 transition-colors">
             Contact
+          </Link>
+          <span className="text-white/20">·</span>
+          <Link href="/install" className="hover:text-white/70 transition-colors">
+            Install App
           </Link>
           <span className="text-white/20">·</span>
           <Link href="/pricing" className="hover:text-white/70 transition-colors">

@@ -234,23 +234,25 @@ export async function POST(req: NextRequest) {
       await incrementUsage(supabaseAdmin, contentData.user_id, "chat_messages_count")
     }
 
-    // Fetch summary data (including action_items for grounded chat)
-    // Default to English analysis for chat context; user's chat language is auto-detected
-    const { data: summaryData } = await supabaseAdmin
-      .from("summaries")
-      .select("brief_overview, mid_length_summary, detailed_summary, triage, truth_check, action_items")
-      .eq("content_id", contentIdValidation.sanitized!)
-      .eq("language", "en")
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle()
+    // PERF: Parallelize summary and prompt queries instead of running sequentially
+    const [summaryQueryResult, promptQueryResult] = await Promise.all([
+      supabaseAdmin
+        .from("summaries")
+        .select("brief_overview, mid_length_summary, detailed_summary, triage, truth_check, action_items")
+        .eq("content_id", contentIdValidation.sanitized!)
+        .eq("language", "en")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("active_chat_prompt")
+        .select("system_content, temperature, top_p, max_tokens, model_name")
+        .eq("id", 1)
+        .single(),
+    ])
 
-    // Fetch chat prompt configuration
-    const { data: promptData, error: promptError } = await supabaseAdmin
-      .from("active_chat_prompt")
-      .select("system_content, temperature, top_p, max_tokens, model_name")
-      .eq("id", 1)
-      .single()
+    const { data: summaryData } = summaryQueryResult
+    const { data: promptData, error: promptError } = promptQueryResult
 
     if (promptError || !promptData) {
       console.error("[Chat API] Error fetching prompt:", promptError)

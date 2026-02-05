@@ -20,15 +20,20 @@ import {
 } from "@/components/chat"
 import { useChatSession } from "@/lib/hooks/use-chat-session"
 import { type AnalysisLanguage, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
-import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
-import { BulkImportDialog } from "@/components/bulk-import-dialog"
-import type { UserTier } from "@/types/database.types"
+// PERF: use shared SWR hook instead of independent Supabase query for tier + name
+import { useUserTier } from "@/lib/hooks/use-user-tier"
 
 // PERF: FIX-PERF-001 — Dynamic import LandingPage to reduce authenticated user's bundle
 const LandingPage = dynamic(
   () => import("@/components/landing/landing-page").then(mod => mod.LandingPage),
   { loading: () => <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" /></div> }
+)
+
+// PERF: Dynamic import — BulkImportDialog only shown on button click
+const BulkImportDialog = dynamic(
+  () => import("@/components/bulk-import-dialog").then(mod => ({ default: mod.BulkImportDialog })),
+  { ssr: false }
 )
 
 const rotatingPrompts = [
@@ -62,8 +67,18 @@ function HomePageContent({ session }: HomePageProps) {
   const router = useRouter()
   const userId = session?.user?.id || null
 
-  // Username state
-  const [username, setUsername] = useState<string | null>(null)
+  // PERF: shared SWR hook eliminates duplicate query for tier + name (was independent useEffect+fetch)
+  const { tier: userTier, name: dbName, features } = useUserTier(userId)
+
+  // Username — prefer DB name, then auth metadata, then email prefix
+  const username = useMemo(() => {
+    if (dbName) return dbName
+    const meta = session?.user?.user_metadata
+    const authName = meta?.full_name || meta?.name || null
+    if (authName && typeof authName === "string") return authName.split(" ")[0]
+    if (session?.user?.email) return session.user.email.split("@")[0]
+    return null
+  }, [dbName, session])
 
   // Language selector state — persisted to localStorage
   const [analysisLanguage, setAnalysisLanguage] = useState<AnalysisLanguage>(() => {
@@ -77,11 +92,10 @@ function HomePageContent({ session }: HomePageProps) {
   })
 
   // User tier for gating multi-language
-  const [multiLanguageEnabled, setMultiLanguageEnabled] = useState(false)
+  const multiLanguageEnabled = features.multiLanguageAnalysis
 
   // Bulk import dialog state
   const [bulkImportOpen, setBulkImportOpen] = useState(false)
-  const [userTier, setUserTier] = useState<UserTier>("free")
 
   // Track when we're navigating to /item/[id] to prevent chat view flash
   const [isNavigating, setIsNavigating] = useState(false)
@@ -114,37 +128,7 @@ function HomePageContent({ session }: HomePageProps) {
     analysisLanguage,
   })
 
-  // Fetch username and tier
-  useEffect(() => {
-    const fetchUserData = async () => {
-      if (!session?.user) return
-
-      const { data } = await supabase
-        .from("users")
-        .select("name, tier, day_pass_expires_at")
-        .eq("id", session.user.id)
-        .single()
-
-      // Username
-      if (data?.name) {
-        setUsername(data.name)
-      } else {
-        const meta = session.user.user_metadata
-        const authName = meta?.full_name || meta?.name || null
-        if (authName && typeof authName === "string") {
-          setUsername(authName.split(" ")[0])
-        } else if (session.user.email) {
-          setUsername(session.user.email.split("@")[0])
-        }
-      }
-
-      // Tier — determine if multi-language is enabled
-      const tier = normalizeTier(data?.tier, data?.day_pass_expires_at)
-      setUserTier(tier)
-      setMultiLanguageEnabled(TIER_FEATURES[tier].multiLanguageAnalysis)
-    }
-    fetchUserData()
-  }, [session])
+  // PERF: tier + name fetching moved to useUserTier hook (shared SWR cache)
 
   // Random prompt
   const randomPrompt = useMemo(() => {
@@ -206,6 +190,8 @@ function HomePageContent({ session }: HomePageProps) {
           alt="Clarus"
           width={36}
           height={36}
+          sizes="36px"
+          priority
           className="w-8 h-8 sm:w-9 sm:h-9"
         />
         <span className="text-white font-bold text-lg sm:text-xl italic tracking-wide" style={{ fontFamily: 'var(--font-cormorant)' }}>

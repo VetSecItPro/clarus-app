@@ -324,6 +324,7 @@ export function ChatInputBar({
                   alt=""
                   width={16}
                   height={16}
+                  sizes="16px"
                   className="w-4 h-4"
                   unoptimized
                   onError={(e) => {

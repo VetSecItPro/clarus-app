@@ -1,6 +1,9 @@
 import type { Metadata } from "next"
 import { FeaturePage } from "@/components/features/feature-page"
 
+// ISR: revalidate every hour — marketing content changes infrequently
+export const revalidate = 3600
+
 export const metadata: Metadata = {
   title: "Export & Share — Markdown, PDF & Public Links | Clarus",
   description:

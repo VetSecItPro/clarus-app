@@ -4,6 +4,7 @@ import { timingSafeEqual } from "crypto"
 import type { Database } from "@/types/database.types"
 import { formatTranscript, type AssemblyAIWebhookPayload } from "@/lib/assemblyai"
 import { logApiUsage } from "@/lib/api-usage"
+import { processContent, ProcessContentError } from "@/lib/process-content"
 
 // PERF: FIX-213 — set maxDuration for serverless function (webhook + retry loop needs time)
 export const maxDuration = 60
@@ -55,8 +56,6 @@ export async function POST(req: NextRequest) {
   if (!transcript_id || typeof transcript_id !== "string" || transcript_id.length > 100) {
     return NextResponse.json({ error: "Invalid transcript_id" }, { status: 400 })
   }
-
-  console.log(`WEBHOOK: Received AssemblyAI callback for transcript ${transcript_id}, status: ${status}`)
 
   // Look up content by podcast_transcript_id
   const { data: content, error: fetchError } = await supabase
@@ -128,10 +127,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ success: false, message: "Empty transcript" })
   }
 
-  console.log(
-    `WEBHOOK: Transcript ready for ${content.id}. Duration: ${duration_seconds}s, Speakers: ${speaker_count}, Length: ${full_text.length} chars`,
-  )
-
   // Save transcript to content
   await supabase
     .from("content")
@@ -153,44 +148,27 @@ export async function POST(req: NextRequest) {
     metadata: { speaker_count, duration_seconds },
   })
 
-  // PERF: FIX-212 — This self-HTTP-call to /api/process-content is a serverless anti-pattern.
-  // It invokes a new serverless function via HTTP instead of calling the logic directly.
-  // TODO: Extract process-content into a shared lib function (e.g., lib/process-content.ts)
-  // and call it directly here to avoid the extra HTTP round-trip, cold start, and retry overhead.
-  // For now, this works correctly — just costs an unnecessary network hop per analysis.
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || (process.env.VERCEL_URL
-    ? `https://${process.env.VERCEL_URL}`
-    : "http://localhost:3000")
-
+  // PERF: Direct function call instead of HTTP fetch — saves 50-200ms + retry overhead
   let analysisTriggered = false
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
-      console.log(`WEBHOOK: Triggering AI analysis for content ${content.id} (attempt ${attempt}/3)`)
-      const analysisResponse = await fetch(`${appUrl}/api/process-content`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // SECURITY: Use dedicated internal secret, not service role key — FIX-007
-          "Authorization": `Bearer ${process.env.INTERNAL_API_SECRET}`,
-        },
-        body: JSON.stringify({ content_id: content.id }),
+      await processContent({
+        contentId: content.id,
+        userId: content.user_id,
       })
-
-      if (analysisResponse.ok) {
-        console.log(`WEBHOOK: AI analysis triggered for ${content.id}`)
-        analysisTriggered = true
-        break
+      analysisTriggered = true
+      break
+    } catch (error) {
+      if (error instanceof ProcessContentError) {
+        console.error(`WEBHOOK: AI analysis failed for ${content.id} (attempt ${attempt}): ${error.message}`)
+      } else {
+        console.error(`WEBHOOK: AI analysis failed for ${content.id} (attempt ${attempt}):`, error)
       }
 
-      const errorData = await analysisResponse.json().catch(() => ({}))
-      console.error(`WEBHOOK: AI analysis trigger failed for ${content.id} (attempt ${attempt}):`, errorData)
-    } catch (error) {
-      console.error(`WEBHOOK: Failed to trigger AI analysis for ${content.id} (attempt ${attempt}):`, error)
-    }
-
-    // Wait before retry: 2s, 4s
-    if (attempt < 3) {
-      await new Promise(resolve => setTimeout(resolve, 2000 * attempt))
+      // Wait before retry: 1s, 2s, 3s (exponential backoff)
+      if (attempt < 3) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * attempt))
+      }
     }
   }
 

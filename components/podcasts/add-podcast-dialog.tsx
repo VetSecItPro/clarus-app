@@ -178,6 +178,7 @@ export function AddPodcastDialog({ currentCount, limit, onSubscribed }: AddPodca
                     alt={preview.podcast_name}
                     width={56}
                     height={56}
+                    sizes="56px"
                     className="w-14 h-14 rounded-lg object-cover"
                     unoptimized
                   />

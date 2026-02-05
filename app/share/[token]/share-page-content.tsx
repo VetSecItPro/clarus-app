@@ -51,6 +51,8 @@ export function SharePageContent({ content, summary }: SharePageContentProps) {
                 alt="Clarus"
                 width={32}
                 height={32}
+                sizes="32px"
+                priority
                 className="w-8 h-8"
               />
               <span className="text-white/90 font-bold text-2xl italic tracking-wide" style={{ fontFamily: 'var(--font-cormorant)' }}>
@@ -85,6 +87,7 @@ export function SharePageContent({ content, summary }: SharePageContentProps) {
               alt={content.title || "Content thumbnail"}
               width={160}
               height={90}
+              sizes="160px"
               className="rounded-xl object-cover aspect-video hidden sm:block"
               onError={(e) => (e.currentTarget.style.display = "none")}
             />

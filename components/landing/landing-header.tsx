@@ -22,6 +22,8 @@ export function LandingHeader() {
                 alt="Clarus"
                 width={40}
                 height={40}
+                sizes="40px"
+                priority
                 className="w-10 h-10 transition-all duration-300 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-[#1d9bf0]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />

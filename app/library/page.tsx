@@ -33,7 +33,8 @@ import {
 import { cn } from "@/lib/utils"
 import { useLibrary, type LibraryItem } from "@/lib/hooks/use-library"
 import dynamic from "next/dynamic"
-import { ChatThreadCard } from "@/components/chat"
+// PERF: Direct import instead of barrel to avoid pulling in all chat components
+import { ChatThreadCard } from "@/components/chat/chat-thread-card"
 import { useCollections, useCollectionItems } from "@/lib/hooks/use-collections"
 
 // PERF: FIX-PERF-002 — Dynamic import collection components to reduce library page bundle
@@ -45,8 +46,10 @@ const AddToCollectionButton = dynamic(
   () => import("@/components/collections/add-to-collection-button").then(mod => mod.AddToCollectionButton),
   { ssr: false }
 )
-import type { TriageData, UserTier } from "@/types/database.types"
-import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
+import type { TriageData } from "@/types/database.types"
+import { TIER_FEATURES } from "@/lib/tier-limits"
+// PERF: use shared SWR hook instead of independent Supabase query for tier data
+import { useUserTier } from "@/lib/hooks/use-user-tier"
 
 type HistoryItem = LibraryItem
 type LibraryPageProps = WithAuthInjectedProps
@@ -161,23 +164,8 @@ function LibraryPageContent({ session }: LibraryPageProps) {
   const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
   const [showCollectionsSidebar, setShowCollectionsSidebar] = useState(false)
   const { collections } = useCollections()
-  const [userTier, setUserTier] = useState<UserTier>("free")
-
-  // Fetch user tier for feature gating
-  useEffect(() => {
-    const fetchTier = async () => {
-      if (!session?.user?.id) return
-      const { data } = await supabase
-        .from("users")
-        .select("tier, day_pass_expires_at")
-        .eq("id", session.user.id)
-        .single()
-      if (data) {
-        setUserTier(normalizeTier(data.tier, data.day_pass_expires_at))
-      }
-    }
-    fetchTier()
-  }, [session])
+  // PERF: shared SWR hook eliminates duplicate tier query (was independent useEffect+fetch)
+  const { tier: userTier } = useUserTier(session?.user?.id ?? null)
 
   const canCompare = TIER_FEATURES[userTier].comparativeAnalysis
 

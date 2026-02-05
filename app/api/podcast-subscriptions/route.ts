@@ -28,13 +28,15 @@ export async function GET() {
     .select("*")
     .eq("user_id", user.id)
     .order("created_at", { ascending: false })
+    // PERF: Prevent unbounded result set
+    .limit(100)
 
   if (error) {
     console.error("[podcast-subscriptions] Failed to fetch subscriptions:", error.message)
     return AuthErrors.serverError()
   }
 
-  // Fetch latest episode for each subscription
+  // PERF: Fetch latest episodes in a single query using the subscription IDs
   const subscriptionIds = (subscriptions ?? []).map((s) => s.id)
 
   let latestEpisodes: Record<string, { episode_title: string; episode_date: string | null }> = {}
@@ -44,7 +46,8 @@ export async function GET() {
       .select("subscription_id, episode_title, episode_date")
       .in("subscription_id", subscriptionIds)
       .order("episode_date", { ascending: false })
-      .limit(subscriptionIds.length)
+      // PERF: Limit to a reasonable number to prevent unbounded results
+      .limit(subscriptionIds.length * 2)
 
     if (episodes) {
       // Group by subscription_id, take first (latest) per subscription
@@ -64,7 +67,11 @@ export async function GET() {
     latest_episode: latestEpisodes[sub.id] ?? null,
   }))
 
-  return NextResponse.json({ subscriptions: enriched })
+  // PERF: Cache personalized subscription list for 30s to reduce DB hits on repeated loads
+  return NextResponse.json(
+    { subscriptions: enriched },
+    { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } }
+  )
 }
 
 /**
@@ -97,32 +104,33 @@ export async function POST(request: Request) {
 
   const { feed_url } = parsed.data
 
-  // Check tier limit for podcast subscriptions
-  const tier = await getUserTier(supabase, user.id)
-  const limit = TIER_LIMITS[tier].podcastSubscriptions
+  // PERF: Parallelize tier check and subscription count instead of sequential queries
+  const [tier, countResult] = await Promise.all([
+    getUserTier(supabase, user.id),
+    supabase
+      .from("podcast_subscriptions")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_active", true),
+  ])
 
-  if (limit === 0) {
+  const podcastSubLimit = TIER_LIMITS[tier].podcastSubscriptions
+
+  if (podcastSubLimit === 0) {
     return NextResponse.json(
       { error: "Podcast subscriptions are not available on the Free tier. Upgrade to Starter or higher." },
       { status: 403 }
     )
   }
 
-  // Count existing active subscriptions
-  const { count, error: countError } = await supabase
-    .from("podcast_subscriptions")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
-    .eq("is_active", true)
-
-  if (countError) {
-    console.error("[podcast-subscriptions] Failed to count subscriptions:", countError.message)
+  if (countResult.error) {
+    console.error("[podcast-subscriptions] Failed to count subscriptions:", countResult.error.message)
     return AuthErrors.serverError()
   }
 
-  if ((count ?? 0) >= limit) {
+  if ((countResult.count ?? 0) >= podcastSubLimit) {
     return NextResponse.json(
-      { error: `You've reached your limit of ${limit} podcast subscriptions on the ${tier} tier.` },
+      { error: `You've reached your limit of ${podcastSubLimit} podcast subscriptions on the ${tier} tier.` },
       { status: 403 }
     )
   }

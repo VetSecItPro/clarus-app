@@ -39,7 +39,7 @@ export function SWRProvider({ children }: SWRProviderProps) {
               // Ignore errors
             }
 
-            // Save to sessionStorage periodically
+            // Save to sessionStorage
             const save = () => {
               try {
                 const data: Record<string, unknown> = {}
@@ -52,8 +52,15 @@ export function SWRProvider({ children }: SWRProviderProps) {
               }
             }
 
+            // PERF: save periodically (every 30s) in addition to beforeunload
+            // to prevent data loss on crashes/force-closes
+            const periodicSaveInterval = setInterval(save, 30_000)
+
             // Save on page unload
-            window.addEventListener('beforeunload', save)
+            window.addEventListener('beforeunload', () => {
+              clearInterval(periodicSaveInterval)
+              save()
+            })
           }
 
           return map
