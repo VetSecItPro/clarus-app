@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Loader2, MessageSquare, Youtube, FileText, FileUp, Twitter, Headphones } from "lucide-react"
+import { Loader2, MessageSquare, Youtube, FileText, FileUp, Twitter, Headphones, Layers } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import SiteHeader from "@/components/site-header"
@@ -22,6 +22,8 @@ import { useChatSession } from "@/lib/hooks/use-chat-session"
 import { type AnalysisLanguage, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
+import { BulkImportDialog } from "@/components/bulk-import-dialog"
+import type { UserTier } from "@/types/database.types"
 
 const rotatingPrompts = [
   "What do you want to explore today?",
@@ -70,6 +72,10 @@ function HomePageContent({ session }: HomePageProps) {
 
   // User tier for gating multi-language
   const [multiLanguageEnabled, setMultiLanguageEnabled] = useState(false)
+
+  // Bulk import dialog state
+  const [bulkImportOpen, setBulkImportOpen] = useState(false)
+  const [userTier, setUserTier] = useState<UserTier>("free")
 
   // Track when we're navigating to /item/[id] to prevent chat view flash
   const [isNavigating, setIsNavigating] = useState(false)
@@ -128,6 +134,7 @@ function HomePageContent({ session }: HomePageProps) {
 
       // Tier — determine if multi-language is enabled
       const tier = normalizeTier(data?.tier, data?.day_pass_expires_at)
+      setUserTier(tier)
       setMultiLanguageEnabled(TIER_FEATURES[tier].multiLanguageAnalysis)
     }
     fetchUserData()
@@ -263,6 +270,32 @@ function HomePageContent({ session }: HomePageProps) {
                 </div>
               ))}
             </motion.div>
+
+            {/* Bulk Import Button */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+              className="mt-4"
+            >
+              <button
+                onClick={() => setBulkImportOpen(true)}
+                disabled={!userId}
+                className="flex items-center gap-1.5 text-white/30 hover:text-[#1d9bf0] transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                aria-label="Open bulk import dialog"
+              >
+                <Layers className="w-3.5 h-3.5" />
+                <span>Bulk Import</span>
+              </button>
+            </motion.div>
+
+            {/* Bulk Import Dialog */}
+            <BulkImportDialog
+              open={bulkImportOpen}
+              onOpenChange={setBulkImportOpen}
+              userId={userId}
+              userTier={userTier}
+            />
 
           </div>
         ) : (
