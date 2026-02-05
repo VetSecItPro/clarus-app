@@ -3,7 +3,8 @@
 import { motion } from "framer-motion"
 import { useState } from "react"
 import Link from "next/link"
-import type { TruthCheckData } from "@/types/database.types"
+import { ExternalLink } from "lucide-react"
+import type { TruthCheckData, CitationSource } from "@/types/database.types"
 
 interface CrossReferenceMatch {
   contentId: string
@@ -73,6 +74,41 @@ function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
         <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
       )}
     </span>
+  )
+}
+
+/** Renders clickable citation source links for a truth check issue */
+function CitationLinks({ sources }: { sources: CitationSource[] }) {
+  if (sources.length === 0) return null
+
+  return (
+    <div className="flex flex-wrap gap-1.5 mt-1.5">
+      {sources.map((source, i) => {
+        // Extract a readable hostname for display fallback
+        let displayTitle = source.title
+        if (!displayTitle) {
+          try {
+            displayTitle = new URL(source.url).hostname.replace("www.", "")
+          } catch {
+            displayTitle = source.url
+          }
+        }
+
+        return (
+          <a
+            key={`${source.url}-${i}`}
+            href={source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 text-[#1d9bf0] text-[10px] hover:bg-[#1d9bf0]/20 transition-colors max-w-[200px]"
+            title={source.url}
+          >
+            <ExternalLink className="w-2.5 h-2.5 shrink-0" />
+            <span className="truncate">{displayTitle}</span>
+          </a>
+        )
+      })}
+    </div>
   )
 }
 
@@ -147,6 +183,9 @@ export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardPr
                         <CrossRefBadge matches={matches} />
                       )}
                     </div>
+                    {issue.sources && issue.sources.length > 0 && (
+                      <CitationLinks sources={issue.sources} />
+                    )}
                   </div>
                 </div>
               )
