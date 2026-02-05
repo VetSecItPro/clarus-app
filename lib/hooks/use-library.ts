@@ -299,6 +299,8 @@ export function useLibrary(options: UseLibraryOptions) {
     {
       revalidateOnFocus: false,
       revalidateOnReconnect: true,
+      // PERF: library data only changes via user actions (add/delete content) — skip stale revalidation
+      revalidateIfStale: false,
       dedupingInterval: 30000,
       revalidateFirstPage: false,
       persistSize: true,

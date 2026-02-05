@@ -1,3 +1,6 @@
+// SECURITY: FIX-SEC-027 — Use authenticated client for reads and vote CRUD (RLS enforces ownership).
+// Admin client is only used for the vote_score denormalization update, which writes to another
+// user's content row (no RLS UPDATE policy for cross-user writes).
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors, getAdminClient } from "@/lib/auth"
 import { checkRateLimit } from "@/lib/validation"
@@ -42,21 +45,30 @@ export async function POST(request: Request) {
   const { contentId, vote } = parsed.data
 
   try {
-    const adminClient = getAdminClient()
+    // Use authenticated client for reads and vote CRUD — RLS policies enforce:
+    // - content_select_public: can read is_public=true content from any user
+    // - content_votes_*_own: can only insert/update/delete own votes
+    const supabase = auth.supabase
 
-    // Verify content exists and is public
-    const { data: content, error: contentError } = await adminClient
-      .from("content")
-      .select("id, is_public, user_id")
-      .eq("id", contentId)
-      .single()
+    // PERF: Parallelize content verification and existing vote check
+    const [contentResult, existingVoteResult] = await Promise.all([
+      supabase
+        .from("content")
+        .select("id, is_public, user_id")
+        .eq("id", contentId)
+        .eq("is_public", true)
+        .single(),
+      supabase
+        .from("content_votes")
+        .select("id, vote")
+        .eq("content_id", contentId)
+        .eq("user_id", auth.user.id)
+        .maybeSingle(),
+    ])
 
+    const { data: content, error: contentError } = contentResult
     if (contentError || !content) {
       return AuthErrors.notFound("Content")
-    }
-
-    if (!content.is_public) {
-      return AuthErrors.badRequest("Cannot vote on private content")
     }
 
     // Prevent self-voting
@@ -64,20 +76,12 @@ export async function POST(request: Request) {
       return AuthErrors.badRequest("Cannot vote on your own content")
     }
 
-    // Check if user already has a vote
-    const { data: existingVote } = await adminClient
-      .from("content_votes")
-      .select("id, vote")
-      .eq("content_id", contentId)
-      .eq("user_id", auth.user.id)
-      .maybeSingle()
-
-    let voteChange = 0
+    const { data: existingVote } = existingVoteResult
 
     if (existingVote) {
       if (existingVote.vote === vote) {
-        // Same vote = remove vote (toggle off)
-        const { error: deleteError } = await adminClient
+        // Same vote = remove vote (toggle off) (RLS: content_votes_delete_own)
+        const { error: deleteError } = await supabase
           .from("content_votes")
           .delete()
           .eq("id", existingVote.id)
@@ -86,12 +90,9 @@ export async function POST(request: Request) {
           console.error("Vote delete error:", deleteError)
           return AuthErrors.serverError()
         }
-
-        // Reverse the existing vote
-        voteChange = -existingVote.vote
       } else {
-        // Different vote = update
-        const { error: updateError } = await adminClient
+        // Different vote = update (RLS: content_votes_update_own)
+        const { error: updateError } = await supabase
           .from("content_votes")
           .update({ vote })
           .eq("id", existingVote.id)
@@ -100,13 +101,10 @@ export async function POST(request: Request) {
           console.error("Vote update error:", updateError)
           return AuthErrors.serverError()
         }
-
-        // Swing from old vote to new vote
-        voteChange = vote - existingVote.vote
       }
     } else {
-      // New vote
-      const { error: insertError } = await adminClient
+      // New vote (RLS: content_votes_insert_own)
+      const { error: insertError } = await supabase
         .from("content_votes")
         .insert({
           content_id: contentId,
@@ -118,21 +116,21 @@ export async function POST(request: Request) {
         console.error("Vote insert error:", insertError)
         return AuthErrors.serverError()
       }
-
-      voteChange = vote
     }
 
-    // Update denormalized vote_score
-    const currentScore = (
-      await adminClient
-        .from("content")
-        .select("vote_score")
-        .eq("id", contentId)
-        .single()
-    ).data?.vote_score ?? 0
+    // SECURITY: FIX-SEC-008 — Recompute vote_score from source of truth (votes table)
+    // to prevent race conditions. Uses authenticated client for the read (all votes are
+    // visible to authenticated users), but admin client for the cross-user content update.
+    const { data: allVotes } = await supabase
+      .from("content_votes")
+      .select("vote")
+      .eq("content_id", contentId)
 
-    const newScore = currentScore + voteChange
+    const newScore = allVotes?.reduce((sum, v) => sum + (v.vote ?? 0), 0) ?? 0
 
+    // Admin client required: updating vote_score on another user's content row
+    // (no RLS UPDATE policy for cross-user writes on content table)
+    const adminClient = getAdminClient()
     const { error: scoreError } = await adminClient
       .from("content")
       .update({ vote_score: newScore })

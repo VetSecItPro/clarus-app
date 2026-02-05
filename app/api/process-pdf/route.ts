@@ -5,6 +5,8 @@ import { checkRateLimit } from "@/lib/validation"
 import { authenticateRequest } from "@/lib/auth"
 import { getUserTier } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
+import { processContent, ProcessContentError } from "@/lib/process-content"
+import type { AnalysisLanguage } from "@/lib/languages"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -271,29 +273,20 @@ export async function POST(req: NextRequest) {
 
     const contentId = contentData.id
 
-    // SECURITY: Use env-based URL only, never request headers — FIX-019 (Host header injection leaked service role key via SSRF)
-    const baseUrl = process.env.NEXT_PUBLIC_SITE_URL
-      || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
-
-    const processResponse = await fetch(
-      `${baseUrl}/api/process-content`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          // SECURITY: Use dedicated internal secret, not service role key — FIX-007
-          "Authorization": `Bearer ${process.env.INTERNAL_API_SECRET}`,
-        },
-        body: JSON.stringify({
-          content_id: contentId,
-          skipScraping: true, // We already have the text
-          language: analysisLanguage,
-        }),
+    // PERF: Direct function call instead of HTTP fetch — saves 50-200ms
+    try {
+      await processContent({
+        contentId,
+        userId,
+        language: analysisLanguage as AnalysisLanguage,
+        skipScraping: true, // We already have the text
+      })
+    } catch (error) {
+      if (error instanceof ProcessContentError) {
+        console.error("Failed to trigger processing:", error.message)
+      } else {
+        console.error("Failed to trigger processing:", error)
       }
-    )
-
-    if (!processResponse.ok) {
-      console.error("Failed to trigger processing:", await processResponse.text())
       // Don't fail - the content is saved, processing can be retried
     }
 

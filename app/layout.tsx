@@ -5,6 +5,7 @@ import { Analytics } from "@vercel/analytics/react"
 import { Toaster } from "sonner"
 import CookieConsent from "@/components/cookie-consent"
 import { ServiceWorkerRegister } from "@/components/service-worker-register"
+import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 import { SWRProvider } from "@/components/swr-provider"
 import { ActiveAnalysisProvider } from "@/lib/contexts/active-analysis-context"
 import { WebVitals } from "@/components/web-vitals"
@@ -155,6 +156,7 @@ export default function RootLayout({
         <Toaster position="top-center" />
         <CookieConsent />
         <ServiceWorkerRegister />
+        <PWAInstallPrompt />
         <WebVitals />
         <Analytics />
       </body>

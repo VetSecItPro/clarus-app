@@ -62,15 +62,19 @@ export async function POST(
     return NextResponse.json({ error: "Invalid content ID" }, { status: 400 })
   }
 
-  const ownership = await verifyContentOwnership(auth.supabase, auth.user.id, parsed.data)
+  // PERF: Parallelize ownership check and tier lookup
+  const [ownership, userDataResult] = await Promise.all([
+    verifyContentOwnership(auth.supabase, auth.user.id, parsed.data),
+    auth.supabase
+      .from("users")
+      .select("tier, day_pass_expires_at")
+      .eq("id", auth.user.id)
+      .single(),
+  ])
   if (!ownership.owned) return ownership.response
 
   // Tier feature check: share links require starter+
-  const { data: userData } = await auth.supabase
-    .from("users")
-    .select("tier, day_pass_expires_at")
-    .eq("id", auth.user.id)
-    .single()
+  const { data: userData } = userDataResult
   const tier = normalizeTier(userData?.tier, userData?.day_pass_expires_at)
   if (!TIER_FEATURES[tier].shareLinks) {
     return NextResponse.json(

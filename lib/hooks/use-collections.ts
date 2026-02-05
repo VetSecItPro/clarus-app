@@ -52,6 +52,8 @@ export function useCollections() {
     fetcher,
     {
       revalidateOnFocus: false,
+      // PERF: collections only change via user actions (which call mutate()) — skip stale revalidation
+      revalidateIfStale: false,
       dedupingInterval: 30000,
     }
   )
@@ -241,6 +243,8 @@ export function useCollectionItems(collectionId: string | null) {
     },
     {
       revalidateOnFocus: false,
+      // PERF: collection items only change via explicit add/remove — skip stale revalidation
+      revalidateIfStale: false,
       dedupingInterval: 30000,
     }
   )
@@ -276,6 +280,8 @@ export function useContentCollections(contentId: string | null) {
     },
     {
       revalidateOnFocus: false,
+      // PERF: content-collection mapping only changes via explicit add/remove — skip stale revalidation
+      revalidateIfStale: false,
       dedupingInterval: 30000,
     }
   )

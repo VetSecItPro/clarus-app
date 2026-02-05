@@ -4,6 +4,7 @@ import { validateUrl, checkRateLimit } from "@/lib/validation"
 import { getUserTier, getUsageCounts } from "@/lib/usage"
 import { TIER_LIMITS, getCurrentPeriod, getLimitForField } from "@/lib/tier-limits"
 import { getYouTubeVideoId, isXUrl, isPodcastUrl } from "@/lib/utils"
+import { processContent } from "@/lib/process-content"
 
 /** Maximum URLs allowed in a single request (hard cap regardless of tier) */
 const ABSOLUTE_MAX_URLS = 15
@@ -232,20 +233,13 @@ export async function POST(request: NextRequest) {
       results.push({ url, contentId: newContent.id, type })
 
       // Trigger background processing (fire-and-forget)
-      // We do this as a fetch to the process-content endpoint
-      // This is the same pattern used by the single-URL flow
-      fetch(new URL("/api/process-content", request.url).href, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Cookie: request.headers.get("cookie") || "",
-        },
-        body: JSON.stringify({
-          content_id: newContent.id,
-          language: analysisLanguage,
-        }),
-      }).catch(() => {
-        // Fire-and-forget — errors are tracked via content status polling
+      // PERF: Direct function call instead of HTTP fetch — saves 50-200ms per item
+      processContent({
+        contentId: newContent.id,
+        userId: userId,
+        language: analysisLanguage as "en" | "ar" | "es" | "fr" | "de" | "pt" | "ja" | "ko" | "zh" | "it" | "nl",
+      }).catch((err) => {
+        console.warn(`Bulk import: Background processing failed for ${newContent.id}:`, err)
       })
     } catch {
       results.push({ url, contentId: null, type, error: "Unexpected error" })

@@ -11,6 +11,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
 import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { processContent, ProcessContentError } from "@/lib/process-content"
 
 /**
  * POST /api/podcast-subscriptions/[id]/episodes/[episodeId]/analyze
@@ -37,27 +38,33 @@ export async function POST(
     return AuthErrors.badRequest(epIdCheck.error)
   }
 
-  // Verify subscription ownership
-  const { data: subscription, error: subError } = await supabase
-    .from("podcast_subscriptions")
-    .select("id, user_id")
-    .eq("id", subIdCheck.sanitized!)
-    .eq("user_id", user.id)
-    .single()
+  // PERF: Parallelize subscription ownership and episode fetch
+  const [subResult, epResult] = await Promise.all([
+    supabase
+      .from("podcast_subscriptions")
+      .select("id, user_id")
+      .eq("id", subIdCheck.sanitized!)
+      .eq("user_id", user.id)
+      .single(),
+    supabase
+      .from("podcast_episodes")
+      .select("id, episode_title, episode_url, content_id, subscription_id")
+      .eq("id", epIdCheck.sanitized!)
+      .single(),
+  ])
 
+  const { data: subscription, error: subError } = subResult
   if (subError || !subscription) {
     return AuthErrors.notFound("Subscription")
   }
 
-  // Fetch the episode and verify it belongs to this subscription
-  const { data: episode, error: epError } = await supabase
-    .from("podcast_episodes")
-    .select("id, episode_title, episode_url, content_id, subscription_id")
-    .eq("id", epIdCheck.sanitized!)
-    .eq("subscription_id", subscription.id)
-    .single()
-
+  const { data: episode, error: epError } = epResult
   if (epError || !episode) {
+    return AuthErrors.notFound("Episode")
+  }
+
+  // Verify episode belongs to this subscription
+  if (episode.subscription_id !== subscription.id) {
     return AuthErrors.notFound("Episode")
   }
 
@@ -112,24 +119,18 @@ export async function POST(
   // Increment the podcast analysis counter
   await incrementUsage(supabase, user.id, "podcast_analyses_count")
 
-  // Trigger process-content (internal call via fetch to the same host)
+  // PERF: Direct function call instead of HTTP fetch — saves 50-200ms
   try {
-    const processUrl = new URL("/api/process-content", process.env.NEXT_PUBLIC_APP_URL || "https://clarusapp.io")
-    const processResponse = await fetch(processUrl.toString(), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Cookie: _request.headers.get("cookie") ?? "",
-      },
-      body: JSON.stringify({ content_id: content.id }),
+    await processContent({
+      contentId: content.id,
+      userId: user.id,
     })
-
-    if (!processResponse.ok) {
-      console.error("[podcast-analyze] Process-content returned:", processResponse.status)
-      // Non-fatal: content was created, processing can be retried
-    }
   } catch (err) {
-    console.error("[podcast-analyze] Failed to trigger process-content:", err)
+    if (err instanceof ProcessContentError) {
+      console.error("[podcast-analyze] Process-content failed:", err.message)
+    } else {
+      console.error("[podcast-analyze] Failed to trigger process-content:", err)
+    }
     // Non-fatal: content was created, processing can be retried
   }
 

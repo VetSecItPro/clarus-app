@@ -67,6 +67,7 @@ export function ChatMessagesArea({
               alt="Clarus"
               width={28}
               height={28}
+              sizes="28px"
               className="flex-shrink-0 w-7 h-7 rounded-full"
             />
             <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl">

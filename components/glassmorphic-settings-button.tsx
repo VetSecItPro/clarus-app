@@ -13,8 +13,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { supabase } from "@/lib/supabase"
-import { clearAuthCache } from "@/components/with-auth"
+import { clearAuthCache, getCachedSession } from "@/components/with-auth"
 import { prefetchAdminMetrics } from "@/hooks/use-admin-metrics"
+// PERF: use shared SWR hook instead of independent Supabase query for user data
+import { useUserTier } from "@/lib/hooks/use-user-tier"
 import type { User } from "@supabase/supabase-js"
 
 interface GlasmorphicSettingsButtonProps {
@@ -29,10 +31,12 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
   const [loggingOut, setLoggingOut] = useState(false)
   const router = useRouter()
 
-  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [managingSubscription, setManagingSubscription] = useState(false)
   const [isDropdownOpen, setIsDropdownOpen] = useState(false)
-  const [isAdmin, setIsAdmin] = useState(false)
+
+  // PERF: shared SWR hook eliminates duplicate query for subscription_status + is_admin
+  const { session: cachedSession } = getCachedSession()
+  const { isAdmin, subscriptionStatus } = useUserTier(cachedSession?.user?.id ?? null)
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -40,21 +44,6 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
         data: { session },
       } = await supabase.auth.getSession()
       setUser(session?.user ?? null)
-
-      if (session?.user) {
-        const { data } = await supabase
-          .from("users")
-          .select("subscription_status, is_admin")
-          .eq("id", session.user.id)
-          .single()
-        if (data?.subscription_status) {
-          setSubscriptionStatus(data.subscription_status)
-        }
-        if (data?.is_admin) {
-          setIsAdmin(true)
-        }
-      }
-
       setLoading(false)
     }
 

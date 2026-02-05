@@ -104,6 +104,8 @@ export default function LoginPage() {
                 alt="Clarus"
                 width={400}
                 height={130}
+                sizes="(max-width: 1024px) 0px, 400px"
+                priority
                 className="h-36 w-auto"
               />
             </Link>
@@ -126,6 +128,8 @@ export default function LoginPage() {
               alt="Clarus"
               width={140}
               height={48}
+              sizes="140px"
+              priority
               className="h-10 w-auto"
             />
           </Link>

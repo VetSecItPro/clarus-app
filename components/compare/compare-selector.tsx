@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect, useCallback, useMemo } from "react"
 import {
   Dialog,
   DialogContent,
@@ -110,14 +110,15 @@ export function CompareSelector({
     })
   }
 
-  const filteredItems = items.filter((item) => {
+  // PERF: memoize filtered items to avoid re-filtering on every render (selection changes, etc.)
+  const filteredItems = useMemo(() => items.filter((item) => {
     if (!searchQuery.trim()) return true
     const query = searchQuery.toLowerCase()
     return (
       item.title?.toLowerCase().includes(query) ||
       item.url.toLowerCase().includes(query)
     )
-  })
+  }), [items, searchQuery])
 
   const handleCompare = () => {
     if (selectedIds.size >= 2) {

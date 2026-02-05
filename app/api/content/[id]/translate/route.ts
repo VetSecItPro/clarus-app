@@ -429,13 +429,24 @@ export async function POST(
       return AuthErrors.badRequest("Invalid or missing language code")
     }
 
-    // 6. Tier gate — non-English requires Starter+
-    const { data: userData } = await auth.supabase
-      .from("users")
-      .select("tier, day_pass_expires_at")
-      .eq("id", auth.user.id)
-      .single()
+    // PERF: Parallelize tier check and existing translation check
+    const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language"
+    const [userDataResult, existingTranslationResult] = await Promise.all([
+      auth.supabase
+        .from("users")
+        .select("tier, day_pass_expires_at")
+        .eq("id", auth.user.id)
+        .single(),
+      auth.supabase
+        .from("summaries")
+        .select(summaryColumns)
+        .eq("content_id", idResult.data)
+        .eq("language", targetLang)
+        .maybeSingle(),
+    ])
 
+    // 6. Tier gate — non-English requires Starter+
+    const { data: userData } = userDataResult
     const tier = normalizeTier(userData?.tier, userData?.day_pass_expires_at)
     if (!TIER_FEATURES[tier].multiLanguageAnalysis) {
       return NextResponse.json(
@@ -445,13 +456,7 @@ export async function POST(
     }
 
     // 7. Check if translation already exists
-    const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language"
-    const { data: existingTranslation } = await auth.supabase
-      .from("summaries")
-      .select(summaryColumns)
-      .eq("content_id", idResult.data)
-      .eq("language", targetLang)
-      .maybeSingle()
+    const { data: existingTranslation } = existingTranslationResult
 
     if (existingTranslation?.processing_status === "complete") {
       return NextResponse.json(existingTranslation)

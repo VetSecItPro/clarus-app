@@ -39,12 +39,30 @@ export async function GET(
       return auth.response
     }
 
-    // Fetch content
-    const { data: content, error: contentError } = await auth.supabase
-      .from("content")
-      .select("id, title, url, type, user_id, thumbnail_url, author, duration")
-      .eq("id", contentId)
-      .single()
+    // Fetch summary language from query params before parallel fetch
+    const { searchParams } = new URL(request.url)
+    const lang = searchParams.get("language") || "en"
+
+    // PERF: Parallelize content and summary queries instead of running sequentially
+    const [contentResult, summaryResult] = await Promise.all([
+      auth.supabase
+        .from("content")
+        .select("id, title, url, type, user_id, thumbnail_url, author, duration")
+        .eq("id", contentId)
+        .single(),
+      auth.supabase
+        .from("summaries")
+        .select(
+          "processing_status, triage, brief_overview, mid_length_summary, detailed_summary, truth_check, action_items, language"
+        )
+        .eq("content_id", contentId)
+        .eq("language", lang)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .single(),
+    ])
+
+    const { data: content, error: contentError } = contentResult
 
     if (contentError || !content) {
       return NextResponse.json({ error: "Content not found" }, { status: 404 })
@@ -55,20 +73,7 @@ export async function GET(
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    // Fetch summary (filter by language if provided, default to 'en')
-    const { searchParams } = new URL(request.url)
-    const lang = searchParams.get("language") || "en"
-
-    const { data: summary } = await auth.supabase
-      .from("summaries")
-      .select(
-        "processing_status, triage, brief_overview, mid_length_summary, detailed_summary, truth_check, action_items, language"
-      )
-      .eq("content_id", contentId)
-      .eq("language", lang)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .single()
+    const summary = summaryResult.data
 
     const response = NextResponse.json({
       id: content.id,

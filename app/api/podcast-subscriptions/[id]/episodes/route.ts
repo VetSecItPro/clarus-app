@@ -60,10 +60,14 @@ export async function GET(
     return AuthErrors.serverError()
   }
 
-  return NextResponse.json({
-    episodes: episodes ?? [],
-    total: count ?? 0,
-    limit,
-    offset,
-  })
+  // PERF: Cache episode list for 30s to reduce DB hits on repeated page loads
+  return NextResponse.json(
+    {
+      episodes: episodes ?? [],
+      total: count ?? 0,
+      limit,
+      offset,
+    },
+    { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } }
+  )
 }
