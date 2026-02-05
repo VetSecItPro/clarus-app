@@ -6,11 +6,11 @@ import Image from "next/image"
 import { Loader2, MessageSquare, Youtube, FileText, FileUp, Twitter, Headphones, Layers } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
+import dynamic from "next/dynamic"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { supabase } from "@/lib/supabase"
 import { getCachedSession, setAuthCache } from "@/components/with-auth"
-import { LandingPage } from "@/components/landing/landing-page"
 import {
   ChatMessagesArea,
   ChatInputBar,
@@ -24,6 +24,12 @@ import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
 import { BulkImportDialog } from "@/components/bulk-import-dialog"
 import type { UserTier } from "@/types/database.types"
+
+// PERF: FIX-PERF-001 — Dynamic import LandingPage to reduce authenticated user's bundle
+const LandingPage = dynamic(
+  () => import("@/components/landing/landing-page").then(mod => mod.LandingPage),
+  { loading: () => <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" /></div> }
+)
 
 const rotatingPrompts = [
   "What do you want to explore today?",

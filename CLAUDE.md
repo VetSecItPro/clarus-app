@@ -39,10 +39,12 @@ clarus.analysis_prompts
 clarus.usage_tracking
 clarus.claims
 clarus.flagged_content
+clarus.contact_submissions
 clarus.collections
 clarus.collection_items
 clarus.podcast_subscriptions
 clarus.podcast_episodes
+clarus.hidden_content
 ```
 
 **Code doesn't need prefixes** - the search_path is configured so `SELECT * FROM users` automatically resolves to `clarus.users`.
