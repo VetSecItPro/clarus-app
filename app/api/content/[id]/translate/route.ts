@@ -6,6 +6,7 @@ import { checkRateLimit } from "@/lib/validation"
 import { logApiUsage } from "@/lib/api-usage"
 import { isValidLanguage, getLanguageConfig, type AnalysisLanguage } from "@/lib/languages"
 import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
+import { sanitizeForPrompt, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
 
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 const AI_CALL_TIMEOUT_MS = 60000 // 60 seconds — translations are faster than full analysis
@@ -105,6 +106,34 @@ function extractTranslatablePayload(summary: TranslatableFields): Record<string,
   }
 
   return payload
+}
+
+/**
+ * Recursively sanitize string values in the translation payload.
+ * This protects against injection via previously-stored analysis text.
+ */
+function sanitizeTranslationPayload(obj: Record<string, unknown>): Record<string, unknown> {
+  const result: Record<string, unknown> = {}
+  for (const [key, value] of Object.entries(obj)) {
+    if (typeof value === "string") {
+      result[key] = sanitizeForPrompt(value, { context: `translate-${key}`, maxLength: 50_000 })
+    } else if (Array.isArray(value)) {
+      result[key] = value.map((item) => {
+        if (typeof item === "string") {
+          return sanitizeForPrompt(item, { context: `translate-${key}-item`, maxLength: 50_000 })
+        }
+        if (item && typeof item === "object") {
+          return sanitizeTranslationPayload(item as Record<string, unknown>)
+        }
+        return item
+      })
+    } else if (value && typeof value === "object") {
+      result[key] = sanitizeTranslationPayload(value as Record<string, unknown>)
+    } else {
+      result[key] = value
+    }
+  }
+  return result
 }
 
 /**
@@ -231,7 +260,9 @@ ${langConfig.dir === "rtl" ? `- This is an RTL language — ensure text reads na
 
 Return ONLY valid JSON. No markdown code blocks, no explanation.`
 
-  const userPrompt = JSON.stringify(payload, null, 2)
+  // Sanitize the payload text values before sending to AI
+  const sanitizedPayload = sanitizeTranslationPayload(payload)
+  const userPrompt = wrapUserContent(JSON.stringify(sanitizedPayload, null, 2)) + INSTRUCTION_ANCHOR
 
   for (const model of models) {
     const startTime = Date.now()
@@ -283,6 +314,11 @@ Return ONLY valid JSON. No markdown code blocks, no explanation.`
       if (!rawContent) {
         console.error(`Translation empty response (${model})`)
         continue
+      }
+
+      // Monitor output for injection leakage
+      if (typeof rawContent === "string") {
+        detectOutputLeakage(rawContent, "translation")
       }
 
       // Parse JSON — handle optional markdown code blocks
