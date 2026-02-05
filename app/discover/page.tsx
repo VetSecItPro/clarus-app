@@ -1,240 +1,263 @@
-import { createClient } from "@supabase/supabase-js"
-import type { Database } from "@/types/database.types"
-import type { TriageData } from "@/types/database.types"
-import type { Metadata } from "next"
-import Link from "next/link"
-import { FileText, Play, MessageSquare, FileIcon, ExternalLink, TrendingUp, Sparkles } from "lucide-react"
-import { PublicHeader } from "@/components/public-header"
-import { LandingFooter } from "@/components/landing/landing-footer"
+"use client"
 
-export const revalidate = 300 // Revalidate every 5 minutes
+import { useState, useEffect, useCallback, useRef } from "react"
+import { TrendingUp, Sparkles, Clock, ArrowUpDown, Play, FileText, Mic, Loader2 } from "lucide-react"
+import { cn } from "@/lib/utils"
+import { DiscoverCard } from "@/components/discover/discover-card"
+import SiteHeader from "@/components/site-header"
+import MobileBottomNav from "@/components/mobile-bottom-nav"
+import { supabase } from "@/lib/supabase"
+import { getCachedSession } from "@/components/with-auth"
+import { useRouter } from "next/navigation"
+import type { DiscoverFeedItem } from "@/app/api/discover/route"
 
-export const metadata: Metadata = {
-  title: "Discover — Trending AI Analyses This Week | Clarus",
-  description:
-    "Explore the most interesting content analyzed this week on Clarus. AI-powered truth analysis, summaries, and insights from YouTube videos, podcasts, articles, and PDFs — curated anonymously.",
-  keywords: [
-    "trending content",
-    "content discovery",
-    "ai analysis feed",
-    "curated content",
-    "trending articles",
-    "trending videos",
-  ],
-  openGraph: {
-    title: "Discover — Trending AI Analyses This Week | Clarus",
-    description:
-      "Explore the most interesting content analyzed this week. AI summaries, fact-checks, and insights — curated anonymously.",
-    url: "https://clarusapp.io/discover",
-    type: "website",
-  },
-  twitter: {
-    card: "summary_large_image",
-    title: "Discover — Trending Analyses | Clarus",
-    description:
-      "The most interesting content analyzed this week. AI-powered summaries and fact-checks.",
-  },
-  alternates: {
-    canonical: "https://clarusapp.io/discover",
-  },
-}
+type SortOption = "trending" | "newest" | "top"
+type TypeFilter = "all" | "youtube" | "article" | "podcast"
 
-interface DiscoverItem {
-  title: string
-  sourceUrl: string
-  type: string
-  shareToken: string
-  teaser: string
-  qualityScore: number
-  domain: string
-  dateAdded: string
-}
+const SORT_OPTIONS: { value: SortOption; label: string; icon: typeof TrendingUp }[] = [
+  { value: "trending", label: "Trending", icon: TrendingUp },
+  { value: "newest", label: "Newest", icon: Clock },
+  { value: "top", label: "Top Rated", icon: ArrowUpDown },
+]
 
-const TYPE_CONFIG: Record<string, { label: string; icon: typeof FileText; color: string; bg: string }> = {
-  youtube: { label: "YouTube", icon: Play, color: "text-red-400", bg: "bg-red-500/10" },
-  article: { label: "Article", icon: FileText, color: "text-blue-400", bg: "bg-blue-500/10" },
-  x_post: { label: "X Post", icon: MessageSquare, color: "text-cyan-400", bg: "bg-cyan-500/10" },
-  pdf: { label: "PDF", icon: FileIcon, color: "text-purple-400", bg: "bg-purple-500/10" },
-}
+const TYPE_OPTIONS: { value: TypeFilter; label: string; icon?: typeof Play }[] = [
+  { value: "all", label: "All" },
+  { value: "youtube", label: "YouTube", icon: Play },
+  { value: "article", label: "Articles", icon: FileText },
+  { value: "podcast", label: "Podcasts", icon: Mic },
+]
 
-async function getDiscoverItems(): Promise<DiscoverItem[]> {
-  const supabase = createClient<Database, "clarus">(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!,
-    { db: { schema: "clarus" } }
-  )
+const PAGE_SIZE = 20
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+export default function DiscoverPage() {
+  const router = useRouter()
+  const [items, setItems] = useState<DiscoverFeedItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(true)
+  const [page, setPage] = useState(1)
+  const [sort, setSort] = useState<SortOption>("trending")
+  const [typeFilter, setTypeFilter] = useState<TypeFilter>("all")
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
-  const { data: sharedContent, error: contentError } = await supabase
-    .from("content")
-    .select("id, title, url, type, share_token, date_added")
-    .not("share_token", "is", null)
-    .gte("date_added", sevenDaysAgo)
-    .order("date_added", { ascending: false })
-    .limit(50)
+  // Auth check
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { session } = getCachedSession()
+      if (session?.user) {
+        setCurrentUserId(session.user.id)
+        setAuthChecked(true)
+        return
+      }
 
-  if (contentError || !sharedContent || sharedContent.length === 0) {
-    return []
+      const { data: { session: freshSession } } = await supabase.auth.getSession()
+      if (!freshSession) {
+        router.push("/login")
+        return
+      }
+      setCurrentUserId(freshSession.user.id)
+      setAuthChecked(true)
+    }
+    checkAuth()
+  }, [router])
+
+  const fetchItems = useCallback(async (pageNum: number, resetItems: boolean) => {
+    if (resetItems) {
+      setLoading(true)
+    } else {
+      setLoadingMore(true)
+    }
+
+    try {
+      const params = new URLSearchParams({
+        page: String(pageNum),
+        limit: String(PAGE_SIZE),
+        sort,
+        type: typeFilter,
+      })
+
+      const response = await fetch(`/api/discover?${params}`)
+      if (!response.ok) {
+        if (response.status === 401) {
+          router.push("/login")
+          return
+        }
+        throw new Error("Failed to fetch")
+      }
+
+      const data = await response.json() as { items: DiscoverFeedItem[]; hasMore: boolean }
+
+      if (resetItems) {
+        setItems(data.items)
+      } else {
+        setItems(prev => [...prev, ...data.items])
+      }
+      setHasMore(data.hasMore)
+    } catch (error) {
+      console.error("Failed to fetch discover items:", error)
+    } finally {
+      setLoading(false)
+      setLoadingMore(false)
+    }
+  }, [sort, typeFilter, router])
+
+  // Fetch on mount and when filters change
+  useEffect(() => {
+    if (!authChecked) return
+    setPage(1)
+    fetchItems(1, true)
+  }, [sort, typeFilter, authChecked, fetchItems])
+
+  // Infinite scroll via IntersectionObserver
+  useEffect(() => {
+    if (!sentinelRef.current || !hasMore || loadingMore || loading) return
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loadingMore) {
+          const nextPage = page + 1
+          setPage(nextPage)
+          fetchItems(nextPage, false)
+        }
+      },
+      { rootMargin: "200px" }
+    )
+
+    observer.observe(sentinelRef.current)
+    return () => observer.disconnect()
+  }, [hasMore, loadingMore, loading, page, fetchItems])
+
+  if (!authChecked) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+      </div>
+    )
   }
-
-  const contentIds = sharedContent.map(c => c.id)
-  const { data: summaries } = await supabase
-    .from("summaries")
-    .select("content_id, brief_overview, triage")
-    .in("content_id", contentIds)
-    .eq("processing_status", "complete")
-    .eq("language", "en")
-
-  return sharedContent
-    .map(content => {
-      const summary = summaries?.find(s => s.content_id === content.id)
-      if (!summary) return null
-
-      const triage = summary.triage as unknown as TriageData | null
-      const qualityScore = triage?.quality_score ?? 0
-
-      const rawOverview = summary.brief_overview || ""
-      const teaser = rawOverview.length > 200
-        ? rawOverview.slice(0, 200).trim() + "..."
-        : rawOverview
-
-      let domain = ""
-      try {
-        domain = new URL(content.url).hostname.replace(/^www\./, "")
-      } catch {
-        domain = "unknown"
-      }
-
-      return {
-        title: content.title || "Untitled",
-        sourceUrl: content.url,
-        type: content.type || "article",
-        shareToken: content.share_token!,
-        teaser,
-        qualityScore,
-        domain,
-        dateAdded: content.date_added || new Date().toISOString(),
-      }
-    })
-    .filter((item): item is DiscoverItem => item !== null)
-    .sort((a, b) => b.qualityScore - a.qualityScore)
-    .slice(0, 20)
-}
-
-function QualityBadge({ score }: { score: number }) {
-  let color = "text-red-400 bg-red-500/10 border-red-500/20"
-  if (score >= 7) color = "text-green-400 bg-green-500/10 border-green-500/20"
-  else if (score >= 5) color = "text-yellow-400 bg-yellow-500/10 border-yellow-500/20"
-
-  return (
-    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${color}`}>
-      {score.toFixed(1)}/10
-    </span>
-  )
-}
-
-function TypeBadge({ type }: { type: string }) {
-  const config = TYPE_CONFIG[type] || TYPE_CONFIG.article
-  const Icon = config.icon
-  return (
-    <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium ${config.color} ${config.bg}`}>
-      <Icon className="w-3 h-3" />
-      {config.label}
-    </span>
-  )
-}
-
-export default async function DiscoverPage() {
-  const items = await getDiscoverItems()
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      <PublicHeader />
+      <SiteHeader />
 
-      <main className="flex-1 max-w-5xl mx-auto px-4 lg:px-6 py-12 w-full">
-        {/* Hero */}
-        <div className="text-center mb-12">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 mb-6">
+      <main className="flex-1 max-w-3xl mx-auto px-4 lg:px-6 py-6 sm:py-10 w-full pb-24 sm:pb-10">
+        {/* Header */}
+        <div className="mb-6 sm:mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 mb-4">
             <TrendingUp className="w-3.5 h-3.5 text-[#1d9bf0]" />
-            <span className="text-xs font-medium text-[#1d9bf0]">Trending This Week</span>
+            <span className="text-xs font-medium text-[#1d9bf0]">Community Feed</span>
           </div>
-          <h1 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-            Discover
-          </h1>
-          <p className="text-white/50 text-lg max-w-xl mx-auto">
-            The most interesting content analyzed on Clarus this week.
-            AI-powered truth analysis, summaries, and insights.
-          </p>
+          <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1.5">Discover</h1>
+          <p className="text-white/45 text-sm sm:text-base">See what others are analyzing</p>
         </div>
 
-        {/* Content Grid */}
-        {items.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {items.map((item, index) => (
-              <Link
-                key={item.shareToken}
-                href={`/share/${item.shareToken}`}
-                className="group bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 hover:bg-white/[0.06] hover:border-white/[0.1] transition-all"
-              >
-                {/* Top row: type badge + quality score */}
-                <div className="flex items-center justify-between mb-3">
-                  <TypeBadge type={item.type} />
-                  <QualityBadge score={item.qualityScore} />
-                </div>
-
-                {/* Title */}
-                <h2 className="text-base font-semibold text-white group-hover:text-[#1d9bf0] transition-colors line-clamp-2 mb-2">
-                  {index < 3 && (
-                    <Sparkles className="w-4 h-4 text-yellow-400 inline mr-1.5 -mt-0.5" />
+        {/* Filter bar */}
+        <div className="flex flex-col sm:flex-row gap-3 mb-6">
+          {/* Sort buttons */}
+          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
+            {SORT_OPTIONS.map(option => {
+              const Icon = option.icon
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setSort(option.value)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                    sort === option.value
+                      ? "bg-[#1d9bf0]/15 text-[#1d9bf0] border border-[#1d9bf0]/20"
+                      : "text-white/40 hover:text-white/60"
                   )}
-                  {item.title}
-                </h2>
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
 
-                {/* Teaser */}
-                {item.teaser && (
-                  <p className="text-sm text-white/50 line-clamp-3 mb-3 leading-relaxed">
-                    {item.teaser}
-                  </p>
-                )}
+          {/* Type filter */}
+          <div className="flex items-center gap-1 bg-white/[0.03] border border-white/[0.06] rounded-xl p-1">
+            {TYPE_OPTIONS.map(option => {
+              const Icon = option.icon
+              return (
+                <button
+                  key={option.value}
+                  onClick={() => setTypeFilter(option.value)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
+                    typeFilter === option.value
+                      ? "bg-white/[0.1] text-white border border-white/[0.12]"
+                      : "text-white/40 hover:text-white/60"
+                  )}
+                >
+                  {Icon && <Icon className="w-3.5 h-3.5" />}
+                  {option.label}
+                </button>
+              )
+            })}
+          </div>
+        </div>
 
-                {/* Footer: domain + date */}
-                <div className="flex items-center justify-between text-xs text-white/30">
-                  <div className="flex items-center gap-1.5">
-                    <ExternalLink className="w-3 h-3" />
-                    <span className="truncate max-w-[160px]">{item.domain}</span>
+        {/* Content */}
+        {loading ? (
+          <div className="space-y-4">
+            {Array.from({ length: 5 }).map((_, i) => (
+              <div key={i} className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 animate-pulse">
+                <div className="flex gap-3">
+                  <div className="w-7 space-y-2">
+                    <div className="h-7 bg-white/[0.06] rounded" />
+                    <div className="h-4 bg-white/[0.06] rounded mx-auto w-4" />
+                    <div className="h-7 bg-white/[0.06] rounded" />
                   </div>
-                  <time dateTime={item.dateAdded}>
-                    {new Date(item.dateAdded).toLocaleDateString("en-US", {
-                      month: "short",
-                      day: "numeric",
-                    })}
-                  </time>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex justify-between">
+                      <div className="h-5 bg-white/[0.06] rounded w-20" />
+                      <div className="h-5 bg-white/[0.06] rounded w-10" />
+                    </div>
+                    <div className="h-5 bg-white/[0.06] rounded w-3/4" />
+                    <div className="h-4 bg-white/[0.06] rounded w-full" />
+                    <div className="h-4 bg-white/[0.06] rounded w-1/2" />
+                  </div>
                 </div>
-              </Link>
+              </div>
             ))}
           </div>
+        ) : items.length > 0 ? (
+          <div className="space-y-3">
+            {items.map((item, index) => (
+              <DiscoverCard
+                key={item.id}
+                item={item}
+                index={index}
+                isOwnContent={item.authorName !== null && currentUserId === item.id}
+              />
+            ))}
+
+            {/* Infinite scroll sentinel */}
+            <div ref={sentinelRef} className="h-4" />
+
+            {loadingMore && (
+              <div className="flex justify-center py-6">
+                <Loader2 className="w-5 h-5 text-[#1d9bf0] animate-spin" />
+              </div>
+            )}
+          </div>
         ) : (
-          <div className="text-center py-20">
+          <div className="text-center py-16 sm:py-20">
             <div className="inline-flex p-4 rounded-2xl bg-white/[0.03] border border-white/[0.06] mb-4">
               <Sparkles className="w-8 h-8 text-white/20" />
             </div>
             <h2 className="text-lg font-semibold text-white mb-2">Nothing here yet</h2>
-            <p className="text-white/40 text-sm max-w-md mx-auto mb-6">
-              Content appears here when users share their analyses publicly.
-              Be the first to analyze and share something interesting.
+            <p className="text-white/40 text-sm max-w-md mx-auto">
+              Content appears here when users publish their analyses to the feed.
+              Analyze something and use the &quot;Publish to Feed&quot; toggle to share with the community.
             </p>
-            <Link
-              href="/login"
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-medium rounded-full transition-colors"
-            >
-              Get Started
-            </Link>
           </div>
         )}
       </main>
 
-      <LandingFooter />
+      <MobileBottomNav />
     </div>
   )
 }

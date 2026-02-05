@@ -2,7 +2,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
-import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, MessageSquare, Bookmark, BookmarkCheck } from "lucide-react"
+import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, MessageSquare, Bookmark, BookmarkCheck, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect, useCallback, useRef, use } from "react"
 import { supabase } from "@/lib/supabase"
@@ -10,7 +10,7 @@ import type { Tables, TriageData, TruthCheckData, ActionItemsData, ContentCatego
 import { formatDistanceToNow } from "date-fns"
 import { useRouter } from "next/navigation"
 import { getCachedSession } from "@/components/with-auth"
-import { formatDuration, getYouTubeVideoId, getDomainFromUrl } from "@/lib/utils"
+import { cn, formatDuration, getYouTubeVideoId, getDomainFromUrl } from "@/lib/utils"
 import { detectPaywallTruncation } from "@/lib/paywall-detection"
 import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { YouTubePlayer, type YouTubePlayerRef } from "@/components/ui/youtube-player"
@@ -166,6 +166,8 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [isTogglingBookmark, setIsTogglingBookmark] = useState(false)
+  const [isPublic, setIsPublic] = useState(false)
+  const [isTogglingPublish, setIsTogglingPublish] = useState(false)
   const [crossReferences, setCrossReferences] = useState<CrossReference[]>([])
   const upgradeModal = useUpgradeModal()
 
@@ -276,6 +278,32 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     }
   }, [item, isBookmarked, isTogglingBookmark, upgradeModal])
 
+  const handleTogglePublish = useCallback(async () => {
+    if (!item || isTogglingPublish) return
+    const newState = !isPublic
+    setIsPublic(newState) // Optimistic
+    setIsTogglingPublish(true)
+    try {
+      const response = await fetch(`/api/content/${item.id}/publish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      })
+      const data = await response.json()
+      if (!data.success) {
+        setIsPublic(!newState) // Revert
+        toast.error("Failed to update publish status")
+      } else {
+        toast.success(data.is_public ? "Published to Discovery Feed" : "Removed from Discovery Feed")
+        setIsPublic(data.is_public)
+      }
+    } catch {
+      setIsPublic(!newState) // Revert
+      toast.error("Failed to update publish status")
+    } finally {
+      setIsTogglingPublish(false)
+    }
+  }, [item, isPublic, isTogglingPublish])
+
   const handleExport = useCallback(async (format: "pdf" | "markdown") => {
     if (!item) return
     try {
@@ -317,7 +345,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     if (showLoadingState) setLoading(true)
 
     // PERF: FIX-219 — select explicit columns to avoid pulling in unexpected future columns
-    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language"
+    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language, is_public, vote_score"
     const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language"
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select(contentColumns).eq("id", contentId).single(),
@@ -351,7 +379,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   const pollContentAndUpdate = useCallback(async (): Promise<boolean> => {
     // PERF: FIX-219 — select explicit columns for polling too
-    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language"
+    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language, is_public, vote_score"
     const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language"
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select(contentColumns).eq("id", contentId).single(),
@@ -500,6 +528,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   useEffect(() => {
     if (item) {
       setIsBookmarked(item.is_bookmarked ?? false)
+      setIsPublic(item.is_public ?? false)
     }
   }, [item])
 
@@ -1297,6 +1326,19 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 </DropdownMenuContent>
               </DropdownMenu>
 
+              <button
+                onClick={handleTogglePublish}
+                disabled={isTogglingPublish}
+                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
+                  isPublic
+                    ? "bg-[#1d9bf0]/20 text-[#1d9bf0] border border-[#1d9bf0]/30"
+                    : "bg-white/[0.06] text-white/50 border border-white/[0.1]"
+                }`}
+                aria-label={isPublic ? "Unpublish from feed" : "Publish to feed"}
+              >
+                <Globe className="w-4 h-4" />
+              </button>
+
               <LanguageSelector
                 value={analysisLanguage}
                 onValueChange={handleLanguageChange}
@@ -1749,6 +1791,27 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                           </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
+
+                      {/* Publish to Feed toggle */}
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button
+                            onClick={handleTogglePublish}
+                            disabled={isTogglingPublish}
+                            size="sm"
+                            className={cn(
+                              "w-full transition-all",
+                              isPublic
+                                ? "bg-[#1d9bf0]/20 hover:bg-[#1d9bf0]/30 text-[#1d9bf0] hover:text-[#1d9bf0] border border-[#1d9bf0]/30 hover:border-[#1d9bf0]/50"
+                                : "bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.08] hover:border-white/[0.15]"
+                            )}
+                          >
+                            <Globe className="mr-2 h-4 w-4 shrink-0" />
+                            <span className="truncate">{isPublic ? "Published" : "Publish"}</span>
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>{isPublic ? "Remove from Discovery Feed" : "Publish to Discovery Feed"}</TooltipContent>
+                      </Tooltip>
                     </div>
                   </TooltipProvider>
 
