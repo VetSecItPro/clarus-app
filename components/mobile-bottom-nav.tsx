@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Clock } from "lucide-react"
+import { Home, Clock, Compass } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { ActiveAnalysisNavLink } from "@/components/active-analysis-nav-link"
@@ -11,6 +11,7 @@ import { useState } from "react"
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Clock },
+  { href: "/discover", label: "Discover", icon: Compass },
 ]
 
 export default function MobileBottomNav() {

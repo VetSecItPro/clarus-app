@@ -1,118 +1,189 @@
 import { NextResponse } from "next/server"
-import { createClient } from "@supabase/supabase-js"
-import type { Database } from "@/types/database.types"
+import { authenticateRequest, AuthErrors, getAdminClient } from "@/lib/auth"
 import type { TriageData } from "@/types/database.types"
 import { checkRateLimit } from "@/lib/validation"
+import { z } from "zod"
+import { parseQuery } from "@/lib/schemas"
 
 /**
  * GET /api/discover
- * Public endpoint — no auth required.
- * Returns top shared content from the last 7 days, anonymized.
- * Only includes content with a share_token (publicly shared by a user).
+ * Lists public content feed with pagination, sorting, and filtering.
+ * Requires authentication (authenticated users only).
  */
 
-// SECURITY: Use anon key for public endpoint, not service role — FIX-025 (service role bypasses RLS)
-let _client: ReturnType<typeof createClient<Database, "clarus">> | null = null
-function getClient() {
-  if (!_client) {
-    _client = createClient<Database, "clarus">(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      { db: { schema: "clarus" } }
-    )
-  }
-  return _client
-}
+const discoverQuerySchema = z.object({
+  page: z.coerce.number().int().min(1).optional().default(1),
+  limit: z.coerce.number().int().min(1).max(50).optional().default(20),
+  sort: z.enum(["trending", "newest", "top"]).optional().default("trending"),
+  type: z.enum(["youtube", "article", "podcast", "all"]).optional().default("all"),
+  topic: z.string().trim().max(100).optional(),
+})
 
-export interface DiscoverItem {
+export interface DiscoverFeedItem {
+  id: string
   title: string
-  sourceUrl: string
+  url: string
   type: string
-  shareToken: string
-  shareUrl: string
-  teaser: string
+  voteScore: number
+  authorName: string | null
+  briefOverview: string
   qualityScore: number
-  domain: string
-  dateAdded: string
+  createdAt: string
+  shareToken: string | null
+  userVote: number | null
 }
 
 export async function GET(request: Request) {
-  // Rate limit public endpoint
-  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-  const rateLimit = checkRateLimit(`discover:${clientIp}`, 30, 60000) // 30 per minute
+  // Authenticate
+  const auth = await authenticateRequest()
+  if (!auth.success) return auth.response
+
+  // Rate limit: 30/minute per user
+  const rateLimit = checkRateLimit(`discover:${auth.user.id}`, 30, 60000)
   if (!rateLimit.allowed) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 })
+    return AuthErrors.rateLimit(rateLimit.resetIn)
   }
 
-  try {
-    const supabase = getClient()
-    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
+  // Parse query params
+  const { searchParams } = new URL(request.url)
+  const parsed = parseQuery(discoverQuerySchema, searchParams)
+  if (!parsed.success) {
+    return AuthErrors.badRequest(parsed.error)
+  }
 
-    // Fetch shared content with summaries in a single joined query
-    const { data: sharedContent, error: contentError } = await supabase
+  const { page, limit, sort, type, topic } = parsed.data
+
+  try {
+    const adminClient = getAdminClient()
+    const offset = (page - 1) * limit
+
+    // Build the query for public content
+    let query = adminClient
       .from("content")
-      .select("id, title, url, type, share_token, date_added, summaries!inner(brief_overview, triage)")
-      .not("share_token", "is", null)
-      .gte("date_added", sevenDaysAgo)
-      .eq("summaries.processing_status", "complete")
-      .order("date_added", { ascending: false })
-      .limit(50)
+      .select("id, title, url, type, vote_score, date_added, share_token, user_id")
+      .eq("is_public", true)
+      .not("title", "like", "Analyzing:%")
+
+    // Filter by type
+    if (type !== "all") {
+      query = query.eq("type", type)
+    }
+
+    // Topic filter (search in title)
+    if (topic) {
+      query = query.ilike("title", `%${topic}%`)
+    }
+
+    // Sorting
+    if (sort === "newest") {
+      query = query.order("date_added", { ascending: false })
+    } else if (sort === "top") {
+      query = query.order("vote_score", { ascending: false })
+    } else {
+      // Trending: order by vote_score desc, then date_added desc
+      // The actual trending score is computed client-side for flexibility
+      query = query.order("vote_score", { ascending: false }).order("date_added", { ascending: false })
+    }
+
+    query = query.range(offset, offset + limit - 1)
+
+    const { data: publicContent, error: contentError } = await query
 
     if (contentError) {
       console.error("Discover fetch error:", contentError)
-      return NextResponse.json({ error: "Failed to fetch content" }, { status: 500 })
+      return AuthErrors.serverError()
     }
 
-    if (!sharedContent || sharedContent.length === 0) {
-      return NextResponse.json({ items: [] }, {
-        headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+    if (!publicContent || publicContent.length === 0) {
+      return NextResponse.json({
+        items: [],
+        page,
+        hasMore: false,
       })
     }
 
-    // Build scored items — zero user attribution
-    const items: DiscoverItem[] = sharedContent
+    // Fetch summaries for the content
+    const contentIds = publicContent.map(c => c.id)
+    const { data: summaries } = await adminClient
+      .from("summaries")
+      .select("content_id, brief_overview, triage")
+      .in("content_id", contentIds)
+      .eq("processing_status", "complete")
+      .eq("language", "en")
+
+    // Fetch author names
+    const userIds = [...new Set(publicContent.map(c => c.user_id).filter(Boolean))] as string[]
+    const { data: users } = await adminClient
+      .from("users")
+      .select("id, name")
+      .in("id", userIds)
+
+    // Fetch current user's votes
+    const { data: userVotes } = await adminClient
+      .from("content_votes")
+      .select("content_id, vote")
+      .eq("user_id", auth.user.id)
+      .in("content_id", contentIds)
+
+    const userVoteMap = new Map(
+      userVotes?.map(v => [v.content_id, v.vote]) ?? []
+    )
+    const userMap = new Map(
+      users?.map(u => [u.id, u.name]) ?? []
+    )
+    const summaryMap = new Map(
+      summaries?.map(s => [s.content_id, s]) ?? []
+    )
+
+    // Build response items
+    let items: DiscoverFeedItem[] = publicContent
       .map(content => {
-        const summary = Array.isArray(content.summaries) ? content.summaries[0] : content.summaries
+        const summary = summaryMap.get(content.id)
         if (!summary) return null
 
         const triage = summary.triage as unknown as TriageData | null
         const qualityScore = triage?.quality_score ?? 0
 
-        // Extract teaser from brief_overview (first 200 chars)
         const rawOverview = summary.brief_overview || ""
-        const teaser = rawOverview.length > 200
+        const briefOverview = rawOverview.length > 200
           ? rawOverview.slice(0, 200).trim() + "..."
           : rawOverview
 
-        // Extract domain from URL
-        let domain = ""
-        try {
-          domain = new URL(content.url).hostname.replace(/^www\./, "")
-        } catch {
-          domain = "unknown"
-        }
-
         return {
+          id: content.id,
           title: content.title || "Untitled",
-          sourceUrl: content.url,
+          url: content.url,
           type: content.type || "article",
-          shareToken: content.share_token!,
-          shareUrl: `https://clarusapp.io/share/${content.share_token}`,
-          teaser,
+          voteScore: content.vote_score ?? 0,
+          authorName: content.user_id ? userMap.get(content.user_id) ?? null : null,
+          briefOverview,
           qualityScore,
-          domain,
-          dateAdded: content.date_added || new Date().toISOString(),
+          createdAt: content.date_added || new Date().toISOString(),
+          shareToken: content.share_token,
+          userVote: userVoteMap.get(content.id) ?? null,
         }
       })
-      .filter((item): item is DiscoverItem => item !== null)
-      .sort((a, b) => b.qualityScore - a.qualityScore)
-      .slice(0, 20)
+      .filter((item): item is DiscoverFeedItem => item !== null)
 
-    return NextResponse.json({ items }, {
-      headers: { "Cache-Control": "public, s-maxage=300, stale-while-revalidate=600" },
+    // Apply trending sort if needed (compute score with recency factor)
+    if (sort === "trending") {
+      const now = Date.now()
+      items = items.sort((a, b) => {
+        const hoursA = (now - new Date(a.createdAt).getTime()) / (1000 * 60 * 60)
+        const hoursB = (now - new Date(b.createdAt).getTime()) / (1000 * 60 * 60)
+        const scoreA = a.voteScore * 0.5 + (1 / (hoursA + 1)) * 0.5
+        const scoreB = b.voteScore * 0.5 + (1 / (hoursB + 1)) * 0.5
+        return scoreB - scoreA
+      })
+    }
+
+    return NextResponse.json({
+      items,
+      page,
+      hasMore: publicContent.length === limit,
     })
   } catch (error) {
     console.error("Discover API error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+    return AuthErrors.serverError()
   }
 }

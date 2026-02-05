@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Home, Clock } from "lucide-react"
+import { Home, Clock, Compass } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { supabase } from "@/lib/supabase"
@@ -17,6 +17,7 @@ import type { UserTier } from "@/types/database.types"
 const navItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Clock },
+  { href: "/discover", label: "Discover", icon: Compass },
 ]
 
 const TIER_BADGE_CONFIG: Record<UserTier, { label: string; bg: string; text: string; border: string } | null> = {
