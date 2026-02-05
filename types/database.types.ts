@@ -838,6 +838,89 @@ export interface Database {
           },
         ]
       }
+      collections: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          color: string | null
+          icon: string | null
+          is_default: boolean
+          item_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          color?: string | null
+          icon?: string | null
+          is_default?: boolean
+          item_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string | null
+          color?: string | null
+          icon?: string | null
+          is_default?: boolean
+          item_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collections_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      collection_items: {
+        Row: {
+          id: string
+          collection_id: string
+          content_id: string
+          added_at: string
+          sort_order: number
+        }
+        Insert: {
+          id?: string
+          collection_id: string
+          content_id: string
+          added_at?: string
+          sort_order?: number
+        }
+        Update: {
+          id?: string
+          collection_id?: string
+          content_id?: string
+          added_at?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "collection_items_collection_id_fkey"
+            columns: ["collection_id"]
+            referencedRelation: "collections"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "collection_items_content_id_fkey"
+            columns: ["content_id"]
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flagged_content: {
         Row: {
           id: string

@@ -36,6 +36,7 @@ export interface TierLimits {
   library: number
   podcastAnalyses: number
   bulkImportBatchSize: number
+  collections: number
 }
 
 /** Monthly limits per tier. All tiers have hard caps to prevent abuse. */
@@ -51,6 +52,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     library: 25,
     podcastAnalyses: 0,
     bulkImportBatchSize: 2,
+    collections: 3,
   },
   starter: {
     analyses: 50,
@@ -63,6 +65,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     library: 500,
     podcastAnalyses: 10,
     bulkImportBatchSize: 5,
+    collections: 50,
   },
   pro: {
     analyses: 150,
@@ -75,6 +78,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     library: 5000,
     podcastAnalyses: 30,
     bulkImportBatchSize: 15,
+    collections: 100,
   },
   day_pass: {
     analyses: 15,
@@ -87,6 +91,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     library: 25,
     podcastAnalyses: 3,
     bulkImportBatchSize: 5,
+    collections: 10,
   },
 }
 
