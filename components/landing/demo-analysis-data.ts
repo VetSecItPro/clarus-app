@@ -78,6 +78,9 @@ export const DEMO_TRUTH_CHECK: TruthCheckData = {
       assessment: "While Hari correctly highlights the social dimension of addiction, he understates the role of neurochemistry. Modern addiction science recognizes both biological vulnerability and environmental factors — it is not either/or.",
       severity: "medium",
       timestamp: "2:10",
+      sources: [
+        { url: "https://www.nature.com/articles/nrn3469", title: "Nature Reviews Neuroscience: Drug addiction" },
+      ],
     },
     {
       type: "misleading",
@@ -85,6 +88,10 @@ export const DEMO_TRUTH_CHECK: TruthCheckData = {
       assessment: "The specific statistic is difficult to verify precisely. Portugal's policy did lead to significant improvements in multiple drug-related outcomes, but the exact figures vary by source and time period measured.",
       severity: "low",
       timestamp: "10:15",
+      sources: [
+        { url: "https://doi.org/10.1111/j.1360-0443.2010.02956.x", title: "Drug policy in Portugal (Addiction, 2010)" },
+        { url: "https://www.emcdda.europa.eu/countries/drug-reports/2023/portugal_en", title: "EMCDDA Portugal Country Report" },
+      ],
     },
     {
       type: "unjustified_certainty",
@@ -92,6 +99,9 @@ export const DEMO_TRUTH_CHECK: TruthCheckData = {
       assessment: "While Rat Park is an important study, Hari presents it with more certainty than the scientific community affords it. The original study had methodological limitations and some replication attempts had mixed results.",
       severity: "low",
       timestamp: "4:22",
+      sources: [
+        { url: "https://doi.org/10.1016/0091-3057(81)90149-2", title: "Alexander et al. (1981) — Rat Park Study" },
+      ],
     },
   ],
   strengths: [

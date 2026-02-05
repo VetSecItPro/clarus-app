@@ -291,6 +291,10 @@ async function generatePDF(content: Record<string, unknown>, summary: Record<str
           bold: true
         })
         addText(issue.assessment, { size: 9, color: COLORS.textLight })
+        if (issue.sources && issue.sources.length > 0) {
+          const sourceText = issue.sources.map(s => `${s.title}: ${s.url}`).join(" | ")
+          addText(`Sources: ${sourceText}`, { size: 8, color: COLORS.info })
+        }
         y += 2
       }
     }

@@ -39,6 +39,12 @@ export interface ClaimHighlight {
   severity?: "low" | "medium" | "high"
 }
 
+// Citation source for truth check verification
+export interface CitationSource {
+  url: string
+  title: string
+}
+
 // Truth check analysis
 export interface TruthCheckData {
   overall_rating: "Accurate" | "Mostly Accurate" | "Mixed" | "Questionable" | "Unreliable"
@@ -49,6 +55,7 @@ export interface TruthCheckData {
     assessment: string
     severity: "low" | "medium" | "high"
     timestamp?: string // e.g., "2:34" for YouTube videos
+    sources?: CitationSource[] // Citation URLs backing the assessment
   }>
   strengths: string[]
   sources_quality: string

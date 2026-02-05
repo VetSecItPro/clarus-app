@@ -30,6 +30,7 @@ interface TranslatableFields {
       assessment: string
       severity: string
       timestamp?: string
+      sources?: Array<{ url: string; title: string }>
     }>
     claims?: Array<{
       claim: string
