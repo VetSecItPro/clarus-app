@@ -22,7 +22,10 @@ if (!supabaseUrl || !supabaseKey || !openRouterApiKey) {
   console.warn("Chat API: Some environment variables are not set. API may not work correctly.")
 }
 
-// Tavily web search function
+// Tavily web search function for chat (on-demand, AI-triggered).
+// Cost optimization: max_results reduced to 3 (each result's content is truncated
+// to 200 chars anyway — 3 source snippets provide sufficient context for chat answers).
+// Rate limited to MAX_WEB_SEARCHES_PER_CONVERSATION (3) per conversation.
 async function searchWeb(query: string): Promise<string> {
   if (!tavilyApiKey) {
     return "Web search is not available. Please ask questions based on the provided content."
@@ -37,10 +40,17 @@ async function searchWeb(query: string): Promise<string> {
       body: JSON.stringify({
         api_key: tavilyApiKey,
         query,
+        // "basic" is sufficient — chat needs quick factual snippets, not deep crawls.
+        // "advanced" costs 2x and adds raw page content we don't use.
         search_depth: "basic",
+        // Tavily's pre-synthesized answer enriches the tool response at no extra cost.
         include_answer: true,
+        // We only display snippet text (content field), not full page HTML.
         include_raw_content: false,
-        max_results: 5,
+        // 3 results is sufficient for chat context — each is truncated to 200 chars.
+        // Reduced from 5: the extra 2 results added minimal value since chat responses
+        // typically reference 1-2 sources. Saves ~40% on per-search data transfer.
+        max_results: 3,
       }),
     })
 
@@ -57,7 +67,7 @@ async function searchWeb(query: string): Promise<string> {
 
     if (data.results && data.results.length > 0) {
       result += "**Sources:**\n"
-      for (const item of data.results.slice(0, 5)) {
+      for (const item of data.results.slice(0, 3)) {
         result += `- [${item.title}](${item.url}): ${item.content?.slice(0, 200)}...\n`
       }
     }
