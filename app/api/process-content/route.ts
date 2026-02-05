@@ -13,6 +13,7 @@ import { isValidLanguage, getLanguageDirective, type AnalysisLanguage } from "@/
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { NonRetryableError, classifyError, getUserFriendlyError } from "@/lib/error-sanitizer"
 import { normalizeUrl } from "@/lib/utils"
+import { sanitizeForPrompt, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -82,7 +83,8 @@ async function extractKeyTopics(text: string): Promise<string[]> {
   if (!prompt) return []
 
   const truncatedText = text.substring(0, 8000) // Limit input for speed
-  const userContent = prompt.user_content_template.replace("{{CONTENT}}", truncatedText)
+  const sanitizedText = sanitizeForPrompt(truncatedText, { context: "keyword-extraction" })
+  const userContent = prompt.user_content_template.replace("{{CONTENT}}", wrapUserContent(sanitizedText)) + INSTRUCTION_ANCHOR
 
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -299,11 +301,13 @@ async function detectContentTone(
 
   const timer = createTimer()
   const sample = fullText.substring(0, 2000)
-  const titleLine = contentTitle ? `Title: ${contentTitle}\n` : ""
+  const sanitizedSample = sanitizeForPrompt(sample, { context: "tone-detection" })
+  const sanitizedTitle = contentTitle ? sanitizeForPrompt(contentTitle, { context: "tone-detection-title", maxLength: 500 }) : ""
+  const titleLine = sanitizedTitle ? `Title: ${sanitizedTitle}\n` : ""
   const userContent = prompt.user_content_template
     .replace("{{TITLE_LINE}}", titleLine)
     .replace("{{TYPE}}", contentType)
-    .replace("{{CONTENT}}", sample)
+    .replace("{{CONTENT}}", wrapUserContent(sanitizedSample)) + INSTRUCTION_ANCHOR
 
   try {
     const controller = new AbortController()
@@ -805,10 +809,11 @@ async function getModelSummary(
   const { system_content, user_content_template, temperature, top_p, max_tokens, model_name } = promptData
 
   const openRouterModelId = model_name || "google/gemini-2.5-flash"
+  const sanitizedSummaryText = sanitizeForPrompt(textToSummarize, { context: "summarizer" })
   const finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}")
     .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
     .replace("{{LANGUAGE}}", languageDirective || "Write your analysis in English.")
-    .replace("{{TEXT_TO_SUMMARIZE}}", textToSummarize)
+    .replace("{{TEXT_TO_SUMMARIZE}}", wrapUserContent(sanitizedSummaryText)) + INSTRUCTION_ANCHOR
 
   const requestBody: OpenRouterRequestBody = {
     model: openRouterModelId,
@@ -862,6 +867,11 @@ async function getModelSummary(
       const errorMessage = "OpenRouter response missing message content."
       console.error(errorMessage, result)
       return { error: true, modelName: openRouterModelId, reason: "InvalidResponse", finalErrorMessage: errorMessage }
+    }
+
+    // Monitor summarizer output for injection leakage
+    if (typeof rawContent === "string") {
+      detectOutputLeakage(rawContent, "summarizer")
     }
 
     let parsedContent: ParsedModelSummaryResponse
@@ -994,11 +1004,14 @@ async function generateSectionWithAI(
     return { content: null, error: `Prompt not found for type: ${promptType}` }
   }
 
-  // Replace template variables
+  // Sanitize user-provided content before prompt insertion
+  const sanitizedContent = sanitizeForPrompt(textToAnalyze, { context: `analysis-${promptType}` })
+
+  // Replace template variables — user content wrapped in XML delimiters
   let userContent = prompt.user_content_template
     .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
     .replace("{{LANGUAGE}}", languageDirective || "Write your analysis in English.")
-    .replace("{{CONTENT}}", textToAnalyze)
+    .replace("{{CONTENT}}", wrapUserContent(sanitizedContent))
     .replace("{{TYPE}}", contentType || "article")
 
   // Inject web search context if available AND enabled for this prompt
@@ -1009,6 +1022,9 @@ async function generateSectionWithAI(
   } else if (webContext && !useWebSearch) {
     console.log(`API: [${promptType}] Web search disabled for this prompt`)
   }
+
+  // Add instruction anchor at end of prompt to resist injection
+  userContent = userContent + INSTRUCTION_ANCHOR
 
   const requestBody: OpenRouterRequestBody = {
     model: prompt.model_name,
@@ -1080,6 +1096,11 @@ async function generateSectionWithAI(
           await new Promise((resolve) => setTimeout(resolve, delay))
         }
         continue
+      }
+
+      // Monitor output for injection leakage (non-blocking)
+      if (typeof rawContent === "string") {
+        detectOutputLeakage(rawContent, promptType)
       }
 
       if (prompt.expect_json) {
