@@ -68,7 +68,7 @@ export type ApiName = "openrouter" | "supadata" | "firecrawl" | "tavily" | "pola
 
 /** Specific operation within a service (for granular cost tracking). */
 export type ApiOperation =
-  | "analyze" | "chat" | "summarize" | "tone_detection" | "translate"  // openrouter
+  | "analyze" | "chat" | "summarize" | "tone_detection" | "translate" | "comparative_analysis"  // openrouter
   | "transcript" | "metadata"          // supadata
   | "scrape"                           // firecrawl
   | "search"                           // tavily
