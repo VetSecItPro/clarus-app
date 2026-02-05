@@ -19,6 +19,8 @@ import {
   X,
   Star,
   GitCompareArrows,
+  PanelLeftOpen,
+  PanelLeftClose,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -31,6 +33,9 @@ import {
 import { cn } from "@/lib/utils"
 import { useLibrary, type LibraryItem } from "@/lib/hooks/use-library"
 import { ChatThreadCard } from "@/components/chat"
+import { CollectionSidebar } from "@/components/collections/collection-sidebar"
+import { AddToCollectionButton } from "@/components/collections/add-to-collection-button"
+import { useCollections, useCollectionItems } from "@/lib/hooks/use-collections"
 import type { TriageData, UserTier } from "@/types/database.types"
 import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
 
@@ -144,6 +149,9 @@ function LibraryPageContent({ session }: LibraryPageProps) {
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const [localItems, setLocalItems] = useState<HistoryItem[]>([])
   const [scoreFilter, setScoreFilter] = useState("all")
+  const [selectedCollectionId, setSelectedCollectionId] = useState<string | null>(null)
+  const [showCollectionsSidebar, setShowCollectionsSidebar] = useState(false)
+  const { collections } = useCollections()
   const [userTier, setUserTier] = useState<UserTier>("free")
 
   // Fetch user tier for feature gating
@@ -198,13 +206,18 @@ function LibraryPageContent({ session }: LibraryPageProps) {
       : null,
   })
 
+  // Fetch collection item content IDs for filtering
+  const { contentIds: collectionContentIds } = useCollectionItems(selectedCollectionId)
+
   // Sync SWR data to local state for optimistic updates
   useEffect(() => {
     setLocalItems(swrItems)
   }, [swrItems])
 
-  // Score filtering is now handled by the useLibrary hook for correct pagination
-  const items = localItems
+  // Filter by collection if one is selected, otherwise show all items
+  const items = selectedCollectionId
+    ? localItems.filter((item) => collectionContentIds.includes(item.id))
+    : localItems
 
   // Fetch all tags
   const fetchAllTags = useCallback(async () => {
@@ -282,31 +295,98 @@ function LibraryPageContent({ session }: LibraryPageProps) {
 
   const groupedItems = groupByDate(items)
 
+  const selectedCollection = selectedCollectionId
+    ? collections.find((c) => c.id === selectedCollectionId) ?? null
+    : null
+
   return (
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      <main className="flex-1 max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-4 sm:mb-6">
-          <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-white">
-              Library
-            </h1>
-            <p className="text-white/50 text-xs sm:text-sm">
-              Your analyzed content
-            </p>
+      <div className="flex-1 flex max-w-6xl mx-auto w-full">
+        {/* Collections Sidebar (desktop) */}
+        {showCollectionsSidebar && (
+          <aside className="hidden lg:block w-64 shrink-0 px-4 pt-3 sm:pt-4 pb-8 border-r border-white/[0.06]">
+            <CollectionSidebar
+              selectedCollectionId={selectedCollectionId}
+              onSelectCollection={setSelectedCollectionId}
+            />
+          </aside>
+        )}
+
+        <main className="flex-1 min-w-0 max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
+          {/* Header */}
+          <div className="mb-4 sm:mb-6 flex items-center justify-between">
+            <div>
+              <h1 className="text-xl sm:text-2xl font-semibold text-white">
+                {selectedCollection ? selectedCollection.name : "Library"}
+              </h1>
+              <p className="text-white/50 text-xs sm:text-sm">
+                {selectedCollection
+                  ? selectedCollection.description || `${selectedCollection.item_count} items`
+                  : "Your analyzed content"}
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {canCompare && (
+                <Link
+                  href="/compare"
+                  className="flex items-center gap-2 px-4 py-2 bg-white/[0.06] border border-white/[0.08] rounded-full text-sm text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
+                >
+                  <GitCompareArrows className="w-4 h-4" />
+                  <span className="hidden sm:inline">Compare</span>
+                </Link>
+              )}
+              <button
+                onClick={() => setShowCollectionsSidebar(!showCollectionsSidebar)}
+                aria-label={showCollectionsSidebar ? "Hide collections sidebar" : "Show collections sidebar"}
+                className="hidden lg:flex items-center gap-2 h-9 px-3 bg-white/[0.06] border border-white/[0.08] rounded-lg text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-xs"
+              >
+                {showCollectionsSidebar ? (
+                  <PanelLeftClose className="w-4 h-4" />
+                ) : (
+                  <PanelLeftOpen className="w-4 h-4" />
+                )}
+                Collections
+              </button>
+            </div>
           </div>
-          {canCompare && (
-            <Link
-              href="/compare"
-              className="flex items-center gap-2 px-4 py-2 bg-white/[0.06] border border-white/[0.08] rounded-full text-sm text-white/70 hover:text-white hover:bg-white/[0.1] transition-all"
-            >
-              <GitCompareArrows className="w-4 h-4" />
-              <span className="hidden sm:inline">Compare</span>
-            </Link>
-          )}
-        </div>
+
+          {/* Mobile collections bar */}
+          <div className="lg:hidden mb-3">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide">
+              <button
+                onClick={() => setSelectedCollectionId(null)}
+                className={cn(
+                  "shrink-0 px-3 py-1.5 rounded-full text-xs transition-all border",
+                  selectedCollectionId === null
+                    ? "bg-[#1d9bf0] border-[#1d9bf0] text-white"
+                    : "bg-white/[0.06] border-white/[0.08] text-white/60"
+                )}
+              >
+                All
+              </button>
+              {collections.map((c) => (
+                <button
+                  key={c.id}
+                  onClick={() => setSelectedCollectionId(c.id)}
+                  className={cn(
+                    "shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs transition-all border",
+                    selectedCollectionId === c.id
+                      ? "bg-white/[0.1] border-white/[0.15] text-white"
+                      : "bg-white/[0.06] border-white/[0.08] text-white/60"
+                  )}
+                >
+                  <span
+                    className="w-2 h-2 rounded-full shrink-0"
+                    style={{ backgroundColor: c.color || "#1d9bf0" }}
+                  />
+                  {c.name}
+                  <span className="text-white/30">{c.item_count}</span>
+                </button>
+              ))}
+            </div>
+          </div>
 
         {/* Search & Filter Bar */}
         <div className="mb-4 sm:mb-6 space-y-2 sm:space-y-3">
@@ -552,21 +632,29 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                   {group.items.map((item) => {
                     const summary = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
                     return (
-                      <ChatThreadCard
-                        key={item.id}
-                        id={item.id}
-                        title={item.title || "Untitled"}
-                        url={item.url}
-                        type={(item.type as "youtube" | "article" | "x_post" | "podcast") || "article"}
-                        thumbnail_url={item.thumbnail_url}
-                        brief_overview={summary?.brief_overview}
-                        triage={summary?.triage as TriageData | null | undefined}
-                        date_added={item.date_added || new Date().toISOString()}
-                        is_bookmarked={item.is_bookmarked}
-                        onClick={() => handleItemClick(item.id)}
-                        onBookmark={() => handleToggleBookmark(item)}
-                        onDelete={() => handleDelete(item.id)}
-                      />
+                      <div key={item.id} className="relative group/card">
+                        <ChatThreadCard
+                          id={item.id}
+                          title={item.title || "Untitled"}
+                          url={item.url}
+                          type={(item.type as "youtube" | "article" | "x_post" | "podcast") || "article"}
+                          thumbnail_url={item.thumbnail_url}
+                          brief_overview={summary?.brief_overview}
+                          triage={summary?.triage as TriageData | null | undefined}
+                          date_added={item.date_added || new Date().toISOString()}
+                          is_bookmarked={item.is_bookmarked}
+                          onClick={() => handleItemClick(item.id)}
+                          onBookmark={() => handleToggleBookmark(item)}
+                          onDelete={() => handleDelete(item.id)}
+                        />
+                        {/* Add to Collection button */}
+                        <div className="absolute top-2 right-24 opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
+                          <AddToCollectionButton
+                            contentId={item.id}
+                            compact
+                          />
+                        </div>
+                      </div>
                     )
                   })}
                 </div>
@@ -594,7 +682,8 @@ function LibraryPageContent({ session }: LibraryPageProps) {
             )}
           </div>
         )}
-      </main>
+        </main>
+      </div>
 
       <MobileBottomNav />
     </div>
