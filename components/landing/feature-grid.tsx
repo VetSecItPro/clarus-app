@@ -3,27 +3,10 @@
 import { memo } from "react"
 import { motion } from "framer-motion"
 import {
-  Youtube, FileText, FileUp, Headphones,
   Zap, CheckCircle, MessageSquare, Library, Download,
   Mic, ScanEye, Share2,
 } from "lucide-react"
-
-function XIcon({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" className={className}>
-      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-    </svg>
-  )
-}
 import { cn } from "@/lib/utils"
-
-const contentTypes = [
-  { icon: Youtube, title: "YouTube", color: "text-red-400", bg: "bg-red-500/10" },
-  { icon: Headphones, title: "Podcasts", color: "text-purple-400", bg: "bg-purple-500/10" },
-  { icon: FileText, title: "Articles & Blogs", color: "text-blue-400", bg: "bg-blue-500/10" },
-  { icon: FileUp, title: "PDFs & Documents", color: "text-orange-400", bg: "bg-orange-500/10" },
-  { icon: XIcon, title: "X Posts", color: "text-white/70", bg: "bg-white/[0.06]" },
-]
 
 const features = [
   {
@@ -74,37 +57,6 @@ export const FeatureGrid = memo(function FeatureGrid() {
   return (
     <section id="features" className="py-20 px-6 border-t border-white/[0.04]">
       <div className="max-w-4xl mx-auto">
-        {/* Content types */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true, margin: "-100px" }}
-          transition={{ duration: 0.6 }}
-          className="text-center mb-20"
-        >
-          <p className="text-white/30 text-sm font-medium tracking-wide uppercase mb-6">
-            Works with
-          </p>
-          <div className="flex flex-wrap justify-center gap-3">
-            {contentTypes.map((type, index) => (
-              <motion.div
-                key={type.title}
-                initial={{ opacity: 0, scale: 0.9 }}
-                whileInView={{ opacity: 1, scale: 1 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: index * 0.04 }}
-                whileHover={{ y: -2 }}
-                className="flex items-center gap-3 px-5 py-3 rounded-full bg-white/[0.02] border border-white/[0.06] hover:border-white/[0.1] transition-colors"
-              >
-                <div className={cn("w-8 h-8 rounded-lg flex items-center justify-center", type.bg)}>
-                  <type.icon className={cn("w-4 h-4", type.color)} />
-                </div>
-                <span className="text-white/70 font-medium">{type.title}</span>
-              </motion.div>
-            ))}
-          </div>
-        </motion.div>
-
         {/* Features section */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
