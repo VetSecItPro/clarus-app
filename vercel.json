@@ -1,5 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "skewProtection": {
+    "enabled": true,
+    "maxAge": 86400
+  },
   "crons": [
     {
       "path": "/api/crons/weekly-digest",
