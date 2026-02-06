@@ -9,6 +9,7 @@ import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 import { SWRProvider } from "@/components/swr-provider"
 import { ActiveAnalysisProvider } from "@/lib/contexts/active-analysis-context"
 import { WebVitals } from "@/components/web-vitals"
+import { ChunkErrorHandler } from "@/components/chunk-error-handler"
 import "./globals.css"
 
 const inter = Inter({
@@ -158,6 +159,7 @@ export default function RootLayout({
         <ServiceWorkerRegister />
         <PWAInstallPrompt />
         <WebVitals />
+        <ChunkErrorHandler />
         <Analytics />
       </body>
     </html>
