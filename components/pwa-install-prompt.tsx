@@ -40,6 +40,15 @@ function isIOSSafari(): boolean {
 }
 
 /**
+ * Detects whether the user is on a mobile device (phone or tablet).
+ */
+function isMobileDevice(): boolean {
+  if (typeof navigator === "undefined") return false
+  const ua = navigator.userAgent
+  return /iPhone|iPad|iPod|Android|webOS|BlackBerry|IEMobile|Opera Mini/i.test(ua)
+}
+
+/**
  * Checks whether the app is already running in standalone (installed) mode.
  */
 function isStandalone(): boolean {
@@ -110,6 +119,7 @@ export function PWAInstallPrompt() {
   const [visible, setVisible] = useState(false)
   const [animateIn, setAnimateIn] = useState(false)
   const [isIOS, setIsIOS] = useState(false)
+  const [isMobile, setIsMobile] = useState(false)
   const deferredPromptRef = useRef<BeforeInstallPromptEvent | null>(null)
 
   const dismiss = useCallback(() => {
@@ -142,7 +152,9 @@ export function PWAInstallPrompt() {
     if (isStandalone() || isDismissedRecently()) return
 
     const ios = isIOSSafari()
+    const mobile = isMobileDevice()
     setIsIOS(ios)
+    setIsMobile(mobile)
 
     let showTimer: ReturnType<typeof setTimeout> | undefined
     let mounted = true
@@ -207,14 +219,16 @@ export function PWAInstallPrompt() {
           />
 
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">Install Clarus</p>
+            <p className="text-sm font-semibold text-white">
+              Add Clarus to your {isMobile ? "home screen" : "desktop"}
+            </p>
             {isIOS ? (
               <p className="text-xs text-white/50 mt-0.5">
-                Tap <ShareIcon /> Share then &ldquo;Add to Home Screen&rdquo;
+                Tap <ShareIcon /> then &ldquo;Add to Home Screen&rdquo;
               </p>
             ) : (
               <p className="text-xs text-white/50 mt-0.5">
-                Get faster access with our app
+                Installs locally — no app store, works offline
               </p>
             )}
           </div>
