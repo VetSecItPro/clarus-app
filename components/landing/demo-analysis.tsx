@@ -87,10 +87,10 @@ export function DemoAnalysis() {
             See it in action
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-            A real analysis, <span className="text-white/40">not a mockup</span>
+            What Clarus produces
           </h2>
           <p className="text-white/40 text-base max-w-lg mx-auto">
-            Here is what Clarus produces for a popular TED talk on addiction. Click through the sections to explore.
+            A real TED talk analysis. Click through the sections to explore.
           </p>
         </motion.div>
 

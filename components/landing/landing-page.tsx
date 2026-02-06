@@ -4,6 +4,7 @@ import dynamic from "next/dynamic"
 import { LandingHeader } from "./landing-header"
 import { HeroSection } from "./hero-section"
 import { SocialProofBar } from "./social-proof-bar"
+import { WorksWithBar } from "./works-with-bar"
 import { LandingFooter } from "./landing-footer"
 
 // PERF: Dynamic import below-fold landing sections to reduce initial bundle
@@ -25,6 +26,7 @@ export function LandingPage() {
         <ProductPreview />
         <SocialProofBar />
         <HowItWorks />
+        <WorksWithBar />
         <DemoAnalysis />
         <FeatureGrid />
         <AudienceSection />
