@@ -42,10 +42,25 @@ scripts/*prompts*.sql
 scripts/*prompt*.sql
 docs/archive/VAJRA_PROMPT*
 
-# Security audit reports — contain vulnerability details
+# Skill-generated reports — session artifacts, not source code
+# Security
 .security-audit.json
 .security-reports/
 docs/security/
+# Testing
+.test-reports/
+.test-audit.json
+# Dependencies
+.deps-reports/
+.deps-audit.json
+# Documentation
+.docs-reports/
+.docs-audit.json
+# Clean code
+.cleancode-reports/
+.cleancode-audit.json
+# Generic skill output pattern
+*.skill-output.md
 
 # Local dev tool config
 .mcp.json
