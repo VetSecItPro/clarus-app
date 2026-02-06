@@ -23,16 +23,16 @@ const contentTypes = [
 
 export const WorksWithBar = memo(function WorksWithBar() {
   return (
-    <section className="py-8 px-6">
+    <section className="py-8 px-4 overflow-x-auto">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5 }}
-          className="flex flex-wrap items-center justify-center gap-x-6 gap-y-3"
+          className="flex items-center justify-center gap-4 sm:gap-6 whitespace-nowrap"
         >
-          <span className="text-white/30 text-sm font-medium tracking-wide uppercase">
+          <span className="text-white/30 text-xs sm:text-sm font-medium tracking-wide uppercase shrink-0">
             Works with
           </span>
           {contentTypes.map((type, index) => (
@@ -42,10 +42,10 @@ export const WorksWithBar = memo(function WorksWithBar() {
               whileInView={{ opacity: 1 }}
               viewport={{ once: true }}
               transition={{ duration: 0.3, delay: index * 0.05 }}
-              className="flex items-center gap-2 text-white/50"
+              className="flex items-center gap-1.5 text-white/50 shrink-0"
             >
-              <type.icon className={cn("w-4 h-4", type.color)} />
-              <span className="text-sm">{type.title}</span>
+              <type.icon className={cn("w-3.5 h-3.5 sm:w-4 sm:h-4", type.color)} />
+              <span className="text-xs sm:text-sm">{type.title}</span>
             </motion.div>
           ))}
         </motion.div>
