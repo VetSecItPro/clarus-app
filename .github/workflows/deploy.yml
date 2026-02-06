@@ -20,14 +20,8 @@ jobs:
       - name: Install Vercel CLI
         run: npm i -g vercel@latest
 
-      - name: Pull Vercel environment
-        run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Build project
-        run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+      - name: Link project
+        run: vercel link --yes --token=${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -35,12 +29,14 @@ jobs:
       - name: Deploy to production
         id: deploy
         run: |
-          URL=$(vercel deploy --prebuilt --prod --yes --token=${{ secrets.VERCEL_TOKEN }} 2>&1 | tail -1)
-          if [[ "$URL" == http* ]]; then
+          OUTPUT=$(vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
+          echo "$OUTPUT"
+          URL=$(echo "$OUTPUT" | grep -E '^https://' | tail -1)
+          if [[ "$URL" == https://* ]]; then
             echo "url=$URL" >> $GITHUB_OUTPUT
             echo "✅ Deployed to: $URL"
           else
-            echo "❌ Deployment failed: $URL"
+            echo "❌ Deployment failed"
             exit 1
           fi
         env:
@@ -55,7 +51,7 @@ jobs:
           HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL" --max-time 30 || echo "000")
           echo "HTTP Status: $HTTP_STATUS"
           if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
-            echo "Health check passed ($HTTP_STATUS)"
+            echo "✅ Health check passed ($HTTP_STATUS)"
           else
             echo "::warning::Health check returned $HTTP_STATUS — deployment may still be propagating"
           fi
@@ -65,10 +61,10 @@ jobs:
         run: |
           echo "## Deployment" >> $GITHUB_STEP_SUMMARY
           if [ "${{ job.status }}" = "success" ]; then
-            echo "**Status:** Deployed successfully" >> $GITHUB_STEP_SUMMARY
+            echo "**Status:** ✅ Deployed successfully" >> $GITHUB_STEP_SUMMARY
             echo "**URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
             echo "**Production:** https://clarusapp.io" >> $GITHUB_STEP_SUMMARY
           else
-            echo "**Status:** Deployment failed" >> $GITHUB_STEP_SUMMARY
+            echo "**Status:** ❌ Deployment failed" >> $GITHUB_STEP_SUMMARY
             echo "Check logs above for details." >> $GITHUB_STEP_SUMMARY
           fi
