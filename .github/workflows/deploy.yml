@@ -7,66 +7,48 @@ on:
 
 concurrency:
   group: deploy-production
-  cancel-in-progress: false # NEVER cancel in-progress deploys
+  cancel-in-progress: false
 
 jobs:
-  deploy:
-    name: Deploy to Vercel Production
+  verify:
+    name: Verify Vercel Deployment
     runs-on: ubuntu-latest
-    environment: production
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Install Vercel CLI
-        run: npm i -g vercel@latest
-
-      - name: Clean and link project
+      - name: Wait for Vercel deployment
         run: |
-          rm -rf .vercel
-          vercel link --yes --token=${{ secrets.VERCEL_TOKEN }}
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-
-      - name: Deploy to production
-        id: deploy
-        run: |
-          OUTPUT=$(vercel deploy --prod --yes --token=${{ secrets.VERCEL_TOKEN }} 2>&1)
-          echo "$OUTPUT"
-          URL=$(echo "$OUTPUT" | grep -E '^https://' | tail -1)
-          if [[ "$URL" == https://* ]]; then
-            echo "url=$URL" >> $GITHUB_OUTPUT
-            echo "✅ Deployed to: $URL"
-          else
-            echo "❌ Deployment failed"
-            exit 1
-          fi
-        env:
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          echo "⏳ Waiting for Vercel to deploy..."
+          echo "Vercel's GitHub integration handles deployments automatically."
+          sleep 60
 
       - name: Health check
         run: |
           PROD_URL="https://clarusapp.io"
           echo "Checking $PROD_URL..."
-          sleep 30
-          HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL" --max-time 30 || echo "000")
-          echo "HTTP Status: $HTTP_STATUS"
-          if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
-            echo "✅ Health check passed ($HTTP_STATUS)"
-          else
-            echo "::warning::Health check returned $HTTP_STATUS — deployment may still be propagating"
-          fi
+
+          # Retry up to 5 times with 30s intervals
+          for i in 1 2 3 4 5; do
+            HTTP_STATUS=$(curl -s -o /dev/null -w "%{http_code}" "$PROD_URL" --max-time 30 || echo "000")
+            echo "Attempt $i: HTTP $HTTP_STATUS"
+
+            if [ "$HTTP_STATUS" -ge 200 ] && [ "$HTTP_STATUS" -lt 400 ]; then
+              echo "✅ Production is healthy ($HTTP_STATUS)"
+              exit 0
+            fi
+
+            if [ $i -lt 5 ]; then
+              echo "Retrying in 30s..."
+              sleep 30
+            fi
+          done
+
+          echo "::warning::Production health check failed after 5 attempts"
 
       - name: Deployment summary
         if: always()
         run: |
-          echo "## Deployment" >> $GITHUB_STEP_SUMMARY
-          if [ "${{ job.status }}" = "success" ]; then
-            echo "**Status:** ✅ Deployed successfully" >> $GITHUB_STEP_SUMMARY
-            echo "**URL:** ${{ steps.deploy.outputs.url }}" >> $GITHUB_STEP_SUMMARY
-            echo "**Production:** https://clarusapp.io" >> $GITHUB_STEP_SUMMARY
-          else
-            echo "**Status:** ❌ Deployment failed" >> $GITHUB_STEP_SUMMARY
-            echo "Check logs above for details." >> $GITHUB_STEP_SUMMARY
-          fi
+          echo "## Deployment Verification" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Production URL:** https://clarusapp.io" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Vercel's GitHub integration handles the actual deployment." >> $GITHUB_STEP_SUMMARY
+          echo "This workflow verifies the deployment succeeded." >> $GITHUB_STEP_SUMMARY
