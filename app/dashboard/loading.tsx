@@ -1,33 +1,44 @@
 export default function Loading() {
   return (
-    <div className="min-h-screen bg-[#0a0e1a] flex flex-col">
+    <div className="min-h-screen bg-black flex flex-col">
       {/* Header skeleton */}
-      <div className="h-16 border-b border-white/[0.06]" />
+      <div className="h-14 border-b border-white/[0.06]" />
 
-      <main className="flex-1 max-w-4xl mx-auto px-4 pt-6 pb-8 w-full">
+      <main className="flex-1 max-w-2xl mx-auto px-4 py-8 w-full">
         {/* Page title skeleton */}
-        <div className="mb-6 space-y-2">
+        <div className="mb-8 space-y-2">
           <div className="h-7 w-32 bg-white/[0.06] rounded animate-pulse" />
-          <div className="h-4 w-48 bg-white/[0.04] rounded animate-pulse" />
+          <div className="h-4 w-56 bg-white/[0.04] rounded animate-pulse" />
         </div>
 
-        {/* Cards skeleton */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
-          {Array.from({ length: 4 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-28 bg-white/[0.03] border border-white/[0.06] rounded-xl animate-pulse"
-            />
-          ))}
+        {/* Tabs skeleton */}
+        <div className="flex gap-4 mb-8 border-b border-white/[0.06] pb-px">
+          <div className="h-5 w-16 bg-white/[0.06] rounded animate-pulse mb-2.5" />
+          <div className="h-5 w-24 bg-white/[0.04] rounded animate-pulse mb-2.5" />
         </div>
 
-        {/* Content list skeleton */}
-        <div className="space-y-3">
-          {Array.from({ length: 5 }).map((_, i) => (
-            <div
-              key={i}
-              className="h-16 bg-white/[0.03] border border-white/[0.06] rounded-xl animate-pulse"
-            />
+        {/* Period + tier header skeleton */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="space-y-1">
+            <div className="h-5 w-36 bg-white/[0.06] rounded animate-pulse" />
+            <div className="h-3 w-24 bg-white/[0.04] rounded animate-pulse" />
+          </div>
+          <div className="h-4 w-20 bg-white/[0.06] rounded animate-pulse" />
+        </div>
+
+        {/* Usage bars skeleton */}
+        <div className="space-y-5">
+          {Array.from({ length: 7 }).map((_, i) => (
+            <div key={i} className="space-y-2">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-lg bg-white/[0.04] animate-pulse" />
+                  <div className="h-4 w-28 bg-white/[0.06] rounded animate-pulse" />
+                </div>
+                <div className="h-4 w-14 bg-white/[0.06] rounded animate-pulse" />
+              </div>
+              <div className="h-2 bg-white/[0.06] rounded-full" />
+            </div>
           ))}
         </div>
       </main>

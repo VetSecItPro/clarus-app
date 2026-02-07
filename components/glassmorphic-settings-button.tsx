@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { Settings, LogOut, Loader2, Sparkles, UserIcon, CreditCard, Bookmark, FileText, Shield, LayoutDashboard } from "lucide-react"
+import { Settings, LogOut, Loader2, Sparkles, UserIcon, CreditCard, Bookmark, FileText, Shield, LayoutDashboard, BarChart3, SlidersHorizontal } from "lucide-react"
 import Link from "next/link"
 import { EditAIPromptsModal } from "@/components/edit-ai-prompts-modal"
 import {
@@ -17,6 +17,7 @@ import { clearAuthCache, getCachedSession } from "@/components/with-auth"
 import { prefetchAdminMetrics } from "@/hooks/use-admin-metrics"
 // PERF: use shared SWR hook instead of independent Supabase query for user data
 import { useUserTier } from "@/lib/hooks/use-user-tier"
+import { TIER_FEATURES } from "@/lib/tier-limits"
 import type { User } from "@supabase/supabase-js"
 
 interface GlasmorphicSettingsButtonProps {
@@ -36,7 +37,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
 
   // PERF: shared SWR hook eliminates duplicate query for subscription_status + is_admin
   const { session: cachedSession } = getCachedSession()
-  const { isAdmin, subscriptionStatus } = useUserTier(cachedSession?.user?.id ?? null)
+  const { tier: userTier, isAdmin, subscriptionStatus } = useUserTier(cachedSession?.user?.id ?? null)
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -171,6 +172,26 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
           )}
 
           <DropdownMenuSeparator className="bg-neutral-700/50 my-1" />
+
+          {/* My Usage — links to /dashboard */}
+          {user && (
+            <Link href="/dashboard" className="block">
+              <DropdownMenuItem className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-200">
+                <BarChart3 className="h-4 w-4 text-[#1d9bf0]" />
+                <span>My Usage</span>
+              </DropdownMenuItem>
+            </Link>
+          )}
+
+          {/* Analysis Preferences — Starter+ only */}
+          {user && TIER_FEATURES[userTier]?.podcastSubscriptions && (
+            <Link href="/dashboard?tab=preferences" className="block">
+              <DropdownMenuItem className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-200">
+                <SlidersHorizontal className="h-4 w-4 text-neutral-400" />
+                <span>Analysis Preferences</span>
+              </DropdownMenuItem>
+            </Link>
+          )}
 
           {/* Bookmarks */}
           {user && (

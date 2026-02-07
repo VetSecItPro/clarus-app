@@ -59,6 +59,9 @@ docs/security/
 # Clean code
 .cleancode-reports/
 .cleancode-audit.json
+# Compliance
+.compliance/
+.compliance-audit.json
 # Generic skill output pattern
 *.skill-output.md
 

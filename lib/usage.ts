@@ -184,6 +184,74 @@ export async function incrementUsage(
  * }
  * ```
  */
+/** Human-readable labels for usage fields (used in warning messages). */
+const FIELD_LABELS: Record<UsageField, string> = {
+  analyses_count: "analyses",
+  chat_messages_count: "chat messages",
+  share_links_count: "share links",
+  exports_count: "exports",
+  bookmarks_count: "bookmarks",
+  podcast_analyses_count: "podcast analyses",
+}
+
+export interface UsageWarning {
+  field: string
+  used: number
+  limit: number
+  message: string
+}
+
+/**
+ * Returns a warning message if usage has crossed a threshold after increment.
+ *
+ * Call this after {@link incrementUsage} succeeds. API routes can include the
+ * returned warning in their response for the client to display as a toast.
+ *
+ * @param newCount - The new counter value after increment
+ * @param limit - The tier limit for this field
+ * @param field - The usage field (for the human-readable label)
+ * @returns A warning object if at 80%+ usage, or `null` if below threshold
+ */
+export function getUsageWarning(
+  newCount: number,
+  limit: number,
+  field: UsageField
+): UsageWarning | null {
+  if (limit <= 0) return null
+
+  const percentage = (newCount / limit) * 100
+  const label = FIELD_LABELS[field]
+
+  if (newCount >= limit) {
+    return {
+      field: label,
+      used: newCount,
+      limit,
+      message: `You've reached your ${label} limit for this month (${newCount}/${limit}). Upgrade for more.`,
+    }
+  }
+
+  if (percentage >= 90) {
+    return {
+      field: label,
+      used: newCount,
+      limit,
+      message: `You've used ${newCount} of ${limit} ${label} this month.`,
+    }
+  }
+
+  if (percentage >= 80) {
+    return {
+      field: label,
+      used: newCount,
+      limit,
+      message: `You're approaching your ${label} limit (${newCount}/${limit}).`,
+    }
+  }
+
+  return null
+}
+
 export async function enforceUsageLimit(
   supabase: SupabaseClient<Database>,
   userId: string,
