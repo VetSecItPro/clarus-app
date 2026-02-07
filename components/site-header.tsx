@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Home, Clock, Compass, Podcast } from "lucide-react"
+import { Home, Clock, Compass, Podcast, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { getCachedSession } from "@/components/with-auth"
@@ -18,6 +18,7 @@ const baseNavItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Clock },
   { href: "/discover", label: "Discover", icon: Compass },
+  { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
 ]
 
 const podcastNavItem = { href: "/podcasts", label: "Podcasts", icon: Podcast }
