@@ -13,6 +13,7 @@ const ProductPreview = dynamic(() => import("./product-preview").then(m => ({ de
 const HowItWorks = dynamic(() => import("./how-it-works").then(m => ({ default: m.HowItWorks })), { ssr: false })
 const DemoAnalysis = dynamic(() => import("./demo-analysis").then(m => ({ default: m.DemoAnalysis })), { ssr: false })
 const FeatureGrid = dynamic(() => import("./feature-grid").then(m => ({ default: m.FeatureGrid })), { ssr: false })
+const BeforeYouPlay = dynamic(() => import("./before-you-play").then(m => ({ default: m.BeforeYouPlay })), { ssr: false })
 const AudienceSection = dynamic(() => import("./audience-section").then(m => ({ default: m.AudienceSection })), { ssr: false })
 const CTASection = dynamic(() => import("./cta-section").then(m => ({ default: m.CTASection })), { ssr: false })
 
@@ -29,6 +30,7 @@ export function LandingPage() {
         <WorksWithBar />
         <DemoAnalysis />
         <FeatureGrid />
+        <BeforeYouPlay />
         <AudienceSection />
         <CTASection />
       </main>

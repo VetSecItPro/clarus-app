@@ -3,53 +3,53 @@
 import { memo } from "react"
 import { motion } from "framer-motion"
 import {
-  Zap, CheckCircle, MessageSquare, Library, Download,
+  ShieldCheck, CheckCircle, MessageSquare, Library, Download,
   Mic, ScanEye, Share2,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
 const features = [
   {
-    icon: Zap,
-    title: "6-section deep analysis",
-    description: "Overview, assessment, takeaways, accuracy analysis, action items, and deep dive. Not just a summary, but a structured breakdown.",
+    icon: ShieldCheck,
+    title: "Skip, Skim, or Dive In",
+    description: "Every analysis starts with a verdict — Skip, Skim, Worth It, or Must See — so you know where to spend your time.",
+    badge: "Core",
   },
   {
     icon: CheckCircle,
     title: "Accuracy analysis",
-    description: "Claims are surfaced and assessed as fact, opinion, or unsupported. Cross-reference them across your library to spot patterns.",
+    description: "Claims are surfaced and labeled as fact, opinion, or unsupported. Spot patterns across your library over time.",
     badge: "Unique",
   },
   {
     icon: Mic,
     title: "Speaker attribution",
-    description: "For podcasts and multi-speaker content, arguments are attributed to individual speakers where identifiable.",
-    badge: "New",
+    description: "For podcasts and multi-speaker content, know who said what. Arguments are attributed to individual speakers.",
   },
   {
     icon: ScanEye,
     title: "Tone detection",
-    description: "Clarus identifies content tone (investigative, promotional, academic, conversational) and adjusts its analysis to match.",
+    description: "Is it investigative, promotional, academic, or conversational? Clarus detects the tone so you can read accordingly.",
   },
   {
     icon: MessageSquare,
-    title: "Chat with content",
+    title: "Chat with your content",
     description: "Ask follow-up questions about anything you've analyzed. Responses reference the source material directly.",
   },
   {
     icon: Library,
     title: "Personal library",
-    description: "Searchable archive with tags, bookmarks, quality scores, and full-text search. Find any insight when you need it.",
+    description: "Searchable archive with tags, bookmarks, and quality scores. Full-text search finds any insight when you need it.",
   },
   {
     icon: Share2,
     title: "Share & export",
-    description: "Share analyses via link. Export to Markdown or PDF. Weekly digest emails help you stay current.",
+    description: "Share analyses via link. Export to Markdown or PDF. Weekly digest emails keep you current without the scroll.",
   },
   {
     icon: Download,
-    title: "Works with most content",
-    description: "YouTube, podcasts, articles, PDFs, and X posts. Publicly accessible content only. Paste the link and go.",
+    title: "Videos, podcasts & more",
+    description: "YouTube, podcast episodes, articles, PDFs, and X posts. If it's publicly accessible, paste the link and go.",
   },
 ]
 
@@ -69,7 +69,7 @@ export const FeatureGrid = memo(function FeatureGrid() {
             What you get
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-            More than summaries
+            Analysis, not just summaries
           </h2>
         </motion.div>
 
