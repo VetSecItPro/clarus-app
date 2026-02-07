@@ -220,6 +220,33 @@ export async function sendNewEpisodeEmail(
   return sendEmail(to, `Clarus - ${episodes.length} New Podcast ${episodeWord}`, html)
 }
 
+// ==================== YouTube Video Notifications ====================
+
+/** Sends a notification email when new YouTube videos are detected. */
+export async function sendNewVideoEmail(
+  to: string,
+  userName: string | undefined,
+  videos: Array<{
+    title: string
+    channelName: string
+    date: string | null
+  }>,
+  channelCount: number
+) {
+  // Reuse the podcast episode email template with adapted labels
+  const episodes = videos.map((v) => ({
+    title: v.title,
+    podcastName: v.channelName,
+    date: v.date,
+    duration: null,
+  }))
+  const html = await render(
+    NewEpisodeEmail({ userName, episodes, podcastCount: channelCount })
+  )
+  const videoWord = videos.length === 1 ? "Video" : "Videos"
+  return sendEmail(to, `Clarus - ${videos.length} New YouTube ${videoWord}`, html)
+}
+
 // ==================== Contact Form ====================
 
 /**

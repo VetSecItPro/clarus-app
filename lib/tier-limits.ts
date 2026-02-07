@@ -36,6 +36,7 @@ export interface TierLimits {
   library: number
   podcastAnalyses: number
   podcastSubscriptions: number
+  youtubeSubscriptions: number
   bulkImportBatchSize: number
   collections: number
 }
@@ -53,6 +54,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     library: 25,
     podcastAnalyses: 0,
     podcastSubscriptions: 0,
+    youtubeSubscriptions: 0,
     bulkImportBatchSize: 2,
     collections: 3,
   },
@@ -67,6 +69,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     library: 500,
     podcastAnalyses: 10,
     podcastSubscriptions: 3,
+    youtubeSubscriptions: 3,
     bulkImportBatchSize: 5,
     collections: 50,
   },
@@ -81,6 +84,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     library: 5000,
     podcastAnalyses: 30,
     podcastSubscriptions: 10,
+    youtubeSubscriptions: 10,
     bulkImportBatchSize: 15,
     collections: 100,
   },
@@ -95,6 +99,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     library: 25,
     podcastAnalyses: 3,
     podcastSubscriptions: 1,
+    youtubeSubscriptions: 1,
     bulkImportBatchSize: 5,
     collections: 10,
   },
@@ -195,6 +200,7 @@ export const TIER_FEATURES: Record<UserTier, {
   multiLanguageAnalysis: boolean
   comparativeAnalysis: boolean
   podcastSubscriptions: boolean
+  youtubeSubscriptions: boolean
 }> = {
   free: {
     shareLinks: false,
@@ -205,6 +211,7 @@ export const TIER_FEATURES: Record<UserTier, {
     multiLanguageAnalysis: false,
     comparativeAnalysis: false,
     podcastSubscriptions: false,
+    youtubeSubscriptions: false,
   },
   starter: {
     shareLinks: true,
@@ -215,6 +222,7 @@ export const TIER_FEATURES: Record<UserTier, {
     multiLanguageAnalysis: true,
     comparativeAnalysis: false,
     podcastSubscriptions: true,
+    youtubeSubscriptions: true,
   },
   pro: {
     shareLinks: true,
@@ -225,6 +233,7 @@ export const TIER_FEATURES: Record<UserTier, {
     multiLanguageAnalysis: true,
     comparativeAnalysis: true,
     podcastSubscriptions: true,
+    youtubeSubscriptions: true,
   },
   day_pass: {
     shareLinks: true,
@@ -235,5 +244,6 @@ export const TIER_FEATURES: Record<UserTier, {
     multiLanguageAnalysis: true,
     comparativeAnalysis: true,
     podcastSubscriptions: true,
+    youtubeSubscriptions: true,
   },
 }
