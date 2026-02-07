@@ -1065,6 +1065,113 @@ export interface Database {
           },
         ]
       }
+      youtube_subscriptions: {
+        Row: {
+          id: string
+          user_id: string
+          channel_id: string
+          channel_name: string
+          channel_image_url: string | null
+          feed_url: string
+          last_checked_at: string | null
+          last_video_date: string | null
+          check_frequency_hours: number
+          is_active: boolean
+          created_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          channel_id: string
+          channel_name: string
+          channel_image_url?: string | null
+          feed_url: string
+          last_checked_at?: string | null
+          last_video_date?: string | null
+          check_frequency_hours?: number
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          channel_id?: string
+          channel_name?: string
+          channel_image_url?: string | null
+          feed_url?: string
+          last_checked_at?: string | null
+          last_video_date?: string | null
+          check_frequency_hours?: number
+          is_active?: boolean
+          created_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_subscriptions_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      youtube_videos: {
+        Row: {
+          id: string
+          subscription_id: string
+          video_title: string
+          video_url: string
+          video_id: string
+          published_date: string | null
+          description: string | null
+          thumbnail_url: string | null
+          is_notified: boolean
+          content_id: string | null
+          created_at: string | null
+        }
+        Insert: {
+          id?: string
+          subscription_id: string
+          video_title: string
+          video_url: string
+          video_id: string
+          published_date?: string | null
+          description?: string | null
+          thumbnail_url?: string | null
+          is_notified?: boolean
+          content_id?: string | null
+          created_at?: string | null
+        }
+        Update: {
+          id?: string
+          subscription_id?: string
+          video_title?: string
+          video_url?: string
+          video_id?: string
+          published_date?: string | null
+          description?: string | null
+          thumbnail_url?: string | null
+          is_notified?: boolean
+          content_id?: string | null
+          created_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "youtube_videos_subscription_id_fkey"
+            columns: ["subscription_id"]
+            referencedRelation: "youtube_subscriptions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "youtube_videos_content_id_fkey"
+            columns: ["content_id"]
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flagged_content: {
         Row: {
           id: string
