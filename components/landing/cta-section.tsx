@@ -16,14 +16,14 @@ export const CTASection = memo(function CTASection() {
         className="max-w-2xl mx-auto text-center"
       >
         <h2 className="text-3xl sm:text-4xl font-bold text-white mb-2">
-          Videos. Podcasts. Articles. PDFs.
+          Stop guessing. Start knowing.
         </h2>
         <h2 className="text-3xl sm:text-4xl font-bold text-white/40 mb-6">
-          Understood in seconds.
+          Skip, Skim, Worth It, or Must See.
         </h2>
 
         <p className="text-white/40 text-base mb-8 max-w-md mx-auto">
-          6-section analysis with accuracy insights and speaker attribution. 5 free analyses, no credit card.
+          Instant verdicts, accuracy analysis, and AI chat for any content. 5 free analyses, no credit card.
         </p>
 
         <Link href="/signup" prefetch={true}>
