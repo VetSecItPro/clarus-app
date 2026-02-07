@@ -184,7 +184,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
           )}
 
           {/* Analysis Preferences — Starter+ only */}
-          {user && TIER_FEATURES[userTier]?.podcastSubscriptions && (
+          {user && TIER_FEATURES[userTier]?.analysisPreferences && (
             <Link href="/dashboard?tab=preferences" className="block">
               <DropdownMenuItem className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-200">
                 <SlidersHorizontal className="h-4 w-4 text-neutral-400" />
