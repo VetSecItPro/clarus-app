@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Clock, Compass, Podcast } from "lucide-react"
+import { Home, Clock, Compass, Rss } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { ActiveAnalysisNavLink } from "@/components/active-analysis-nav-link"
@@ -18,7 +18,7 @@ const baseNavItems = [
   { href: "/discover", label: "Discover", icon: Compass },
 ]
 
-const podcastNavItem = { href: "/podcasts", label: "Podcasts", icon: Podcast }
+const feedsNavItem = { href: "/feeds", label: "Feeds", icon: Rss }
 
 export default function MobileBottomNav() {
   const pathname = usePathname()
@@ -32,8 +32,8 @@ export default function MobileBottomNav() {
     return null
   }
 
-  const showPodcasts = TIER_FEATURES[userTier].podcastSubscriptions
-  const navItems = showPodcasts ? [...baseNavItems, podcastNavItem] : baseNavItems
+  const showFeeds = TIER_FEATURES[userTier].podcastSubscriptions || TIER_FEATURES[userTier].youtubeSubscriptions
+  const navItems = showFeeds ? [...baseNavItems, feedsNavItem] : baseNavItems
 
   return (
     <nav className="fixed left-0 right-0 z-50 bg-black/95 backdrop-blur-2xl border-t border-white/[0.06] rounded-t-2xl sm:hidden fixed-bottom-safe">
