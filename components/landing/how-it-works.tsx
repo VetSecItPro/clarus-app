@@ -2,26 +2,26 @@
 
 import { memo } from "react"
 import { motion } from "framer-motion"
-import { Link2, Sparkles, MessageCircle } from "lucide-react"
+import { Link2, ShieldCheck, MessageCircle } from "lucide-react"
 
 const steps = [
   {
     number: "01",
     icon: Link2,
     title: "Paste any link",
-    description: "YouTube, podcasts, articles, PDFs, research papers, X posts. If it has content, Clarus can analyze it.",
+    description: "YouTube videos, podcast episodes, articles, PDFs, or X posts. If it's public content, Clarus can analyze it.",
   },
   {
     number: "02",
-    icon: Sparkles,
-    title: "Get a 6-section analysis",
-    description: "Overview, quality assessment, key takeaways, accuracy analysis, action items, and a deep dive. Speaker attribution and tone detection included where applicable.",
+    icon: ShieldCheck,
+    title: "Get a verdict",
+    description: "Every piece of content is scored and labeled: Skip, Skim, Worth It, or Must See. Know if it's worth your time before you invest it.",
   },
   {
     number: "03",
     icon: MessageCircle,
     title: "Go deeper",
-    description: "Chat with your content. Cross-reference claims. Export to Markdown or PDF. Build a searchable library.",
+    description: "Read the full analysis, check claims for accuracy, and ask follow-up questions in AI chat. Export or share when you're done.",
   },
 ]
 
@@ -41,7 +41,7 @@ export const HowItWorks = memo(function HowItWorks() {
             How it works
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
-            Three steps to clarity
+            Earn back your time
           </h2>
         </motion.div>
 

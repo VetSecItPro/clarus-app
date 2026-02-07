@@ -41,8 +41,8 @@ export const HeroSection = memo(function HeroSection() {
           transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
           className="text-lg sm:text-xl text-white/40 max-w-xl mx-auto leading-relaxed font-light mb-8"
         >
-          Videos. Podcasts. Articles. PDFs. Drop a link and get
-          <span className="text-white/60"> key points, accuracy insights, speaker breakdowns where available, and a chat interface to go deeper.</span>
+          Drop any link — video, podcast, article, or PDF — and get an instant verdict:{" "}
+          <span className="text-white/60">Skip it, skim the highlights, or dive in. Plus accuracy analysis, speaker breakdowns, and AI chat to go deeper.</span>
         </motion.p>
 
         {/* CTA Buttons */}
@@ -80,7 +80,7 @@ export const HeroSection = memo(function HeroSection() {
           transition={{ duration: 0.8, delay: 0.5 }}
           className="mt-4 text-xs text-white/30"
         >
-          No credit card required. 5 free analyses. Works with publicly accessible content only.
+          No credit card required. 5 free analyses per month. Every analysis starts with a verdict: Skip, Skim, Worth It, or Must See.
         </motion.p>
       </div>
     </section>
