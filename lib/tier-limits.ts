@@ -201,6 +201,7 @@ export const TIER_FEATURES: Record<UserTier, {
   comparativeAnalysis: boolean
   podcastSubscriptions: boolean
   youtubeSubscriptions: boolean
+  analysisPreferences: boolean
 }> = {
   free: {
     shareLinks: false,
@@ -212,6 +213,7 @@ export const TIER_FEATURES: Record<UserTier, {
     comparativeAnalysis: false,
     podcastSubscriptions: false,
     youtubeSubscriptions: false,
+    analysisPreferences: false,
   },
   starter: {
     shareLinks: true,
@@ -223,6 +225,7 @@ export const TIER_FEATURES: Record<UserTier, {
     comparativeAnalysis: false,
     podcastSubscriptions: true,
     youtubeSubscriptions: true,
+    analysisPreferences: true,
   },
   pro: {
     shareLinks: true,
@@ -234,6 +237,7 @@ export const TIER_FEATURES: Record<UserTier, {
     comparativeAnalysis: true,
     podcastSubscriptions: true,
     youtubeSubscriptions: true,
+    analysisPreferences: true,
   },
   day_pass: {
     shareLinks: true,
@@ -245,5 +249,6 @@ export const TIER_FEATURES: Record<UserTier, {
     comparativeAnalysis: true,
     podcastSubscriptions: true,
     youtubeSubscriptions: true,
+    analysisPreferences: true,
   },
 }

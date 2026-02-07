@@ -3,9 +3,10 @@
 import { useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
 import { motion } from "framer-motion"
+import dynamic from "next/dynamic"
 import {
   BarChart3, SlidersHorizontal, Zap, Mic, MessageSquare,
-  Library, Share2, Bookmark, FileDown, ArrowRight, Loader2, Lock,
+  Library, Share2, Bookmark, FileDown, ArrowRight, Loader2,
 } from "lucide-react"
 import Link from "next/link"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
@@ -16,6 +17,11 @@ import { useUsage } from "@/lib/hooks/use-usage"
 import { useUserTier } from "@/lib/hooks/use-user-tier"
 import { TIER_FEATURES } from "@/lib/tier-limits"
 import { cn } from "@/lib/utils"
+
+const PreferencesTab = dynamic(
+  () => import("@/components/dashboard/preferences-tab").then((m) => ({ default: m.PreferencesTab })),
+  { ssr: false }
+)
 
 const TIER_DISPLAY: Record<string, { label: string; color: string }> = {
   free: { label: "Free Plan", color: "text-white/50" },
@@ -56,9 +62,7 @@ function DashboardPage({ session }: DashboardPageProps) {
 
   const tierDisplay = TIER_DISPLAY[tier] ?? TIER_DISPLAY.free
 
-  // Starter+ users can access preferences (using podcastSubscriptions as proxy
-  // until analysisPreferences feature flag is added in Feature 4)
-  const hasPreferencesAccess = TIER_FEATURES[tier]?.podcastSubscriptions ?? false
+  const hasPreferencesAccess = TIER_FEATURES[tier]?.analysisPreferences ?? false
 
   // Format the period as a readable month name
   const periodLabel = data?.period
@@ -213,47 +217,9 @@ function DashboardPage({ session }: DashboardPageProps) {
           </div>
         )}
 
-        {/* ─── Preferences Tab (placeholder for Feature 4) ─── */}
+        {/* ─── Preferences Tab ─── */}
         {activeTab === "preferences" && (
-          <motion.div
-            initial={{ opacity: 0, y: 16 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-16 px-4"
-          >
-            {hasPreferencesAccess ? (
-              <>
-                <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
-                  <SlidersHorizontal className="w-8 h-8 text-white/30" />
-                </div>
-                <h2 className="text-lg font-semibold text-white mb-2">
-                  Analysis Preferences
-                </h2>
-                <p className="text-white/50 text-sm max-w-md mx-auto">
-                  Choose how Clarus analyzes your content. Pick your analysis mode,
-                  expertise level, and what matters most to you. Coming soon.
-                </p>
-              </>
-            ) : (
-              <>
-                <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
-                  <Lock className="w-8 h-8 text-white/30" />
-                </div>
-                <h2 className="text-lg font-semibold text-white mb-2">
-                  Personalize Your Analysis
-                </h2>
-                <p className="text-white/50 text-sm max-w-md mx-auto mb-6">
-                  Choose your analysis mode — Learn, Apply, Evaluate, Discover, or
-                  Create — and Clarus adapts every analysis to how you consume content.
-                </p>
-                <Link
-                  href="/pricing"
-                  className="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                >
-                  Upgrade to Starter
-                </Link>
-              </>
-            )}
-          </motion.div>
+          <PreferencesTab hasAccess={hasPreferencesAccess} />
         )}
       </main>
 

@@ -1172,6 +1172,46 @@ export interface Database {
           },
         ]
       }
+      user_analysis_preferences: {
+        Row: {
+          id: string
+          user_id: string
+          analysis_mode: string
+          expertise_level: string
+          focus_areas: string[]
+          is_active: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          analysis_mode?: string
+          expertise_level?: string
+          focus_areas?: string[]
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          analysis_mode?: string
+          expertise_level?: string
+          focus_areas?: string[]
+          is_active?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_analysis_preferences_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       flagged_content: {
         Row: {
           id: string
