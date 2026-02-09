@@ -38,6 +38,7 @@
     "@tanstack/react-virtual": "^3.13.18",
     "@types/pdf-parse": "^1.1.5",
     "@vercel/analytics": "^1.6.1",
+    "@vetsecitpro/e2e-intelligence": "git+https://github.com/VetSecItPro/e2e-intelligence.git",
     "ai": "5.0.123",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
