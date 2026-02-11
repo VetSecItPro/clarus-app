@@ -14,12 +14,14 @@ const features = [
     title: "Skip, Skim, or Dive In",
     description: "Every analysis starts with a verdict — Skip, Skim, Worth It, or Must See — so you know where to spend your time.",
     badge: "Core",
+    span: true,
   },
   {
     icon: CheckCircle,
     title: "Accuracy analysis",
     description: "Claims are surfaced and labeled as fact, opinion, or unsupported. Spot patterns across your library over time.",
     badge: "Unique",
+    span: true,
   },
   {
     icon: Mic,
@@ -56,8 +58,8 @@ const features = [
 export const FeatureGrid = memo(function FeatureGrid() {
   return (
     <section id="features" className="py-20 px-6 border-t border-white/[0.04]">
-      <div className="max-w-4xl mx-auto">
-        {/* Features section */}
+      <div className="max-w-5xl mx-auto">
+        {/* Section header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -65,7 +67,7 @@ export const FeatureGrid = memo(function FeatureGrid() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <p className="text-white/30 text-sm font-medium tracking-wide uppercase mb-4">
+          <p className="text-white/50 text-sm font-medium tracking-wide uppercase mb-4">
             What you get
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
@@ -73,7 +75,7 @@ export const FeatureGrid = memo(function FeatureGrid() {
           </h2>
         </motion.div>
 
-        {/* Features grid */}
+        {/* Bento grid — featured items span 2 cols on large screens */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {features.map((feature, index) => (
             <motion.div
@@ -83,10 +85,11 @@ export const FeatureGrid = memo(function FeatureGrid() {
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.5, delay: index * 0.06 }}
               className={cn(
-                "group relative p-6 rounded-2xl bg-white/[0.02] border hover:bg-white/[0.03] transition-all duration-300",
+                "group relative rounded-2xl bg-white/[0.02] border hover:bg-white/[0.03] transition-all duration-300",
                 feature.badge
-                  ? "border-[#1d9bf0]/20 hover:border-[#1d9bf0]/40"
-                  : "border-white/[0.04] hover:border-white/[0.08]"
+                  ? "border-[#1d9bf0]/20 hover:border-[#1d9bf0]/40 p-6 lg:p-8"
+                  : "border-white/[0.04] hover:border-white/[0.08] p-6",
+                feature.span && "sm:col-span-2"
               )}
             >
               {feature.badge && (
@@ -94,13 +97,25 @@ export const FeatureGrid = memo(function FeatureGrid() {
                   {feature.badge}
                 </span>
               )}
-              <div className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#1d9bf0]/10 flex items-center justify-center mb-4">
-                <feature.icon className="w-5 h-5 text-[#1d9bf0]" />
+              <div className={cn(
+                "flex-shrink-0 rounded-xl bg-[#1d9bf0]/10 flex items-center justify-center mb-4",
+                feature.badge ? "w-12 h-12" : "w-10 h-10"
+              )}>
+                <feature.icon className={cn(
+                  "text-[#1d9bf0]",
+                  feature.badge ? "w-6 h-6" : "w-5 h-5"
+                )} />
               </div>
-              <h3 className="text-lg font-semibold text-white mb-2">
+              <h3 className={cn(
+                "font-semibold text-white mb-2",
+                feature.badge ? "text-xl" : "text-lg"
+              )}>
                 {feature.title}
               </h3>
-              <p className="text-white/40 text-sm leading-relaxed">
+              <p className={cn(
+                "text-white/60 leading-relaxed",
+                feature.badge ? "text-base max-w-md" : "text-sm"
+              )}>
                 {feature.description}
               </p>
             </motion.div>

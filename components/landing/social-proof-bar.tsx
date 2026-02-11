@@ -2,12 +2,12 @@
 
 import { memo } from "react"
 import { motion } from "framer-motion"
-import { ShieldCheck, Lock, Zap, Mic } from "lucide-react"
+import { ShieldCheck, Lock, Zap, CreditCard } from "lucide-react"
 
 const proofItems = [
-  { icon: ShieldCheck, text: "Veteran-Owned Business" },
-  { icon: Zap, text: "6-section AI analysis in seconds" },
-  { icon: Mic, text: "Speaker attribution for audio/video" },
+  { icon: ShieldCheck, text: "Veteran-Owned & Operated" },
+  { icon: Zap, text: "Results in under 60 seconds" },
+  { icon: CreditCard, text: "No credit card required" },
   { icon: Lock, text: "Your data never used for training" },
 ]
 
@@ -19,9 +19,9 @@ export const SocialProofBar = memo(function SocialProofBar() {
       transition={{ duration: 0.8, delay: 0.6 }}
       className="py-6 px-6 bg-white/[0.02] border-y border-white/[0.04]"
     >
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8 max-w-4xl mx-auto">
         {proofItems.map((item) => (
-          <div key={item.text} className="flex items-center gap-2.5 text-white/35">
+          <div key={item.text} className="flex items-center justify-center gap-2.5 text-white/50">
             <item.icon className="w-4 h-4 flex-shrink-0" />
             <span className="text-sm font-medium">{item.text}</span>
           </div>

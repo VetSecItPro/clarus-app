@@ -6,6 +6,8 @@ import { HeroSection } from "./hero-section"
 import { SocialProofBar } from "./social-proof-bar"
 import { WorksWithBar } from "./works-with-bar"
 import { LandingFooter } from "./landing-footer"
+import { StickyMobileCTA } from "./sticky-mobile-cta"
+import { InlineCTA } from "./inline-cta"
 
 // PERF: Dynamic import below-fold landing sections to reduce initial bundle
 // ProductPreview (491 lines) and DemoAnalysis (567 lines) are the heaviest
@@ -27,15 +29,18 @@ export function LandingPage() {
         <ProductPreview />
         <SocialProofBar />
         <HowItWorks />
+        <InlineCTA variant="primary" />
         <WorksWithBar />
         <DemoAnalysis />
         <FeatureGrid />
+        <InlineCTA variant="secondary" />
         <BeforeYouPlay />
         <AudienceSection />
         <CTASection />
       </main>
 
       <LandingFooter />
+      <StickyMobileCTA />
     </div>
   )
 }

@@ -32,7 +32,7 @@ export const WorksWithBar = memo(function WorksWithBar() {
           transition={{ duration: 0.5 }}
           className="flex items-center justify-center gap-4 sm:gap-6 whitespace-nowrap"
         >
-          <span className="text-white/30 text-xs sm:text-sm font-medium tracking-wide uppercase shrink-0">
+          <span className="text-white/50 text-xs sm:text-sm font-medium tracking-wide uppercase shrink-0">
             Works with
           </span>
           {contentTypes.map((type, index) => (

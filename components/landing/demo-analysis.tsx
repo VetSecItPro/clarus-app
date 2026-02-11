@@ -73,7 +73,9 @@ export function DemoAnalysis() {
   }
 
   return (
-    <section className="py-16 sm:py-24 px-4">
+    <section className="relative py-16 sm:py-24 px-4 overflow-hidden">
+        {/* Subtle ambient glow behind the demo */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-[#1d9bf0]/[0.03] rounded-full blur-[120px] pointer-events-none" />
       <div className="max-w-5xl mx-auto">
         {/* Section heading */}
         <motion.div
@@ -89,7 +91,7 @@ export function DemoAnalysis() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
             What Clarus produces
           </h2>
-          <p className="text-white/40 text-base max-w-lg mx-auto">
+          <p className="text-white/60 text-base max-w-lg mx-auto">
             A real TED talk analysis. Click through the sections to explore.
           </p>
         </motion.div>
@@ -134,7 +136,7 @@ export function DemoAnalysis() {
                   {DEMO_CONTENT.title}
                 </h3>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[9px] text-white/30 px-1.5 py-0.5 bg-white/[0.04] rounded">{DEMO_CONTENT.domain}</span>
+                  <span className="text-[9px] text-white/40 px-1.5 py-0.5 bg-white/[0.04] rounded">{DEMO_CONTENT.domain}</span>
                   <span className="text-[9px] text-white/30 px-1.5 py-0.5 bg-white/[0.04] rounded flex items-center gap-0.5">
                     <Play className="w-2 h-2" /> {DEMO_CONTENT.duration}
                   </span>
@@ -225,7 +227,7 @@ export function DemoAnalysis() {
             Analyze your own content — free
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
           </Link>
-          <p className="mt-3 text-xs text-white/30">
+          <p className="mt-3 text-xs text-white/50">
             5 free analyses. No credit card required.
           </p>
         </motion.div>

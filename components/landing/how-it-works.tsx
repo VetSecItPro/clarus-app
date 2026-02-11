@@ -27,7 +27,7 @@ const steps = [
 
 export const HowItWorks = memo(function HowItWorks() {
   return (
-    <section id="how-it-works" className="py-20 px-6 scroll-mt-20">
+    <section id="how-it-works" className="py-20 px-6 scroll-mt-20 bg-white/[0.015]">
       <div className="max-w-3xl mx-auto">
         {/* Section header */}
         <motion.div
@@ -46,7 +46,7 @@ export const HowItWorks = memo(function HowItWorks() {
         </motion.div>
 
         {/* Steps */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 lg:gap-12">
           {steps.map((step, index) => (
             <motion.div
               key={step.number}
@@ -54,11 +54,11 @@ export const HowItWorks = memo(function HowItWorks() {
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true, margin: "-50px" }}
               transition={{ duration: 0.6, delay: index * 0.1 }}
-              className="relative text-center md:text-left"
+              className="relative text-center lg:text-left"
             >
-              {/* Connector line (hidden on mobile, shown between items on desktop) */}
+              {/* Connector line (hidden on mobile/tablet, shown between items on desktop) */}
               {index < steps.length - 1 && (
-                <div className="hidden md:block absolute top-8 left-[60%] w-full h-px bg-gradient-to-r from-white/10 to-transparent" />
+                <div className="hidden lg:block absolute top-8 left-[60%] w-full h-px bg-gradient-to-r from-white/10 to-transparent" />
               )}
 
               {/* Step number */}
@@ -80,7 +80,7 @@ export const HowItWorks = memo(function HowItWorks() {
                 <h3 className="text-xl font-semibold text-white">
                   {step.title}
                 </h3>
-                <p className="text-white/40 text-sm leading-relaxed max-w-xs mx-auto md:mx-0">
+                <p className="text-white/60 text-sm leading-relaxed max-w-xs mx-auto lg:mx-0">
                   {step.description}
                 </p>
               </div>
