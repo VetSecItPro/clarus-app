@@ -138,6 +138,19 @@ interface WebSearchContext {
   cacheHits: number
 }
 
+interface VerifiableClaim {
+  claim: string
+  search_query: string
+}
+
+interface ClaimSearchContext {
+  claims: VerifiableClaim[]
+  searches: WebSearchResult[]
+  formattedContext: string
+  apiCallCount: number
+  cacheHits: number
+}
+
 interface TavilySearchResult {
   title: string
   url: string
@@ -147,13 +160,6 @@ interface TavilySearchResult {
 interface TavilyApiResponse {
   answer?: string
   results?: TavilySearchResult[]
-}
-
-// Per-analysis Tavily result cache
-let tavilyResultCache: Map<string, WebSearchResult> | null = null
-
-function clearTavilyCache(): void {
-  tavilyResultCache = null
 }
 
 function normalizeTavilyQuery(query: string): string {
@@ -167,13 +173,20 @@ function normalizeTavilyQuery(query: string): string {
 // Analysis prompts type
 type AnalysisPrompt = Tables<"analysis_prompts">
 
-// Cache for prompts (refreshed on each request batch)
+// Cache for prompts with 5-minute TTL (safe as module-level — prompts are identical for all users)
 let promptsCache: Map<string, AnalysisPrompt> | null = null
+let promptsCacheTime = 0
+const PROMPTS_CACHE_TTL_MS = 5 * 60 * 1000
 
 async function fetchPromptFromDB(promptType: string): Promise<AnalysisPrompt | null> {
   if (!supabaseUrl || !supabaseKey) {
     console.error("Supabase not configured for prompt fetch")
     return null
+  }
+
+  // Invalidate stale cache
+  if (promptsCache && Date.now() - promptsCacheTime > PROMPTS_CACHE_TTL_MS) {
+    promptsCache = null
   }
 
   if (promptsCache?.has(promptType)) {
@@ -194,14 +207,13 @@ async function fetchPromptFromDB(promptType: string): Promise<AnalysisPrompt | n
     return null
   }
 
-  if (!promptsCache) promptsCache = new Map()
+  if (!promptsCache) {
+    promptsCache = new Map()
+    promptsCacheTime = Date.now()
+  }
   promptsCache.set(promptType, data)
 
   return data
-}
-
-function clearPromptsCache() {
-  promptsCache = null
 }
 
 async function extractKeyTopics(text: string): Promise<string[]> {
@@ -271,12 +283,131 @@ function deduplicateTopics(topics: string[]): string[] {
   return unique
 }
 
-async function searchTavily(query: string, maxRetries = 2): Promise<WebSearchResult | null> {
+async function extractVerifiableClaims(text: string, maxClaims = 5): Promise<VerifiableClaim[]> {
+  if (!openRouterApiKey) return []
+
+  // S1-04: Empty content guard — no point extracting claims from near-empty text
+  if (!text || text.trim().length < 100) return []
+
+  // S1-06: Reduce input from 15K to 10K — claims appear in first half of content
+  const truncatedText = text.substring(0, 10000)
+  const sanitizedText = sanitizeForPrompt(truncatedText, { context: "claim-extraction" })
+
+  const systemPrompt = `You are a fact-checking assistant. Extract specific, verifiable factual claims from content that can be checked against current web sources. Focus on claims that may be time-sensitive or have changed recently.`
+
+  // S1-10: Explicit instruction to generate English search queries regardless of content language
+  const userPrompt = `Extract up to ${maxClaims} specific verifiable factual claims from this content. For each claim, provide a targeted web search query that would verify or refute it.
+
+IMPORTANT: Generate all search queries in English, even if the content is in another language. English queries produce better web search results.
+
+Focus on:
+- Version numbers and release dates (e.g., "GPT-5.2 was released")
+- Statistics and figures (e.g., "85% of users prefer X")
+- Product availability and features (e.g., "Service X now supports Y")
+- Recent events and announcements (e.g., "Company acquired Z")
+- Pricing and technical specifications
+
+Skip:
+- Opinions and subjective statements
+- Common knowledge facts that rarely change
+- Predictions about the future
+- The author's personal experiences
+
+Return JSON: { "claims": [{ "claim": "exact claim text", "search_query": "targeted search query to verify this claim in ${new Date().getFullYear()}" }] }
+
+${INSTRUCTION_ANCHOR}
+Content:
+${wrapUserContent(sanitizedText)}`
+
+  const timer = createTimer()
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${openRouterApiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: userPrompt },
+        ],
+        temperature: 0.1,
+        max_tokens: 1024,
+        response_format: { type: "json_object" },
+      }),
+    })
+
+    if (!response.ok) {
+      console.warn("API: Claim extraction failed, skipping targeted verification")
+      await logApiUsage({
+        apiName: "openrouter",
+        operation: "claim_extraction",
+        responseTimeMs: timer.elapsed(),
+        status: "error",
+        errorMessage: `HTTP ${response.status}`,
+      })
+      return []
+    }
+
+    const data = await response.json()
+    const content = data.choices?.[0]?.message?.content
+    if (!content) return []
+
+    // S1-08: Check for AI refusal before parsing
+    if (detectAiRefusal(content)) {
+      console.warn("API: Claim extraction refused by model (content safety)")
+      await logApiUsage({
+        apiName: "openrouter",
+        operation: "claim_extraction",
+        tokensInput: data.usage?.prompt_tokens || 0,
+        tokensOutput: data.usage?.completion_tokens || 0,
+        responseTimeMs: timer.elapsed(),
+        status: "error",
+        errorMessage: "AI refusal detected",
+      })
+      return []
+    }
+
+    // S1-07: Log token counts for cost tracking
+    await logApiUsage({
+      apiName: "openrouter",
+      operation: "claim_extraction",
+      tokensInput: data.usage?.prompt_tokens || 0,
+      tokensOutput: data.usage?.completion_tokens || 0,
+      modelName: "google/gemini-2.5-flash-lite",
+      responseTimeMs: timer.elapsed(),
+      status: "success",
+    })
+
+    const parsed = parseAiResponseOrThrow<Record<string, unknown>>(content, "claim_extraction")
+    const rawClaims = Array.isArray(parsed) ? parsed : Array.isArray((parsed as Record<string, unknown>).claims) ? (parsed as Record<string, unknown>).claims as unknown[] : []
+
+    return rawClaims
+      .slice(0, maxClaims)
+      .filter((c): c is Record<string, string> =>
+        typeof c === "object" &&
+        c !== null &&
+        typeof (c as Record<string, unknown>).claim === "string" &&
+        typeof (c as Record<string, unknown>).search_query === "string"
+      )
+      .map((c) => ({
+        claim: c.claim,
+        search_query: c.search_query,
+      }))
+  } catch (error) {
+    console.warn("API: Claim extraction error:", error)
+    return []
+  }
+}
+
+async function searchTavily(query: string, tavilyCache: Map<string, WebSearchResult>, maxRetries = 2): Promise<WebSearchResult | null> {
   if (!tavilyApiKey) return null
 
   const cacheKey = normalizeTavilyQuery(query)
-  if (tavilyResultCache?.has(cacheKey)) {
-    return tavilyResultCache.get(cacheKey) ?? null
+  if (tavilyCache.has(cacheKey)) {
+    return tavilyCache.get(cacheKey) ?? null
   }
 
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
@@ -333,8 +464,7 @@ async function searchTavily(query: string, maxRetries = 2): Promise<WebSearchRes
         })),
       }
 
-      if (!tavilyResultCache) tavilyResultCache = new Map()
-      tavilyResultCache.set(cacheKey, result)
+      tavilyCache.set(cacheKey, result)
 
       return result
     } catch (error) {
@@ -380,12 +510,10 @@ function formatWebContext(searches: WebSearchResult[]): string {
   return lines.join("\n")
 }
 
-async function getWebSearchContext(text: string, _contentTitle?: string): Promise<WebSearchContext | null> {
+async function getWebSearchContext(text: string, _contentTitle: string | undefined, tavilyCache: Map<string, WebSearchResult>): Promise<WebSearchContext | null> {
   if (!tavilyApiKey) {
     return null
   }
-
-  clearTavilyCache()
 
   const rawTopics = await extractKeyTopics(text)
 
@@ -395,7 +523,13 @@ async function getWebSearchContext(text: string, _contentTitle?: string): Promis
 
   const topics = deduplicateTopics(rawTopics)
 
-  const searchPromises = topics.map(topic => searchTavily(topic))
+  // Count cache hits BEFORE searching (accurate hit count, not dedup count)
+  let cacheHits = 0
+  for (const topic of topics) {
+    if (tavilyCache.has(normalizeTavilyQuery(topic))) cacheHits++
+  }
+
+  const searchPromises = topics.map(topic => searchTavily(topic, tavilyCache))
   const results = await Promise.all(searchPromises)
 
   const validResults = results.filter((r): r is WebSearchResult => r !== null && r.results.length > 0)
@@ -406,9 +540,6 @@ async function getWebSearchContext(text: string, _contentTitle?: string): Promis
 
   const formattedContext = formatWebContext(validResults)
 
-  const cacheHits = tavilyResultCache
-    ? topics.length - new Set(topics.map(normalizeTavilyQuery)).size
-    : 0
   const apiCallCount = topics.length - cacheHits
 
   return {
@@ -416,6 +547,97 @@ async function getWebSearchContext(text: string, _contentTitle?: string): Promis
     formattedContext,
     timestamp: new Date().toISOString(),
     apiCallCount,
+    cacheHits,
+  }
+}
+
+// ============================================
+// TARGETED CLAIM VERIFICATION (Tavily)
+// ============================================
+
+function formatClaimContext(claims: VerifiableClaim[], searches: WebSearchResult[]): string {
+  const lines: string[] = [
+    "\n\n---",
+    "## TARGETED CLAIM VERIFICATION RESULTS",
+    "CRITICAL: These search results reflect CURRENT real-time information as of today.",
+    "If these web results contradict your training data, ALWAYS trust these web search results over your training data.",
+    "Your training data may be outdated. The web results below are fresh and authoritative.",
+    ""
+  ]
+
+  for (let i = 0; i < claims.length; i++) {
+    const claim = claims[i]
+    const search = searches[i]
+
+    lines.push(`### Claim: "${claim.claim}"`)
+    lines.push(`**Search Query:** "${claim.search_query}"`)
+
+    if (search && search.results.length > 0) {
+      if (search.answer) {
+        lines.push(`**Web Answer:** ${search.answer}`)
+      }
+      for (const result of search.results) {
+        lines.push(`- [${result.title}](${result.url})`)
+        if (result.content) {
+          lines.push(`  ${result.content.substring(0, 300)}`)
+        }
+      }
+    } else {
+      lines.push("_No web results found for this claim._")
+    }
+    lines.push("")
+  }
+
+  lines.push("---")
+  lines.push("Use the claim verification results above to check the accuracy of ALL claims in the content.")
+  lines.push("If a claim is contradicted by these web results, mark it as inaccurate and cite the web source.")
+  lines.push("")
+
+  return lines.join("\n")
+}
+
+async function getClaimSearchContext(text: string, tavilyCache: Map<string, WebSearchResult>): Promise<ClaimSearchContext | null> {
+  if (!tavilyApiKey || !openRouterApiKey) return null
+
+  // S1-05: Dynamic claim count based on content length
+  const maxClaims = text.length < 500 ? 0 :       // tweets: skip entirely
+                    text.length < 2000 ? 2 :       // short articles
+                    text.length < 8000 ? 3 :       // medium articles
+                    5                               // long content
+  if (maxClaims === 0) return null
+
+  const claims = await extractVerifiableClaims(text, maxClaims)
+  if (claims.length === 0) return null
+
+  // Count cache hits BEFORE searching (accurate hit count)
+  let cacheHits = 0
+  for (const c of claims) {
+    if (tavilyCache.has(normalizeTavilyQuery(c.search_query))) cacheHits++
+  }
+
+  const searchPromises = claims.map(c => searchTavily(c.search_query, tavilyCache))
+  const results = await Promise.all(searchPromises)
+
+  const validSearches: WebSearchResult[] = []
+  const matchedClaims: VerifiableClaim[] = []
+
+  for (let i = 0; i < claims.length; i++) {
+    const search = results[i]
+    if (search) {
+      validSearches.push(search)
+      matchedClaims.push(claims[i])
+    }
+  }
+
+  if (validSearches.length === 0) return null
+
+  const formattedContext = formatClaimContext(matchedClaims, validSearches)
+
+  return {
+    claims: matchedClaims,
+    searches: validSearches,
+    formattedContext,
+    apiCallCount: claims.length - cacheHits,
     cacheHits,
   }
 }
@@ -1290,9 +1512,13 @@ async function generateTriage(fullText: string, contentType: string, userId?: st
   return result.content as TriageData
 }
 
-async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, webSearchContext?: WebSearchContext | null, preferencesBlock?: string | null): Promise<TruthCheckData | null> {
+async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, webSearchContext?: WebSearchContext | null, preferencesBlock?: string | null, claimContext?: string | null, claimSearchCtx?: ClaimSearchContext | null): Promise<TruthCheckData | null> {
   const citationInstruction = `\n\nIMPORTANT: For each issue you identify, include a "sources" array with citation objects containing "url" and "title" for verification. Use URLs from the web verification context above when available. Format: "sources": [{"url": "https://...", "title": "Source Title"}]. If no source URL is available for an issue, omit the sources field for that issue.`
-  const enrichedWebContext = webContext ? webContext + citationInstruction : null
+
+  // Combine generic web context + targeted claim context, capped at 8K to avoid diluting model attention
+  const rawCombinedContext = (webContext || "") + (claimContext || "")
+  const combinedContext = rawCombinedContext.length > 8000 ? rawCombinedContext.substring(0, 8000) : rawCombinedContext
+  const enrichedWebContext = combinedContext ? combinedContext + citationInstruction : null
 
   const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, enrichedWebContext, undefined, languageDirective, preferencesBlock)
   if (result.error) {
@@ -1305,8 +1531,19 @@ async function generateTruthCheck(fullText: string, contentType: string, userId?
 
   if (truthCheck.issues) {
     const availableUrls: Array<{ url: string; title: string }> = []
+    // Collect URLs from generic web search
     if (webSearchContext?.searches) {
       for (const search of webSearchContext.searches) {
+        for (const r of search.results) {
+          if (r.url && r.title) {
+            availableUrls.push({ url: r.url, title: r.title })
+          }
+        }
+      }
+    }
+    // Collect URLs from targeted claim searches
+    if (claimSearchCtx?.searches) {
+      for (const search of claimSearchCtx.searches) {
         for (const r of search.results) {
           if (r.url && r.title) {
             availableUrls.push({ url: r.url, title: r.title })
@@ -1652,9 +1889,6 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   if (!supadataApiKey || !openRouterApiKey || !firecrawlApiKey) {
     throw new ProcessContentError("Server configuration error: Missing API keys.", 500)
   }
-
-  // Clear prompts cache for fresh prompts each processing batch
-  clearPromptsCache()
 
   const supabase = createClient<Database>(supabaseUrl, supabaseKey, { db: { schema: "clarus" } })
 
@@ -2025,9 +2259,13 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   const failedSections: string[] = []
   const sectionsGenerated: string[] = []
 
-  // Web search context + tone detection + user preferences (parallel)
-  const [webSearchContext, toneResult, preferencesRow] = await Promise.all([
-    getWebSearchContext(fullText.substring(0, 10000), content.title || undefined),
+  // Request-scoped Tavily cache — isolated per request, prevents cross-user data leakage
+  const tavilyCache = new Map<string, WebSearchResult>()
+
+  // Web search context + claim verification + tone detection + user preferences (parallel)
+  const [webSearchContext, claimSearchCtx, toneResult, preferencesRow] = await Promise.all([
+    getWebSearchContext(fullText.substring(0, 10000), content.title || undefined, tavilyCache),
+    getClaimSearchContext(fullText.substring(0, 15000), tavilyCache),
     detectContentTone(fullText, content.title, contentType, userId, contentIdVal),
     supabase
       .from("user_analysis_preferences")
@@ -2037,6 +2275,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
       .then(({ data }) => data as UserAnalysisPreferences | null),
   ])
   const webContext = webSearchContext?.formattedContext || null
+  const claimContext = claimSearchCtx?.formattedContext || null
   const toneDirective = toneResult.tone_directive
   const preferencesBlock = buildPreferenceBlock(preferencesRow)
 
@@ -2117,7 +2356,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const truthCheckPromise = (async () => {
-    const result = await generateTruthCheck(fullText, contentType, userId, contentIdVal, webContext, languageDirective, webSearchContext, preferencesBlock || null)
+    const result = await generateTruthCheck(fullText, contentType, userId, contentIdVal, webContext, languageDirective, webSearchContext, preferencesBlock || null, claimContext, claimSearchCtx)
     if (result) {
       // Will be saved after triage check
     } else {
