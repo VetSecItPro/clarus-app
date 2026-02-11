@@ -285,6 +285,94 @@ function buildContentMetadataBlock(content: {
 }
 
 // ============================================
+// TYPE-SPECIFIC ANALYSIS INSTRUCTIONS
+// ============================================
+
+/**
+ * Per-type instruction blocks that guide the AI on what to focus on
+ * during analysis. These are injected via the {{TYPE_INSTRUCTIONS}}
+ * placeholder in DB-stored prompt templates.
+ *
+ * Each content type gets domain-specific guidance:
+ * - YouTube: timestamps, clickbait detection, creator credibility
+ * - Podcast: speaker attribution, host/guest dynamics, disagreements
+ * - Article: source credibility, primary sources, opinion vs fact
+ * - X/Tweet: short-form depth adjustment, source verification
+ * - PDF/Document: structured content, citation quality, purpose
+ */
+const TYPE_INSTRUCTIONS: Record<string, string[]> = {
+  youtube: [
+    "Reference timestamps in [MM:SS] format when citing specific claims or key moments.",
+    "Compare the video title against the actual content — flag clickbait if the title is misleading.",
+    "Note whether this is a conversation, interview, or monologue format.",
+    "Consider creator credibility signals: channel size, engagement ratio, and track record.",
+  ],
+  podcast: [
+    "Attribute claims to specific speakers (Speaker A, Speaker B, etc.) when identifiable.",
+    "Note agreements and disagreements between speakers.",
+    "Identify host vs. guest dynamics — who is being interviewed, who is the expert.",
+    "Flag claims where speakers contradict each other.",
+  ],
+  article: [
+    "Consider the publication source's credibility and potential editorial bias.",
+    "Check whether the article cites primary sources vs. other articles or no sources at all.",
+    "Flag opinion presented as fact — look for hedging language or lack thereof.",
+    "Note the publication date — older articles may contain outdated information.",
+    "If the content appears truncated, note the possible paywall limitation.",
+  ],
+  x_post: [
+    "This is short-form content — adjust your analysis depth accordingly.",
+    "Claims in tweets/posts are often unsourced — verify with extra scrutiny.",
+    "Note whether this appears to be a standalone post or part of a thread.",
+    "Be concise in your analysis — match the brevity of the content.",
+  ],
+  pdf: [
+    "Expect structured content with sections, headers, and potentially references.",
+    "Evaluate citation quality: peer-reviewed sources vs. no citations.",
+    "Note the document's purpose: research paper, whitepaper, legal document, or manual.",
+    "Prioritize the abstract/executive summary and conclusions for key takeaways.",
+  ],
+}
+
+/**
+ * Builds type-specific analysis instructions based on content type and metadata.
+ *
+ * Returns a formatted instruction block that guides the AI on what to focus on
+ * for this particular type of content. Includes conditional extras based on
+ * metadata (e.g., long-form video instructions when duration > 30min).
+ *
+ * @param contentType - The content type (youtube, podcast, article, x_post, pdf, document)
+ * @param metadata - Optional metadata for conditional instructions
+ * @returns Formatted instruction block string, or empty string if no instructions for this type
+ */
+function buildTypeInstructions(
+  contentType: string,
+  metadata?: { duration?: number | null; speakerCount?: number }
+): string {
+  // Normalize document → pdf (same instruction set)
+  const effectiveType = contentType === "document" ? "pdf" : contentType
+  const baseInstructions = TYPE_INSTRUCTIONS[effectiveType]
+  if (!baseInstructions) return ""
+
+  const lines = [...baseInstructions]
+
+  // Conditional extras based on metadata
+  if (effectiveType === "youtube" && metadata?.duration) {
+    if (metadata.duration > 1800) {
+      lines.push("This is a long-form video (>30 min) — focus on key segments and note pacing issues.")
+    } else if (metadata.duration < 60) {
+      lines.push("This is a short-form video — the core claim is what matters. Short videos often oversimplify.")
+    }
+  }
+
+  if (effectiveType === "podcast" && metadata?.speakerCount && metadata.speakerCount >= 2) {
+    lines.push("For this interview/discussion: evaluate the quality of questions asked, not just answers given.")
+  }
+
+  return `## Type-Specific Analysis Instructions\n${lines.map(l => `- ${l}`).join("\n")}`
+}
+
+// ============================================
 // WEB SEARCH INTEGRATION (Tavily)
 // ============================================
 
@@ -1342,9 +1430,9 @@ interface ParsedModelSummaryResponse {
 
 async function getModelSummary(
   textToSummarize: string,
-  options: { shouldExtractTitle?: boolean; toneDirective?: string | null; languageDirective?: string | null; metadataBlock?: string | null } = {},
+  options: { shouldExtractTitle?: boolean; toneDirective?: string | null; languageDirective?: string | null; metadataBlock?: string | null; typeInstructions?: string | null } = {},
 ): Promise<ModelSummary | ModelProcessingError> {
-  const { shouldExtractTitle = false, toneDirective, languageDirective, metadataBlock } = options
+  const { shouldExtractTitle = false, toneDirective, languageDirective, metadataBlock, typeInstructions } = options
 
   if (!openRouterApiKey) {
     const msg = "OpenRouter API key is not configured."
@@ -1378,6 +1466,7 @@ async function getModelSummary(
     .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
     .replace("{{LANGUAGE}}", languageDirective || "Write your analysis in English.")
     .replace("{{METADATA}}", metadataBlock || "")
+    .replace("{{TYPE_INSTRUCTIONS}}", typeInstructions || "")
     .replace("{{TEXT_TO_SUMMARIZE}}", wrapUserContent(sanitizedSummaryText)) + INSTRUCTION_ANCHOR
 
   const requestBody: OpenRouterRequestBody = {
@@ -1487,6 +1576,7 @@ async function generateSectionWithAI(
   languageDirective?: string | null,
   preferencesBlock?: string | null,
   metadataBlock?: string | null,
+  typeInstructions?: string | null,
 ): Promise<SectionGenerationResult> {
   if (!openRouterApiKey) {
     return { content: null, error: "OpenRouter API key not configured" }
@@ -1504,6 +1594,7 @@ async function generateSectionWithAI(
     .replace("{{LANGUAGE}}", languageDirective || "Write your analysis in English.")
     .replace("{{USER_PREFERENCES}}", preferencesBlock || "")
     .replace("{{METADATA}}", metadataBlock || "")
+    .replace("{{TYPE_INSTRUCTIONS}}", typeInstructions || "")
     .replace("{{CONTENT}}", wrapUserContent(sanitizedContent))
     .replace("{{TYPE}}", contentType || "article")
 
@@ -1699,8 +1790,8 @@ async function generateSectionWithAI(
   return { content: null, error: "AI analysis failed after multiple attempts" }
 }
 
-async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null, metadataBlock?: string | null): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, undefined, metadataBlock)
+async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, undefined, metadataBlock, typeInstructions)
   if (result.error) {
     console.error(`API: Brief overview generation failed: ${result.error}`)
     return null
@@ -1708,8 +1799,8 @@ async function generateBriefOverview(fullText: string, contentType: string, user
   return typeof result.content === "string" ? result.content : null
 }
 
-async function generateTriage(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null): Promise<TriageData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock)
+async function generateTriage(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<TriageData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     console.error(`API: Triage generation failed: ${result.error}`)
     return null
@@ -1717,7 +1808,7 @@ async function generateTriage(fullText: string, contentType: string, userId?: st
   return result.content as TriageData
 }
 
-async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, webSearchContext?: WebSearchContext | null, preferencesBlock?: string | null, claimContext?: string | null, claimSearchCtx?: ClaimSearchContext | null, metadataBlock?: string | null): Promise<TruthCheckData | null> {
+async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, webSearchContext?: WebSearchContext | null, preferencesBlock?: string | null, claimContext?: string | null, claimSearchCtx?: ClaimSearchContext | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<TruthCheckData | null> {
   const citationInstruction = `\n\nIMPORTANT: For each issue you identify, include a "sources" array with citation objects containing "url" and "title" for verification. Use URLs from the web verification context above when available. Format: "sources": [{"url": "https://...", "title": "Source Title"}]. If no source URL is available for an issue, omit the sources field for that issue.`
 
   // Combine generic web context + targeted claim context, capped at 8K to avoid diluting model attention
@@ -1725,7 +1816,7 @@ async function generateTruthCheck(fullText: string, contentType: string, userId?
   const combinedContext = rawCombinedContext.length > 8000 ? rawCombinedContext.substring(0, 8000) : rawCombinedContext
   const enrichedWebContext = combinedContext ? combinedContext + citationInstruction : null
 
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, enrichedWebContext, undefined, languageDirective, preferencesBlock, metadataBlock)
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, enrichedWebContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     console.error(`API: Truth check generation failed: ${result.error}`)
     return null
@@ -1791,8 +1882,8 @@ async function generateTruthCheck(fullText: string, contentType: string, userId?
   return truthCheck
 }
 
-async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null): Promise<ActionItemsData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock)
+async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<ActionItemsData | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     console.error(`API: Action items generation failed: ${result.error}`)
     return null
@@ -1804,8 +1895,8 @@ async function generateActionItems(fullText: string, contentType: string, userId
   return content as ActionItemsData
 }
 
-async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, preferencesBlock, metadataBlock)
+async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<string | null> {
+  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     console.error(`API: Detailed summary generation failed: ${result.error}`)
     return null
@@ -2498,6 +2589,12 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   // Build rich metadata block for AI context — zero API calls, uses data already fetched
   const metadataBlock = buildContentMetadataBlock(content) || null
 
+  // Build type-specific analysis instructions — tells the AI what to focus on per content type
+  const typeInstructions = buildTypeInstructions(contentType, {
+    duration: content.duration,
+    speakerCount: fullText ? countSpeakers(fullText) : undefined,
+  }) || null
+
   const titleNeedsFixing = !content.title || content.title.startsWith("Processing:") || content.title.startsWith("Analyzing:")
 
   const failedSections: string[] = []
@@ -2562,7 +2659,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
 
   // All sections in parallel
   const overviewPromise = (async () => {
-    const result = await generateBriefOverview(fullText, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, metadataBlock)
+    const result = await generateBriefOverview(fullText, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, metadataBlock, typeInstructions)
     if (result) {
       await updateSummarySection(supabase, contentIdVal, userId, { brief_overview: result }, language)
       sectionsGenerated.push("brief_overview")
@@ -2574,7 +2671,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const triagePromise = (async () => {
-    const result = await generateTriage(fullText, contentType, userId, contentIdVal, webContext, languageDirective, preferencesBlock || null, metadataBlock)
+    const result = await generateTriage(fullText, contentType, userId, contentIdVal, webContext, languageDirective, preferencesBlock || null, metadataBlock, typeInstructions)
     if (result) {
       await updateSummarySection(supabase, contentIdVal, userId, { triage: result as unknown as Json }, language)
       sectionsGenerated.push("triage")
@@ -2586,7 +2683,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const midSummaryPromise = (async () => {
-    const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing, toneDirective, languageDirective, metadataBlock })
+    const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing, toneDirective, languageDirective, metadataBlock, typeInstructions })
     if (summaryResult && !("error" in summaryResult)) {
       const validSummary = summaryResult as ModelSummary
       if (titleNeedsFixing && validSummary.title) {
@@ -2604,7 +2701,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const detailedPromise = (async () => {
-    const result = await generateDetailedSummary(fullText, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, preferencesBlock || null, metadataBlock)
+    const result = await generateDetailedSummary(fullText, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, preferencesBlock || null, metadataBlock, typeInstructions)
     if (result) {
       await updateSummarySection(supabase, contentIdVal, userId, { detailed_summary: result }, language)
       sectionsGenerated.push("detailed_summary")
@@ -2629,7 +2726,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const truthCheckPromise = (async () => {
-    const result = await generateTruthCheck(fullText, contentType, userId, contentIdVal, webContext, languageDirective, webSearchContext, preferencesBlock || null, claimContext, claimSearchCtx, metadataBlock)
+    const result = await generateTruthCheck(fullText, contentType, userId, contentIdVal, webContext, languageDirective, webSearchContext, preferencesBlock || null, claimContext, claimSearchCtx, metadataBlock, typeInstructions)
     if (result) {
       // Will be saved after triage check
     } else {
@@ -2639,7 +2736,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const actionItemsPromise = (async () => {
-    const result = await generateActionItems(fullText, contentType, userId, contentIdVal, webContext, languageDirective, preferencesBlock || null, metadataBlock)
+    const result = await generateActionItems(fullText, contentType, userId, contentIdVal, webContext, languageDirective, preferencesBlock || null, metadataBlock, typeInstructions)
     if (result) {
       // Will be saved after triage check
     } else {
