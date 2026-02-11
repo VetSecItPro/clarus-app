@@ -66,13 +66,13 @@ export const BeforeYouPlay = memo(function BeforeYouPlay() {
           className="text-center mb-14"
         >
           <p className="text-[#1d9bf0] text-sm font-medium tracking-wide uppercase mb-3">
-            Before you hit play
+            The verdict system
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
-            Know if it&apos;s worth your time
+            Four verdicts. Zero wasted time.
           </h2>
           <p className="text-white/60 text-base max-w-lg mx-auto">
-            Every analysis starts with a triage verdict so you can decide where to invest your attention.
+            Every analysis starts with a triage verdict so you can decide where to invest your attention — before you read, watch, or listen.
           </p>
         </motion.div>
 

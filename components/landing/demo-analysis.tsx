@@ -152,7 +152,7 @@ export function DemoAnalysis() {
               </div>
 
               {/* Tab navigation — vertical on desktop, horizontal scroll on mobile */}
-              <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 -mx-1 px-1">
+              <nav className="flex lg:flex-col gap-1.5 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 -mx-1 px-1 scrollbar-hide">
                 {DEMO_TABS.map((tab) => {
                   const isActive = activeTab === tab.id
                   const tabColors = TAB_COLORS[tab.color]
@@ -160,7 +160,7 @@ export function DemoAnalysis() {
                     <button
                       key={tab.id}
                       onClick={() => handleTabChange(tab.id)}
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg text-left transition-all duration-200 whitespace-nowrap shrink-0 ${
+                      className={`flex items-center gap-2 px-3 py-2.5 sm:py-2 rounded-lg text-left transition-all duration-200 whitespace-nowrap shrink-0 ${
                         isActive
                           ? `${tabColors.activeBg} ${tabColors.activeBorder} border ${tabColors.activeText}`
                           : "text-white/40 hover:text-white/60 hover:bg-white/[0.04] border border-transparent"
@@ -233,6 +233,19 @@ export function DemoAnalysis() {
         </motion.div>
       </div>
     </section>
+  )
+}
+
+// =============================================
+// Safe markdown bold renderer (replaces dangerouslySetInnerHTML)
+// =============================================
+
+function renderBoldText(text: string): React.ReactNode[] {
+  const parts = text.split(/\*\*(.*?)\*\*/g)
+  return parts.map((part, i) =>
+    i % 2 === 1
+      ? <strong key={i} className="text-white/90 font-medium">{part}</strong>
+      : <span key={i}>{part}</span>
   )
 }
 
@@ -535,14 +548,9 @@ function DeepDiveContent() {
               <span className="text-[#1d9bf0] text-sm font-mono mt-0.5 shrink-0">
                 {trimmed.charAt(0)}.
               </span>
-              <span
-                className="text-sm text-white/65 leading-relaxed"
-                dangerouslySetInnerHTML={{
-                  __html: content
-                    .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white/90 font-medium">$1</strong>')
-                    .replace(/—/g, " &mdash; "),
-                }}
-              />
+              <span className="text-sm text-white/65 leading-relaxed">
+                {renderBoldText(content)}
+              </span>
             </motion.div>
           )
         }
@@ -554,12 +562,9 @@ function DeepDiveContent() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.25, delay: 0.05 * Math.min(i, 10) }}
             className="text-sm text-white/65 leading-relaxed"
-            dangerouslySetInnerHTML={{
-              __html: trimmed
-                .replace(/\*\*(.*?)\*\*/g, '<strong class="text-white/90 font-medium">$1</strong>')
-                .replace(/—/g, " &mdash; "),
-            }}
-          />
+          >
+            {renderBoldText(trimmed)}
+          </motion.p>
         )
       })}
     </div>

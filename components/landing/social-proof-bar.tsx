@@ -22,7 +22,7 @@ export const SocialProofBar = memo(function SocialProofBar() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-8 max-w-4xl mx-auto">
         {proofItems.map((item) => (
           <div key={item.text} className="flex items-center justify-center gap-2.5 text-white/50">
-            <item.icon className="w-4 h-4 flex-shrink-0" />
+            <item.icon className="w-5 h-5 flex-shrink-0" />
             <span className="text-sm font-medium">{item.text}</span>
           </div>
         ))}

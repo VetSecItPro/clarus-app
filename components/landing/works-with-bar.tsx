@@ -23,14 +23,14 @@ const contentTypes = [
 
 export const WorksWithBar = memo(function WorksWithBar() {
   return (
-    <section className="py-8 px-4 overflow-x-auto">
+    <section className="py-8 px-4 overflow-hidden">
       <div className="max-w-4xl mx-auto">
         <motion.div
           initial={{ opacity: 0, y: 10 }}
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.5 }}
-          className="flex items-center justify-center gap-4 sm:gap-6 whitespace-nowrap"
+          className="flex items-center justify-center gap-3 sm:gap-6 flex-wrap sm:flex-nowrap"
         >
           <span className="text-white/50 text-xs sm:text-sm font-medium tracking-wide uppercase shrink-0">
             Works with
