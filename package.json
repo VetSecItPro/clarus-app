@@ -15,7 +15,9 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "ci": "pnpm lint && pnpm typecheck && pnpm build"
+    "ci": "pnpm lint && pnpm typecheck && pnpm build",
+    "remotion:studio": "remotion studio remotion/index.ts",
+    "remotion:render": "remotion render remotion/index.ts HeroDemo out/hero-demo.mp4"
   },
   "dependencies": {
     "@ai-sdk/openai": "2.0.89",
@@ -34,6 +36,8 @@
     "@radix-ui/react-tabs": "1.1.13",
     "@radix-ui/react-tooltip": "1.2.8",
     "@react-email/components": "^1.0.6",
+    "@remotion/cli": "4.0.421",
+    "@remotion/player": "4.0.421",
     "@supabase/ssr": "0.8.0",
     "@supabase/supabase-js": "2.93.2",
     "@tanstack/react-virtual": "^3.13.18",
@@ -62,6 +66,7 @@
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.4",
     "remark-gfm": "4.0.1",
+    "remotion": "4.0.421",
     "resend": "^6.9.1",
     "sonner": "^1.7.1",
     "swr": "^2.3.8",
