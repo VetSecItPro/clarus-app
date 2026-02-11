@@ -944,7 +944,17 @@ async function detectContentTone(
   }
 
   const timer = createTimer()
-  const sample = fullText.substring(0, 2000)
+  // 3-segment sampling: first 2K + middle 1K + last 1K = ~4K total.
+  // Catches tone shifts that single-segment sampling misses (formal intro, sarcastic body, etc.)
+  const segments: string[] = [fullText.substring(0, 2000)]
+  if (fullText.length > 6000) {
+    const mid = Math.floor(fullText.length / 2)
+    segments.push(fullText.substring(mid - 500, mid + 500))
+  }
+  if (fullText.length > 4000) {
+    segments.push(fullText.substring(fullText.length - 1000))
+  }
+  const sample = segments.join("\n\n---\n\n")
   const sanitizedSample = sanitizeForPrompt(sample, { context: "tone-detection" })
   const sanitizedTitle = contentTitle ? sanitizeForPrompt(contentTitle, { context: "tone-detection-title", maxLength: 500 }) : ""
   const titleLine = sanitizedTitle ? `Title: ${sanitizedTitle}\n` : ""
@@ -1435,9 +1445,9 @@ interface ParsedModelSummaryResponse {
 
 async function getModelSummary(
   textToSummarize: string,
-  options: { shouldExtractTitle?: boolean; toneDirective?: string | null; languageDirective?: string | null; metadataBlock?: string | null; typeInstructions?: string | null } = {},
+  options: { shouldExtractTitle?: boolean; toneDirective?: string | null; languageDirective?: string | null; metadataBlock?: string | null; typeInstructions?: string | null; contentType?: string } = {},
 ): Promise<ModelSummary | ModelProcessingError> {
-  const { shouldExtractTitle = false, toneDirective, languageDirective, metadataBlock, typeInstructions } = options
+  const { shouldExtractTitle = false, toneDirective, languageDirective, metadataBlock, typeInstructions, contentType } = options
 
   if (!openRouterApiKey) {
     const msg = "OpenRouter API key is not configured."
@@ -1470,6 +1480,7 @@ async function getModelSummary(
   const finalUserPrompt = (user_content_template || "{{TEXT_TO_SUMMARIZE}}")
     .replace("{{TONE}}", toneDirective || NEUTRAL_TONE_DIRECTIVE)
     .replace("{{LANGUAGE}}", languageDirective || "Write your analysis in English.")
+    .replace("{{TYPE}}", contentType || "article")
     .replace("{{METADATA}}", metadataBlock || "")
     .replace("{{TYPE_INSTRUCTIONS}}", typeInstructions || "")
     .replace("{{TEXT_TO_SUMMARIZE}}", wrapUserContent(sanitizedSummaryText)) + INSTRUCTION_ANCHOR
@@ -1813,11 +1824,11 @@ async function generateTriage(fullText: string, contentType: string, userId?: st
   return result.content as TriageData
 }
 
-async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, webSearchContext?: WebSearchContext | null, preferencesBlock?: string | null, claimContext?: string | null, claimSearchCtx?: ClaimSearchContext | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<TruthCheckData | null> {
+async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, webSearchContext?: WebSearchContext | null, preferencesBlock?: string | null, claimContext?: string | null, claimSearchCtx?: ClaimSearchContext | null, metadataBlock?: string | null, typeInstructions?: string | null, domainCredibility?: string | null): Promise<TruthCheckData | null> {
   const citationInstruction = `\n\nIMPORTANT: For each issue you identify, include a "sources" array with citation objects containing "url" and "title" for verification. Use URLs from the web verification context above when available. Format: "sources": [{"url": "https://...", "title": "Source Title"}]. If no source URL is available for an issue, omit the sources field for that issue.`
 
-  // Combine generic web context + targeted claim context, capped at 8K to avoid diluting model attention
-  const rawCombinedContext = (webContext || "") + (claimContext || "")
+  // Combine domain credibility warning + generic web context + targeted claim context, capped at 8K
+  const rawCombinedContext = (domainCredibility ? domainCredibility + "\n\n" : "") + (webContext || "") + (claimContext || "")
   const combinedContext = rawCombinedContext.length > 8000 ? rawCombinedContext.substring(0, 8000) : rawCombinedContext
   const enrichedWebContext = combinedContext ? combinedContext + citationInstruction : null
 
@@ -1911,13 +1922,14 @@ async function generateDetailedSummary(fullText: string, contentType: string, us
 
 async function generateAutoTags(
   fullText: string,
+  contentType?: string,
   userId?: string | null,
   contentId?: string | null,
 ): Promise<string[] | null> {
   const result = await generateSectionWithAI(
     fullText.substring(0, 10000),
     "auto_tags",
-    undefined,
+    contentType,
     2,
     userId,
     contentId,
@@ -1994,6 +2006,38 @@ function isEntertainmentUrl(url: string): boolean {
   const domain = extractDomain(url)
   if (!domain) return false
   return ENTERTAINMENT_DOMAINS.has(domain)
+}
+
+/**
+ * Reads historical credibility data for a domain from past analyses.
+ * Returns a warning string if the domain has a poor track record, or null if
+ * the domain is new or has acceptable accuracy.
+ *
+ * Requires at least 3 prior analyses to avoid premature judgments.
+ */
+async function getDomainCredibility(
+  supabase: ReturnType<typeof createClient<Database>>,
+  url: string,
+): Promise<string | null> {
+  const domain = extractDomain(url)
+  if (!domain) return null
+
+  const { data, error } = await supabase
+    .from("domains")
+    .select("total_analyses, accurate_count, mostly_accurate_count, mixed_count, questionable_count, unreliable_count, avg_quality_score")
+    .eq("domain", domain)
+    .maybeSingle()
+
+  if (error || !data || data.total_analyses < 3) return null
+
+  const total = data.total_analyses
+  const unreliableRatio = (data.questionable_count + data.unreliable_count) / total
+
+  // Only warn when >30% of past analyses flagged questionable or unreliable
+  if (unreliableRatio <= 0.3) return null
+
+  const pct = Math.round(unreliableRatio * 100)
+  return `## Source Credibility Warning\nThis content is from ${domain}, which has been rated "Questionable" or "Unreliable" in ${pct}% of ${total} previous analyses (avg quality score: ${data.avg_quality_score?.toFixed(1) ?? "N/A"}/10). Apply extra scrutiny to factual claims from this source.`
 }
 
 async function updateDomainStats(
@@ -2642,8 +2686,8 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
 
   // Web search context + claim verification + tone detection + user preferences (parallel)
   // Wrapped in a timeout — Phase 1 is enrichment, not critical. Falls back to defaults if slow.
-  type Phase1Result = [WebSearchContext | null, ClaimSearchContext | null, ToneDetectionResult, UserAnalysisPreferences | null]
-  const phase1Default: Phase1Result = [null, null, { tone_label: "neutral", tone_directive: "The content uses a standard informational tone. Write your analysis in a clear, neutral voice." }, null]
+  type Phase1Result = [WebSearchContext | null, ClaimSearchContext | null, ToneDetectionResult, UserAnalysisPreferences | null, string | null]
+  const phase1Default: Phase1Result = [null, null, { tone_label: "neutral", tone_directive: "The content uses a standard informational tone. Write your analysis in a clear, neutral voice." }, null, null]
 
   let phase1: Phase1Result
   try {
@@ -2658,6 +2702,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
           .eq("user_id", userId)
           .maybeSingle()
           .then(({ data }) => data as UserAnalysisPreferences | null),
+        getDomainCredibility(supabase, contentUrl),
       ]) as Promise<Phase1Result>,
       new Promise<Phase1Result>((_, reject) =>
         setTimeout(() => reject(new Error("Phase 1 timeout")), PHASE1_TIMEOUT_MS)
@@ -2668,7 +2713,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
     phase1 = phase1Default
   }
 
-  const [webSearchContext, claimSearchCtx, toneResult, preferencesRow] = phase1
+  const [webSearchContext, claimSearchCtx, toneResult, preferencesRow, domainCredibility] = phase1
   const webContext = webSearchContext?.formattedContext || null
   const claimContext = claimSearchCtx?.formattedContext || null
   const toneDirective = toneResult.tone_directive
@@ -2716,7 +2761,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const midSummaryPromise = (async () => {
-    const summaryResult = await getModelSummary(text30K, { shouldExtractTitle: titleNeedsFixing, toneDirective, languageDirective, metadataBlock, typeInstructions })
+    const summaryResult = await getModelSummary(text30K, { shouldExtractTitle: titleNeedsFixing, toneDirective, languageDirective, metadataBlock, typeInstructions, contentType })
     if (summaryResult && !("error" in summaryResult)) {
       const validSummary = summaryResult as ModelSummary
       if (titleNeedsFixing && validSummary.title) {
@@ -2746,7 +2791,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const autoTagPromise = (async () => {
-    const tags = await generateAutoTags(text10K, userId, contentIdVal)
+    const tags = await generateAutoTags(text10K, contentType, userId, contentIdVal)
     if (tags && tags.length > 0) {
       await supabase
         .from("content")
@@ -2759,7 +2804,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const truthCheckPromise = (async () => {
-    const result = await generateTruthCheck(text20K, contentType, userId, contentIdVal, webContext, languageDirective, webSearchContext, preferencesBlock || null, claimContext, claimSearchCtx, metadataBlock, typeInstructions)
+    const result = await generateTruthCheck(text20K, contentType, userId, contentIdVal, webContext, languageDirective, webSearchContext, preferencesBlock || null, claimContext, claimSearchCtx, metadataBlock, typeInstructions, domainCredibility)
     if (result) {
       // Will be saved after triage check
     } else {
