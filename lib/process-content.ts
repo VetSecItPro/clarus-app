@@ -47,6 +47,17 @@ const assemblyAiApiKey = process.env.ASSEMBLYAI_API_KEY
 // Timeout for individual AI API calls (2 minutes per call)
 const AI_CALL_TIMEOUT_MS = 120000
 
+// Timeout for external service calls (web search, scraping)
+const TAVILY_TIMEOUT_MS = 15000
+const FIRECRAWL_TIMEOUT_MS = 30000
+const EXTRACT_TOPICS_TIMEOUT_MS = 10000
+
+// Phase 1 (web search + tone + prefs) overall timeout
+const PHASE1_TIMEOUT_MS = 20000
+
+// Global pipeline timeout (4 minutes)
+const PIPELINE_TIMEOUT_MS = 240000
+
 // ============================================
 // ERROR CLASS
 // ============================================
@@ -227,6 +238,9 @@ async function extractKeyTopics(text: string): Promise<string[]> {
   const userContent = prompt.user_content_template.replace("{{CONTENT}}", wrapUserContent(sanitizedText)) + INSTRUCTION_ANCHOR
 
   try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), EXTRACT_TOPICS_TIMEOUT_MS)
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -243,7 +257,10 @@ async function extractKeyTopics(text: string): Promise<string[]> {
         max_tokens: prompt.max_tokens,
         response_format: { type: "json_object" }
       }),
+      signal: controller.signal,
     })
+
+    clearTimeout(timeoutId)
 
     if (!response.ok) {
       console.warn("API: Topic extraction failed, skipping web search")
@@ -413,6 +430,9 @@ async function searchTavily(query: string, tavilyCache: Map<string, WebSearchRes
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const timer = createTimer()
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS)
+
       const response = await fetch("https://api.tavily.com/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -424,7 +444,10 @@ async function searchTavily(query: string, tavilyCache: Map<string, WebSearchRes
           include_raw_content: false,
           max_results: 3,
         }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       if (!response.ok) {
         if (attempt < maxRetries && (response.status >= 500 || response.status === 429)) {
@@ -905,7 +928,6 @@ function formatTimestamp(ms: number): string {
 async function getYouTubeTranscript(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<{ full_text: string | null }> {
   const endpoint = `https://api.supadata.ai/v1/youtube/transcript?url=${encodeURIComponent(url)}`
   const retries = 3
-  const delay = 1000
   const timer = createTimer()
 
   for (let attempt = 1; attempt <= retries; attempt++) {
@@ -982,9 +1004,10 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
       }
 
       const errorText = await response.text()
+      const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 4000)
       console.warn(
         `Supadata Transcript API Server Error (${response.status}) on attempt ${attempt} for ${url}: ${errorText}. Retrying in ${
-          delay / 1000
+          retryDelay / 1000
         }s...`,
       )
     } catch (error: unknown) {
@@ -992,15 +1015,17 @@ async function getYouTubeTranscript(url: string, apiKey: string, userId?: string
         throw error
       }
       const msg = getErrorMessage(error)
+      const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 4000)
       console.warn(
         `Transcript API attempt ${attempt} failed for ${url}: ${msg}. Retrying in ${
-          delay / 1000
+          retryDelay / 1000
         }s...`,
       )
     }
 
     if (attempt < retries) {
-      await new Promise((res) => setTimeout(res, delay))
+      const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 4000)
+      await new Promise((res) => setTimeout(res, retryDelay))
     }
   }
 
@@ -1032,12 +1057,14 @@ interface ScrapedArticleData {
 
 async function scrapeArticle(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<ScrapedArticleData> {
   const endpoint = "https://api.firecrawl.dev/v0/scrape"
-  const retries = 5
-  const delay = 2000
+  const retries = 3
   const timer = createTimer()
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), FIRECRAWL_TIMEOUT_MS)
+
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -1050,7 +1077,10 @@ async function scrapeArticle(url: string, apiKey: string, userId?: string | null
             onlyMainContent: true,
           },
         }),
+        signal: controller.signal,
       })
+
+      clearTimeout(timeoutId)
 
       if (response.ok) {
         const result = await response.json()
@@ -1083,9 +1113,10 @@ async function scrapeArticle(url: string, apiKey: string, userId?: string | null
       }
 
       const errorText = await response.text()
+      const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 4000)
       console.warn(
         `FireCrawl API Server Error (${response.status}) on attempt ${attempt} for ${url}: ${errorText}. Retrying in ${
-          delay / 1000
+          retryDelay / 1000
         }s...`,
       )
     } catch (error: unknown) {
@@ -1093,15 +1124,17 @@ async function scrapeArticle(url: string, apiKey: string, userId?: string | null
         throw error
       }
       const msg = getErrorMessage(error)
+      const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 4000)
       console.warn(
         `Scrape API attempt ${attempt} failed for ${url}: ${msg}. Retrying in ${
-          delay / 1000
+          retryDelay / 1000
         }s...`,
       )
     }
 
     if (attempt < retries) {
-      await new Promise((res) => setTimeout(res, delay))
+      const retryDelay = Math.min(1000 * Math.pow(2, attempt - 1), 4000)
+      await new Promise((res) => setTimeout(res, retryDelay))
     }
   }
 
@@ -1363,10 +1396,22 @@ async function generateSectionWithAI(
         lastError = "AI analysis service returned an error"
         retryCount++
 
+        // 429 = rate limited — retry with longer backoff
+        if (response.status === 429) {
+          if (attempt < maxRetries) {
+            const delay = 10000 * Math.pow(2, attempt - 1)
+            console.warn(`API: [${promptType}] Rate limited (429), retrying in ${delay / 1000}s...`)
+            await new Promise((resolve) => setTimeout(resolve, delay))
+          }
+          continue
+        }
+
+        // Other 4xx = client error, no retry (400 bad request, 401 auth, 403 forbidden, 404 not found)
         if (response.status >= 400 && response.status < 500) {
           return { content: null, error: lastError }
         }
 
+        // 5xx = server error, retry with standard backoff
         if (attempt < maxRetries) {
           const delay = 5000 * Math.pow(2, attempt - 1)
           await new Promise((resolve) => setTimeout(resolve, delay))
@@ -2295,21 +2340,42 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   const failedSections: string[] = []
   const sectionsGenerated: string[] = []
 
+  // Global pipeline timeout — prevents hung requests from consuming resources indefinitely
+  const pipelineAbort = new AbortController()
+  const pipelineTimeoutId = setTimeout(() => pipelineAbort.abort(), PIPELINE_TIMEOUT_MS)
+
   // Request-scoped Tavily cache — isolated per request, prevents cross-user data leakage
   const tavilyCache = new Map<string, WebSearchResult>()
 
   // Web search context + claim verification + tone detection + user preferences (parallel)
-  const [webSearchContext, claimSearchCtx, toneResult, preferencesRow] = await Promise.all([
-    getWebSearchContext(fullText.substring(0, 10000), content.title || undefined, tavilyCache),
-    getClaimSearchContext(fullText.substring(0, 15000), tavilyCache),
-    detectContentTone(fullText, content.title, contentType, userId, contentIdVal),
-    supabase
-      .from("user_analysis_preferences")
-      .select("analysis_mode, expertise_level, focus_areas, is_active")
-      .eq("user_id", userId)
-      .maybeSingle()
-      .then(({ data }) => data as UserAnalysisPreferences | null),
-  ])
+  // Wrapped in a timeout — Phase 1 is enrichment, not critical. Falls back to defaults if slow.
+  type Phase1Result = [WebSearchContext | null, ClaimSearchContext | null, ToneDetectionResult, UserAnalysisPreferences | null]
+  const phase1Default: Phase1Result = [null, null, { tone_label: "neutral", tone_directive: "The content uses a standard informational tone. Write your analysis in a clear, neutral voice." }, null]
+
+  let phase1: Phase1Result
+  try {
+    phase1 = await Promise.race([
+      Promise.all([
+        getWebSearchContext(fullText.substring(0, 10000), content.title || undefined, tavilyCache),
+        getClaimSearchContext(fullText.substring(0, 15000), tavilyCache),
+        detectContentTone(fullText, content.title, contentType, userId, contentIdVal),
+        supabase
+          .from("user_analysis_preferences")
+          .select("analysis_mode, expertise_level, focus_areas, is_active")
+          .eq("user_id", userId)
+          .maybeSingle()
+          .then(({ data }) => data as UserAnalysisPreferences | null),
+      ]) as Promise<Phase1Result>,
+      new Promise<Phase1Result>((_, reject) =>
+        setTimeout(() => reject(new Error("Phase 1 timeout")), PHASE1_TIMEOUT_MS)
+      ),
+    ])
+  } catch (err) {
+    console.warn(`API: Phase 1 timed out after ${PHASE1_TIMEOUT_MS / 1000}s, using defaults:`, getErrorMessage(err))
+    phase1 = phase1Default
+  }
+
+  const [webSearchContext, claimSearchCtx, toneResult, preferencesRow] = phase1
   const webContext = webSearchContext?.formattedContext || null
   const claimContext = claimSearchCtx?.formattedContext || null
   const toneDirective = toneResult.tone_directive
@@ -2321,6 +2387,14 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
       () => {},
       (err) => console.warn("Failed to persist detected_tone:", err)
     )
+  }
+
+  // Check pipeline timeout before starting Phase 2
+  if (pipelineAbort.signal.aborted) {
+    clearTimeout(pipelineTimeoutId)
+    console.warn("API: Pipeline timeout hit after Phase 1, saving partial results")
+    await updateSummarySection(supabase, contentIdVal, userId, { processing_status: "partial" }, language)
+    return { success: true, cached: false, message: "Content partially processed (timeout).", contentId: content.id, sectionsGenerated, language, paywallWarning }
   }
 
   // All sections in parallel
@@ -2411,10 +2485,33 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
     return result
   })()
 
-  const [briefOverview, triage, , detailedSummary, , truthCheckResult, actionItemsResult] = await Promise.all([
+  // Promise.allSettled: one section crashing won't kill the others
+  const phase2Results = await Promise.allSettled([
     overviewPromise, triagePromise, midSummaryPromise, detailedPromise, autoTagPromise,
     truthCheckPromise, actionItemsPromise,
   ])
+
+  // Extract values — rejected promises return null (IIFEs already handle their own errors,
+  // so rejection here means an unexpected crash, which we log and treat as a section failure)
+  const phase2Values = phase2Results.map((r, i) => {
+    if (r.status === "fulfilled") return r.value
+    const sectionNames = ["brief_overview", "triage", "mid_length_summary", "detailed_summary", "auto_tags", "truth_check", "action_items"]
+    console.error(`API: Phase 2 section ${sectionNames[i]} crashed unexpectedly:`, r.reason)
+    if (!failedSections.includes(sectionNames[i])) failedSections.push(sectionNames[i])
+    return null
+  })
+
+  const [briefOverview, triage, , detailedSummary, , truthCheckResult, actionItemsResult] = phase2Values as [
+    string | null, TriageData | null, unknown, string | null, unknown, TruthCheckData | null, ActionItemsData | null
+  ]
+
+  // Check pipeline timeout before post-processing
+  if (pipelineAbort.signal.aborted) {
+    clearTimeout(pipelineTimeoutId)
+    console.warn("API: Pipeline timeout hit after Phase 2, saving partial results")
+    await updateSummarySection(supabase, contentIdVal, userId, { processing_status: "partial" }, language)
+    return { success: true, cached: false, message: "Content partially processed (timeout).", contentId: content.id, sectionsGenerated, language, paywallWarning }
+  }
 
   // Post-check: skip saving truth check + action items for music/entertainment
   const skipCategories = ["music", "entertainment"]
@@ -2551,6 +2648,9 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
       }
     }))
   }
+
+  // Clear pipeline timeout — we completed successfully
+  clearTimeout(pipelineTimeoutId)
 
   // Mark processing complete
   await updateSummarySection(supabase, contentIdVal, userId, {
