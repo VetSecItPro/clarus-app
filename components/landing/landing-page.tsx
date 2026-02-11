@@ -8,7 +8,7 @@ import { WorksWithBar } from "./works-with-bar"
 import { LandingFooter } from "./landing-footer"
 import { StickyMobileCTA } from "./sticky-mobile-cta"
 import { InlineCTA } from "./inline-cta"
-import { TestimonialSection } from "./testimonial-section"
+
 import { ScrollToTop } from "./scroll-to-top"
 
 // PERF: Dynamic import heavy components (ssr: false) to reduce initial bundle
@@ -52,7 +52,6 @@ export function LandingPage() {
         <BeforeYouPlay />
         <InlineCTA variant="primary" />
         <AudienceSection />
-        <TestimonialSection />
         <CTASection />
       </main>
 

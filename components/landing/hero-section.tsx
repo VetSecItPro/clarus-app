@@ -2,7 +2,7 @@
 
 import { memo } from "react"
 import { motion } from "framer-motion"
-import { ArrowRight, BarChart3, Users, Zap, CheckCircle2, MessageSquare, Shield } from "lucide-react"
+import { ArrowRight } from "lucide-react"
 import Link from "next/link"
 import { AnimatedBackground } from "./animated-background"
 
@@ -83,66 +83,6 @@ export const HeroSection = memo(function HeroSection() {
           No credit card required. 5 free analyses per month. Every analysis starts with a verdict: Skip, Skim, Worth It, or Must See.
         </motion.p>
 
-        {/* Social proof metrics */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.7 }}
-          className="mt-8 flex items-center justify-center gap-6 sm:gap-10"
-        >
-          {[
-            { icon: BarChart3, value: "10,000+", label: "Analyses run" },
-            { icon: Users, value: "2,500+", label: "Active users" },
-            { icon: Zap, value: "<60s", label: "Avg. result time" },
-          ].map((stat) => (
-            <div key={stat.label} className="flex items-center gap-2">
-              <stat.icon className="w-4 h-4 text-[#1d9bf0]/60" />
-              <div className="text-left">
-                <p className="text-sm font-semibold text-white/80">{stat.value}</p>
-                <p className="text-[10px] text-white/40">{stat.label}</p>
-              </div>
-            </div>
-          ))}
-        </motion.div>
-
-        {/* Mini product preview — shows what an analysis looks like */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: 0.9, ease: [0.22, 1, 0.36, 1] }}
-          className="mt-10 max-w-md mx-auto"
-        >
-          <div className="rounded-2xl border border-white/[0.08] bg-white/[0.02] backdrop-blur-sm p-4 text-left">
-            {/* Content title row */}
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="min-w-0">
-                <p className="text-xs text-white/40 mb-0.5 truncate">youtube.com</p>
-                <p className="text-sm font-medium text-white/80 leading-snug line-clamp-1">
-                  The Hidden Cost of AI Infrastructure in 2026
-                </p>
-              </div>
-              <span className="shrink-0 px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-500/15 text-emerald-400 border border-emerald-500/20">
-                Worth It
-              </span>
-            </div>
-
-            {/* Stats row */}
-            <div className="flex items-center gap-4 text-[11px] text-white/40">
-              <span className="flex items-center gap-1">
-                <Shield className="w-3 h-3 text-[#1d9bf0]/60" />
-                <span>85/100 accuracy</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <CheckCircle2 className="w-3 h-3 text-emerald-400/60" />
-                <span>12 claims tracked</span>
-              </span>
-              <span className="flex items-center gap-1">
-                <MessageSquare className="w-3 h-3 text-purple-400/60" />
-                <span>AI chat ready</span>
-              </span>
-            </div>
-          </div>
-        </motion.div>
       </div>
     </section>
   )
