@@ -472,13 +472,13 @@ async function fetchPromptFromDB(promptType: string): Promise<AnalysisPrompt | n
   return data
 }
 
-async function extractKeyTopics(text: string): Promise<string[]> {
+async function extractKeyTopics(text: string, maxTopics: number = 3): Promise<string[]> {
   if (!openRouterApiKey) return []
 
   const prompt = await fetchPromptFromDB("keyword_extraction")
   if (!prompt) return []
 
-  const truncatedText = text.substring(0, 8000)
+  const truncatedText = text.substring(0, 5000)
   const sanitizedText = sanitizeForPrompt(truncatedText, { context: "keyword-extraction" })
   const userContent = prompt.user_content_template.replace("{{CONTENT}}", wrapUserContent(sanitizedText)) + INSTRUCTION_ANCHOR
 
@@ -525,7 +525,7 @@ async function extractKeyTopics(text: string): Promise<string[]> {
           ? (parsed as Record<string, unknown>).topics as unknown[]
           : []
 
-    return rawTopics.slice(0, 3).filter((t: unknown): t is string => typeof t === 'string' && t.length > 2)
+    return rawTopics.slice(0, maxTopics).filter((t: unknown): t is string => typeof t === 'string' && t.length > 2)
   } catch (error) {
     console.warn("API: Topic extraction error:", error)
     return []
@@ -783,7 +783,12 @@ async function getWebSearchContext(text: string, _contentTitle: string | undefin
     return null
   }
 
-  const rawTopics = await extractKeyTopics(text)
+  // Dynamic topic count: short content needs fewer web searches
+  const maxTopics = text.length < 500 ? 1 :    // tweets: 1 search
+                    text.length < 2000 ? 2 :    // short articles: 2 searches
+                    3                            // long content: 3 searches
+
+  const rawTopics = await extractKeyTopics(text, maxTopics)
 
   if (rawTopics.length === 0) {
     return null
@@ -1791,7 +1796,7 @@ async function generateSectionWithAI(
 }
 
 async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, undefined, metadataBlock, typeInstructions)
+  const result = await generateSectionWithAI(fullText.substring(0, 8000), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, undefined, metadataBlock, typeInstructions)
   if (result.error) {
     console.error(`API: Brief overview generation failed: ${result.error}`)
     return null
@@ -1800,7 +1805,7 @@ async function generateBriefOverview(fullText: string, contentType: string, user
 }
 
 async function generateTriage(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<TriageData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "triage", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
+  const result = await generateSectionWithAI(fullText.substring(0, 10000), "triage", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     console.error(`API: Triage generation failed: ${result.error}`)
     return null
@@ -1883,7 +1888,7 @@ async function generateTruthCheck(fullText: string, contentType: string, userId?
 }
 
 async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<ActionItemsData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "action_items", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
+  const result = await generateSectionWithAI(fullText.substring(0, 15000), "action_items", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     console.error(`API: Action items generation failed: ${result.error}`)
     return null
@@ -1969,6 +1974,26 @@ function extractDomain(url: string): string | null {
   } catch {
     return null
   }
+}
+
+/**
+ * Checks if a URL belongs to a known music/entertainment platform.
+ * Used to skip expensive claim verification searches — music content
+ * doesn't have factual claims worth verifying.
+ */
+const ENTERTAINMENT_DOMAINS = new Set([
+  "open.spotify.com", "spotify.com",
+  "music.youtube.com", "music.apple.com",
+  "soundcloud.com", "tidal.com", "deezer.com",
+  "bandcamp.com", "pandora.com", "audiomack.com",
+  "genius.com", "azlyrics.com", "lyrics.com",
+  "vimeo.com",
+])
+
+function isEntertainmentUrl(url: string): boolean {
+  const domain = extractDomain(url)
+  if (!domain) return false
+  return ENTERTAINMENT_DOMAINS.has(domain)
 }
 
 async function updateDomainStats(
@@ -2586,6 +2611,14 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   const contentType = content.type || "article"
   const fullText = content.full_text
 
+  // Pre-truncate text once — each section gets the right-sized slice without redundant allocations.
+  // Cascade from largest to smallest so smaller slices reuse the larger string's memory.
+  const text30K = fullText.substring(0, 30000)   // detailed_summary
+  const text20K = text30K.substring(0, 20000)     // truth_check
+  const text15K = text20K.substring(0, 15000)     // action_items, claim search
+  const text10K = text15K.substring(0, 10000)     // triage, auto_tags, web search
+  const text8K  = text10K.substring(0, 8000)      // brief_overview
+
   // Build rich metadata block for AI context — zero API calls, uses data already fetched
   const metadataBlock = buildContentMetadataBlock(content) || null
 
@@ -2616,8 +2649,8 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   try {
     phase1 = await Promise.race([
       Promise.all([
-        getWebSearchContext(fullText.substring(0, 10000), content.title || undefined, tavilyCache),
-        getClaimSearchContext(fullText.substring(0, 15000), tavilyCache),
+        getWebSearchContext(text10K, content.title || undefined, tavilyCache),
+        isEntertainmentUrl(contentUrl) ? Promise.resolve(null) : getClaimSearchContext(text15K, tavilyCache),
         detectContentTone(fullText, content.title, contentType, userId, contentIdVal),
         supabase
           .from("user_analysis_preferences")
@@ -2659,7 +2692,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
 
   // All sections in parallel
   const overviewPromise = (async () => {
-    const result = await generateBriefOverview(fullText, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, metadataBlock, typeInstructions)
+    const result = await generateBriefOverview(text8K, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, metadataBlock, typeInstructions)
     if (result) {
       await updateSummarySection(supabase, contentIdVal, userId, { brief_overview: result }, language)
       sectionsGenerated.push("brief_overview")
@@ -2671,7 +2704,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const triagePromise = (async () => {
-    const result = await generateTriage(fullText, contentType, userId, contentIdVal, webContext, languageDirective, preferencesBlock || null, metadataBlock, typeInstructions)
+    const result = await generateTriage(text10K, contentType, userId, contentIdVal, webContext, languageDirective, preferencesBlock || null, metadataBlock, typeInstructions)
     if (result) {
       await updateSummarySection(supabase, contentIdVal, userId, { triage: result as unknown as Json }, language)
       sectionsGenerated.push("triage")
@@ -2683,7 +2716,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const midSummaryPromise = (async () => {
-    const summaryResult = await getModelSummary(fullText, { shouldExtractTitle: titleNeedsFixing, toneDirective, languageDirective, metadataBlock, typeInstructions })
+    const summaryResult = await getModelSummary(text30K, { shouldExtractTitle: titleNeedsFixing, toneDirective, languageDirective, metadataBlock, typeInstructions })
     if (summaryResult && !("error" in summaryResult)) {
       const validSummary = summaryResult as ModelSummary
       if (titleNeedsFixing && validSummary.title) {
@@ -2701,7 +2734,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const detailedPromise = (async () => {
-    const result = await generateDetailedSummary(fullText, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, preferencesBlock || null, metadataBlock, typeInstructions)
+    const result = await generateDetailedSummary(text30K, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, preferencesBlock || null, metadataBlock, typeInstructions)
     if (result) {
       await updateSummarySection(supabase, contentIdVal, userId, { detailed_summary: result }, language)
       sectionsGenerated.push("detailed_summary")
@@ -2713,7 +2746,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const autoTagPromise = (async () => {
-    const tags = await generateAutoTags(fullText, userId, contentIdVal)
+    const tags = await generateAutoTags(text10K, userId, contentIdVal)
     if (tags && tags.length > 0) {
       await supabase
         .from("content")
@@ -2726,7 +2759,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const truthCheckPromise = (async () => {
-    const result = await generateTruthCheck(fullText, contentType, userId, contentIdVal, webContext, languageDirective, webSearchContext, preferencesBlock || null, claimContext, claimSearchCtx, metadataBlock, typeInstructions)
+    const result = await generateTruthCheck(text20K, contentType, userId, contentIdVal, webContext, languageDirective, webSearchContext, preferencesBlock || null, claimContext, claimSearchCtx, metadataBlock, typeInstructions)
     if (result) {
       // Will be saved after triage check
     } else {
@@ -2736,7 +2769,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   })()
 
   const actionItemsPromise = (async () => {
-    const result = await generateActionItems(fullText, contentType, userId, contentIdVal, webContext, languageDirective, preferencesBlock || null, metadataBlock, typeInstructions)
+    const result = await generateActionItems(text15K, contentType, userId, contentIdVal, webContext, languageDirective, preferencesBlock || null, metadataBlock, typeInstructions)
     if (result) {
       // Will be saved after triage check
     } else {
