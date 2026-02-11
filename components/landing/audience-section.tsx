@@ -2,10 +2,12 @@
 
 import { memo } from "react"
 import { motion } from "framer-motion"
+import { Microscope, Headphones, Briefcase, GraduationCap } from "lucide-react"
 
 const personas = [
   {
-    emoji: "\uD83D\uDD2C",
+    icon: Microscope,
+    color: "text-cyan-400 bg-cyan-500/10 border-cyan-500/20",
     title: "Researchers",
     bullets: [
       "Cross-reference claims across your saved library",
@@ -14,7 +16,8 @@ const personas = [
     ],
   },
   {
-    emoji: "\uD83C\uDFA4",
+    icon: Headphones,
+    color: "text-purple-400 bg-purple-500/10 border-purple-500/20",
     title: "Podcast listeners",
     bullets: [
       "Speaker breakdowns show who said what, where identifiable",
@@ -23,7 +26,8 @@ const personas = [
     ],
   },
   {
-    emoji: "\uD83D\uDCBC",
+    icon: Briefcase,
+    color: "text-amber-400 bg-amber-500/10 border-amber-500/20",
     title: "Professionals",
     bullets: [
       "Quality scores help surface what\u2019s worth your time",
@@ -32,7 +36,8 @@ const personas = [
     ],
   },
   {
-    emoji: "\uD83D\uDCDA",
+    icon: GraduationCap,
+    color: "text-emerald-400 bg-emerald-500/10 border-emerald-500/20",
     title: "Students",
     bullets: [
       "Structured breakdowns help turn lectures into study guides",
@@ -53,7 +58,7 @@ export const AudienceSection = memo(function AudienceSection() {
           transition={{ duration: 0.6 }}
           className="text-center mb-12"
         >
-          <p className="text-white/30 text-sm font-medium tracking-wide uppercase mb-4">
+          <p className="text-white/50 text-sm font-medium tracking-wide uppercase mb-4">
             Who it&apos;s for
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
@@ -71,14 +76,16 @@ export const AudienceSection = memo(function AudienceSection() {
               transition={{ duration: 0.5, delay: index * 0.08 }}
               className="p-6 rounded-2xl bg-white/[0.02] border border-white/[0.04] hover:border-white/[0.08] hover:bg-white/[0.03] transition-all duration-300 text-center"
             >
-              <span className="text-3xl mb-4 block">{persona.emoji}</span>
+              <div className={`w-12 h-12 rounded-xl border ${persona.color} flex items-center justify-center mx-auto mb-4`}>
+                <persona.icon className="w-6 h-6" />
+              </div>
               <h3 className="text-base font-semibold text-white mb-2">
                 {persona.title}
               </h3>
-              <ul className="text-white/40 text-sm leading-relaxed space-y-1 text-left">
+              <ul className="text-white/60 text-sm leading-relaxed space-y-1 text-left">
                 {persona.bullets.map((bullet) => (
                   <li key={bullet} className="flex gap-2">
-                    <span className="text-white/20 shrink-0">&bull;</span>
+                    <span className="text-white/40 shrink-0">&bull;</span>
                     <span>{bullet}</span>
                   </li>
                 ))}

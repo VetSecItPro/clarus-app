@@ -55,7 +55,7 @@ const useCases = [
 
 export const BeforeYouPlay = memo(function BeforeYouPlay() {
   return (
-    <section className="py-20 px-6 border-t border-white/[0.04]">
+    <section className="py-20 px-6 border-t border-white/[0.04] bg-white/[0.015]">
       <div className="max-w-4xl mx-auto">
         {/* Section header */}
         <motion.div
@@ -71,7 +71,7 @@ export const BeforeYouPlay = memo(function BeforeYouPlay() {
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
             Know if it&apos;s worth your time
           </h2>
-          <p className="text-white/40 text-base max-w-lg mx-auto">
+          <p className="text-white/60 text-base max-w-lg mx-auto">
             Every analysis starts with a triage verdict so you can decide where to invest your attention.
           </p>
         </motion.div>
@@ -82,7 +82,7 @@ export const BeforeYouPlay = memo(function BeforeYouPlay() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.6, delay: 0.1 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-14"
+          className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-14"
         >
           {verdicts.map((verdict, index) => (
             <motion.div
@@ -96,7 +96,7 @@ export const BeforeYouPlay = memo(function BeforeYouPlay() {
               <p className={`text-lg font-bold ${verdict.color} mb-1`}>
                 {verdict.label}
               </p>
-              <p className="text-white/30 text-xs leading-relaxed">
+              <p className="text-white/50 text-xs leading-relaxed">
                 {verdict.example}
               </p>
             </motion.div>
@@ -109,7 +109,7 @@ export const BeforeYouPlay = memo(function BeforeYouPlay() {
           whileInView={{ opacity: 1, y: 0 }}
           viewport={{ once: true, margin: "-50px" }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="flex flex-col sm:flex-row items-center justify-center gap-6 sm:gap-10"
+          className="flex flex-col md:flex-row items-center justify-center gap-6 md:gap-10"
         >
           {useCases.map((useCase, index) => (
             <motion.div

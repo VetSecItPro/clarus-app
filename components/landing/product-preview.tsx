@@ -120,7 +120,7 @@ function AnalysisPreview() {
   return (
     <div className="flex h-full">
       {/* Left panel */}
-      <div className="w-[220px] sm:w-[260px] shrink-0 border-r border-white/[0.06] p-3 space-y-3 overflow-hidden hidden sm:block">
+      <div className="w-[220px] sm:w-[260px] md:w-[300px] shrink-0 border-r border-white/[0.06] p-3 space-y-3 overflow-hidden hidden sm:block">
         {/* Video thumbnail */}
         <div className="rounded-xl bg-white/[0.04] aspect-video flex items-center justify-center border border-white/[0.06] relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-blue-900/30 to-purple-900/20" />
@@ -135,7 +135,7 @@ function AnalysisPreview() {
             How AI Is Reshaping Investigative Journalism
           </p>
           <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="text-[9px] text-white/30 px-1.5 py-0.5 bg-white/[0.04] rounded">youtube.com</span>
+            <span className="text-[9px] text-white/40 px-1.5 py-0.5 bg-white/[0.04] rounded">youtube.com</span>
             <span className="text-[9px] text-white/30 px-1.5 py-0.5 bg-white/[0.04] rounded flex items-center gap-0.5">
               <Play className="w-2 h-2" /> 28:14
             </span>
@@ -165,13 +165,24 @@ function AnalysisPreview() {
 
       {/* Right panel — analysis cards */}
       <div className="flex-1 p-3 sm:p-4 space-y-3 overflow-y-auto">
+        {/* Mobile-only compact content card */}
+        <div className="sm:hidden flex items-center gap-3 p-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+          <div className="w-14 h-10 rounded-lg bg-white/[0.04] border border-white/[0.06] flex items-center justify-center shrink-0 relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-900/30 to-purple-900/20" />
+            <Play className="w-3 h-3 text-white z-10" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xs font-medium text-white truncate">How AI Is Reshaping Investigative Journalism</p>
+            <p className="text-[10px] text-white/40">youtube.com &middot; 28:14</p>
+          </div>
+        </div>
         {/* Overview card */}
         <MiniCard
           icon={<Eye className="w-3 h-3" />}
           title="Overview"
           color="blue"
         >
-          <p className="text-[10px] sm:text-[11px] text-white/50 leading-relaxed">
+          <p className="text-xs text-white/60 leading-relaxed">
             This video explores how newsrooms are integrating AI tools into investigative workflows, from document analysis to pattern recognition across large datasets. Host Marcus Chen interviews ProPublica&apos;s data team lead and a Columbia J-School professor about the promise and risks of AI-assisted reporting.
           </p>
         </MiniCard>
@@ -184,7 +195,7 @@ function AnalysisPreview() {
         >
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-white/40">Quality</span>
+              <span className="text-[10px] text-white/55">Quality</span>
               <div className="flex-1 h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
                 <div className="h-full w-[82%] bg-gradient-to-r from-yellow-500 to-green-500 rounded-full" />
               </div>
@@ -194,7 +205,7 @@ function AnalysisPreview() {
               <span className="text-[9px] px-2 py-0.5 bg-emerald-500/15 border border-emerald-500/25 rounded-full text-emerald-400">Insightful</span>
               <span className="text-[9px] px-2 py-0.5 bg-white/[0.04] border border-white/[0.06] rounded-full text-white/40">Documentary</span>
             </div>
-            <p className="text-[10px] text-white/40 leading-relaxed">
+            <p className="text-[10px] text-white/55 leading-relaxed">
               Well-sourced exploration with expert interviews and concrete examples. Goes beyond surface-level hype.
             </p>
           </div>
@@ -209,15 +220,15 @@ function AnalysisPreview() {
           <ul className="space-y-1.5">
             <li className="flex items-start gap-1.5">
               <div className="w-1 h-1 rounded-full bg-cyan-400 mt-1.5 shrink-0" />
-              <span className="text-[10px] sm:text-[11px] text-white/50">ProPublica used AI classifiers to process 11.5M files in the Pandora Papers investigation</span>
+              <span className="text-xs text-white/60">ProPublica used AI classifiers to process 11.5M files in the Pandora Papers investigation</span>
             </li>
             <li className="flex items-start gap-1.5">
               <div className="w-1 h-1 rounded-full bg-cyan-400 mt-1.5 shrink-0" />
-              <span className="text-[10px] sm:text-[11px] text-white/50">Local newsrooms with 3-5 reporters can now tackle previously impossible investigations</span>
+              <span className="text-xs text-white/60">Local newsrooms with 3-5 reporters can now tackle previously impossible investigations</span>
             </li>
             <li className="flex items-start gap-1.5">
               <div className="w-1 h-1 rounded-full bg-cyan-400 mt-1.5 shrink-0" />
-              <span className="text-[10px] sm:text-[11px] text-white/50">Biggest risk: journalists over-trusting AI outputs and skipping verification</span>
+              <span className="text-xs text-white/60">Biggest risk: journalists over-trusting AI outputs and skipping verification</span>
             </li>
           </ul>
         </MiniCard>
@@ -235,11 +246,11 @@ function AnalysisPreview() {
             <div className="space-y-1.5">
               <div className="flex items-start gap-1.5">
                 <CheckCircle className="w-3 h-3 text-green-400 mt-0.5 shrink-0" />
-                <span className="text-[10px] text-white/40">Expert sources clearly identified with credentials</span>
+                <span className="text-[10px] text-white/55">Expert sources clearly identified with credentials</span>
               </div>
               <div className="flex items-start gap-1.5">
                 <AlertTriangle className="w-3 h-3 text-yellow-400 mt-0.5 shrink-0" />
-                <span className="text-[10px] text-white/40">Open-source tool claim may overgeneralize; commercial tools still lead for complex review</span>
+                <span className="text-[10px] text-white/55">Open-source tool claim may overgeneralize; commercial tools still lead for complex review</span>
               </div>
             </div>
           </div>
@@ -261,7 +272,7 @@ function AnalysisPreview() {
                 <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                   item.priority === "high" ? "bg-red-400" : "bg-yellow-400"
                 }`} />
-                <span className="text-[10px] text-white/50">{item.text}</span>
+                <span className="text-[10px] text-white/60">{item.text}</span>
               </div>
             ))}
           </div>
@@ -273,7 +284,7 @@ function AnalysisPreview() {
           title="Deep Dive"
           color="violet"
         >
-          <p className="text-[10px] sm:text-[11px] text-white/50 leading-relaxed">
+          <p className="text-xs text-white/60 leading-relaxed">
             The interview reveals a tension between AI&apos;s speed and journalism&apos;s need for verification. <span className="text-white/70">Marcus Chen</span> pushes back on claims that AI can replace editorial judgment, while <span className="text-white/70">Dr. Sarah Hamilton</span> argues the real risk is newsrooms adopting AI without transparency standards...
           </p>
         </MiniCard>
@@ -349,7 +360,7 @@ function LibraryPreview() {
       {/* Header */}
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-white">Library</h3>
-        <p className="text-[10px] text-white/40">Your analyzed content</p>
+        <p className="text-[10px] text-white/55">Your analyzed content</p>
       </div>
 
       {/* Search bar */}
@@ -462,9 +473,9 @@ function LibraryItemRow({
       <div className="flex-1 min-w-0">
         <p className="text-[11px] font-medium text-white truncate">{title}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[9px] text-white/30">{domain}</span>
+          <span className="text-[9px] text-white/40">{domain}</span>
           <span className="text-[9px] text-white/20">&middot;</span>
-          <span className="text-[9px] text-white/30">{time}</span>
+          <span className="text-[9px] text-white/40">{time}</span>
         </div>
       </div>
 
