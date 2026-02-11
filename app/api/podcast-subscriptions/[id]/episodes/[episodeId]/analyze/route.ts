@@ -10,7 +10,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
-import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { checkUsageLimit } from "@/lib/usage"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 
 /**
@@ -76,8 +76,8 @@ export async function POST(
     )
   }
 
-  // Check podcast analysis quota
-  const gate = await enforceUsageLimit(supabase, user.id, "podcast_analyses_count")
+  // Pre-flight usage check (read-only — processContent handles atomic enforcement + increment)
+  const gate = await checkUsageLimit(supabase, user.id, "podcast_analyses_count")
   if (!gate.allowed) {
     return NextResponse.json(
       {
@@ -116,8 +116,7 @@ export async function POST(
     // Non-fatal: the content entry was created, we just couldn't link it
   }
 
-  // Increment the podcast analysis counter
-  await incrementUsage(supabase, user.id, "podcast_analyses_count")
+  // Usage increment handled atomically by processContent() — no separate increment here
 
   // PERF: Direct function call instead of HTTP fetch — saves 50-200ms
   try {

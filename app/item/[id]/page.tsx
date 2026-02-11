@@ -724,6 +724,12 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     ? detectPaywallTruncation(item.url, item.full_text, item.type || "article")
     : null
 
+  // Analysis staleness warning — cached or old analyses may be outdated
+  const analysisAgeDays = summary?.created_at
+    ? Math.floor((Date.now() - new Date(summary.created_at).getTime()) / (1000 * 60 * 60 * 24))
+    : null
+  const isAnalysisStale = analysisAgeDays !== null && analysisAgeDays > 7
+
   // Analysis cards content (shared between desktop right panel and mobile analysis tab)
   const analysisContent = (
     <div className="space-y-6 sm:space-y-8" dir={langConfig.dir}>
@@ -754,6 +760,23 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex gap-3 items-start">
           <Shield className="w-4 h-4 text-amber-400 mt-0.5 shrink-0" />
           <p className="text-sm text-amber-300/80 leading-relaxed">{paywallWarning}</p>
+        </div>
+      )}
+      {isAnalysisStale && !processingError && !isPolling && (
+        <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3 items-center justify-between">
+          <div className="flex gap-3 items-start">
+            <RefreshCw className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
+            <p className="text-sm text-blue-300/80 leading-relaxed">
+              This analysis is {analysisAgeDays} days old and may be outdated.
+            </p>
+          </div>
+          <button
+            onClick={() => handleRegenerate()}
+            disabled={isRegenerating}
+            className="px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 hover:bg-blue-500/30 transition-all disabled:opacity-50 text-xs whitespace-nowrap"
+          >
+            {isRegenerating ? "Re-analyzing..." : "Re-analyze"}
+          </button>
         </div>
       )}
       {processingError ? (

@@ -5,7 +5,7 @@ import type { Database } from "@/types/database.types"
 import { type NextRequest, NextResponse } from "next/server"
 import { validateContentId, validateChatMessage, checkRateLimit } from "@/lib/validation"
 import { z } from "zod"
-import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { enforceAndIncrementUsage } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
 import { authenticateRequest } from "@/lib/auth"
 import { sanitizeForPrompt, sanitizeChatMessage, wrapUserContent, INSTRUCTION_ANCHOR } from "@/lib/prompt-sanitizer"
@@ -121,6 +121,17 @@ export async function POST(req: NextRequest) {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
 
+  // Per-user rate limiting (prevents bypass via rotating IPs)
+  const userMinuteLimit = checkRateLimit(`chat:minute:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000)
+  const userHourLimit = checkRateLimit(`chat:hour:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000)
+  const userDayLimit = checkRateLimit(`chat:day:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000)
+  if (!userMinuteLimit.allowed || !userHourLimit.allowed || !userDayLimit.allowed) {
+    return NextResponse.json(
+      { error: "Rate limit reached. Please try again later." },
+      { status: 429 }
+    )
+  }
+
   if (!supabaseUrl || !supabaseKey) {
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
   }
@@ -210,28 +221,38 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Access denied" }, { status: 403 })
     }
 
-    // Tier-based usage limit check for chat messages
-    if (contentData.user_id) {
-      const usageCheck = await enforceUsageLimit(supabaseAdmin, contentData.user_id, "chat_messages_count")
-      if (!usageCheck.allowed) {
-        return NextResponse.json(
-          { error: `Monthly chat message limit reached (${usageCheck.limit}). Upgrade your plan for more.`, upgrade_required: true, tier: usageCheck.tier },
-          { status: 403 }
-        )
-      }
+    // Atomic usage check + increment for monthly chat messages (no TOCTOU race)
+    const usageCheck = await enforceAndIncrementUsage(supabaseAdmin, auth.user.id, "chat_messages_count")
+    if (!usageCheck.allowed) {
+      return NextResponse.json(
+        { error: `Monthly chat message limit reached (${usageCheck.limit}). Upgrade your plan for more.`, upgrade_required: true, tier: usageCheck.tier },
+        { status: 403 }
+      )
+    }
 
-      // Per-content limit check: count user messages in this conversation
-      const userMessageCount = messages.filter((m: UIMessage) => m.role === "user").length
-      const perContentLimit = TIER_LIMITS[usageCheck.tier].chatMessagesPerContent
-      if (userMessageCount > perContentLimit) {
+    // Per-content limit check: count from DB via chat_threads → chat_messages
+    // (not client-supplied array which can be spoofed)
+    const { data: thread } = await supabaseAdmin
+      .from("chat_threads")
+      .select("id")
+      .eq("content_id", contentIdValidation.sanitized!)
+      .eq("user_id", auth.user.id)
+      .maybeSingle()
+
+    const perContentLimit = TIER_LIMITS[usageCheck.tier].chatMessagesPerContent
+    if (thread) {
+      const { count: dbMessageCount } = await supabaseAdmin
+        .from("chat_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("thread_id", thread.id)
+        .eq("role", "user")
+
+      if ((dbMessageCount ?? 0) >= perContentLimit) {
         return NextResponse.json(
           { error: `Message limit reached for this content (${perContentLimit}). Upgrade your plan for more messages per content.`, upgrade_required: true, tier: usageCheck.tier },
           { status: 403 }
         )
       }
-
-      // Increment before streaming (can't increment after stream completes)
-      await incrementUsage(supabaseAdmin, contentData.user_id, "chat_messages_count")
     }
 
     // PERF: Parallelize summary and prompt queries instead of running sequentially

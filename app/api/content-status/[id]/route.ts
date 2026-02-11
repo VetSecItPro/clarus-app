@@ -53,7 +53,7 @@ export async function GET(
       auth.supabase
         .from("summaries")
         .select(
-          "processing_status, triage, brief_overview, mid_length_summary, detailed_summary, truth_check, action_items, language"
+          "processing_status, triage, brief_overview, mid_length_summary, detailed_summary, truth_check, action_items, language, created_at"
         )
         .eq("content_id", contentId)
         .eq("language", lang)
@@ -75,6 +75,11 @@ export async function GET(
 
     const summary = summaryResult.data
 
+    // Calculate analysis age for staleness warning
+    const analysisAgeDays = summary?.created_at
+      ? Math.floor((Date.now() - new Date(summary.created_at).getTime()) / (1000 * 60 * 60 * 24))
+      : null
+
     const response = NextResponse.json({
       id: content.id,
       title: content.title,
@@ -90,6 +95,7 @@ export async function GET(
       detailed_summary: summary?.detailed_summary || null,
       truth_check: summary?.truth_check || null,
       action_items: summary?.action_items || null,
+      analysis_age_days: analysisAgeDays,
     })
     response.headers.set("Cache-Control", "private, max-age=10, stale-while-revalidate=30")
     return response
