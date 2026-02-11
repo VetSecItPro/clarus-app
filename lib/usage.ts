@@ -6,8 +6,11 @@
  * counters, check whether an action is within limits, and atomically
  * increment counters after an action succeeds.
  *
- * The increment is performed via the `increment_usage` Postgres RPC
- * to ensure atomicity under concurrent requests.
+ * The preferred function is {@link enforceAndIncrementUsage} which
+ * atomically checks AND increments in a single Postgres operation,
+ * eliminating TOCTOU race conditions. Legacy two-step functions
+ * ({@link enforceUsageLimit} + {@link incrementUsage}) are retained
+ * for read-only checks and backward compatibility.
  *
  * @see {@link lib/tier-limits.ts} for tier definitions and limit values
  * @see {@link lib/api-usage.ts} for external API cost tracking (different concern)
@@ -269,4 +272,61 @@ export async function enforceUsageLimit(
     limit: result.limit,
     currentCount: result.currentCount,
   }
+}
+
+/**
+ * Atomically checks usage limit AND increments the counter in a single
+ * Postgres operation. Eliminates the TOCTOU race condition where two
+ * concurrent requests could both pass the check before either increments.
+ *
+ * Uses the `increment_usage_if_allowed` RPC which performs:
+ *   `UPDATE ... SET count = count + 1 WHERE count < limit`
+ * If the WHERE clause fails (at limit), zero rows update and it returns -1.
+ *
+ * **Trade-off:** The counter is incremented at check time, not after the
+ * action succeeds. If the action fails, the user loses one credit. This is
+ * acceptable because: (1) action failures are rare (simple DB writes), and
+ * (2) the security benefit of eliminating limit bypass outweighs the rare
+ * credit loss.
+ *
+ * @param supabase - An authenticated Supabase client (service role)
+ * @param userId - The user ID to gate and increment
+ * @param field - The usage counter field
+ * @returns `{ allowed: true, tier, newCount, limit }` or `{ allowed: false, tier, limit }`
+ */
+export async function enforceAndIncrementUsage(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  field: UsageField
+): Promise<
+  | { allowed: true; tier: UserTier; newCount: number; limit: number }
+  | { allowed: false; tier: UserTier; limit: number }
+> {
+  const tier = await getUserTier(supabase, userId)
+  const limit = getLimitForField(tier, field)
+  const period = getCurrentPeriod()
+
+  // Cast needed: increment_usage_if_allowed is added via migration 216 but
+  // not yet in generated database types. Remove cast after running `supabase gen types`.
+  const rpcCall = supabase.rpc as unknown as (
+    fn: string,
+    params: Record<string, unknown>
+  ) => PromiseLike<{ data: number | null; error: { message: string } | null }>
+  const { data, error } = await rpcCall(
+    "increment_usage_if_allowed",
+    { p_user_id: userId, p_period: period, p_field: field, p_limit: limit }
+  )
+
+  if (error) {
+    console.error("[usage] Atomic enforcement failed:", error.message)
+    // Fail closed: deny the action if enforcement mechanism breaks
+    return { allowed: false, tier, limit }
+  }
+
+  // RPC returns -1 when at or over limit
+  if (data === -1) {
+    return { allowed: false, tier, limit }
+  }
+
+  return { allowed: true, tier, newCount: data ?? 0, limit }
 }

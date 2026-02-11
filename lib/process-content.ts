@@ -21,7 +21,7 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Database, Json, Tables, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
 import { logApiUsage, logProcessingMetrics, createTimer } from "@/lib/api-usage"
-import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { enforceAndIncrementUsage } from "@/lib/usage"
 import { detectPaywallTruncation } from "@/lib/paywall-detection"
 import { screenContent, detectAiRefusal, persistFlag } from "@/lib/content-screening"
 import { submitPodcastTranscription } from "@/lib/assemblyai"
@@ -1717,7 +1717,23 @@ async function updateDomainStats(
 // CROSS-USER CONTENT CACHE
 // ============================================
 
-const CACHE_STALENESS_DAYS = 14
+// Type-specific cache staleness: articles/tweets change frequently,
+// podcasts/videos/PDFs are static once published
+function getCacheStaleDays(contentType: string | null): number {
+  switch (contentType) {
+    case "article":
+    case "x_post":
+      return 3    // Articles/tweets are often updated or become stale quickly
+    case "youtube":
+    case "podcast":
+      return 14   // Audio/video content doesn't change after publication
+    case "pdf":
+    case "document":
+      return 30   // Static documents rarely change
+    default:
+      return 7    // Conservative default
+  }
+}
 
 interface CachedSourceFull {
   type: "full"
@@ -1737,12 +1753,13 @@ async function findCachedAnalysis(
   url: string,
   targetLanguage: string,
   currentUserId: string,
+  contentType: string | null = null,
 ): Promise<CachedSource> {
   if (url.startsWith("pdf://") || url.startsWith("file://")) return null
 
   const normalizedUrlValue = normalizeUrl(url)
   const stalenessDate = new Date()
-  stalenessDate.setDate(stalenessDate.getDate() - CACHE_STALENESS_DAYS)
+  stalenessDate.setDate(stalenessDate.getDate() - getCacheStaleDays(contentType))
 
   const { data: candidates, error } = await supabase
     .from("content")
@@ -1927,10 +1944,10 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
     }
   }
 
-  // Tier-based usage limit check
+  // Tier-based usage limit check — atomic check + increment (no TOCTOU race)
+  const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
   if (!forceRegenerate && content.user_id) {
-    const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
-    const usageCheck = await enforceUsageLimit(supabase, content.user_id, usageField)
+    const usageCheck = await enforceAndIncrementUsage(supabase, content.user_id, usageField)
     if (!usageCheck.allowed) {
       const label = content.type === "podcast" ? "podcast analysis" : "analysis"
       throw new ProcessContentError(
@@ -1944,7 +1961,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
 
   // Cross-user cache check
   if (!forceRegenerate && content.user_id) {
-    const cached = await findCachedAnalysis(supabase, content.url, language, content.user_id)
+    const cached = await findCachedAnalysis(supabase, content.url, language, content.user_id, content.type)
 
     if (cached?.type === "full") {
       const cloneSuccess = await cloneCachedContent(
@@ -1988,13 +2005,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
           console.warn("API: [cache] Claims clone failed (non-fatal):", claimErr)
         }
 
-        // Increment usage
-        try {
-          const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
-          await incrementUsage(supabase, content.user_id, usageField)
-        } catch (e) {
-          console.error("[usage] Failed to track cached analysis usage:", e)
-        }
+        // Usage already incremented atomically by enforceAndIncrementUsage() above
 
         logProcessingMetrics({
           contentId: content.id,
@@ -2132,22 +2143,47 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
       } else if (content.type === "article" || content.type === "pdf" || content.type === "document" || content.type === "x_post") {
         const shouldScrape = forceRegenerate || !content.full_text || content.full_text.startsWith("PROCESSING_FAILED::")
         if (shouldScrape) {
-          let urlToScrape = content.url
+          let scrapedData: ScrapedArticleData | null = null
+
           if (content.type === "x_post") {
+            // Fallback chain for X/Twitter: fixupx → fxtwitter → direct
+            const urlsToTry: string[] = []
             try {
               const urlObject = new URL(content.url)
-              if (urlObject.hostname === "x.com") {
-                urlObject.hostname = "fixupx.com"
-              } else if (urlObject.hostname === "twitter.com") {
-                urlObject.hostname = "fxtwitter.com"
+              const hostname = urlObject.hostname
+              if (hostname === "x.com" || hostname === "twitter.com") {
+                const fixup = new URL(content.url)
+                fixup.hostname = "fixupx.com"
+                urlsToTry.push(fixup.toString())
+
+                const fx = new URL(content.url)
+                fx.hostname = "fxtwitter.com"
+                urlsToTry.push(fx.toString())
               }
-              urlToScrape = urlObject.toString()
             } catch {
               console.error(`API: Could not parse URL for x_post: ${content.url}`)
             }
-          }
+            urlsToTry.push(content.url) // Always try direct URL as last resort
 
-          const scrapedData = await scrapeArticle(urlToScrape, firecrawlApiKey, content.user_id, content.id)
+            for (const urlToTry of urlsToTry) {
+              try {
+                const result = await scrapeArticle(urlToTry, firecrawlApiKey, content.user_id, content.id)
+                if (result.full_text && result.full_text.length > 20) {
+                  scrapedData = result
+                  break
+                }
+                console.warn(`API: [x_post] Empty result from ${new URL(urlToTry).hostname}, trying next`)
+              } catch (err) {
+                console.warn(`API: [x_post] Scrape failed for ${new URL(urlToTry).hostname}:`, getErrorMessage(err))
+                // Continue to next URL in chain
+              }
+            }
+            if (!scrapedData) {
+              throw new ProcessContentError("Could not retrieve X/Twitter post content from any source", 200)
+            }
+          } else {
+            scrapedData = await scrapeArticle(content.url, firecrawlApiKey, content.user_id, content.id)
+          }
 
           const updatePayload: Partial<Database["clarus"]["Tables"]["content"]["Update"]> = {}
           if (scrapedData.title) updatePayload.title = scrapedData.title
@@ -2527,15 +2563,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
     (err) => console.warn("Failed to update analysis_language:", err)
   )
 
-  // Track analysis usage
-  if (!forceRegenerate && content.user_id) {
-    try {
-      const usageField = content.type === "podcast" ? "podcast_analyses_count" as const : "analyses_count" as const
-      await incrementUsage(supabase, content.user_id, usageField)
-    } catch (e) {
-      console.error("[usage] Failed to track analysis usage:", e)
-    }
-  }
+  // Usage already incremented atomically by enforceAndIncrementUsage() at top of processContent()
 
   return {
     success: true,

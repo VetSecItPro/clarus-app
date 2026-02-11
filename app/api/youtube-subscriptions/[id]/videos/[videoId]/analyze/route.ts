@@ -10,7 +10,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
-import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { checkUsageLimit } from "@/lib/usage"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 
 /**
@@ -76,8 +76,8 @@ export async function POST(
     )
   }
 
-  // Check analyses quota (YouTube uses the shared analyses_count, not a separate counter)
-  const gate = await enforceUsageLimit(supabase, user.id, "analyses_count")
+  // Pre-flight usage check (read-only — processContent handles atomic enforcement + increment)
+  const gate = await checkUsageLimit(supabase, user.id, "analyses_count")
   if (!gate.allowed) {
     return NextResponse.json(
       {
@@ -115,8 +115,7 @@ export async function POST(
     console.error("[youtube-analyze] Failed to link video to content:", linkError.message)
   }
 
-  // Increment the analyses counter
-  await incrementUsage(supabase, user.id, "analyses_count")
+  // Usage increment handled atomically by processContent() — no separate increment here
 
   // Direct function call for processing
   try {

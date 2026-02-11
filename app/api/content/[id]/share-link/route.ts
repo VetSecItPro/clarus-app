@@ -3,7 +3,7 @@ import { authenticateRequest, verifyContentOwnership } from "@/lib/auth"
 import { uuidSchema } from "@/lib/schemas"
 import { generateShareToken } from "@/lib/share-token"
 import { checkRateLimit } from "@/lib/validation"
-import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { enforceAndIncrementUsage } from "@/lib/usage"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 
 /**
@@ -92,8 +92,8 @@ export async function POST(
     })
   }
 
-  // Usage limit check
-  const usageCheck = await enforceUsageLimit(auth.supabase, auth.user.id, "share_links_count")
+  // Atomic usage check + increment (no TOCTOU race)
+  const usageCheck = await enforceAndIncrementUsage(auth.supabase, auth.user.id, "share_links_count")
   if (!usageCheck.allowed) {
     return NextResponse.json(
       { error: `Monthly share link limit reached (${usageCheck.limit}).`, upgrade_required: true, tier: usageCheck.tier },
@@ -123,8 +123,7 @@ export async function POST(
     return NextResponse.json({ error: "Failed to generate unique share link" }, { status: 500 })
   }
 
-  // Track usage
-  await incrementUsage(auth.supabase, auth.user.id, "share_links_count")
+  // Usage already incremented atomically by enforceAndIncrementUsage() above
 
   // Suppress unused variable warning - request is required by Next.js route signature
   void request

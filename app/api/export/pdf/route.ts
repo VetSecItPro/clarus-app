@@ -2,7 +2,7 @@ import type { TruthCheckData, TriageData, ActionItemsData, ClaimHighlight } from
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { exportSchema, parseQuery } from "@/lib/schemas"
 import { checkRateLimit } from "@/lib/validation"
-import { enforceUsageLimit, incrementUsage } from "@/lib/usage"
+import { enforceAndIncrementUsage } from "@/lib/usage"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 
 // PERF: FIX-213 — set maxDuration for serverless function (PDF generation can be slow)
@@ -45,13 +45,12 @@ export async function GET(request: Request) {
     const lang = searchParams.get("language") || "en"
 
     // PERF: Parallelize tier check, usage check, ownership verification, and summary fetch
-    const [userDataResult, usageCheck, ownership, summaryResult] = await Promise.all([
+    const [userDataResult, ownership, summaryResult] = await Promise.all([
       auth.supabase
         .from("users")
         .select("tier, day_pass_expires_at")
         .eq("id", auth.user.id)
         .single(),
-      enforceUsageLimit(auth.supabase, auth.user.id, "exports_count"),
       verifyContentOwnership(auth.supabase, auth.user.id, contentId),
       auth.supabase
         .from("summaries")
@@ -72,17 +71,18 @@ export async function GET(request: Request) {
       )
     }
 
-    // Usage limit check
+    // Verify ownership
+    if (!ownership.owned) {
+      return ownership.response
+    }
+
+    // Atomic usage check + increment (after pre-conditions pass, so no wasted credits)
+    const usageCheck = await enforceAndIncrementUsage(auth.supabase, auth.user.id, "exports_count")
     if (!usageCheck.allowed) {
       return new Response(
         JSON.stringify({ error: `Monthly export limit reached (${usageCheck.limit}).`, upgrade_required: true, tier: usageCheck.tier }),
         { status: 403, headers: { "Content-Type": "application/json" } }
       )
-    }
-
-    // Verify ownership
-    if (!ownership.owned) {
-      return ownership.response
     }
 
     const content = ownership.content
@@ -96,9 +96,6 @@ export async function GET(request: Request) {
       .replace(/[^a-zA-Z0-9]/g, "_")
       .substring(0, 50)
     const filename = `clarus-${safeTitle}.pdf`
-
-    // Track export usage
-    await incrementUsage(auth.supabase, auth.user.id, "exports_count")
 
     return new Response(pdfBytes, {
       headers: {
