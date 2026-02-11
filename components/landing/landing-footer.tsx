@@ -10,16 +10,16 @@ export function LandingFooter() {
         {/* Top row: logo + links */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
           {/* Logo and tagline */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2.5">
             <Image
               src="/clarus-logo.webp"
               alt="Clarus"
-              width={40}
-              height={40}
-              sizes="40px"
-              className="w-10 h-10"
+              width={32}
+              height={32}
+              sizes="32px"
+              className="w-8 h-8"
             />
-            <span className="text-white/90 font-bold text-3xl italic tracking-wide" style={{ fontFamily: 'var(--font-cormorant)' }}>
+            <span className="text-white/70 font-bold text-2xl italic tracking-wide" style={{ fontFamily: 'var(--font-cormorant)' }}>
               Clarus
             </span>
           </div>

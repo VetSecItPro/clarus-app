@@ -62,7 +62,7 @@ export const AudienceSection = memo(function AudienceSection() {
             Who it&apos;s for
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
-            Built for people who learn
+            Built for critical thinkers
           </h2>
         </motion.div>
 

@@ -27,6 +27,7 @@ const features = [
     icon: Mic,
     title: "Speaker attribution",
     description: "For podcasts and multi-speaker content, know who said what. Arguments are attributed to individual speakers.",
+    badge: "Podcast",
   },
   {
     icon: ScanEye,
@@ -37,6 +38,7 @@ const features = [
     icon: MessageSquare,
     title: "Chat with your content",
     description: "Ask follow-up questions about anything you've analyzed. Responses reference the source material directly.",
+    badge: "Interactive",
   },
   {
     icon: Library,
