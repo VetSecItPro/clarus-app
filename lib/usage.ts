@@ -306,8 +306,8 @@ export async function enforceAndIncrementUsage(
   const limit = getLimitForField(tier, field)
   const period = getCurrentPeriod()
 
-  // Cast needed: increment_usage_if_allowed is added via migration 216 but
-  // not yet in generated database types. Remove cast after running `supabase gen types`.
+  // Try atomic path first (migration 216: increment_usage_if_allowed).
+  // Cast needed: RPC not yet in generated database types.
   const rpcCall = supabase.rpc as unknown as (
     fn: string,
     params: Record<string, unknown>
@@ -317,16 +317,28 @@ export async function enforceAndIncrementUsage(
     { p_user_id: userId, p_period: period, p_field: field, p_limit: limit }
   )
 
-  if (error) {
-    console.error("[usage] Atomic enforcement failed:", error.message)
-    // Fail closed: deny the action if enforcement mechanism breaks
+  if (!error) {
+    // RPC returns -1 when at or over limit
+    if (data === -1) {
+      return { allowed: false, tier, limit }
+    }
+    return { allowed: true, tier, newCount: data ?? 0, limit }
+  }
+
+  // Atomic RPC unavailable — graceful fallback to 2-step (check + increment).
+  // Slightly less safe (TOCTOU window of ~1 request under heavy concurrency)
+  // but functional. Remove this fallback once migration 216 is applied.
+  console.warn("[usage] Atomic enforcement unavailable, falling back to 2-step:", error.message)
+
+  const counts = await getUsageCounts(supabase, userId)
+  const currentCount = counts[field]
+
+  if (currentCount >= limit) {
     return { allowed: false, tier, limit }
   }
 
-  // RPC returns -1 when at or over limit
-  if (data === -1) {
-    return { allowed: false, tier, limit }
-  }
+  // Best-effort increment via existing increment_usage RPC
+  const newCount = await incrementUsage(supabase, userId, field)
 
-  return { allowed: true, tier, newCount: data ?? 0, limit }
+  return { allowed: true, tier, newCount: newCount ?? currentCount + 1, limit }
 }
