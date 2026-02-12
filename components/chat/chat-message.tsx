@@ -48,7 +48,7 @@ function UserUrlMessage({ message }: { message: ChatMessageData }) {
   return (
     <div className="flex gap-2 justify-end">
       <div className="max-w-[85%] sm:max-w-[75%]">
-        <div className="rounded-2xl bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20 px-4 py-3">
+        <div className="rounded-2xl bg-brand text-white shadow-lg shadow-blue-500/20 px-4 py-3">
           <div className="flex items-center gap-2 mb-1">
             <Link2 className="w-4 h-4" />
             <span className="text-sm font-medium">Analyze this</span>
@@ -86,7 +86,7 @@ function UserUrlMessage({ message }: { message: ChatMessageData }) {
           )}
         </div>
       </div>
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg">
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand flex items-center justify-center shadow-lg">
         <User className="w-4 h-4 text-white" />
       </div>
     </div>
@@ -97,10 +97,10 @@ function UserUrlMessage({ message }: { message: ChatMessageData }) {
 function UserTextMessage({ message }: { message: ChatMessageData }) {
   return (
     <div className="flex gap-2 justify-end">
-      <div className="rounded-2xl bg-[#1d9bf0] text-white shadow-lg shadow-blue-500/20 px-4 py-2.5 max-w-[85%] sm:max-w-[75%]">
+      <div className="rounded-2xl bg-brand text-white shadow-lg shadow-blue-500/20 px-4 py-2.5 max-w-[85%] sm:max-w-[75%]">
         <p className="text-sm whitespace-pre-wrap">{message.content}</p>
       </div>
-      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#1d9bf0] flex items-center justify-center shadow-lg">
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-brand flex items-center justify-center shadow-lg">
         <User className="w-4 h-4 text-white" />
       </div>
     </div>
@@ -158,7 +158,7 @@ function AnalysisInitialMessage({ message }: { message: ChatMessageData }) {
                 initial={{ width: 0 }}
                 animate={{ width: `${triage.quality_score * 10}%` }}
                 transition={{ duration: 0.6, delay: 0.2 }}
-                className="h-full rounded-full bg-[#1d9bf0]"
+                className="h-full rounded-full bg-brand"
               />
             </div>
           </div>
@@ -258,7 +258,7 @@ function AnalysisFullMessage({ message }: { message: ChatMessageData }) {
 // Streaming cursor component
 function StreamingCursor() {
   return (
-    <span className="inline-block w-2 h-4 ml-0.5 bg-[#1d9bf0] animate-pulse rounded-sm" />
+    <span className="inline-block w-2 h-4 ml-0.5 bg-brand animate-pulse rounded-sm" />
   )
 }
 
@@ -319,7 +319,7 @@ export const ChatMessage = memo(function ChatMessage({
       {showTimestamp && message.timestamp && (
         <div
           className={cn(
-            "text-[10px] text-white/30 mt-1",
+            "text-[0.625rem] text-white/30 mt-1",
             message.type === "user" || message.type === "user-url"
               ? "text-right mr-9"
               : "ml-9"

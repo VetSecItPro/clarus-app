@@ -54,7 +54,7 @@ export function TriageCard({ triage }: TriageCardProps) {
             initial={{ width: 0 }}
             animate={{ width: `${triage.quality_score * 10}%` }}
             transition={{ duration: 0.6, delay: 0.2 }}
-            className="h-full rounded-full bg-[#1d9bf0]"
+            className="h-full rounded-full bg-brand"
           />
         </div>
       </motion.div>

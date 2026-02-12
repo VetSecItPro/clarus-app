@@ -89,22 +89,22 @@ export const FeatureGrid = memo(function FeatureGrid() {
               className={cn(
                 "group relative rounded-2xl bg-white/[0.02] border hover:bg-white/[0.03] transition-all duration-300",
                 feature.badge
-                  ? "border-[#1d9bf0]/20 hover:border-[#1d9bf0]/40 p-6 lg:p-8"
+                  ? "border-brand/20 hover:border-brand/40 p-6 lg:p-8"
                   : "border-white/[0.04] hover:border-white/[0.08] p-6",
                 feature.span && "sm:col-span-2"
               )}
             >
               {feature.badge && (
-                <span className="absolute top-3 right-3 text-[10px] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-[#1d9bf0]/15 text-[#1d9bf0]">
+                <span className="absolute top-3 right-3 text-[0.625rem] font-semibold tracking-wider uppercase px-2 py-0.5 rounded-full bg-brand/15 text-brand">
                   {feature.badge}
                 </span>
               )}
               <div className={cn(
-                "flex-shrink-0 rounded-xl bg-[#1d9bf0]/10 flex items-center justify-center mb-4",
+                "flex-shrink-0 rounded-xl bg-brand/10 flex items-center justify-center mb-4",
                 feature.badge ? "w-12 h-12" : "w-10 h-10"
               )}>
                 <feature.icon className={cn(
-                  "text-[#1d9bf0]",
+                  "text-brand",
                   feature.badge ? "w-6 h-6" : "w-5 h-5"
                 )} />
               </div>

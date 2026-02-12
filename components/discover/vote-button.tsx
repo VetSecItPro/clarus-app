@@ -80,7 +80,7 @@ export function VoteButton({ contentId, initialVoteScore, initialUserVote, onVot
         className={cn(
           "w-7 h-7 flex items-center justify-center rounded-md transition-all duration-200",
           userVote === 1
-            ? "bg-[#1d9bf0]/20 text-[#1d9bf0] border border-[#1d9bf0]/30"
+            ? "bg-brand/20 text-brand border border-brand/30"
             : "text-white/30 hover:text-white/60 hover:bg-white/[0.06]"
         )}
         aria-label="Upvote"
@@ -97,7 +97,7 @@ export function VoteButton({ contentId, initialVoteScore, initialUserVote, onVot
           transition={{ duration: 0.15 }}
           className={cn(
             "text-xs font-semibold tabular-nums min-w-[20px] text-center",
-            voteScore > 0 ? "text-[#1d9bf0]" : voteScore < 0 ? "text-red-400" : "text-white/40"
+            voteScore > 0 ? "text-brand" : voteScore < 0 ? "text-red-400" : "text-white/40"
           )}
         >
           {voteScore}

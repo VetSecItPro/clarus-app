@@ -71,7 +71,7 @@ export function ChatMessagesArea({
               className="flex-shrink-0 w-7 h-7 rounded-full"
             />
             <div className="inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-xl">
-              <Loader2 className="w-4 h-4 animate-spin text-[#1d9bf0]" />
+              <Loader2 className="w-4 h-4 animate-spin text-brand" />
               <span className="text-xs text-gray-400">{loadingText}</span>
             </div>
           </div>

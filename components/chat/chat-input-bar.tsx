@@ -388,7 +388,7 @@ export function ChatInputBar({
           className={cn(
             "flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/[0.06] border transition-all",
             isFocused
-              ? "border-[#1d9bf0]/50 ring-1 ring-[#1d9bf0]/20"
+              ? "border-brand/50 ring-1 ring-brand/20"
               : "border-white/[0.1] hover:border-white/50",
             isListening && "border-red-500/50 ring-1 ring-red-500/30"
           )}
@@ -403,7 +403,7 @@ export function ChatInputBar({
               <Link2
                 className={cn(
                   "w-4 h-4 transition-colors",
-                  isFocused ? "text-[#1d9bf0]" : "text-white/30"
+                  isFocused ? "text-brand" : "text-white/30"
                 )}
               />
             )}
@@ -543,7 +543,7 @@ export function ChatInputBar({
               className={cn(
                 "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
                 canSubmit
-                  ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
+                  ? "bg-brand hover:bg-brand-hover text-white"
                   : "text-white/30"
               )}
             >
@@ -558,13 +558,13 @@ export function ChatInputBar({
 
         {/* Helper text and character count */}
         <div className="flex items-center justify-between mt-2 px-1">
-          <p className="text-[10px] text-white/30">
+          <p className="text-[0.625rem] text-white/30">
             Supports PDF, Word, Excel, PowerPoint, TXT, and CSV. Max 20MB. AI may make mistakes.
           </p>
           {isNearLimit && (
             <span
               className={cn(
-                "text-[10px] tabular-nums flex-shrink-0 ml-2",
+                "text-[0.625rem] tabular-nums flex-shrink-0 ml-2",
                 isAtLimit ? "text-red-400" : "text-yellow-400/70"
               )}
             >

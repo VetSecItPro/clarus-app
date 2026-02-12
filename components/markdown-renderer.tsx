@@ -56,7 +56,7 @@ text-[15px] text-gray-300 leading-[1.7]
 [&_h1]:text-lg [&_h1]:font-semibold [&_h1]:mt-4 [&_h1]:mb-4 [&_h1]:text-white [&_h1]:tracking-tight
 
 /* H2 - Section headers with timestamps like [0:00] - [1:50]: Title */
-[&_h2]:text-sm [&_h2]:font-medium [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-[#1d9bf0] [&_h2]:pt-4 [&_h2]:border-t [&_h2]:border-white/10
+[&_h2]:text-sm [&_h2]:font-medium [&_h2]:mt-6 [&_h2]:mb-3 [&_h2]:text-brand [&_h2]:pt-4 [&_h2]:border-t [&_h2]:border-white/10
 
 /* H3 - Subheadings */
 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:mt-5 [&_h3]:mb-2 [&_h3]:text-white/90
@@ -72,7 +72,7 @@ text-[15px] text-gray-300 leading-[1.7]
 [&_em]:text-gray-200 [&_em]:italic
 
 /* Links */
-[&_a]:text-[#1d9bf0] hover:[&_a]:text-[#1a8cd8] hover:[&_a]:underline [&_a]:break-all [&_a]:transition-colors
+[&_a]:text-brand hover:[&_a]:text-brand-hover hover:[&_a]:underline [&_a]:break-all [&_a]:transition-colors
 
 /* Lists - Clean and compact */
 [&_ul]:list-none [&_ul]:pl-0 [&_ul]:mb-3 [&_ul]:space-y-1
@@ -89,11 +89,11 @@ text-[15px] text-gray-300 leading-[1.7]
 [&_hr]:my-5 [&_hr]:border-0 [&_hr]:h-px [&_hr]:bg-white/10
 
 /* Blockquotes */
-[&_blockquote]:border-l-2 [&_blockquote]:border-[#1d9bf0]/50 [&_blockquote]:pl-4 [&_blockquote]:py-0.5 [&_blockquote]:my-4 [&_blockquote]:text-gray-200
+[&_blockquote]:border-l-2 [&_blockquote]:border-brand/50 [&_blockquote]:pl-4 [&_blockquote]:py-0.5 [&_blockquote]:my-4 [&_blockquote]:text-gray-200
 [&_blockquote_p]:mb-0 [&_blockquote_p]:leading-[1.6]
 
 /* Code */
-[&_code]:bg-white/[0.08] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:text-[#1d9bf0] [&_code]:break-all [&_code]:font-mono
+[&_code]:bg-white/[0.08] [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:text-sm [&_code]:text-brand [&_code]:break-all [&_code]:font-mono
 [&_pre]:overflow-x-auto [&_pre]:max-w-full [&_pre]:bg-white/[0.03] [&_pre]:rounded-lg [&_pre]:p-3 [&_pre]:my-4
 
 /* First paragraph */
@@ -190,7 +190,7 @@ export function MarkdownRenderer({ children, className, onTimestampClick }: Mark
                       onTimestampClick(seconds)
                     }
                   }}
-                  className="text-[#1d9bf0] hover:text-[#1a8cd8] underline cursor-pointer"
+                  className="text-brand hover:text-brand-hover underline cursor-pointer"
                   title={`Jump to ${children}`}
                 >
                   {children}

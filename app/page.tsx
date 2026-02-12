@@ -29,7 +29,7 @@ import { AnalysisModeSelector } from "@/components/analysis-mode-selector"
 // PERF: FIX-PERF-001 — Dynamic import LandingPage to reduce authenticated user's bundle
 const LandingPage = dynamic(
   () => import("@/components/landing/landing-page").then(mod => mod.LandingPage),
-  { loading: () => <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" /></div> }
+  { loading: () => <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-8 h-8 text-brand animate-spin" /></div> }
 )
 
 // PERF: Dynamic import — BulkImportDialog only shown on button click
@@ -246,7 +246,7 @@ function HomePageContent({ session }: HomePageProps) {
               <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold text-white mb-3 sm:mb-4">
                 {greeting}
                 {username && (
-                  <>, <span className="text-[#1d9bf0]">{username}</span></>
+                  <>, <span className="text-brand">{username}</span></>
                 )}
               </h1>
               <p className="text-white/50 text-base sm:text-lg">
@@ -322,7 +322,7 @@ function HomePageContent({ session }: HomePageProps) {
               <button
                 onClick={() => setBulkImportOpen(true)}
                 disabled={!userId}
-                className="flex items-center gap-1.5 text-white/30 hover:text-[#1d9bf0] transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex items-center gap-1.5 text-white/30 hover:text-brand transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
                 aria-label="Open bulk import dialog"
               >
                 <Layers className="w-3.5 h-3.5" />
@@ -494,7 +494,7 @@ export default function HomePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand animate-spin" />
       </div>
     )
   }

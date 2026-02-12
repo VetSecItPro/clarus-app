@@ -209,7 +209,7 @@ export function AddToCollectionButton({
                       {isToggling ? (
                         <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
                       ) : isInCollection ? (
-                        <Check className="w-3.5 h-3.5 text-[#1d9bf0] shrink-0" />
+                        <Check className="w-3.5 h-3.5 text-brand shrink-0" />
                       ) : null}
                     </button>
                   )
@@ -228,7 +228,7 @@ export function AddToCollectionButton({
                     placeholder="Collection name..."
                     maxLength={100}
                     autoFocus
-                    className="w-full px-3 py-1.5 bg-white/[0.06] border border-white/[0.08] rounded-lg text-xs text-white placeholder-white/30 focus:outline-none focus:border-[#1d9bf0]/50 mb-2"
+                    className="w-full px-3 py-1.5 bg-white/[0.06] border border-white/[0.08] rounded-lg text-xs text-white placeholder-white/30 focus:outline-none focus:border-brand/50 mb-2"
                   />
                   <div className="flex gap-1.5">
                     <button
@@ -244,7 +244,7 @@ export function AddToCollectionButton({
                     <button
                       type="submit"
                       disabled={!quickCreateName.trim() || isCreating}
-                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-white bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:opacity-50 rounded-lg transition-all"
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs text-white bg-brand hover:bg-brand-hover disabled:opacity-50 rounded-lg transition-all"
                     >
                       {isCreating ? (
                         <Loader2 className="w-3 h-3 animate-spin" />

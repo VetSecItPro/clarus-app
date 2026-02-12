@@ -30,7 +30,7 @@ export const CTASection = memo(function CTASection() {
           <motion.button
             whileHover={{ y: -2 }}
             whileTap={{ scale: 0.98 }}
-            className="group inline-flex items-center gap-2 px-8 py-3.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-full transition-all duration-200 shadow-[0_0_20px_rgba(29,155,240,0.3),0_0_60px_rgba(29,155,240,0.1)] hover:shadow-[0_0_25px_rgba(29,155,240,0.4),0_0_80px_rgba(29,155,240,0.15)]"
+            className="group inline-flex items-center gap-2 px-8 py-3.5 bg-brand hover:bg-brand-hover text-white font-semibold rounded-full transition-all duration-200 shadow-[0_0_20px_rgba(29,155,240,0.3),0_0_60px_rgba(29,155,240,0.1)] hover:shadow-[0_0_25px_rgba(29,155,240,0.4),0_0_80px_rgba(29,155,240,0.15)]"
           >
             Try your first analysis free
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

@@ -112,7 +112,7 @@ export function ArticlePageClient({
 
       {/* Inline CTA */}
       <section className="mt-14">
-        <div className="rounded-xl border border-[#1d9bf0]/20 bg-[#1d9bf0]/5 p-8 text-center">
+        <div className="rounded-xl border border-brand/20 bg-brand/5 p-8 text-center">
           <h2 className="text-lg font-semibold text-white mb-2">
             See What AI Content Analysis Can Do
           </h2>
@@ -122,7 +122,7 @@ export function ArticlePageClient({
           </p>
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-medium rounded-full transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-hover text-white font-medium rounded-full transition-colors"
           >
             Get Started Free
             <ArrowRight className="w-4 h-4" />
@@ -154,14 +154,14 @@ export function ArticlePageClient({
                         className={`w-3 h-3 ${relConfig.color}`}
                       />
                     </div>
-                    <span className="text-[11px] text-white/30">
+                    <span className="text-[0.6875rem] text-white/30">
                       {relConfig.label}
                     </span>
                   </div>
-                  <h3 className="text-sm font-medium text-white group-hover:text-[#1d9bf0] transition-colors line-clamp-2 mb-1">
+                  <h3 className="text-sm font-medium text-white group-hover:text-brand transition-colors line-clamp-2 mb-1">
                     {related.title}
                   </h3>
-                  <span className="text-[11px] text-white/30">
+                  <span className="text-[0.6875rem] text-white/30">
                     {related.readingTime}
                   </span>
                 </Link>

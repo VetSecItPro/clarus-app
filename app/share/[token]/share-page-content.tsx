@@ -61,7 +61,7 @@ export function SharePageContent({ content, summary }: SharePageContentProps) {
             </Link>
             <Link
               href="/"
-              className="flex items-center gap-2 px-4 py-2 rounded-full bg-[#1d9bf0]/20 text-[#1d9bf0] text-sm font-medium hover:bg-[#1d9bf0]/30 transition-all border border-[#1d9bf0]/30"
+              className="flex items-center gap-2 px-4 py-2 rounded-full bg-brand/20 text-brand text-sm font-medium hover:bg-brand/30 transition-all border border-brand/30"
             >
               Analyze your own content
               <ArrowRight className="w-4 h-4" />
@@ -206,14 +206,14 @@ export function SharePageContent({ content, summary }: SharePageContentProps) {
 
         {/* CTA */}
         <div className="mt-12 text-center">
-          <div className="p-6 rounded-2xl bg-gradient-to-b from-[#1d9bf0]/10 to-transparent border border-[#1d9bf0]/20">
+          <div className="p-6 rounded-2xl bg-gradient-to-b from-brand/10 to-transparent border border-brand/20">
             <h2 className="text-lg font-semibold text-white mb-2">Want to analyze your own content?</h2>
             <p className="text-white/50 text-sm mb-4">
               Clarus gives you AI-powered analysis of any article, video, or document.
             </p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-[#1d9bf0] text-white font-medium hover:bg-[#1a8cd8] transition-all"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-brand text-white font-medium hover:bg-brand-hover transition-all"
             >
               Get Started Free
               <ArrowRight className="w-4 h-4" />

@@ -200,14 +200,14 @@ export function TranscriptViewer({
           {isClickable ? (
             <button
               onClick={() => handleTimestampClick(block.startSeconds)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 text-xs font-mono rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] hover:bg-[#1d9bf0]/20 border border-[#1d9bf0]/20 transition-all"
+              className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 text-xs font-mono rounded-lg bg-brand/10 text-brand hover:bg-brand/20 border border-brand/20 transition-all"
               title={`Jump to ${block.startTimestamp} in video`}
             >
               <Clock className="w-3.5 h-3.5" />
               <span>{block.startTimestamp}</span>
               {block.startTimestamp !== block.endTimestamp && (
                 <>
-                  <span className="text-[#1d9bf0]/50">&rarr;</span>
+                  <span className="text-brand/50">&rarr;</span>
                   <span>{block.endTimestamp}</span>
                 </>
               )}
@@ -233,7 +233,7 @@ export function TranscriptViewer({
                 return (
                   <div key={segIdx}>
                     {seg.speaker && color && (
-                      <span className={`inline-flex items-center px-2 py-0.5 mb-1 text-[10px] font-semibold uppercase tracking-wider rounded-md ${color.bg} ${color.text} border ${color.border}`}>
+                      <span className={`inline-flex items-center px-2 py-0.5 mb-1 text-[0.625rem] font-semibold uppercase tracking-wider rounded-md ${color.bg} ${color.text} border ${color.border}`}>
                         {seg.speaker}
                       </span>
                     )}

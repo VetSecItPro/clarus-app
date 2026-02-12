@@ -29,7 +29,7 @@ export function ProductPreview() {
       <div className="max-w-5xl mx-auto">
         {/* Section heading */}
         <div className="text-center mb-8">
-          <p className="text-[#1d9bf0] text-sm font-medium tracking-wide uppercase mb-3">
+          <p className="text-brand text-sm font-medium tracking-wide uppercase mb-3">
             Inside an analysis
           </p>
           <h2 className="text-2xl sm:text-3xl font-bold text-white">
@@ -53,7 +53,7 @@ export function ProductPreview() {
                 onClick={() => setActiveTab("analysis")}
                 className={`px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
                   activeTab === "analysis"
-                    ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
+                    ? "bg-brand text-white shadow-md shadow-blue-500/25"
                     : "text-white/40 hover:text-white/70"
                 }`}
               >
@@ -63,7 +63,7 @@ export function ProductPreview() {
                 onClick={() => setActiveTab("library")}
                 className={`px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
                   activeTab === "library"
-                    ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
+                    ? "bg-brand text-white shadow-md shadow-blue-500/25"
                     : "text-white/40 hover:text-white/70"
                 }`}
               >
@@ -104,7 +104,7 @@ export function ProductPreview() {
         <div className="text-center mt-8">
           <Link
             href="/signup"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-medium rounded-full transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-hover text-white font-medium rounded-full transition-colors"
           >
             Try it yourself
             <ArrowRight className="w-4 h-4" />
@@ -134,12 +134,12 @@ function AnalysisPreview() {
 
         {/* Title */}
         <div>
-          <p className="text-[11px] font-medium text-white leading-tight line-clamp-2">
+          <p className="text-[0.6875rem] font-medium text-white leading-tight line-clamp-2">
             How AI Is Reshaping Investigative Journalism
           </p>
           <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="text-[9px] text-white/40 px-1.5 py-0.5 bg-white/[0.04] rounded">youtube.com</span>
-            <span className="text-[9px] text-white/30 px-1.5 py-0.5 bg-white/[0.04] rounded flex items-center gap-0.5">
+            <span className="text-[0.5625rem] text-white/40 px-1.5 py-0.5 bg-white/[0.04] rounded">youtube.com</span>
+            <span className="text-[0.5625rem] text-white/30 px-1.5 py-0.5 bg-white/[0.04] rounded flex items-center gap-0.5">
               <Play className="w-2 h-2" /> 28:14
             </span>
           </div>
@@ -148,7 +148,7 @@ function AnalysisPreview() {
         {/* Tags */}
         <div className="flex flex-wrap gap-1">
           {["ai", "journalism", "media"].map((t) => (
-            <span key={t} className="text-[9px] px-1.5 py-0.5 bg-purple-500/15 border border-purple-500/25 rounded text-purple-300 capitalize">
+            <span key={t} className="text-[0.5625rem] px-1.5 py-0.5 bg-purple-500/15 border border-purple-500/25 rounded text-purple-300 capitalize">
               {t}
             </span>
           ))}
@@ -156,12 +156,12 @@ function AnalysisPreview() {
 
         {/* Source history mini */}
         <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-          <p className="text-[9px] text-white/40 mb-1">Source History</p>
+          <p className="text-[0.5625rem] text-white/40 mb-1">Source History</p>
           <div className="flex items-center gap-1.5">
             <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
               <div className="h-full w-[72%] bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full" />
             </div>
-            <span className="text-[9px] font-medium text-white/60">7.2</span>
+            <span className="text-[0.5625rem] font-medium text-white/60">7.2</span>
           </div>
         </div>
       </div>
@@ -176,7 +176,7 @@ function AnalysisPreview() {
           </div>
           <div className="min-w-0">
             <p className="text-xs font-medium text-white truncate">How AI Is Reshaping Investigative Journalism</p>
-            <p className="text-[10px] text-white/40">youtube.com &middot; 28:14</p>
+            <p className="text-[0.625rem] text-white/40">youtube.com &middot; 28:14</p>
           </div>
         </div>
         {/* Overview card */}
@@ -198,17 +198,17 @@ function AnalysisPreview() {
         >
           <div className="space-y-2">
             <div className="flex items-center gap-2">
-              <span className="text-[10px] text-white/55">Quality</span>
+              <span className="text-[0.625rem] text-white/55">Quality</span>
               <div className="flex-1 h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
                 <div className="h-full w-[82%] bg-gradient-to-r from-yellow-500 to-green-500 rounded-full" />
               </div>
               <span className="text-xs font-semibold text-white">8.2</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <span className="text-[9px] px-2 py-0.5 bg-emerald-500/15 border border-emerald-500/25 rounded-full text-emerald-400">Insightful</span>
-              <span className="text-[9px] px-2 py-0.5 bg-white/[0.04] border border-white/[0.06] rounded-full text-white/40">Documentary</span>
+              <span className="text-[0.5625rem] px-2 py-0.5 bg-emerald-500/15 border border-emerald-500/25 rounded-full text-emerald-400">Insightful</span>
+              <span className="text-[0.5625rem] px-2 py-0.5 bg-white/[0.04] border border-white/[0.06] rounded-full text-white/40">Documentary</span>
             </div>
-            <p className="text-[10px] text-white/55 leading-relaxed">
+            <p className="text-[0.625rem] text-white/55 leading-relaxed">
               Well-sourced exploration with expert interviews and concrete examples. Goes beyond surface-level hype.
             </p>
           </div>
@@ -243,17 +243,17 @@ function AnalysisPreview() {
           color="emerald"
         >
           <div className="space-y-2">
-            <span className="text-[10px] px-2 py-0.5 bg-emerald-500/15 border border-emerald-500/25 rounded-full text-emerald-400 inline-block">
+            <span className="text-[0.625rem] px-2 py-0.5 bg-emerald-500/15 border border-emerald-500/25 rounded-full text-emerald-400 inline-block">
               Mostly Accurate
             </span>
             <div className="space-y-1.5">
               <div className="flex items-start gap-1.5">
                 <CheckCircle className="w-3 h-3 text-green-400 mt-0.5 shrink-0" />
-                <span className="text-[10px] text-white/55">Expert sources clearly identified with credentials</span>
+                <span className="text-[0.625rem] text-white/55">Expert sources clearly identified with credentials</span>
               </div>
               <div className="flex items-start gap-1.5">
                 <AlertTriangle className="w-3 h-3 text-yellow-400 mt-0.5 shrink-0" />
-                <span className="text-[10px] text-white/55">Open-source tool claim may overgeneralize; commercial tools still lead for complex review</span>
+                <span className="text-[0.625rem] text-white/55">Open-source tool claim may overgeneralize; commercial tools still lead for complex review</span>
               </div>
             </div>
           </div>
@@ -275,7 +275,7 @@ function AnalysisPreview() {
                 <div className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                   item.priority === "high" ? "bg-red-400" : "bg-yellow-400"
                 }`} />
-                <span className="text-[10px] text-white/60">{item.text}</span>
+                <span className="text-[0.625rem] text-white/60">{item.text}</span>
               </div>
             ))}
           </div>
@@ -363,29 +363,29 @@ function LibraryPreview() {
       {/* Header */}
       <div className="mb-4">
         <h3 className="text-sm font-semibold text-white">Library</h3>
-        <p className="text-[10px] text-white/55">Your analyzed content</p>
+        <p className="text-[0.625rem] text-white/55">Your analyzed content</p>
       </div>
 
       {/* Search bar */}
       <div className="relative mb-3">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3 h-3 text-white/30" />
-        <div className="w-full pl-8 pr-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-xl text-[10px] text-white/25">
+        <div className="w-full pl-8 pr-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-xl text-[0.625rem] text-white/25">
           Search...
         </div>
       </div>
 
       {/* Filter pills */}
       <div className="flex items-center gap-1.5 mb-4 flex-wrap">
-        <span className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.06] rounded-full text-[9px] text-white/40">
+        <span className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.06] rounded-full text-[0.5625rem] text-white/40">
           <Bookmark className="w-2.5 h-2.5 inline mr-1" />Bookmarked
         </span>
-        <span className="px-2.5 py-1 bg-purple-500/15 border border-purple-500/25 rounded-full text-[9px] text-purple-400">
+        <span className="px-2.5 py-1 bg-purple-500/15 border border-purple-500/25 rounded-full text-[0.5625rem] text-purple-400">
           <Tag className="w-2.5 h-2.5 inline mr-1" />Tags (3)
         </span>
-        <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/25 rounded-full text-[9px] text-emerald-400">
+        <span className="px-2.5 py-1 bg-emerald-500/15 border border-emerald-500/25 rounded-full text-[0.5625rem] text-emerald-400">
           All Scores
         </span>
-        <span className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.06] rounded-full text-[9px] text-white/40">
+        <span className="px-2.5 py-1 bg-white/[0.04] border border-white/[0.06] rounded-full text-[0.5625rem] text-white/40">
           8+
         </span>
       </div>
@@ -428,7 +428,7 @@ function MiniCard({
   return (
     <div className="rounded-xl bg-white/[0.02] border border-white/[0.06] overflow-hidden">
       <div className={`px-3 py-1.5 border-b border-white/[0.04] ${headerClass}`}>
-        <span className="text-[10px] font-semibold uppercase tracking-wider flex items-center gap-1.5">
+        <span className="text-[0.625rem] font-semibold uppercase tracking-wider flex items-center gap-1.5">
           {icon}
           {title}
         </span>
@@ -474,17 +474,17 @@ function LibraryItemRow({
 
       {/* Content */}
       <div className="flex-1 min-w-0">
-        <p className="text-[11px] font-medium text-white truncate">{title}</p>
+        <p className="text-[0.6875rem] font-medium text-white truncate">{title}</p>
         <div className="flex items-center gap-2 mt-0.5">
-          <span className="text-[9px] text-white/40">{domain}</span>
-          <span className="text-[9px] text-white/20">&middot;</span>
-          <span className="text-[9px] text-white/40">{time}</span>
+          <span className="text-[0.5625rem] text-white/40">{domain}</span>
+          <span className="text-[0.5625rem] text-white/20">&middot;</span>
+          <span className="text-[0.5625rem] text-white/40">{time}</span>
         </div>
       </div>
 
       {/* Score + badge */}
       <div className="flex items-center gap-2 shrink-0">
-        <span className={`text-[9px] px-1.5 py-0.5 rounded-full border ${badgeColor} hidden sm:inline`}>
+        <span className={`text-[0.5625rem] px-1.5 py-0.5 rounded-full border ${badgeColor} hidden sm:inline`}>
           {badge}
         </span>
         <div className="flex items-center gap-1">
@@ -494,7 +494,7 @@ function LibraryItemRow({
               style={{ width: `${score * 10}%` }}
             />
           </div>
-          <span className="text-[10px] font-medium text-white/60">{score}</span>
+          <span className="text-[0.625rem] font-medium text-white/60">{score}</span>
         </div>
         {bookmarked && (
           <Bookmark className="w-3 h-3 text-amber-400 fill-amber-400" />

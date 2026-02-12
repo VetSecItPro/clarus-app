@@ -29,7 +29,7 @@ export default function TermsPage() {
       <main className="flex-1 max-w-4xl mx-auto px-4 py-12">
         {/* Title */}
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#1d9bf0] to-[#1a8cd8] rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-12 h-12 bg-gradient-to-br from-brand to-brand-hover rounded-xl flex items-center justify-center shadow-lg">
             <Shield className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -169,7 +169,7 @@ export default function TermsPage() {
               </ul>
               <p className="leading-relaxed mt-4">
                 Send DMCA notices to:{" "}
-                <a href="mailto:legal@clarusapp.io" className="text-[#1d9bf0] hover:underline">
+                <a href="mailto:legal@clarusapp.io" className="text-brand hover:underline">
                   legal@clarusapp.io
                 </a>
               </p>
@@ -235,13 +235,13 @@ export default function TermsPage() {
                 </p>
                 <p className="text-white/70">
                   Email:{" "}
-                  <a href="mailto:legal@clarusapp.io" className="text-[#1d9bf0] hover:underline">
+                  <a href="mailto:legal@clarusapp.io" className="text-brand hover:underline">
                     legal@clarusapp.io
                   </a>
                 </p>
                 <p className="text-white/70 mt-1">
                   General inquiries:{" "}
-                  <a href="mailto:support@clarusapp.io" className="text-[#1d9bf0] hover:underline">
+                  <a href="mailto:support@clarusapp.io" className="text-brand hover:underline">
                     support@clarusapp.io
                   </a>
                 </p>

@@ -303,7 +303,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
       <div className="flex-1 flex max-w-6xl mx-auto w-full">
         {/* Collections Sidebar (desktop) */}
         {showCollectionsSidebar && (
-          <aside className="hidden lg:block w-64 shrink-0 px-4 pt-3 sm:pt-4 pb-8 border-r border-white/[0.06]">
+          <aside className="hidden md:block w-64 shrink-0 px-4 pt-3 sm:pt-4 pb-8 border-r border-white/[0.06]">
             <CollectionSidebar
               selectedCollectionId={selectedCollectionId}
               onSelectCollection={setSelectedCollectionId}
@@ -337,7 +337,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
               <button
                 onClick={() => setShowCollectionsSidebar(!showCollectionsSidebar)}
                 aria-label={showCollectionsSidebar ? "Hide collections sidebar" : "Show collections sidebar"}
-                className="hidden lg:flex items-center gap-2 h-9 px-3 bg-white/[0.06] border border-white/[0.08] rounded-lg text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-xs"
+                className="hidden md:flex items-center gap-2 h-9 px-3 bg-white/[0.06] border border-white/[0.08] rounded-lg text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-xs"
               >
                 {showCollectionsSidebar ? (
                   <PanelLeftClose className="w-4 h-4" />
@@ -357,7 +357,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                 className={cn(
                   "shrink-0 px-3 py-1.5 rounded-full text-xs transition-all border",
                   selectedCollectionId === null
-                    ? "bg-[#1d9bf0] border-[#1d9bf0] text-white"
+                    ? "bg-brand border-brand text-white"
                     : "bg-white/[0.06] border-white/[0.08] text-white/60"
                 )}
               >
@@ -553,7 +553,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                       className={cn(
                         "px-3 py-1.5 rounded-lg text-sm transition-all",
                         sortBy === opt.value
-                          ? "bg-[#1d9bf0] text-white"
+                          ? "bg-brand text-white"
                           : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"
                       )}
                     >
@@ -576,7 +576,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                       className={cn(
                         "px-3 py-1.5 rounded-lg text-sm transition-all",
                         filterType === opt.value
-                          ? "bg-[#1d9bf0] text-white"
+                          ? "bg-brand text-white"
                           : "bg-white/[0.06] text-white/60 hover:bg-white/[0.1]"
                       )}
                     >
@@ -601,8 +601,8 @@ function LibraryPageContent({ session }: LibraryPageProps) {
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">
-            <div className="w-20 h-20 bg-gradient-to-br from-[#1d9bf0]/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="w-10 h-10 text-[#1d9bf0]" />
+            <div className="w-20 h-20 bg-gradient-to-br from-brand/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="w-10 h-10 text-brand" />
             </div>
             <h3 className="text-white text-lg font-medium mb-2">
               No content yet
@@ -613,7 +613,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
             </p>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white rounded-full transition-colors text-sm font-medium"
+              className="inline-flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-full transition-colors text-sm font-medium"
             >
               <Clock className="w-4 h-4" />
               Analyze something

@@ -29,7 +29,7 @@ export default function PrivacyPage() {
       <main className="flex-1 max-w-4xl mx-auto px-4 py-12">
         {/* Title */}
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#1d9bf0] to-[#1a8cd8] rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-12 h-12 bg-gradient-to-br from-brand to-brand-hover rounded-xl flex items-center justify-center shadow-lg">
             <Lock className="w-6 h-6 text-white" />
           </div>
           <div>
@@ -41,22 +41,22 @@ export default function PrivacyPage() {
         {/* Your Rights Summary Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
           <div className="p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl">
-            <Eye className="w-5 h-5 text-[#1d9bf0] mb-2" />
+            <Eye className="w-5 h-5 text-brand mb-2" />
             <h3 className="text-white font-medium text-sm mb-1">Right to Access</h3>
             <p className="text-white/50 text-xs">Request a copy of your data</p>
           </div>
           <div className="p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl">
-            <Trash2 className="w-5 h-5 text-[#1d9bf0] mb-2" />
+            <Trash2 className="w-5 h-5 text-brand mb-2" />
             <h3 className="text-white font-medium text-sm mb-1">Right to Deletion</h3>
             <p className="text-white/50 text-xs">Request deletion of your data</p>
           </div>
           <div className="p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl">
-            <Download className="w-5 h-5 text-[#1d9bf0] mb-2" />
+            <Download className="w-5 h-5 text-brand mb-2" />
             <h3 className="text-white font-medium text-sm mb-1">Data Portability</h3>
             <p className="text-white/50 text-xs">Export your data anytime</p>
           </div>
           <div className="p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl">
-            <Mail className="w-5 h-5 text-[#1d9bf0] mb-2" />
+            <Mail className="w-5 h-5 text-brand mb-2" />
             <h3 className="text-white font-medium text-sm mb-1">Contact Us</h3>
             <p className="text-white/50 text-xs">privacy@clarusapp.io</p>
           </div>
@@ -217,7 +217,7 @@ export default function PrivacyPage() {
 
               <p className="leading-relaxed mt-4">
                 To exercise any of these rights, contact us at{" "}
-                <a href="mailto:privacy@clarusapp.io" className="text-[#1d9bf0] hover:underline">
+                <a href="mailto:privacy@clarusapp.io" className="text-brand hover:underline">
                   privacy@clarusapp.io
                 </a>. We will respond to your request within 30 days.
               </p>
@@ -275,13 +275,13 @@ export default function PrivacyPage() {
                 </p>
                 <p className="text-white/70">
                   Privacy inquiries:{" "}
-                  <a href="mailto:privacy@clarusapp.io" className="text-[#1d9bf0] hover:underline">
+                  <a href="mailto:privacy@clarusapp.io" className="text-brand hover:underline">
                     privacy@clarusapp.io
                   </a>
                 </p>
                 <p className="text-white/70 mt-1">
                   General support:{" "}
-                  <a href="mailto:support@clarusapp.io" className="text-[#1d9bf0] hover:underline">
+                  <a href="mailto:support@clarusapp.io" className="text-brand hover:underline">
                     support@clarusapp.io
                   </a>
                 </p>

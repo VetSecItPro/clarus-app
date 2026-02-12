@@ -81,7 +81,7 @@ export function LanguageSelector({
         aria-expanded={isOpen}
       >
         <Languages className={cn("shrink-0", compact ? "w-3.5 h-3.5" : "w-3.5 h-3.5")} />
-        <span className={cn("font-medium whitespace-nowrap", compact ? "text-[10px]" : "text-xs")}>
+        <span className={cn("font-medium whitespace-nowrap", compact ? "text-[0.625rem]" : "text-xs")}>
           {current.flag} {compact ? current.name : `Translate`}
         </span>
         {!compact && (
@@ -99,7 +99,7 @@ export function LanguageSelector({
           dropdownDirection === "up" ? "bottom-full mb-2" : "top-full mt-2"
         )}>
           <div className="px-3 py-2 border-b border-white/[0.06]">
-            <p className="text-[11px] font-medium text-white/40 uppercase tracking-wider">
+            <p className="text-[0.6875rem] font-medium text-white/40 uppercase tracking-wider">
               Translate Analysis
             </p>
           </div>
@@ -116,7 +116,7 @@ export function LanguageSelector({
                   className={cn(
                     "w-full flex items-center gap-2.5 px-3 py-2 text-left transition-colors",
                     isSelected
-                      ? "bg-[#1d9bf0]/10 text-white"
+                      ? "bg-brand/10 text-white"
                       : isLocked
                         ? "text-white/25 cursor-not-allowed"
                         : "text-white/70 hover:bg-white/[0.06] hover:text-white"
@@ -128,7 +128,7 @@ export function LanguageSelector({
                     <Lock className="w-3 h-3 text-white/20" />
                   )}
                   {isSelected && (
-                    <div className="w-1.5 h-1.5 rounded-full bg-[#1d9bf0]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-brand" />
                   )}
                 </button>
               )
@@ -136,7 +136,7 @@ export function LanguageSelector({
           </div>
           {!multiLanguageEnabled && (
             <div className="px-3 py-2 border-t border-white/[0.06] bg-white/[0.02]">
-              <p className="text-[10px] text-white/30">
+              <p className="text-[0.625rem] text-white/30">
                 Multi-language requires Starter plan or higher.
               </p>
             </div>

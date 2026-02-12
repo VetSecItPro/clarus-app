@@ -302,17 +302,17 @@ function DesktopHighlight({ segment, onClick }: { segment: TextSegment; onClick:
           </p>
           {segment.claim.sources && segment.claim.sources.length > 0 && (
             <div className="pt-1 border-t border-white/10">
-              <p className="text-white/50 text-[10px] uppercase tracking-wider mb-1">Sources</p>
+              <p className="text-white/50 text-[0.625rem] uppercase tracking-wider mb-1">Sources</p>
               <div className="flex flex-wrap gap-1">
                 {segment.claim.sources.slice(0, 2).map((source, i) => (
-                  <span key={i} className="text-[10px] text-[#1d9bf0] truncate max-w-[120px]">
+                  <span key={i} className="text-[0.625rem] text-brand truncate max-w-[120px]">
                     {source}
                   </span>
                 ))}
               </div>
             </div>
           )}
-          <p className="text-white/40 text-[10px]">Click for full details</p>
+          <p className="text-white/40 text-[0.625rem]">Click for full details</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -419,7 +419,7 @@ function ClaimDetailSheet({
             {claim.timestamp && (
               <div className="mb-4">
                 <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Timestamp</p>
-                <div className="flex items-center gap-2 text-sm text-[#1d9bf0]">
+                <div className="flex items-center gap-2 text-sm text-brand">
                   <Clock className="w-4 h-4" />
                   <span>{claim.timestamp}</span>
                 </div>
@@ -439,8 +439,8 @@ function ClaimDetailSheet({
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
                     >
-                      <ExternalLink className="w-3.5 h-3.5 text-[#1d9bf0]" />
-                      <span className="text-sm text-[#1d9bf0] truncate">{source}</span>
+                      <ExternalLink className="w-3.5 h-3.5 text-brand" />
+                      <span className="text-sm text-brand truncate">{source}</span>
                     </a>
                   ))}
                 </div>
@@ -531,7 +531,7 @@ function ClaimDetailModal({
               {claim.timestamp && (
                 <div>
                   <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Timestamp</p>
-                  <div className="flex items-center gap-1.5 text-sm text-[#1d9bf0]">
+                  <div className="flex items-center gap-1.5 text-sm text-brand">
                     <Clock className="w-3.5 h-3.5" />
                     <span>{claim.timestamp}</span>
                   </div>
@@ -552,8 +552,8 @@ function ClaimDetailModal({
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
                     >
-                      <ExternalLink className="w-3 h-3 text-[#1d9bf0]" />
-                      <span className="text-xs text-[#1d9bf0] truncate">{source}</span>
+                      <ExternalLink className="w-3 h-3 text-brand" />
+                      <span className="text-xs text-brand truncate">{source}</span>
                     </a>
                   ))}
                 </div>
@@ -686,14 +686,14 @@ export function HighlightedTranscript({
             {/* Time range header */}
             <button
               onClick={() => handleTimestampClick(block.startSeconds)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 text-xs font-mono rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] hover:bg-[#1d9bf0]/20 border border-[#1d9bf0]/20 transition-all"
+              className="inline-flex items-center gap-2 px-3 py-1.5 mb-3 text-xs font-mono rounded-lg bg-brand/10 text-brand hover:bg-brand/20 border border-brand/20 transition-all"
               title={`Jump to ${block.startTimestamp} in video`}
             >
               <Clock className="w-3.5 h-3.5" />
               <span>{block.startTimestamp}</span>
               {block.startTimestamp !== block.endTimestamp && (
                 <>
-                  <span className="text-[#1d9bf0]/50">→</span>
+                  <span className="text-brand/50">→</span>
                   <span>{block.endTimestamp}</span>
                 </>
               )}

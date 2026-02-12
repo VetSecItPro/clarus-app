@@ -137,11 +137,11 @@ export function CreateCollectionDialog({
               {/* Header */}
               <div className="flex items-center justify-between px-6 pt-6 pb-4">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#1d9bf0]/20 flex items-center justify-center">
+                  <div className="w-10 h-10 rounded-xl bg-brand/20 flex items-center justify-center">
                     {isEditing ? (
-                      <Pencil className="w-5 h-5 text-[#1d9bf0]" />
+                      <Pencil className="w-5 h-5 text-brand" />
                     ) : (
-                      <FolderPlus className="w-5 h-5 text-[#1d9bf0]" />
+                      <FolderPlus className="w-5 h-5 text-brand" />
                     )}
                   </div>
                   <div>
@@ -183,7 +183,7 @@ export function CreateCollectionDialog({
                     placeholder="e.g., AI Research, Election Coverage"
                     maxLength={100}
                     autoFocus
-                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#1d9bf0]/50 transition-colors"
+                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/50 transition-colors"
                   />
                 </div>
 
@@ -203,7 +203,7 @@ export function CreateCollectionDialog({
                     placeholder="What is this collection about?"
                     maxLength={500}
                     rows={2}
-                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#1d9bf0]/50 transition-colors resize-none"
+                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/50 transition-colors resize-none"
                   />
                 </div>
 
@@ -268,7 +268,7 @@ export function CreateCollectionDialog({
                   <button
                     type="submit"
                     disabled={isSubmitting || !name.trim()}
-                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] disabled:bg-[#1d9bf0]/50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-all"
+                    className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-hover disabled:bg-brand/50 disabled:cursor-not-allowed text-white rounded-xl text-sm font-medium transition-all"
                   >
                     {isSubmitting ? (
                       <>

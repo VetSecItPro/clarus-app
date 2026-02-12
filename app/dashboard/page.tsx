@@ -25,7 +25,7 @@ const PreferencesTab = dynamic(
 
 const TIER_DISPLAY: Record<string, { label: string; color: string }> = {
   free: { label: "Free Plan", color: "text-white/50" },
-  starter: { label: "Starter Plan", color: "text-[#1d9bf0]" },
+  starter: { label: "Starter Plan", color: "text-brand" },
   pro: { label: "Pro Plan", color: "text-violet-400" },
   day_pass: { label: "Day Pass", color: "text-amber-400" },
 }
@@ -112,9 +112,9 @@ function DashboardPage({ session }: DashboardPageProps) {
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
-                  "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black focus-visible:outline-none active:opacity-80",
+                  "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black focus-visible:outline-none active:opacity-80",
                   isActive
-                    ? "border-[#1d9bf0] text-white"
+                    ? "border-brand text-white"
                     : "border-transparent text-white/40 hover:text-white/60"
                 )}
               >
@@ -206,7 +206,7 @@ function DashboardPage({ session }: DashboardPageProps) {
                   </div>
                   <Link
                     href="/pricing"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-medium transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-brand hover:bg-brand-hover text-white text-sm font-medium transition-colors"
                   >
                     Upgrade
                     <ArrowRight className="w-3.5 h-3.5" />

@@ -33,13 +33,13 @@ export default function CookieConsent() {
           <Cookie className="w-4 h-4 text-white/40 flex-shrink-0" />
           <p className="text-white/60 text-xs flex-1">
             Essential cookies + anonymous analytics.{" "}
-            <Link href="/privacy" className="text-[#1d9bf0] hover:underline">
+            <Link href="/privacy" className="text-brand hover:underline">
               Privacy
             </Link>
           </p>
           <button
             onClick={handleAccept}
-            className="px-3 py-1.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white rounded-full font-medium transition-colors text-xs flex-shrink-0"
+            className="px-3 py-1.5 bg-brand hover:bg-brand-hover text-white rounded-full font-medium transition-colors text-xs flex-shrink-0"
           >
             OK
           </button>

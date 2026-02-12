@@ -50,10 +50,10 @@ const PLANS = [
     color: "blue",
     popular: true,
     accent: {
-      bg: "bg-[#1d9bf0]/[0.06]",
-      border: "border-[#1d9bf0]/30",
-      badge: "bg-[#1d9bf0]",
-      button: "bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40",
+      bg: "bg-brand/[0.06]",
+      border: "border-brand/30",
+      badge: "bg-brand",
+      button: "bg-brand hover:bg-brand-hover text-white shadow-lg shadow-brand/25 hover:shadow-brand/40",
     },
     features: [
       { text: "50 analyses per month", included: true },
@@ -157,7 +157,7 @@ function PricingToggle({ interval, onChange }: { interval: BillingInterval; onCh
         aria-label={`Switch to ${interval === "monthly" ? "annual" : "monthly"} billing`}
       >
         <motion.div
-          className="absolute top-0.5 w-6 h-6 rounded-full bg-[#1d9bf0]"
+          className="absolute top-0.5 w-6 h-6 rounded-full bg-brand"
           animate={{ left: interval === "monthly" ? "2px" : "calc(100% - 26px)" }}
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         />
@@ -166,7 +166,7 @@ function PricingToggle({ interval, onChange }: { interval: BillingInterval; onCh
         Annual
       </span>
       <span
-        className={`text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-opacity duration-200 ${
+        className={`text-[0.6875rem] font-semibold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition-opacity duration-200 ${
           interval === "annual" ? "opacity-100" : "opacity-0"
         }`}
       >
@@ -206,7 +206,7 @@ function PlanCard({
 
       {/* Header */}
       <div className="flex items-center gap-2 mb-2">
-        <span className={plan.color === "blue" ? "text-[#1d9bf0]" : plan.color === "purple" ? "text-purple-400" : "text-white/60"}>
+        <span className={plan.color === "blue" ? "text-brand" : plan.color === "purple" ? "text-purple-400" : "text-white/60"}>
           {plan.icon}
         </span>
         <h3 className="text-lg font-bold text-white">{plan.name}</h3>
@@ -246,7 +246,7 @@ function PlanCard({
           <li key={feature.text} className="flex items-start gap-2.5">
             {feature.included ? (
               <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
-                plan.color === "blue" ? "text-[#1d9bf0]" : plan.color === "purple" ? "text-purple-400" : "text-emerald-400"
+                plan.color === "blue" ? "text-brand" : plan.color === "purple" ? "text-purple-400" : "text-emerald-400"
               }`} />
             ) : (
               <X className="w-4 h-4 mt-0.5 flex-shrink-0 text-white/20" />
@@ -311,7 +311,7 @@ export default function PricingPageClient() {
       <main className="pt-14 flex-1">
         {/* Background orbs */}
         <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
-          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-[#1d9bf0]/[0.06] rounded-full blur-[120px]" />
+          <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-brand/[0.06] rounded-full blur-[120px]" />
           <div className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-purple-500/[0.04] rounded-full blur-[100px]" />
         </div>
 
@@ -325,7 +325,7 @@ export default function PricingPageClient() {
               className="text-4xl sm:text-5xl font-bold text-white mb-4 tracking-tight"
             >
               Simple, transparent{" "}
-              <span className="bg-gradient-to-r from-[#1d9bf0] via-[#0ea5e9] to-[#14b8a6] bg-clip-text text-transparent">
+              <span className="bg-gradient-to-r from-brand via-[#0ea5e9] to-[#14b8a6] bg-clip-text text-transparent">
                 pricing
               </span>
             </motion.h1>
@@ -374,7 +374,7 @@ export default function PricingPageClient() {
                   <div className="flex items-center gap-2 mb-2">
                     <Clock className="w-5 h-5 text-amber-400" />
                     <h3 className="text-lg font-bold text-white">Day Pass</h3>
-                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                    <span className="text-[0.6875rem] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                       24-Hour Access
                     </span>
                   </div>
@@ -410,7 +410,7 @@ export default function PricingPageClient() {
                   >
                     Get Day Pass
                   </Link>
-                  <p className="text-[10px] text-white/30 text-center">
+                  <p className="text-[0.625rem] text-white/30 text-center">
                     Expires 24 hours after purchase
                   </p>
                 </div>
@@ -431,7 +431,7 @@ export default function PricingPageClient() {
                   <tr className="border-b border-white/[0.08]">
                     <th className="text-left px-6 py-4 text-white/40 font-medium">Feature</th>
                     <th className="px-6 py-4 text-white/60 font-semibold text-center">Free</th>
-                    <th className="px-6 py-4 text-[#1d9bf0] font-semibold text-center">Starter</th>
+                    <th className="px-6 py-4 text-brand font-semibold text-center">Starter</th>
                     <th className="px-6 py-4 text-purple-400 font-semibold text-center">Pro</th>
                   </tr>
                 </thead>
@@ -494,7 +494,7 @@ export default function PricingPageClient() {
             </p>
             <Link
               href="/signup"
-              className="inline-block px-8 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-full transition-all duration-200 shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5"
+              className="inline-block px-8 py-3 bg-brand hover:bg-brand-hover text-white font-semibold rounded-full transition-all duration-200 shadow-lg shadow-brand/25 hover:shadow-brand/40 hover:-translate-y-0.5"
             >
               Get Started Free
             </Link>
@@ -511,7 +511,7 @@ function CellValue({ value, accent }: { value: string | boolean; accent?: "blue"
   if (value === true) {
     return (
       <Check className={`w-4 h-4 mx-auto ${
-        accent === "blue" ? "text-[#1d9bf0]" : accent === "purple" ? "text-purple-400" : "text-emerald-400"
+        accent === "blue" ? "text-brand" : accent === "purple" ? "text-purple-400" : "text-emerald-400"
       }`} />
     )
   }
@@ -520,7 +520,7 @@ function CellValue({ value, accent }: { value: string | boolean; accent?: "blue"
   }
   return (
     <span className={`text-sm ${
-      accent === "blue" ? "text-[#1d9bf0]/80" : accent === "purple" ? "text-purple-400/80" : "text-white/50"
+      accent === "blue" ? "text-brand/80" : accent === "purple" ? "text-purple-400/80" : "text-white/50"
     }`}>
       {value}
     </span>

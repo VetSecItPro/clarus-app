@@ -33,10 +33,10 @@ function ActionItem({ item, index }: { item: ActionItemData; index: number }) {
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => setIsChecked(!isChecked)}
-          className="flex-shrink-0 text-white/40 hover:text-[#1d9bf0] transition-colors"
+          className="flex-shrink-0 text-white/40 hover:text-brand transition-colors"
         >
           {isChecked ? (
-            <CheckCircle2 className="w-4 h-4 text-[#1d9bf0]" />
+            <CheckCircle2 className="w-4 h-4 text-brand" />
           ) : (
             <Circle className="w-4 h-4" />
           )}

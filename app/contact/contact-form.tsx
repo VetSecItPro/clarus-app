@@ -93,7 +93,7 @@ export function ContactForm() {
           rows={5}
           placeholder="Your message (min 10 characters)"
           disabled={formState === "submitting"}
-          className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#1d9bf0]/50 focus:border-[#1d9bf0]/50 disabled:opacity-50 resize-y min-h-[120px]"
+          className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-brand/50 focus:border-brand/50 disabled:opacity-50 resize-y min-h-[120px]"
         />
         {fieldErrors.message && (
           <p className="mt-1 text-sm text-red-400">{fieldErrors.message}</p>
@@ -110,7 +110,7 @@ export function ContactForm() {
       <button
         type="submit"
         disabled={formState === "submitting"}
-        className="inline-flex items-center gap-2 px-6 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="inline-flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-hover text-white font-semibold rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {formState === "submitting" ? (
           <>
@@ -154,7 +154,7 @@ function Field({
         type={type}
         placeholder={placeholder}
         disabled={disabled}
-        className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-[#1d9bf0]/50 focus:border-[#1d9bf0]/50 disabled:opacity-50"
+        className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-brand/50 focus:border-brand/50 disabled:opacity-50"
       />
       {error && (
         <p className="mt-1 text-sm text-red-400">{error}</p>

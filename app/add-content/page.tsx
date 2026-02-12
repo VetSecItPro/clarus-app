@@ -172,7 +172,7 @@ export default function AddContentPage() {
                 value={fullText}
                 onChange={(e) => setFullText(e.target.value)}
                 rows={4}
-                className="mt-1 block w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-[#1d9bf0]/50 focus:border-transparent text-sm"
+                className="mt-1 block w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent text-sm"
                 placeholder="Paste full text here if the URL isn't scrapable..."
               />
             </div>

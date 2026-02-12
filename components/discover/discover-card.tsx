@@ -78,7 +78,7 @@ export function DiscoverCard({ item, index, isOwnContent = false }: DiscoverCard
 
           {/* Title */}
           <Link href={linkHref} className="block">
-            <h2 className="text-sm sm:text-base font-semibold text-white group-hover:text-[#1d9bf0] transition-colors line-clamp-2 mb-1.5">
+            <h2 className="text-sm sm:text-base font-semibold text-white group-hover:text-brand transition-colors line-clamp-2 mb-1.5">
               {item.title}
             </h2>
           </Link>
@@ -107,7 +107,7 @@ export function DiscoverCard({ item, index, isOwnContent = false }: DiscoverCard
             </div>
             <Link
               href={linkHref}
-              className="text-[#1d9bf0]/70 hover:text-[#1d9bf0] font-medium transition-colors"
+              className="text-brand/70 hover:text-brand font-medium transition-colors"
             >
               View
             </Link>

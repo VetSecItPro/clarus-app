@@ -122,7 +122,7 @@ export default function HealthPage() {
                 </div>
               ))}
         </div>
-        <p className="text-white/30 text-[10px] mt-3">
+        <p className="text-white/30 text-[0.625rem] mt-3">
           Status based on error rates in the last 24 hours. Services with no calls are assumed operational.
         </p>
       </ChartCard>

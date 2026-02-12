@@ -37,7 +37,7 @@ export const HowItWorks = memo(function HowItWorks() {
           transition={{ duration: 0.6 }}
           className="text-center mb-16"
         >
-          <p className="text-[#1d9bf0] text-sm font-medium tracking-wide uppercase mb-3">
+          <p className="text-brand text-sm font-medium tracking-wide uppercase mb-3">
             How it works
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white">
@@ -69,12 +69,12 @@ export const HowItWorks = memo(function HowItWorks() {
                 transition={{ duration: 0.4, delay: index * 0.1 + 0.2 }}
                 className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-white/[0.03] border border-white/[0.06] mb-5"
               >
-                <step.icon className="w-7 h-7 text-[#1d9bf0]" />
+                <step.icon className="w-7 h-7 text-brand" />
               </motion.div>
 
               {/* Step content */}
               <div className="space-y-2">
-                <span className="text-[#1d9bf0]/60 text-xs font-mono tracking-wider">
+                <span className="text-brand/60 text-xs font-mono tracking-wider">
                   {step.number}
                 </span>
                 <h3 className="text-xl font-semibold text-white">

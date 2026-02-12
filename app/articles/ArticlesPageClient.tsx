@@ -62,7 +62,7 @@ export function ArticlesPageClient({
           placeholder="Search articles..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white/[0.03] border border-white/[0.06] rounded-full text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-[#1d9bf0]/40 transition-colors"
+          className="w-full pl-10 pr-4 py-2.5 bg-white/[0.03] border border-white/[0.06] rounded-full text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand/40 transition-colors"
         />
       </div>
 
@@ -72,7 +72,7 @@ export function ArticlesPageClient({
           onClick={() => setActiveCategory(null)}
           className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
             activeCategory === null
-              ? "bg-[#1d9bf0] text-white"
+              ? "bg-brand text-white"
               : "bg-white/[0.03] text-white/50 hover:text-white/70 border border-white/[0.06]"
           }`}
         >
@@ -88,7 +88,7 @@ export function ArticlesPageClient({
               }
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 activeCategory === cat
-                  ? "bg-[#1d9bf0] text-white"
+                  ? "bg-brand text-white"
                   : "bg-white/[0.03] text-white/50 hover:text-white/70 border border-white/[0.06]"
               }`}
             >
@@ -132,7 +132,7 @@ export function ArticlesPageClient({
 
       {/* Bottom CTA */}
       <section className="mt-20">
-        <div className="rounded-2xl bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 p-10 text-center">
+        <div className="rounded-2xl bg-brand/10 border border-brand/20 p-10 text-center">
           <h2 className="text-xl font-semibold text-white mb-3">
             Ready to analyze content with AI?
           </h2>
@@ -142,7 +142,7 @@ export function ArticlesPageClient({
           </p>
           <Link
             href="/login"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-medium rounded-full transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-hover text-white font-medium rounded-full transition-colors"
           >
             Get Started Free
             <ArrowRight className="w-4 h-4" />
@@ -160,7 +160,7 @@ function FeaturedCard({ article }: { article: BlogArticle }) {
   return (
     <Link
       href={`/articles/${article.slug}`}
-      className="group bg-white/[0.03] border border-[#1d9bf0]/20 rounded-2xl p-6 hover:bg-white/[0.06] hover:border-[#1d9bf0]/30 transition-all"
+      className="group bg-white/[0.03] border border-brand/20 rounded-2xl p-6 hover:bg-white/[0.06] hover:border-brand/30 transition-all"
     >
       <div className="flex items-center gap-2 mb-3">
         <div className={`inline-flex p-1.5 rounded-lg ${config.bg}`}>
@@ -168,7 +168,7 @@ function FeaturedCard({ article }: { article: BlogArticle }) {
         </div>
         <span className="text-xs text-white/40">{config.label}</span>
       </div>
-      <h3 className="text-base font-semibold text-white group-hover:text-[#1d9bf0] transition-colors mb-2 line-clamp-2">
+      <h3 className="text-base font-semibold text-white group-hover:text-brand transition-colors mb-2 line-clamp-2">
         {article.title}
       </h3>
       <p className="text-sm text-white/40 leading-relaxed line-clamp-3 mb-3">
@@ -197,7 +197,7 @@ function ArticleCard({ article }: { article: BlogArticle }) {
         </div>
         <span className="text-xs text-white/40">{config.label}</span>
       </div>
-      <h3 className="text-base font-semibold text-white group-hover:text-[#1d9bf0] transition-colors mb-2 line-clamp-2">
+      <h3 className="text-base font-semibold text-white group-hover:text-brand transition-colors mb-2 line-clamp-2">
         {article.title}
       </h3>
       <p className="text-sm text-white/40 leading-relaxed line-clamp-3 mb-3">

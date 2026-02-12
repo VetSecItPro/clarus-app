@@ -8,6 +8,7 @@ import { ServiceWorkerRegister } from "@/components/service-worker-register"
 import { PWAInstallPrompt } from "@/components/pwa-install-prompt"
 import { SWRProvider } from "@/components/swr-provider"
 import { ActiveAnalysisProvider } from "@/lib/contexts/active-analysis-context"
+import { MotionConfigProvider } from "@/components/motion-config-provider"
 import { WebVitals } from "@/components/web-vitals"
 import { ChunkErrorHandler } from "@/components/chunk-error-handler"
 import "./globals.css"
@@ -152,7 +153,9 @@ export default function RootLayout({
       <body className="font-sans antialiased">
         <SWRProvider>
           <ActiveAnalysisProvider>
-            {children}
+            <MotionConfigProvider>
+              {children}
+            </MotionConfigProvider>
           </ActiveAnalysisProvider>
         </SWRProvider>
         <Toaster position="top-center" />

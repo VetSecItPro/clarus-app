@@ -2,7 +2,7 @@ export function AnimatedBackground() {
   return (
     <div className="absolute inset-0 overflow-hidden pointer-events-none">
       {/* Primary blue orb - top left */}
-      <div className="absolute top-[10%] left-[15%] w-[500px] h-[500px] rounded-full bg-[#1d9bf0]/20 blur-[120px] animate-[orb1_20s_ease-in-out_infinite] motion-reduce:animate-none" />
+      <div className="absolute top-[10%] left-[15%] w-[500px] h-[500px] rounded-full bg-brand/20 blur-[120px] animate-[orb1_20s_ease-in-out_infinite] motion-reduce:animate-none" />
 
       {/* Teal orb - bottom right */}
       <div className="absolute bottom-[10%] right-[10%] w-[450px] h-[450px] rounded-full bg-teal-500/15 blur-[100px] animate-[orb2_25s_ease-in-out_infinite] motion-reduce:animate-none" />

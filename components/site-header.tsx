@@ -25,7 +25,7 @@ const feedsNavItem = { href: "/feeds", label: "Feeds", icon: Rss }
 
 const TIER_BADGE_CONFIG: Record<UserTier, { label: string; bg: string; text: string; border: string } | null> = {
   free: { label: "Free", bg: "bg-white/[0.06]", text: "text-white/50", border: "border-white/[0.08]" },
-  starter: { label: "Starter", bg: "bg-[#1d9bf0]/10", text: "text-[#1d9bf0]", border: "border-[#1d9bf0]/20" },
+  starter: { label: "Starter", bg: "bg-brand/10", text: "text-brand", border: "border-brand/20" },
   pro: { label: "Pro", bg: "bg-violet-500/10", text: "text-violet-400", border: "border-violet-500/20" },
   day_pass: { label: "Day Pass", bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20" },
 }
@@ -64,7 +64,7 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
                 className="w-10 h-10 transition-all duration-300 group-hover:scale-105"
               />
               {/* Subtle glow effect */}
-              <div className="absolute inset-0 bg-[#1d9bf0]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-brand/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
             <span className="text-white/90 font-bold text-3xl italic tracking-wide group-hover:text-white transition-colors duration-200" style={{ fontFamily: 'var(--font-cormorant)' }}>
               Clarus
@@ -77,7 +77,7 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
               <Link
                 href="/pricing"
                 className={cn(
-                  "ml-2.5 px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wider border transition-opacity hover:opacity-80",
+                  "ml-2.5 px-2 py-0.5 rounded-full text-[0.625rem] font-semibold uppercase tracking-wider border transition-opacity hover:opacity-80",
                   badgeConfig.bg,
                   badgeConfig.text,
                   badgeConfig.border
@@ -107,13 +107,13 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
                       )}>
                         <Icon className={cn(
                           "w-4 h-4 transition-colors duration-200",
-                          isActive ? "text-[#1d9bf0]" : "group-hover:text-[#1d9bf0]/70"
+                          isActive ? "text-brand" : "group-hover:text-brand/70"
                         )} />
                         <span className="text-sm font-medium">{item.label}</span>
                       </div>
                       {/* Animated underline */}
                       <div className={cn(
-                        "absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] bg-gradient-to-r from-[#1d9bf0] to-[#06b6d4] rounded-full transition-all duration-300",
+                        "absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] bg-gradient-to-r from-brand to-[#06b6d4] rounded-full transition-all duration-300",
                         isActive ? "w-8 opacity-100" : "w-0 opacity-0 group-hover:w-6 group-hover:opacity-60"
                       )} />
                     </Link>

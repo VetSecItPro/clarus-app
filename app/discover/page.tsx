@@ -132,7 +132,7 @@ export default function DiscoverPage() {
   if (!authChecked) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand animate-spin" />
       </div>
     )
   }
@@ -144,9 +144,9 @@ export default function DiscoverPage() {
       <main className="flex-1 max-w-3xl mx-auto px-4 lg:px-6 py-6 sm:py-10 w-full pb-24 sm:pb-10">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 mb-4">
-            <TrendingUp className="w-3.5 h-3.5 text-[#1d9bf0]" />
-            <span className="text-xs font-medium text-[#1d9bf0]">Community Feed</span>
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 mb-4">
+            <TrendingUp className="w-3.5 h-3.5 text-brand" />
+            <span className="text-xs font-medium text-brand">Community Feed</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-white mb-1.5">Discover</h1>
           <p className="text-white/45 text-sm sm:text-base">See what others are analyzing</p>
@@ -165,7 +165,7 @@ export default function DiscoverPage() {
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
                     sort === option.value
-                      ? "bg-[#1d9bf0]/15 text-[#1d9bf0] border border-[#1d9bf0]/20"
+                      ? "bg-brand/15 text-brand border border-brand/20"
                       : "text-white/40 hover:text-white/60"
                   )}
                 >
@@ -239,7 +239,7 @@ export default function DiscoverPage() {
 
             {loadingMore && (
               <div className="flex justify-center py-6">
-                <Loader2 className="w-5 h-5 text-[#1d9bf0] animate-spin" />
+                <Loader2 className="w-5 h-5 text-brand animate-spin" />
               </div>
             )}
           </div>

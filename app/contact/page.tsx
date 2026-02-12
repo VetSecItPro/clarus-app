@@ -33,7 +33,7 @@ export default function ContactPage() {
 
       <main className="flex-1 max-w-2xl mx-auto px-4 py-12 w-full">
         <div className="flex items-center gap-4 mb-8">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#1d9bf0] to-[#1a8cd8] rounded-xl flex items-center justify-center shadow-lg">
+          <div className="w-12 h-12 bg-gradient-to-br from-brand to-brand-hover rounded-xl flex items-center justify-center shadow-lg">
             <Mail className="w-6 h-6 text-white" />
           </div>
           <div>

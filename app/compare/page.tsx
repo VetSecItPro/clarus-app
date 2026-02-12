@@ -111,7 +111,7 @@ function ComparePageContent({ session }: ComparePageProps) {
             </button>
             <div>
               <h1 className="text-xl sm:text-2xl font-semibold text-white flex items-center gap-2">
-                <GitCompareArrows className="w-6 h-6 text-[#1d9bf0]" />
+                <GitCompareArrows className="w-6 h-6 text-brand" />
                 Compare
               </h1>
               <p className="text-white/50 text-xs sm:text-sm">
@@ -138,8 +138,8 @@ function ComparePageContent({ session }: ComparePageProps) {
             animate={{ opacity: 1 }}
             className="flex flex-col items-center justify-center py-20 gap-4"
           >
-            <div className="w-16 h-16 rounded-full bg-[#1d9bf0]/10 flex items-center justify-center">
-              <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+            <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center">
+              <Loader2 className="w-8 h-8 text-brand animate-spin" />
             </div>
             <div className="text-center">
               <h3 className="text-white text-lg font-medium mb-1">
@@ -163,8 +163,8 @@ function ComparePageContent({ session }: ComparePageProps) {
             transition={{ duration: 0.4 }}
             className="flex flex-col items-center justify-center py-20"
           >
-            <div className="w-20 h-20 bg-gradient-to-br from-[#1d9bf0]/20 to-violet-500/20 rounded-full flex items-center justify-center mb-6">
-              <GitCompareArrows className="w-10 h-10 text-[#1d9bf0]" />
+            <div className="w-20 h-20 bg-gradient-to-br from-brand/20 to-violet-500/20 rounded-full flex items-center justify-center mb-6">
+              <GitCompareArrows className="w-10 h-10 text-brand" />
             </div>
             <h3 className="text-white text-lg font-medium mb-2 text-center">
               Compare your sources
@@ -175,7 +175,7 @@ function ComparePageContent({ session }: ComparePageProps) {
             </p>
             <button
               onClick={() => setSelectorOpen(true)}
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white rounded-full transition-colors text-sm font-medium"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-brand hover:bg-brand-hover text-white rounded-full transition-colors text-sm font-medium"
             >
               <GitCompareArrows className="w-4 h-4" />
               Select Content to Compare

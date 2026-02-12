@@ -319,7 +319,7 @@ export function BulkImportDialog({
       case "queued":
         return <Clock className="w-4 h-4 text-white/40" />
       case "processing":
-        return <Loader2 className="w-4 h-4 text-[#1d9bf0] animate-spin" />
+        return <Loader2 className="w-4 h-4 text-brand animate-spin" />
       case "complete":
         return <CheckCircle2 className="w-4 h-4 text-emerald-400" />
       case "failed":
@@ -347,7 +347,7 @@ export function BulkImportDialog({
       >
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
-            <Layers className="w-5 h-5 text-[#1d9bf0]" />
+            <Layers className="w-5 h-5 text-brand" />
             Bulk Import
           </DialogTitle>
           <DialogDescription className="text-white/50">
@@ -366,7 +366,7 @@ export function BulkImportDialog({
               value={rawInput}
               onChange={(e) => setRawInput(e.target.value)}
               placeholder={"Paste URLs here, one per line:\nhttps://example.com/article-1\nhttps://youtube.com/watch?v=abc123\nhttps://example.com/article-2"}
-              className="bg-white/[0.04] border-white/10 text-white placeholder:text-white/25 min-h-[140px] resize-none focus:border-[#1d9bf0]/50 focus:ring-[#1d9bf0]/20"
+              className="bg-white/[0.04] border-white/10 text-white placeholder:text-white/25 min-h-[140px] resize-none focus:border-brand/50 focus:ring-brand/20"
               disabled={isSubmitting}
             />
 
@@ -448,7 +448,7 @@ export function BulkImportDialog({
                 disabled={
                   isSubmitting || validCount === 0 || !userId
                 }
-                className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
+                className="bg-brand hover:bg-brand-hover text-white"
               >
                 {isSubmitting ? (
                   <>
@@ -483,7 +483,7 @@ export function BulkImportDialog({
               </div>
               <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
                 <motion.div
-                  className="h-full bg-[#1d9bf0] rounded-full"
+                  className="h-full bg-brand rounded-full"
                   initial={{ width: 0 }}
                   animate={{
                     width: `${((completedCount + failedCount) / Math.max(totalItems, 1)) * 100}%`,
@@ -518,7 +518,7 @@ export function BulkImportDialog({
                       </p>
                       <p
                         className={cn(
-                          "text-[10px] mt-0.5",
+                          "text-[0.625rem] mt-0.5",
                           item.status === "complete"
                             ? "text-emerald-400/70"
                             : item.status === "failed"
@@ -537,7 +537,7 @@ export function BulkImportDialog({
                           router.push(`/item/${item.contentId}`)
                           handleOpenChange(false)
                         }}
-                        className="flex items-center gap-1 text-xs text-[#1d9bf0] hover:text-[#1a8cd8] transition-colors flex-shrink-0"
+                        className="flex items-center gap-1 text-xs text-brand hover:text-brand-hover transition-colors flex-shrink-0"
                         aria-label={`View analysis for ${item.url}`}
                       >
                         View
@@ -569,7 +569,7 @@ export function BulkImportDialog({
                 <Button
                   size="sm"
                   onClick={() => handleOpenChange(false)}
-                  className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
+                  className="bg-brand hover:bg-brand-hover text-white"
                 >
                   <X className="w-4 h-4" />
                   Close

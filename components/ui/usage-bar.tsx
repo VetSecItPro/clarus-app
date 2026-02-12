@@ -19,7 +19,7 @@ interface UsageBarProps {
 function getBarColor(percentage: number): string {
   if (percentage >= 95) return "bg-red-500"
   if (percentage >= 80) return "bg-amber-500"
-  return "bg-[#1d9bf0]"
+  return "bg-brand"
 }
 
 /**

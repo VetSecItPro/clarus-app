@@ -28,9 +28,9 @@ const verdicts = [
   },
   {
     label: "Must See",
-    color: "text-[#1d9bf0]",
-    bg: "bg-[#1d9bf0]/10",
-    border: "border-[#1d9bf0]/20",
+    color: "text-brand",
+    bg: "bg-brand/10",
+    border: "border-brand/20",
     example: "Original research, expert analysis",
   },
 ]
@@ -65,7 +65,7 @@ export const BeforeYouPlay = memo(function BeforeYouPlay() {
           transition={{ duration: 0.6 }}
           className="text-center mb-14"
         >
-          <p className="text-[#1d9bf0] text-sm font-medium tracking-wide uppercase mb-3">
+          <p className="text-brand text-sm font-medium tracking-wide uppercase mb-3">
             The verdict system
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">

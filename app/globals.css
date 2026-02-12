@@ -34,6 +34,9 @@
   --input: hsl(0 0% 15%);
   --ring: hsl(217 91% 60%);
 
+  --brand: #1d9bf0;
+  --brand-hover: #1a8cd8;
+
   --radius: 0.5rem;
 
   --chart-1: hsl(220 70% 50%);
@@ -81,6 +84,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);

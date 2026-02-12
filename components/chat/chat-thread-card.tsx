@@ -130,12 +130,12 @@ export const ChatThreadCard = memo(function ChatThreadCard({
           {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Title */}
-            <h3 className="text-sm font-medium text-white line-clamp-2 mb-1 group-hover:text-[#1d9bf0] transition-colors">
+            <h3 className="text-sm font-medium text-white line-clamp-2 mb-1 group-hover:text-brand transition-colors">
               {title}
             </h3>
 
             {/* Meta row */}
-            <div className="flex items-center gap-2 text-[11px] text-white/40 mb-1.5">
+            <div className="flex items-center gap-2 text-[0.6875rem] text-white/40 mb-1.5">
               {getTypeIcon(type)}
               <span className="truncate">{domain}</span>
               <span>•</span>
@@ -161,10 +161,10 @@ export const ChatThreadCard = memo(function ChatThreadCard({
                     onBookmark()
                   }}
                   aria-label={is_bookmarked ? "Remove bookmark" : "Add bookmark"}
-                  className="w-9 h-9 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 active:scale-95"
+                  className="w-9 h-9 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 active:scale-95"
                 >
                   {is_bookmarked ? (
-                    <BookmarkCheck className="w-4 h-4 text-[#1d9bf0]" />
+                    <BookmarkCheck className="w-4 h-4 text-brand" />
                   ) : (
                     <Bookmark className="w-4 h-4" />
                   )}
@@ -177,7 +177,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
                     onDelete()
                   }}
                   aria-label="Delete item"
-                  className="w-9 h-9 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-red-400 transition-colors focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 active:scale-95"
+                  className="w-9 h-9 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-red-400 transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 active:scale-95"
                 >
                   <Trash2 className="w-4 h-4" />
                 </button>
@@ -186,7 +186,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
 
             {/* Quality score */}
             {triage && (
-              <div className="px-2 py-0.5 rounded-full bg-[#1d9bf0]/20 text-[10px] font-semibold text-[#1d9bf0]">
+              <div className="px-2 py-0.5 rounded-full bg-brand/20 text-[0.625rem] font-semibold text-brand">
                 {triage.quality_score}/10
               </div>
             )}
@@ -194,7 +194,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
             {/* Recommendation */}
             {recommendation && (
               <div
-                className={`px-2 py-0.5 rounded-full ${recommendation.bg} text-[10px] font-medium ${recommendation.color}`}
+                className={`px-2 py-0.5 rounded-full ${recommendation.bg} text-[0.625rem] font-medium ${recommendation.color}`}
               >
                 {recommendation.label}
               </div>
@@ -202,7 +202,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
 
             {/* Message count */}
             {message_count > 0 && (
-              <div className="flex items-center gap-1 text-[10px] text-white/40">
+              <div className="flex items-center gap-1 text-[0.625rem] text-white/40">
                 <MessageSquare className="w-3 h-3" />
                 <span>{message_count}</span>
               </div>

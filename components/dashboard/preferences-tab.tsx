@@ -170,7 +170,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
           onClick={() => updatePref("is_active", !prefs.is_active)}
           className={cn(
             "relative w-11 h-6 rounded-full transition-colors",
-            prefs.is_active ? "bg-[#1d9bf0]" : "bg-white/10"
+            prefs.is_active ? "bg-brand" : "bg-white/10"
           )}
         >
           <div
@@ -203,14 +203,14 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
                   className={cn(
                     "flex items-start gap-3 p-3 rounded-xl border text-left transition-all",
                     isSelected
-                      ? "border-[#1d9bf0]/40 bg-[#1d9bf0]/[0.06] ring-1 ring-[#1d9bf0]/20"
+                      ? "border-brand/40 bg-brand/[0.06] ring-1 ring-brand/20"
                       : "border-white/[0.06] bg-white/[0.02] hover:bg-white/[0.04]"
                   )}
                 >
                   <Icon
                     className={cn(
                       "w-5 h-5 mt-0.5 shrink-0",
-                      isSelected ? "text-[#1d9bf0]" : "text-white/30"
+                      isSelected ? "text-brand" : "text-white/30"
                     )}
                   />
                   <div>
@@ -223,7 +223,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
                     <p className="text-xs text-white/40 mt-0.5">{mode.description}</p>
                   </div>
                   {isSelected && (
-                    <Check className="w-4 h-4 text-[#1d9bf0] ml-auto mt-0.5 shrink-0" />
+                    <Check className="w-4 h-4 text-brand ml-auto mt-0.5 shrink-0" />
                   )}
                 </button>
               )
@@ -251,11 +251,11 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
                   className={cn(
                     "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm transition-all",
                     isSelected
-                      ? "border-[#1d9bf0]/40 bg-[#1d9bf0]/[0.06] text-white"
+                      ? "border-brand/40 bg-brand/[0.06] text-white"
                       : "border-white/[0.06] bg-white/[0.02] text-white/60 hover:bg-white/[0.04]"
                   )}
                 >
-                  {isSelected && <Check className="w-3.5 h-3.5 text-[#1d9bf0]" />}
+                  {isSelected && <Check className="w-3.5 h-3.5 text-brand" />}
                   <div className="text-left">
                     <span className="font-medium">{opt.label}</span>
                     <span className="text-white/30 ml-1.5 hidden sm:inline">— {opt.description}</span>
@@ -293,7 +293,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
                   className={cn(
                     "px-4 py-2 rounded-full border text-sm font-medium transition-all",
                     isSelected
-                      ? "border-[#1d9bf0]/40 bg-[#1d9bf0]/10 text-[#1d9bf0]"
+                      ? "border-brand/40 bg-brand/10 text-brand"
                       : isDisabled
                       ? "border-white/[0.04] bg-white/[0.01] text-white/20 cursor-not-allowed"
                       : "border-white/[0.08] bg-white/[0.02] text-white/50 hover:bg-white/[0.04]"
@@ -321,7 +321,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
           className={cn(
             "w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-medium transition-all",
             dirty
-              ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
+              ? "bg-brand hover:bg-brand-hover text-white"
               : "bg-white/[0.06] text-white/30 cursor-not-allowed"
           )}
         >
