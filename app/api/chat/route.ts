@@ -8,7 +8,7 @@ import { z } from "zod"
 import { enforceAndIncrementUsage } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
 import { authenticateRequest } from "@/lib/auth"
-import { sanitizeForPrompt, sanitizeChatMessage, wrapUserContent, INSTRUCTION_ANCHOR } from "@/lib/prompt-sanitizer"
+import { sanitizeForPrompt, sanitizeChatMessage, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -256,6 +256,9 @@ export async function POST(req: NextRequest) {
     }
 
     // PERF: Parallelize summary and prompt queries instead of running sequentially
+    // NOTE: We fetch active_chat_prompt for model config (temperature, top_p, max_tokens, model_name) only.
+    // The system_content field in the DB is NOT used — the system prompt is built below with
+    // grounding rules, citation instructions, and injection defense that the DB prompt lacks.
     const [summaryQueryResult, promptQueryResult] = await Promise.all([
       supabaseAdmin
         .from("summaries")
@@ -267,7 +270,7 @@ export async function POST(req: NextRequest) {
         .maybeSingle(),
       supabaseAdmin
         .from("active_chat_prompt")
-        .select("system_content, temperature, top_p, max_tokens, model_name")
+        .select("temperature, top_p, max_tokens, model_name")
         .eq("id", 1)
         .single(),
     ])
@@ -469,6 +472,13 @@ ${INSTRUCTION_ANCHOR}`
       topP: promptData.top_p ?? undefined,
       maxOutputTokens: Math.min(promptData.max_tokens ?? LIMITS.MAX_OUTPUT_TOKENS, LIMITS.MAX_OUTPUT_TOKENS),
       abortSignal: req.signal,
+      onFinish({ text }) {
+        // Monitor for prompt injection leakage (non-blocking — response already sent)
+        const leakage = detectOutputLeakage(text, "chat-response")
+        if (leakage.length > 0) {
+          console.warn(`[Chat] Output leakage detected for content ${contentIdValidation.sanitized}: [${leakage.join(", ")}]`)
+        }
+      },
     })
 
     return result.toUIMessageStreamResponse({
