@@ -11,8 +11,6 @@ import {
   Plus,
 } from "lucide-react"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
-import SiteHeader from "@/components/site-header"
-import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { CompareSelector } from "@/components/compare/compare-selector"
 import { CompareResults } from "@/components/compare/compare-results"
 
@@ -96,8 +94,6 @@ function ComparePageContent({ session }: ComparePageProps) {
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      <SiteHeader />
-
       <main id="main-content" className="flex-1 max-w-3xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -196,7 +192,6 @@ function ComparePageContent({ session }: ComparePageProps) {
         />
       )}
 
-      <MobileBottomNav />
     </div>
   )
 }

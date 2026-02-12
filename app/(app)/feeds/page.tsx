@@ -9,8 +9,6 @@ import Link from "next/link"
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
-import SiteHeader from "@/components/site-header"
-import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { TIER_LIMITS, TIER_FEATURES } from "@/lib/tier-limits"
 import { cn } from "@/lib/utils"
 import { useUserTier } from "@/lib/hooks/use-user-tier"
@@ -157,8 +155,6 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <SiteHeader />
-
       <main id="main-content" className="max-w-3xl mx-auto px-4 py-8 pb-24 sm:pb-8">
         {/* Page header */}
         <div className="flex items-center justify-between mb-6">
@@ -372,8 +368,6 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
           </>
         )}
       </main>
-
-      <MobileBottomNav />
     </div>
   )
 }
