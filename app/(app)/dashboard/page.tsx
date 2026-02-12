@@ -10,8 +10,6 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
-import SiteHeader from "@/components/site-header"
-import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { UsageBar } from "@/components/ui/usage-bar"
 import { useUsage } from "@/lib/hooks/use-usage"
 import { useUserTier } from "@/lib/hooks/use-user-tier"
@@ -91,8 +89,6 @@ function DashboardPage({ session }: DashboardPageProps) {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <SiteHeader />
-
       <main className="max-w-2xl mx-auto px-4 py-8 pb-24 sm:pb-8">
         {/* Page header */}
         <div className="mb-8">
@@ -225,8 +221,6 @@ function DashboardPage({ session }: DashboardPageProps) {
           <PreferencesTab hasAccess={hasPreferencesAccess} />
         )}
       </main>
-
-      <MobileBottomNav />
     </div>
   )
 }

@@ -7,8 +7,6 @@ import { supabase } from "@/lib/supabase"
 import { clearAuthCache, getCachedSession } from "@/components/with-auth"
 import { useUserTier } from "@/lib/hooks/use-user-tier"
 import { toast } from "sonner"
-import SiteHeader from "@/components/site-header"
-import MobileBottomNav from "@/components/mobile-bottom-nav"
 
 const TIER_DISPLAY: Record<string, string> = {
   free: "Free",
@@ -104,7 +102,6 @@ export default function AccountPage() {
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      <SiteHeader />
       <main id="main-content" className="flex-1 max-w-2xl mx-auto w-full px-4 sm:px-6 py-8 sm:py-12 pb-24 sm:pb-12">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
@@ -306,7 +303,6 @@ export default function AccountPage() {
           </div>
         </section>
       </main>
-      <MobileBottomNav />
     </div>
   )
 }

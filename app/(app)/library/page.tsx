@@ -5,8 +5,6 @@ import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
 import { useEffect, useState, useCallback } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
-import SiteHeader from "@/components/site-header"
-import MobileBottomNav from "@/components/mobile-bottom-nav"
 import {
   Search,
   SlidersHorizontal,
@@ -328,8 +326,6 @@ function LibraryPageContent({ session }: LibraryPageProps) {
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      <SiteHeader />
-
       <div className="flex-1 flex max-w-6xl mx-auto w-full">
         {/* Collections Sidebar (desktop) */}
         {showCollectionsSidebar && (
@@ -707,7 +703,6 @@ function LibraryPageContent({ session }: LibraryPageProps) {
         </main>
       </div>
 
-      <MobileBottomNav />
     </div>
   )
 }

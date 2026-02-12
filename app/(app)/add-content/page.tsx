@@ -13,8 +13,6 @@ import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle, CheckCircle, Loader2 } from "lucide-react"
-import SiteHeader from "@/components/site-header"
-import MobileBottomNav from "@/components/mobile-bottom-nav"
 
 // This component assumes it's rendered within an authenticated context
 
@@ -119,8 +117,6 @@ export default function AddContentPage() {
 
   return (
     <div className="min-h-screen bg-black">
-      <SiteHeader />
-
       <main id="main-content" className="mx-auto max-w-lg px-4 py-8 pb-24 sm:pb-8">
         <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
           <div className="mb-6">
@@ -211,8 +207,6 @@ export default function AddContentPage() {
           </form>
         </div>
       </main>
-
-      <MobileBottomNav />
     </div>
   )
 }

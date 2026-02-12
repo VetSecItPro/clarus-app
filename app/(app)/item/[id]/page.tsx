@@ -17,8 +17,6 @@ import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
 import { SectionFeedback } from "@/components/ui/section-feedback"
 import type { CrossReference } from "@/components/ui/truth-check-card"
-import SiteHeader from "@/components/site-header"
-import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { useUpgradeModal } from "@/lib/hooks/use-upgrade-modal"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import {
@@ -1283,8 +1281,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      <SiteHeader />
-
       {/* Secondary nav bar */}
       <div className="bg-black/90 backdrop-blur-xl border-b border-white/[0.08] fixed sm:sticky top-0 sm:top-16 left-0 right-0 sm:left-auto sm:right-auto z-20">
         <div className="max-w-7xl mx-auto px-2 sm:px-4 lg:px-6 py-1 sm:py-3">
@@ -2143,7 +2139,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         limit={upgradeModal.limit}
       />
 
-      <MobileBottomNav />
     </div>
   )
 }
