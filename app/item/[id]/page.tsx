@@ -16,6 +16,7 @@ import { YouTubePlayer, type YouTubePlayerRef } from "@/components/ui/youtube-pl
 import { toast } from "sonner"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
+import { SectionFeedback } from "@/components/ui/section-feedback"
 import type { CrossReference } from "@/components/ui/truth-check-card"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
@@ -174,6 +175,12 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const [crossReferences, setCrossReferences] = useState<CrossReference[]>([])
   const upgradeModal = useUpgradeModal()
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("apply")
+
+  // Section-level feedback state
+  type FeedbackMap = Record<string, boolean | null>
+  type ClaimFlagEntry = { claim_index: number; flag_reason: string | null }
+  const [sectionFeedback, setSectionFeedback] = useState<FeedbackMap>({})
+  const [claimFlags, setClaimFlags] = useState<ClaimFlagEntry[]>([])
 
   const isDesktop = useIsDesktop()
   const { startTracking: startAnalysisTracking, markComplete: markAnalysisComplete, pausePolling, resumePolling } = useActiveAnalysis()
@@ -588,6 +595,67 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     fetchCrossRefs()
   }, [item?.id, hasTruthCheck])
 
+  // Fetch user's section feedback for this content
+  useEffect(() => {
+    if (!session?.user?.id || !contentId) return
+    let cancelled = false
+    fetch(`/api/feedback?content_id=${contentId}`)
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (cancelled || !data?.feedback) return
+        const feedbackMap: FeedbackMap = {}
+        const flags: ClaimFlagEntry[] = []
+        for (const fb of data.feedback) {
+          if (fb.claim_index !== null && fb.claim_index >= 0) {
+            flags.push({ claim_index: fb.claim_index, flag_reason: fb.flag_reason })
+          } else {
+            feedbackMap[fb.section_type] = fb.is_helpful
+          }
+        }
+        setSectionFeedback(feedbackMap)
+        setClaimFlags(flags)
+      })
+      .catch(() => { /* non-fatal */ })
+    return () => { cancelled = true }
+  }, [contentId, session?.user?.id])
+
+  // Handle flagging a truth check claim as inaccurate
+  const handleFlagClaim = useCallback(async (claimIndex: number) => {
+    if (!contentId) return
+    const alreadyFlagged = claimFlags.some(f => f.claim_index === claimIndex)
+    // Optimistic toggle
+    if (alreadyFlagged) {
+      setClaimFlags(prev => prev.filter(f => f.claim_index !== claimIndex))
+    } else {
+      setClaimFlags(prev => [...prev, { claim_index: claimIndex, flag_reason: null }])
+    }
+    try {
+      const res = await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content_id: contentId,
+          section_type: "accuracy",
+          is_helpful: alreadyFlagged ? null : false,
+          claim_index: claimIndex,
+        }),
+      })
+      if (!res.ok) {
+        // Revert
+        if (alreadyFlagged) {
+          setClaimFlags(prev => [...prev, { claim_index: claimIndex, flag_reason: null }])
+        } else {
+          setClaimFlags(prev => prev.filter(f => f.claim_index !== claimIndex))
+        }
+        toast.error("Failed to save flag")
+        return
+      }
+      toast.success(alreadyFlagged ? "Flag removed" : "Flagged as inaccurate", { duration: 2000 })
+    } catch {
+      toast.error("Failed to save flag")
+    }
+  }, [contentId, claimFlags])
+
   // PERF: tier fetching moved to useUserTier hook (shared SWR cache)
 
   // Handle language change — fetch existing translation or trigger new one
@@ -741,11 +809,12 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     ? detectPaywallTruncation(item.url, item.full_text, item.type || "article")
     : null
 
-  // Analysis staleness warning — cached or old analyses may be outdated
+  // Analysis staleness warning — old analyses may be outdated
   const analysisAgeDays = summary?.created_at
     ? Math.floor((Date.now() - new Date(summary.created_at).getTime()) / (1000 * 60 * 60 * 24))
     : null
   const isAnalysisStale = analysisAgeDays !== null && analysisAgeDays > 7
+  const isAnalysisVeryStale = analysisAgeDays !== null && analysisAgeDays > 30
 
   // Analysis cards content (shared between desktop right panel and mobile analysis tab)
   const analysisContent = (
@@ -780,17 +849,35 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         </div>
       )}
       {isAnalysisStale && !processingError && !isPolling && (
-        <div className="p-3 rounded-xl bg-blue-500/10 border border-blue-500/20 flex gap-3 items-center justify-between">
+        <div className={cn(
+          "p-3 rounded-xl flex gap-3 items-center justify-between",
+          isAnalysisVeryStale
+            ? "bg-red-500/10 border border-red-500/20"
+            : "bg-amber-500/10 border border-amber-500/20"
+        )}>
           <div className="flex gap-3 items-start">
-            <RefreshCw className="w-4 h-4 text-blue-400 mt-0.5 shrink-0" />
-            <p className="text-sm text-blue-300/80 leading-relaxed">
-              This analysis is {analysisAgeDays} days old and may be outdated.
+            <RefreshCw className={cn(
+              "w-4 h-4 mt-0.5 shrink-0",
+              isAnalysisVeryStale ? "text-red-400" : "text-amber-400"
+            )} />
+            <p className={cn(
+              "text-sm leading-relaxed",
+              isAnalysisVeryStale ? "text-red-300/80" : "text-amber-300/80"
+            )}>
+              {isAnalysisVeryStale
+                ? `This analysis is ${analysisAgeDays} days old and likely outdated. Re-analyze for fresh results.`
+                : `This analysis is ${analysisAgeDays} days old and may not reflect recent changes.`}
             </p>
           </div>
           <button
             onClick={() => handleRegenerate()}
             disabled={isRegenerating}
-            className="px-3 py-1.5 rounded-full bg-blue-500/20 border border-blue-500/30 text-blue-300 hover:bg-blue-500/30 transition-all disabled:opacity-50 text-xs whitespace-nowrap"
+            className={cn(
+              "px-3 py-1.5 rounded-full transition-all disabled:opacity-50 text-xs whitespace-nowrap",
+              isAnalysisVeryStale
+                ? "bg-red-500/20 border border-red-500/30 text-red-300 hover:bg-red-500/30"
+                : "bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:bg-amber-500/30"
+            )}
           >
             {isRegenerating ? "Re-analyzing..." : "Re-analyze"}
           </button>
@@ -827,6 +914,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 icon={<Eye className="w-4 h-4" />}
                 headerColor="blue"
                 minContentHeight="150px"
+                headerRight={summary?.brief_overview && !isPolling ? <SectionFeedback contentId={contentId} sectionType="overview" initialValue={sectionFeedback.overview ?? null} /> : undefined}
               >
                 {summary?.brief_overview ? (
                   <motion.p
@@ -853,6 +941,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 icon={<Sparkles className="w-4 h-4" />}
                 headerColor="amber"
                 minContentHeight="350px"
+                headerRight={summary?.triage && !isPolling ? <SectionFeedback contentId={contentId} sectionType="triage" initialValue={sectionFeedback.triage ?? null} /> : undefined}
               >
                 {summary?.triage ? (
                   <TriageCard triage={summary.triage as unknown as TriageData} />
@@ -897,6 +986,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 icon={<Lightbulb className="w-4 h-4" />}
                 headerColor="cyan"
                 minContentHeight="500px"
+                headerRight={summary?.mid_length_summary && !isPolling ? <SectionFeedback contentId={contentId} sectionType="takeaways" initialValue={sectionFeedback.takeaways ?? null} /> : undefined}
               >
                 {summary?.mid_length_summary ? (
                   <motion.div
@@ -927,9 +1017,10 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 icon={<Shield className="w-4 h-4" />}
                 headerColor="emerald"
                 minContentHeight="650px"
+                headerRight={summary?.truth_check && !isPolling ? <SectionFeedback contentId={contentId} sectionType="accuracy" initialValue={sectionFeedback.accuracy ?? null} /> : undefined}
               >
                 {summary?.truth_check ? (
-                  <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} crossReferences={crossReferences} />
+                  <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} crossReferences={crossReferences} contentId={contentId} claimFlags={claimFlags} onFlagClaim={handleFlagClaim} />
                 ) : (
                   <div className="space-y-4" style={{ minHeight: "650px" }}>
                     <div>
@@ -989,6 +1080,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 icon={<Target className="w-4 h-4" />}
                 headerColor="orange"
                 minContentHeight="350px"
+                headerRight={summary?.action_items && !isPolling ? <SectionFeedback contentId={contentId} sectionType="action_items" initialValue={sectionFeedback.action_items ?? null} /> : undefined}
               >
                 {summary?.action_items ? (
                   <ActionItemsCard actionItems={summary.action_items as unknown as ActionItemsData} />
@@ -1045,14 +1137,21 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                       <Loader2 className="w-4 h-4 text-[#1d9bf0] animate-spin" />
                     )}
                   </h3>
-                  {summary?.detailed_summary && (
-                    <motion.div
-                      animate={{ rotate: isDetailedExpanded ? 180 : 0 }}
-                      transition={{ duration: 0.2 }}
-                    >
-                      <ChevronDown className="w-5 h-5 text-white/50" />
-                    </motion.div>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {summary?.detailed_summary && !isPolling && (
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <SectionFeedback contentId={contentId} sectionType="detailed" initialValue={sectionFeedback.detailed ?? null} />
+                      </div>
+                    )}
+                    {summary?.detailed_summary && (
+                      <motion.div
+                        animate={{ rotate: isDetailedExpanded ? 180 : 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        <ChevronDown className="w-5 h-5 text-white/50" />
+                      </motion.div>
+                    )}
+                  </div>
                 </div>
 
                 <AnimatePresence>

@@ -33,6 +33,11 @@ type SummaryData = {
     worth_your_time?: string
     one_liner?: string
   } | null
+  truth_check: {
+    overall_rating?: string
+    issues?: unknown[]
+    sources_quality?: string
+  } | null
 }
 
 /** A content item enriched with ratings, summaries, and library metadata. */
@@ -116,6 +121,7 @@ const searchFetcher = async (
       brief_overview: result.brief_overview,
       mid_length_summary: null,
       triage: result.triage,
+      truth_check: null,
     },
     relevance: result.relevance,
   }))
@@ -162,7 +168,7 @@ const browseFetcher = async (
 
   let query = supabase
     .from("content")
-    .select(`*, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, triage), tags`)
+    .select(`*, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, triage, truth_check), tags`)
     .eq("user_id", options.userId)
 
   if (options.filterType && options.filterType !== "all") {
