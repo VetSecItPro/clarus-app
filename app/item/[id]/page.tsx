@@ -34,6 +34,7 @@ import { LanguageSelector } from "@/components/ui/language-selector"
 // PERF: use shared SWR hook instead of independent Supabase query for tier data
 import { useUserTier } from "@/lib/hooks/use-user-tier"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
+import { getModeOption, type AnalysisMode } from "@/lib/analysis-modes"
 
 // PERF: Dynamic imports — reduce initial bundle by lazy-loading heavy/conditional components
 const MarkdownRenderer = dynamic(() => import("@/components/markdown-renderer").then(m => ({ default: m.MarkdownRenderer })), { ssr: false })
@@ -172,6 +173,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const [isTogglingPublish, setIsTogglingPublish] = useState(false)
   const [crossReferences, setCrossReferences] = useState<CrossReference[]>([])
   const upgradeModal = useUpgradeModal()
+  const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("apply")
 
   const isDesktop = useIsDesktop()
   const { startTracking: startAnalysisTracking, markComplete: markAnalysisComplete, pausePolling, resumePolling } = useActiveAnalysis()
@@ -193,6 +195,21 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const multiLanguageEnabled = tierFeatures.multiLanguageAnalysis
   // Track the language before a translation attempt so we can revert on failure
   const prevLanguageRef = useRef<AnalysisLanguage>(analysisLanguage)
+
+  // Fetch user's analysis mode preference for badge display
+  useEffect(() => {
+    if (!session?.user?.id) return
+    let cancelled = false
+    fetch("/api/preferences")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!cancelled && data?.preferences?.analysis_mode) {
+          setAnalysisMode(data.preferences.analysis_mode as AnalysisMode)
+        }
+      })
+      .catch(() => { /* use default */ })
+    return () => { cancelled = true }
+  }, [session?.user?.id])
 
   const isContentProcessing = useCallback((content: ContentWithSummary | null): boolean => {
     if (!content) return true
@@ -1469,6 +1486,16 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                         )}
                       </span>
                       <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
+                      {(() => {
+                        const modeOpt = getModeOption(analysisMode)
+                        const ModeIcon = modeOpt.icon
+                        return (
+                          <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center gap-1">
+                            <ModeIcon className="w-3 h-3" />
+                            {modeOpt.label}
+                          </span>
+                        )
+                      })()}
                     </div>
                   </div>
 
@@ -1569,6 +1596,16 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                         )}
                       </span>
                       <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
+                      {(() => {
+                        const modeOpt = getModeOption(analysisMode)
+                        const ModeIcon = modeOpt.icon
+                        return (
+                          <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center gap-1">
+                            <ModeIcon className="w-3 h-3" />
+                            {modeOpt.label}
+                          </span>
+                        )
+                      })()}
                     </div>
                   </div>
 

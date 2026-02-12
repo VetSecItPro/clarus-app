@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useState } from "react"
+import { useState, type ReactNode } from "react"
 import Link from "next/link"
 import { ExternalLink } from "lucide-react"
 import type { TruthCheckData, CitationSource } from "@/types/database.types"
@@ -27,8 +27,6 @@ interface TruthCheckCardProps {
 function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
   const [isOpen, setIsOpen] = useState(false)
 
-  // Find cross-references whose source claim is similar to this issue's claim
-  // Simple: match by checking if any cross-ref claimText overlaps
   if (matches.length === 0) return null
 
   return (
@@ -60,7 +58,6 @@ function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
               </div>
             </Link>
           ))}
-          {/* Invisible close helper */}
           <button
             className="text-[10px] text-white/30 hover:text-white/50 w-full text-center pt-1"
             onClick={() => setIsOpen(false)}
@@ -69,7 +66,6 @@ function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
           </button>
         </div>
       )}
-      {/* Click-outside to close */}
       {isOpen && (
         <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
       )}
@@ -77,14 +73,66 @@ function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
   )
 }
 
-/** Renders clickable citation source links for a truth check issue */
-function CitationLinks({ sources }: { sources: CitationSource[] }) {
+/**
+ * Renders assessment text with Perplexity-style [N] inline citations.
+ * Parses `[1]`, `[2]`, etc. and renders them as superscript links that
+ * either scroll to the reference list or open the source URL directly.
+ */
+function InlineCitedText({ text, references }: { text: string; references?: CitationSource[] }) {
+  if (!references || references.length === 0) {
+    return <span>{text}</span>
+  }
+
+  const parts: ReactNode[] = []
+  const regex = /\[(\d+)\]/g
+  let lastIndex = 0
+  let match: RegExpExecArray | null
+
+  while ((match = regex.exec(text)) !== null) {
+    // Add text before the citation
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index))
+    }
+
+    const refNum = parseInt(match[1], 10)
+    const ref = refNum >= 1 && refNum <= references.length ? references[refNum - 1] : null
+
+    if (ref) {
+      parts.push(
+        <a
+          key={`cite-${match.index}`}
+          href={ref.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[10px] text-[#1d9bf0] font-semibold cursor-pointer hover:underline align-super ml-0.5 mr-0.5"
+          title={`${ref.title} — ${ref.url}`}
+        >
+          [{refNum}]
+        </a>
+      )
+    } else {
+      // Invalid ref number — render as plain text
+      parts.push(match[0])
+    }
+
+    lastIndex = match.index + match[0].length
+  }
+
+  // Add remaining text after last citation
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex))
+  }
+
+  return <span>{parts}</span>
+}
+
+/** Legacy per-issue citation links (backward compat for cached analyses without top-level references) */
+function LegacyCitationLinks({ sources }: { sources: CitationSource[] }) {
   if (sources.length === 0) return null
 
   return (
     <div className="flex flex-wrap gap-1.5 mt-1.5">
       {sources.map((source, i) => {
-        // Extract a readable hostname for display fallback
         let displayTitle = source.title
         if (!displayTitle) {
           try {
@@ -112,12 +160,54 @@ function CitationLinks({ sources }: { sources: CitationSource[] }) {
   )
 }
 
+/** Numbered reference list rendered at the bottom of the truth check section */
+function ReferenceList({ references }: { references: CitationSource[] }) {
+  if (references.length === 0) return null
+
+  return (
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3, delay: 0.35 }}
+    >
+      <div className="text-xs text-white/40 uppercase tracking-wider mb-2">Sources</div>
+      <div className="space-y-1">
+        {references.map((ref, i) => {
+          let domain: string
+          try {
+            domain = new URL(ref.url).hostname.replace("www.", "")
+          } catch {
+            domain = ref.url
+          }
+
+          return (
+            <div key={ref.url} className="flex items-start gap-2">
+              <span className="text-[11px] text-[#1d9bf0] font-semibold shrink-0 mt-px w-4 text-right">
+                {i + 1}.
+              </span>
+              <a
+                href={ref.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-white/60 hover:text-[#1d9bf0] transition-colors flex items-center gap-1 min-w-0"
+              >
+                <span className="truncate">
+                  {ref.title && ref.title !== domain ? `${ref.title} — ` : ""}{domain}
+                </span>
+                <ExternalLink className="w-2.5 h-2.5 shrink-0 text-white/30" />
+              </a>
+            </div>
+          )
+        })}
+      </div>
+    </motion.div>
+  )
+}
+
 function findMatchesForClaim(claim: string, crossReferences: CrossReference[]): CrossReferenceMatch[] {
-  // Find exact or near-exact match in cross-references
   const normalizedClaim = claim.toLowerCase().trim()
   for (const ref of crossReferences) {
     const normalizedRef = ref.claimText.toLowerCase().trim()
-    // Check if the claim text is substantially similar
     if (
       normalizedClaim === normalizedRef ||
       normalizedClaim.includes(normalizedRef) ||
@@ -130,6 +220,9 @@ function findMatchesForClaim(claim: string, crossReferences: CrossReference[]): 
 }
 
 export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardProps) {
+  // Determine if we have top-level references (new Perplexity-style) or need legacy per-issue links
+  const hasReferences = truthCheck.references && truthCheck.references.length > 0
+
   const getIssueIcon = (type: string) => {
     const icons: Record<string, string> = {
       "misinformation": "🚫",
@@ -173,7 +266,13 @@ export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardPr
                   <span className="text-base mt-0.5">{getIssueIcon(issue.type)}</span>
                   <div className="flex-1 min-w-0">
                     <div className="text-sm text-white/90 font-medium mb-1">{issue.claim_or_issue}</div>
-                    <div className="text-xs text-white/60 mb-1">{issue.assessment}</div>
+                    <div className="text-xs text-white/60 mb-1">
+                      {hasReferences ? (
+                        <InlineCitedText text={issue.assessment} references={truthCheck.references} />
+                      ) : (
+                        issue.assessment
+                      )}
+                    </div>
                     <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap">
                       <span>
                         {issue.timestamp && <span className="mr-2">{issue.timestamp}</span>}
@@ -183,8 +282,9 @@ export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardPr
                         <CrossRefBadge matches={matches} />
                       )}
                     </div>
-                    {issue.sources && issue.sources.length > 0 && (
-                      <CitationLinks sources={issue.sources} />
+                    {/* Legacy per-issue citation links — only when no top-level references */}
+                    {!hasReferences && issue.sources && issue.sources.length > 0 && (
+                      <LegacyCitationLinks sources={issue.sources} />
                     )}
                   </div>
                 </div>
@@ -223,6 +323,11 @@ export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardPr
           <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Sources Quality</div>
           <div className="text-sm text-white/70">{truthCheck.sources_quality}</div>
         </motion.div>
+      )}
+
+      {/* Reference List — Perplexity-style numbered sources at bottom */}
+      {hasReferences && (
+        <ReferenceList references={truthCheck.references!} />
       )}
     </div>
   )

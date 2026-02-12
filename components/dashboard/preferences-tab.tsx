@@ -3,14 +3,13 @@
 import { useState, useEffect, useCallback } from "react"
 import { motion } from "framer-motion"
 import {
-  BookOpen, Zap, Microscope, Sparkles, Film,
   Lock, Loader2, Check, Power,
 } from "lucide-react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { cn } from "@/lib/utils"
+import { MODE_OPTIONS, type AnalysisMode } from "@/lib/analysis-modes"
 
-type AnalysisMode = "learn" | "apply" | "evaluate" | "discover" | "create"
 type ExpertiseLevel = "beginner" | "intermediate" | "expert"
 type FocusArea = "accuracy" | "takeaways" | "efficiency" | "depth" | "bias" | "novelty"
 
@@ -20,14 +19,6 @@ interface Preferences {
   focus_areas: FocusArea[]
   is_active: boolean
 }
-
-const MODE_OPTIONS: { id: AnalysisMode; label: string; description: string; icon: typeof BookOpen }[] = [
-  { id: "learn", label: "Learn", description: "Help me understand this", icon: BookOpen },
-  { id: "apply", label: "Apply", description: "Help me use this", icon: Zap },
-  { id: "evaluate", label: "Evaluate", description: "Help me assess this critically", icon: Microscope },
-  { id: "discover", label: "Discover", description: "Give me the highlights", icon: Sparkles },
-  { id: "create", label: "Create", description: "Help me learn as a creator", icon: Film },
-]
 
 const EXPERTISE_OPTIONS: { id: ExpertiseLevel; label: string; description: string }[] = [
   { id: "beginner", label: "Beginner", description: "I'm new to most topics" },
