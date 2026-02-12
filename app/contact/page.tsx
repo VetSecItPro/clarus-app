@@ -31,7 +31,7 @@ export default function ContactPage() {
     <div className="min-h-screen bg-black flex flex-col">
       <PublicHeader />
 
-      <main className="flex-1 max-w-2xl mx-auto px-4 py-12 w-full">
+      <main id="main-content" className="flex-1 max-w-2xl mx-auto px-4 py-12 w-full">
         <div className="flex items-center gap-4 mb-8">
           <div className="w-12 h-12 bg-gradient-to-br from-brand to-brand-hover rounded-xl flex items-center justify-center shadow-lg">
             <Mail className="w-6 h-6 text-white" />

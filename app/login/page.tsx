@@ -109,9 +109,9 @@ export default function LoginPage() {
                 className="h-36 w-auto"
               />
             </Link>
-            <h2 className="text-4xl font-bold text-white mb-4">
+            <p className="text-4xl font-bold text-white mb-4">
               Welcome back
-            </h2>
+            </p>
             <p className="text-white/50 text-lg max-w-md">
               Sign in to continue analyzing content and gaining clarity on what matters.
             </p>
@@ -160,7 +160,7 @@ export default function LoginPage() {
                 Email address
               </label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                 <input
                   id="email"
                   type="email"
@@ -168,6 +168,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
+                  autoComplete="email"
                   className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                 />
               </div>
@@ -184,7 +185,7 @@ export default function LoginPage() {
                 </Link>
               </div>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                 <input
                   id="password"
                   type={showPassword ? "text" : "password"}
@@ -192,12 +193,13 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
+                  autoComplete="current-password"
                   className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
                   aria-label={showPassword ? "Hide password" : "Show password"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -207,7 +209,7 @@ export default function LoginPage() {
 
             {/* Error message */}
             {error && (
-              <div className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
+              <div role="alert" className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
                 <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
                 <span>{error}</span>
               </div>
@@ -233,7 +235,7 @@ export default function LoginPage() {
           </form>
 
           {/* Footer */}
-          <p className="mt-6 text-center text-[0.625rem] text-white/30">
+          <p className="mt-6 text-center text-[0.625rem] text-white/40">
             By signing in, you agree to our{" "}
             <Link href="/terms" className="text-white/50 hover:text-white/70 underline">
               Terms of Service

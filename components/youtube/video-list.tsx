@@ -99,8 +99,9 @@ export function VideoList({ subscriptionId, channelName }: VideoListProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
+      <div className="flex items-center justify-center py-8" role="status">
         <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+        <span className="sr-only">Loading videos</span>
       </div>
     )
   }

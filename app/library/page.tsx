@@ -244,7 +244,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     }
   }, [refresh])
 
-  const handleDelete = async (itemId: string) => {
+  const handleDelete = useCallback(async (itemId: string) => {
     if (!window.confirm("Delete this item? This cannot be undone.")) return
 
     setLocalItems((prev) => prev.filter((item) => item.id !== itemId))
@@ -258,9 +258,9 @@ function LibraryPageContent({ session }: LibraryPageProps) {
       toast.error("Failed to delete item")
       refresh()
     }
-  }
+  }, [refresh])
 
-  const handleToggleBookmark = async (item: HistoryItem) => {
+  const handleToggleBookmark = useCallback(async (item: HistoryItem) => {
     const newValue = !item.is_bookmarked
 
     setLocalItems((prev) =>
@@ -284,11 +284,41 @@ function LibraryPageContent({ session }: LibraryPageProps) {
         )
       )
     }
-  }
+  }, [])
 
-  const handleItemClick = (itemId: string) => {
+  const handleItemClick = useCallback((itemId: string) => {
     router.push(`/item/${itemId}`)
-  }
+  }, [router])
+
+  const toggleFilters = useCallback(() => {
+    setShowFilters(prev => !prev)
+  }, [])
+
+  const toggleBookmarkOnly = useCallback(() => {
+    setBookmarkOnly(prev => !prev)
+  }, [])
+
+  const toggleTagDropdown = useCallback(() => {
+    setShowTagDropdown(prev => !prev)
+  }, [])
+
+  const toggleCollectionsSidebar = useCallback(() => {
+    setShowCollectionsSidebar(prev => !prev)
+  }, [])
+
+  const handleTagToggle = useCallback((tag: string) => {
+    setSelectedTags((prev) =>
+      prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag]
+    )
+  }, [])
+
+  const handleTagsClear = useCallback(() => {
+    setSelectedTags([])
+  }, [])
+
+  const handleTagRemove = useCallback((tag: string) => {
+    setSelectedTags((prev) => prev.filter((t) => t !== tag))
+  }, [])
 
   const groupedItems = groupByDate(items)
 
@@ -311,7 +341,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
           </aside>
         )}
 
-        <main className="flex-1 min-w-0 max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
+        <main id="main-content" className="flex-1 min-w-0 max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
           {/* Header */}
           <div className="mb-4 sm:mb-6 flex items-center justify-between">
             <div>
@@ -335,7 +365,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                 </Link>
               )}
               <button
-                onClick={() => setShowCollectionsSidebar(!showCollectionsSidebar)}
+                onClick={toggleCollectionsSidebar}
                 aria-label={showCollectionsSidebar ? "Hide collections sidebar" : "Show collections sidebar"}
                 className="hidden md:flex items-center gap-2 h-9 px-3 bg-white/[0.06] border border-white/[0.08] rounded-lg text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-xs"
               >
@@ -396,14 +426,16 @@ function LibraryPageContent({ session }: LibraryPageProps) {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               aria-label="Search library"
-              className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-white/[0.06] border border-white/[0.08] rounded-xl sm:rounded-2xl text-sm sm:text-base text-white placeholder-white/40 focus:outline-none focus:border-white/20 transition-colors"
+              className="w-full pl-9 sm:pl-11 pr-3 sm:pr-4 py-2.5 sm:py-3 bg-white/[0.06] border border-white/[0.08] rounded-xl sm:rounded-2xl text-sm sm:text-base text-white placeholder-white/40 focus-visible:outline-none focus:border-white/20 focus-visible:ring-1 focus-visible:ring-brand/50 transition-colors"
             />
           </div>
 
           {/* Filter Toggle & Bookmark Filter & Tags */}
           <div className="flex items-center gap-2 flex-wrap">
             <button
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={toggleFilters}
+              aria-label="Toggle filters"
+              aria-expanded={showFilters}
               className={cn(
                 "flex items-center justify-center gap-2 h-10 px-4 bg-white/[0.06] border border-white/[0.08] rounded-full text-white/60 hover:text-white hover:bg-white/[0.08] transition-all text-sm",
                 showFilters && "bg-white/[0.1] border-white/[0.15] text-white"
@@ -412,7 +444,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
               <SlidersHorizontal className="w-4 h-4" />
             </button>
             <button
-              onClick={() => setBookmarkOnly(!bookmarkOnly)}
+              onClick={toggleBookmarkOnly}
               className={cn(
                 "flex items-center gap-2 h-10 px-5 rounded-full text-sm transition-all",
                 bookmarkOnly
@@ -429,7 +461,9 @@ function LibraryPageContent({ session }: LibraryPageProps) {
             {/* Tags dropdown */}
             <div className="relative">
               <button
-                onClick={() => setShowTagDropdown(!showTagDropdown)}
+                onClick={toggleTagDropdown}
+                aria-expanded={showTagDropdown}
+                aria-haspopup="listbox"
                 className={cn(
                   "flex items-center gap-2 h-10 px-5 rounded-full text-sm transition-all",
                   selectedTags.length > 0
@@ -458,15 +492,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                       {allTags.map(({ tag, count }) => (
                         <button
                           key={tag}
-                          onClick={() => {
-                            if (selectedTags.includes(tag)) {
-                              setSelectedTags(
-                                selectedTags.filter((t) => t !== tag)
-                              )
-                            } else {
-                              setSelectedTags([...selectedTags, tag])
-                            }
-                          }}
+                          onClick={() => handleTagToggle(tag)}
                           className={cn(
                             "w-full flex items-center justify-between px-3 py-2 rounded-lg text-sm transition-all",
                             selectedTags.includes(tag)
@@ -483,7 +509,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                   {selectedTags.length > 0 && (
                     <div className="border-t border-white/[0.08] p-2">
                       <button
-                        onClick={() => setSelectedTags([])}
+                        onClick={handleTagsClear}
                         className="w-full text-center py-2 text-sm text-red-400 hover:bg-red-500/10 rounded-lg transition-all"
                       >
                         Clear all
@@ -523,9 +549,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                   >
                     <span className="capitalize">{tag}</span>
                     <button
-                      onClick={() =>
-                        setSelectedTags(selectedTags.filter((t) => t !== tag))
-                      }
+                      onClick={() => handleTagRemove(tag)}
                       aria-label={`Remove ${tag} filter`}
                       className="p-1 -m-0.5 rounded hover:text-white hover:bg-white/10 transition-colors"
                     >

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Mail, Loader2, CheckCircle2, AlertCircle, Link2, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -35,6 +35,7 @@ export function ShareModal({
   const [isGenerating, setIsGenerating] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
   const isDesktop = useIsDesktop()
+  const modalRef = useRef<HTMLDivElement>(null)
 
   const handleGenerateLink = async () => {
     if (!contentId) return
@@ -125,6 +126,42 @@ export function ShareModal({
     }
   }
 
+  // Focus trap implementation
+  useEffect(() => {
+    if (!isOpen) return
+    const modal = modalRef.current
+    if (!modal) return
+
+    const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    const focusableElements = modal.querySelectorAll(focusableSelector)
+    const firstElement = focusableElements[0] as HTMLElement
+    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+
+    // Focus first element when modal opens
+    firstElement?.focus()
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key !== 'Tab') return
+
+      if (e.shiftKey) {
+        // Shift+Tab: if on first element, wrap to last
+        if (document.activeElement === firstElement) {
+          e.preventDefault()
+          lastElement?.focus()
+        }
+      } else {
+        // Tab: if on last element, wrap to first
+        if (document.activeElement === lastElement) {
+          e.preventDefault()
+          firstElement?.focus()
+        }
+      }
+    }
+
+    modal.addEventListener('keydown', handleKeyDown)
+    return () => modal.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen])
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -140,6 +177,7 @@ export function ShareModal({
 
           {/* Modal — responsive: bottom sheet on mobile, centered on desktop */}
           <motion.div
+            ref={modalRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="share-modal-title"
@@ -189,8 +227,10 @@ export function ShareModal({
 
               {/* Tab switcher */}
               {contentId && (
-                <div className="px-5 pt-4 flex gap-1 bg-gray-900">
+                <div role="tablist" aria-label="Share method" className="px-5 pt-4 flex gap-1 bg-gray-900">
                   <button
+                    role="tab"
+                    aria-selected={activeTab === "link"}
                     onClick={() => setActiveTab("link")}
                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       activeTab === "link"
@@ -202,6 +242,8 @@ export function ShareModal({
                     Link
                   </button>
                   <button
+                    role="tab"
+                    aria-selected={activeTab === "email"}
                     onClick={() => setActiveTab("email")}
                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       activeTab === "email"
@@ -285,6 +327,7 @@ export function ShareModal({
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="friend@example.com"
                         disabled={isSending}
+                        autoComplete="email"
                         className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all disabled:opacity-50"
                       />
                     </div>

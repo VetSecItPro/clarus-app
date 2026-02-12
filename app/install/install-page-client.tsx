@@ -266,7 +266,7 @@ export default function InstallPageClient() {
     <div className="min-h-screen bg-[#0a0e1a] flex flex-col">
       <SiteHeader showNav={false} />
 
-      <main className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 pb-28 sm:pb-8">
+      <main id="main-content" className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 pb-28 sm:pb-8">
         {/* Hero */}
         <section className="text-center pt-10 pb-10 sm:pt-16 sm:pb-14">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-brand/10 mb-6">

@@ -98,7 +98,7 @@ function ComparePageContent({ session }: ComparePageProps) {
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      <main className="flex-1 max-w-3xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
+      <main id="main-content" className="flex-1 max-w-3xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 pb-16 sm:pb-8 w-full">
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-3">
@@ -134,6 +134,7 @@ function ComparePageContent({ session }: ComparePageProps) {
         {/* Content */}
         {isComparing ? (
           <motion.div
+            role="status"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             className="flex flex-col items-center justify-center py-20 gap-4"

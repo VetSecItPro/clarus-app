@@ -20,7 +20,8 @@ import { NextResponse } from "next/server"
 import type { Database } from "@/types/database.types"
 
 // Admin cache to avoid repeated DB queries within the same runtime (5 min TTL, max 500 entries)
-const adminCache = new Map<string, { isAdmin: boolean; expires: number }>()
+// PERF: LRU eviction strategy — tracks last access time, evicts least recently used
+const adminCache = new Map<string, { isAdmin: boolean; expires: number; lastAccess: number }>()
 const MAX_ADMIN_CACHE_SIZE = 500
 
 /**
@@ -118,8 +119,8 @@ export async function authenticateRequest(): Promise<AuthResult | AuthError> {
  *
  * First calls {@link authenticateRequest}, then checks the `is_admin`
  * column in the database (the single source of truth).  Results are
- * cached for 5 minutes to avoid repeated DB hits within the same
- * serverless runtime.
+ * cached for 5 minutes with LRU eviction to avoid repeated DB hits
+ * within the same serverless runtime.
  *
  * @returns A discriminated union -- 401 for unauthenticated, 403 for non-admin
  *
@@ -136,7 +137,10 @@ export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
 
   // Check short-lived cache first (avoids repeated DB hits within same runtime)
   const cached = adminCache.get(auth.user.id)
-  if (cached && cached.expires > Date.now()) {
+  const now = Date.now()
+  if (cached && cached.expires > now) {
+    // LRU: Update last access time
+    cached.lastAccess = now
     if (!cached.isAdmin) {
       return {
         success: false,
@@ -159,12 +163,21 @@ export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
 
   const isAdmin = userData?.is_admin === true
 
-  // Cache for 5 minutes (evict oldest if over limit)
+  // LRU cache eviction: if over limit, evict least recently used entry
   if (adminCache.size >= MAX_ADMIN_CACHE_SIZE) {
-    const firstKey = adminCache.keys().next().value
-    if (firstKey) adminCache.delete(firstKey)
+    let oldestKey: string | null = null
+    let oldestAccess = Infinity
+    for (const [key, entry] of adminCache.entries()) {
+      if (entry.lastAccess < oldestAccess) {
+        oldestAccess = entry.lastAccess
+        oldestKey = key
+      }
+    }
+    if (oldestKey) adminCache.delete(oldestKey)
   }
-  adminCache.set(auth.user.id, { isAdmin, expires: Date.now() + 5 * 60 * 1000 })
+
+  // Cache for 5 minutes
+  adminCache.set(auth.user.id, { isAdmin, expires: now + 5 * 60 * 1000, lastAccess: now })
 
   if (!isAdmin) {
     return {
@@ -270,7 +283,10 @@ export function getAdminClient(): SupabaseClient<Database> {
  */
 export function isAdmin(userId: string): boolean {
   const cached = adminCache.get(userId)
-  if (cached && cached.expires > Date.now()) {
+  const now = Date.now()
+  if (cached && cached.expires > now) {
+    // LRU: Update last access time
+    cached.lastAccess = now
     return cached.isAdmin
   }
   // If not cached, return false — caller should use authenticateAdmin() for authoritative check

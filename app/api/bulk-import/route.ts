@@ -173,6 +173,22 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // PERF: Batch check if URLs already exist (instead of per-URL loop)
+  const urlsArray = deduplicatedUrls.map((item) => item.url)
+  const { data: existingContent } = await auth.supabase
+    .from("content")
+    .select("id, url")
+    .eq("user_id", userId)
+    .in("url", urlsArray)
+
+  // Build a map for fast lookup
+  const existingUrlMap = new Map<string, string>()
+  if (existingContent) {
+    for (const content of existingContent) {
+      existingUrlMap.set(content.url, content.id)
+    }
+  }
+
   // Create content records for each URL
   const results: Array<{
     url: string
@@ -185,19 +201,11 @@ export async function POST(request: NextRequest) {
 
   for (const { url, type } of deduplicatedUrls) {
     try {
-      // Check if user already has this URL
-      const { data: existing } = await auth.supabase
-        .from("content")
-        .select("id")
-        .eq("url", url)
-        .eq("user_id", userId)
-        .order("date_added", { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
-      if (existing) {
+      // Check if URL already exists (from batch query)
+      const existingId = existingUrlMap.get(url)
+      if (existingId) {
         // Content already exists — include it in results so user can track it
-        results.push({ url, contentId: existing.id, type })
+        results.push({ url, contentId: existingId, type })
         continue
       }
 

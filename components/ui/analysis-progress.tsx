@@ -183,7 +183,7 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
                       <Check className="w-4 h-4 text-emerald-400" />
                     </motion.div>
                   ) : null}
-                  <span className="text-sm text-white/60">
+                  <span className="text-sm text-white/60" aria-live="polite">
                     {showComplete
                       ? "Analysis complete"
                       : `Analyzing... ${completedCount} of 6 sections`}

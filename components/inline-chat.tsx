@@ -499,6 +499,7 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
             value={localInput}
             onChange={handleLocalInputChange}
             placeholder={isListening ? "" : "Chat about this content..."}
+            aria-label="Chat message"
             className={cn(
               "w-full bg-white/[0.04] border-white/[0.08] text-white placeholder:text-gray-500 focus:ring-1 focus:ring-brand focus:border-brand rounded-lg h-9 text-xs",
               isListening && "border-red-500/50 ring-1 ring-red-500/30",
@@ -527,6 +528,7 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
         <Button
           type="submit"
           size="icon"
+          aria-label="Send message"
           className="h-9 w-9 rounded-lg bg-brand hover:bg-brand-hover disabled:opacity-50 shadow-lg shadow-blue-500/20 flex-shrink-0"
           disabled={isLoading || !localInput.trim()}
         >

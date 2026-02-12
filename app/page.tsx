@@ -493,8 +493,9 @@ export default function HomePage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div role="status" className="min-h-screen bg-black flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-brand animate-spin" />
+        <span className="sr-only">Loading</span>
       </div>
     )
   }

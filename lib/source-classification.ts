@@ -140,6 +140,3 @@ export function classifySource(url: string): SourceClassification {
   return { type: "unknown", ...SOURCE_STYLES.unknown }
 }
 
-export function getSourceStyles(type: SourceType): Omit<SourceClassification, "type"> {
-  return SOURCE_STYLES[type]
-}

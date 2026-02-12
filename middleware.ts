@@ -108,8 +108,10 @@ function setCorsHeaders(response: NextResponse, origin: string | null) {
   // Allow Chrome extension origins and the main site
   const allowedOrigins = [
     "https://clarusapp.io",
-    "http://localhost:3000", // Development
-    "http://localhost:3456", // Clarus dev port
+    // Dev origins only in development — no localhost CORS in production
+    ...(process.env.NODE_ENV === "development"
+      ? ["http://localhost:3000", "http://localhost:3456"]
+      : []),
   ]
 
   // Check if origin is a Chrome extension or in allowed list
@@ -145,28 +147,31 @@ function setSecurityHeaders(response: NextResponse) {
     "camera=(), microphone=(), geolocation=()"
   )
 
-  // Content Security Policy
+  // Content Security Policy (enforcing)
   // Note: 'unsafe-inline' needed for Next.js inline styles
   // Note: 'unsafe-eval' needed for Next.js dev mode (HMR/webpack) — excluded in production
   const isDev = process.env.NODE_ENV === "development"
-  response.headers.set(
-    "Content-Security-Policy",
-    [
-      "default-src 'self'",
-      `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com https://va.vercel-scripts.com`,
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-      "font-src 'self' https://fonts.gstatic.com",
-      "img-src 'self' data: blob: https: http:",
-      "media-src 'self' https://www.youtube.com",
-      "frame-src 'self' https://www.youtube.com https://youtube.com",
-      "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openrouter.ai https://api.tavily.com https://api.firecrawl.dev https://api.supadata.ai https://api.resend.com https://api.polar.sh https://api.assemblyai.com https://va.vercel-scripts.com",
-      "object-src 'none'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'none'",
-      "upgrade-insecure-requests",
-    ].join("; ")
-  )
+  const cspDirectives = [
+    "default-src 'self'",
+    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com https://va.vercel-scripts.com`,
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com",
+    "img-src 'self' data: blob: https: http:",
+    "media-src 'self' https://www.youtube.com",
+    "frame-src 'self' https://www.youtube.com https://youtube.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openrouter.ai https://api.tavily.com https://api.firecrawl.dev https://api.supadata.ai https://api.resend.com https://api.polar.sh https://api.assemblyai.com https://va.vercel-scripts.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
+  ].join("; ")
+
+  response.headers.set("Content-Security-Policy", cspDirectives)
+
+  // Content Security Policy Report-Only (monitoring mode)
+  // Same policy as enforcing mode — enables browser-side violation reporting without blocking
+  response.headers.set("Content-Security-Policy-Report-Only", cspDirectives)
 
   // HSTS - enforce HTTPS (only in production)
   if (process.env.NODE_ENV === "production") {

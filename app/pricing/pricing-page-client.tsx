@@ -209,7 +209,7 @@ function PlanCard({
         <span className={plan.color === "blue" ? "text-brand" : plan.color === "purple" ? "text-purple-400" : "text-white/60"}>
           {plan.icon}
         </span>
-        <h3 className="text-lg font-bold text-white">{plan.name}</h3>
+        <h2 className="text-lg font-bold text-white">{plan.name}</h2>
       </div>
       <p className="text-sm text-white/50 mb-5">{plan.description}</p>
 
@@ -225,7 +225,7 @@ function PlanCard({
               </span>
               <span className="text-white/40 text-sm">/month</span>
             </div>
-            <div className={`text-xs mt-1 transition-opacity duration-200 ${interval === "annual" ? "text-white/30 opacity-100" : "opacity-0"}`}>
+            <div className={`text-xs mt-1 transition-opacity duration-200 ${interval === "annual" ? "text-white/40 opacity-100" : "opacity-0"}`}>
               ${plan.annualPrice}/year &middot; billed annually
             </div>
           </>
@@ -249,9 +249,9 @@ function PlanCard({
                 plan.color === "blue" ? "text-brand" : plan.color === "purple" ? "text-purple-400" : "text-emerald-400"
               }`} />
             ) : (
-              <X className="w-4 h-4 mt-0.5 flex-shrink-0 text-white/20" />
+              <X className="w-4 h-4 mt-0.5 flex-shrink-0 text-white/40" />
             )}
-            <span className={`text-sm ${feature.included ? "text-white/70" : "text-white/30"}`}>
+            <span className={`text-sm ${feature.included ? "text-white/70" : "text-white/40"}`}>
               {feature.text}
             </span>
           </li>
@@ -280,7 +280,7 @@ function FAQSection() {
               className="w-full flex items-center justify-between px-5 py-4 text-left text-sm font-medium text-white/80 hover:text-white transition-colors"
             >
               {faq.q}
-              <span className={`text-white/30 transition-transform duration-200 ${openIndex === i ? "rotate-45" : ""}`}>
+              <span className={`text-white/40 transition-transform duration-200 ${openIndex === i ? "rotate-45" : ""}`}>
                 +
               </span>
             </button>
@@ -373,7 +373,7 @@ export default function PricingPageClient() {
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
                     <Clock className="w-5 h-5 text-amber-400" />
-                    <h3 className="text-lg font-bold text-white">Day Pass</h3>
+                    <h2 className="text-lg font-bold text-white">Day Pass</h2>
                     <span className="text-[0.6875rem] font-semibold px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-400 border border-amber-500/30">
                       24-Hour Access
                     </span>
@@ -410,7 +410,7 @@ export default function PricingPageClient() {
                   >
                     Get Day Pass
                   </Link>
-                  <p className="text-[0.625rem] text-white/30 text-center">
+                  <p className="text-[0.625rem] text-white/40 text-center">
                     Expires 24 hours after purchase
                   </p>
                 </div>

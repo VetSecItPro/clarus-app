@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { X, Sparkles, Zap, Crown, Loader2 } from "lucide-react"
 import type { UserTier } from "@/types/database.types"
@@ -127,6 +127,46 @@ export function UpgradeModal({
   const isLimitBased = currentCount !== undefined && limit !== undefined
   const suggestedTier = requiredTier ?? "starter"
   const isDesktop = useIsDesktop()
+  const modalRef = useRef<HTMLDivElement>(null)
+
+  // Focus trap: cycle Tab/Shift+Tab within modal boundaries
+  useEffect(() => {
+    if (!isOpen) return
+    const modal = modalRef.current
+    if (!modal) return
+
+    const focusableSelector = 'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+    const focusableElements = modal.querySelectorAll(focusableSelector)
+    const firstElement = focusableElements[0] as HTMLElement
+    const lastElement = focusableElements[focusableElements.length - 1] as HTMLElement
+
+    // Focus first element when modal opens
+    firstElement?.focus()
+
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        e.preventDefault()
+        onClose()
+        return
+      }
+      if (e.key !== 'Tab') return
+
+      if (e.shiftKey) {
+        if (document.activeElement === firstElement) {
+          e.preventDefault()
+          lastElement?.focus()
+        }
+      } else {
+        if (document.activeElement === lastElement) {
+          e.preventDefault()
+          firstElement?.focus()
+        }
+      }
+    }
+
+    modal.addEventListener('keydown', handleKeyDown)
+    return () => modal.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen, onClose])
 
   return (
     <AnimatePresence>
@@ -143,6 +183,7 @@ export function UpgradeModal({
 
           {/* Modal — responsive: bottom sheet on mobile, centered on desktop */}
           <motion.div
+            ref={modalRef}
             className={isDesktop
               ? "fixed inset-0 z-50 flex items-center justify-center p-4"
               : "fixed bottom-0 left-0 right-0 z-50"

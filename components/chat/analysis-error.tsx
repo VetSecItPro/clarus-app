@@ -15,6 +15,7 @@ export function AnalysisError({ message, onRetry, isRetrying = false }: Analysis
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3 }}
+      role="alert"
       className="flex gap-3 max-w-xl mx-auto"
     >
       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center">

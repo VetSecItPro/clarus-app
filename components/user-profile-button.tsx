@@ -102,7 +102,8 @@ export default function UserProfileButton() {
           <Button
             variant="ghost"
             size="icon"
-            className="rounded-full p-0 hover:bg-gray-800 focus-visible:ring-0 focus-visible:ring-offset-0"
+            aria-label="User profile menu"
+            className="rounded-full p-0 hover:bg-gray-800 focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900"
           >
             <Avatar className="h-8 w-8">
               {/* Placeholder for actual avatar image if you add it later */}

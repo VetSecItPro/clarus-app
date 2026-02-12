@@ -337,6 +337,7 @@ export function ChatInputBar({
                 {getTypeIcon(urlPreview.type)}
                 <button
                   onClick={clearInput}
+                  aria-label="Clear URL preview"
                   className="text-white/40 hover:text-white/60"
                 >
                   <X className="w-3 h-3" />
@@ -365,6 +366,7 @@ export function ChatInputBar({
                 </span>
                 <button
                   onClick={clearInput}
+                  aria-label="Clear file selection"
                   className="text-white/40 hover:text-white/60"
                 >
                   <X className="w-3 h-3" />
@@ -381,6 +383,7 @@ export function ChatInputBar({
           accept={ACCEPTED_EXTENSIONS}
           onChange={handleFileSelect}
           className="hidden"
+          aria-label="Upload file for analysis"
         />
 
         {/* Input Container - pill shape like ChatGPT */}
@@ -436,6 +439,7 @@ export function ChatInputBar({
               autoCorrect="off"
               autoCapitalize="off"
               spellCheck={false}
+              aria-label="Enter a URL, upload a file, or type a message"
               className="w-full bg-transparent text-white placeholder:text-gray-500 focus:outline-none text-sm"
             />
 
@@ -471,6 +475,7 @@ export function ChatInputBar({
           {inputValue && !isProcessing && (
             <button
               onClick={clearInput}
+              aria-label="Clear input"
               className="flex-shrink-0 text-white/30 hover:text-white/60"
             >
               <X className="w-4 h-4" />
@@ -540,6 +545,7 @@ export function ChatInputBar({
             <button
               onClick={handleSubmit}
               disabled={!canSubmit}
+              aria-label={isUrlMode ? "Analyze content" : "Send message"}
               className={cn(
                 "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
                 canSubmit

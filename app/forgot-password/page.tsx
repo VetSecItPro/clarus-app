@@ -68,7 +68,7 @@ export default function ForgotPasswordPage() {
               Email address
             </label>
             <div className="relative">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
               <input
                 id="email"
                 type="email"
@@ -76,6 +76,7 @@ export default function ForgotPasswordPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                autoComplete="email"
                 className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
               />
             </div>
@@ -83,7 +84,7 @@ export default function ForgotPasswordPage() {
 
           {/* Error message */}
           {error && (
-            <div className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
+            <div role="alert" className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
               <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -91,7 +92,7 @@ export default function ForgotPasswordPage() {
 
           {/* Success message */}
           {message && (
-            <div className="flex items-center p-3 text-xs text-green-400 bg-green-500/10 rounded-lg border border-green-500/20 animate-[fadeIn_0.3s_ease-out]">
+            <div role="status" className="flex items-center p-3 text-xs text-green-400 bg-green-500/10 rounded-lg border border-green-500/20 animate-[fadeIn_0.3s_ease-out]">
               <CheckCircle2 className="w-4 h-4 mr-2 flex-shrink-0" />
               <span>{message}</span>
             </div>

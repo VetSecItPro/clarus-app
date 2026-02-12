@@ -44,6 +44,9 @@ export async function POST(request: Request) {
   const supabase = getClient()
 
   // Insert pending submission
+  // SECURITY NOTE: contact_submissions uses open INSERT (no auth required).
+  // Accepted risk — public contact form needs unauthenticated writes.
+  // Mitigated by: rate limiting (5/hr/IP), schema validation, service-role insert only.
   const { data: row, error: insertError } = await supabase
     .from("contact_submissions")
     .insert({

@@ -228,7 +228,8 @@ export function AddToCollectionButton({
                     placeholder="Collection name..."
                     maxLength={100}
                     autoFocus
-                    className="w-full px-3 py-1.5 bg-white/[0.06] border border-white/[0.08] rounded-lg text-xs text-white placeholder-white/30 focus:outline-none focus:border-brand/50 mb-2"
+                    aria-label="New collection name"
+                    className="w-full px-3 py-1.5 bg-white/[0.06] border border-white/[0.08] rounded-lg text-xs text-white placeholder-white/30 focus:outline-none focus:border-brand/50 focus:ring-1 focus:ring-brand/30 mb-2"
                   />
                   <div className="flex gap-1.5">
                     <button

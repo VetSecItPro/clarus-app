@@ -26,7 +26,7 @@ export default function TermsPage() {
       <PublicHeader />
 
       {/* Content */}
-      <main className="flex-1 max-w-4xl mx-auto px-4 py-12">
+      <main id="main-content" className="flex-1 max-w-4xl mx-auto px-4 py-12">
         {/* Title */}
         <div className="flex items-center gap-4 mb-8">
           <div className="w-12 h-12 bg-gradient-to-br from-brand to-brand-hover rounded-xl flex items-center justify-center shadow-lg">

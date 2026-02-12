@@ -78,7 +78,9 @@ export async function GET(request: NextRequest) {
       query,
       count: results.length,
     })
-    response.headers.set("Cache-Control", "private, max-age=0, stale-while-revalidate=60")
+    // PERF: Bump cache from max-age=0 to max-age=5 (5 seconds)
+    // Search results can be slightly stale — saves backend load for rapid re-searches
+    response.headers.set("Cache-Control", "private, max-age=5, stale-while-revalidate=30")
     return response
   } catch (error) {
     console.error("Search error:", error)
@@ -162,7 +164,7 @@ async function fallbackSearch(
     count: results.length,
     fallback: true, // Indicate that fallback search was used
   })
-  response.headers.set("Cache-Control", "private, max-age=0, stale-while-revalidate=60")
+  response.headers.set("Cache-Control", "private, max-age=5, stale-while-revalidate=30")
   return response
 }
 

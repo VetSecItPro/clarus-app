@@ -131,6 +131,9 @@ export function CreateCollectionDialog({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="create-collection-title"
             className="fixed left-1/2 top-1/2 z-50 w-full max-w-md -translate-x-1/2 -translate-y-1/2 p-4"
           >
             <div className="bg-black border border-white/[0.1] rounded-2xl shadow-2xl shadow-black/50 overflow-hidden">
@@ -145,7 +148,7 @@ export function CreateCollectionDialog({
                     )}
                   </div>
                   <div>
-                    <h2 className="text-lg font-semibold text-white">
+                    <h2 id="create-collection-title" className="text-lg font-semibold text-white">
                       {isEditing ? "Edit Collection" : "New Collection"}
                     </h2>
                     <p className="text-xs text-white/40">
@@ -183,7 +186,7 @@ export function CreateCollectionDialog({
                     placeholder="e.g., AI Research, Election Coverage"
                     maxLength={100}
                     autoFocus
-                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/50 transition-colors"
+                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/50 focus:ring-1 focus:ring-brand/30 transition-colors"
                   />
                 </div>
 
@@ -203,7 +206,7 @@ export function CreateCollectionDialog({
                     placeholder="What is this collection about?"
                     maxLength={500}
                     rows={2}
-                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/50 transition-colors resize-none"
+                    className="w-full px-4 py-2.5 bg-white/[0.06] border border-white/[0.08] rounded-xl text-sm text-white placeholder-white/30 focus:outline-none focus:border-brand/50 focus:ring-1 focus:ring-brand/30 transition-colors resize-none"
                   />
                 </div>
 

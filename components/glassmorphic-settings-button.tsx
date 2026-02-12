@@ -125,7 +125,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
         <DropdownMenuTrigger asChild>
           {variant === "mobile" ? (
             <button
-              className={`flex flex-col items-center justify-center transition-colors focus:outline-none ${
+              className={`flex flex-col items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
                 isDropdownOpen ? "text-brand" : "text-white/40"
               }`}
               aria-label="Settings and Profile"
@@ -135,7 +135,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
             </button>
           ) : (
             <button
-              className="relative p-2 rounded-lg text-white/50 hover:text-white/90 transition-all duration-200 group focus:outline-none"
+              className="relative p-2 rounded-lg text-white/50 hover:text-white/90 transition-all duration-200 group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50"
               aria-label="Settings and Profile"
             >
               <Settings className="h-5 w-5 transition-transform duration-200 group-hover:rotate-45" />
@@ -152,7 +152,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
         >
           {/* User section */}
           {loading ? (
-            <div className="flex items-center gap-3 px-3 py-3">
+            <div className="flex items-center gap-3 px-3 py-3" role="status">
               <Loader2 className="h-4 w-4 text-neutral-400 animate-spin" />
               <span className="text-sm text-neutral-400">Loading...</span>
             </div>

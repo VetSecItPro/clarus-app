@@ -42,15 +42,43 @@ export async function POST(request: NextRequest) {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
 
-    const response = await fetch(validation.sanitized, {
-      method: "GET",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (compatible; Clarus/1.0)",
-        Accept: "text/html",
-      },
-      signal: controller.signal,
-      redirect: "follow",
-    })
+    let targetUrl = validation.sanitized
+    let redirectCount = 0
+    const MAX_REDIRECTS = 3
+
+    // Follow redirects manually to re-validate each hop against SSRF
+    let response: Response
+    while (true) {
+      response = await fetch(targetUrl, {
+        method: "GET",
+        headers: {
+          "User-Agent": "Mozilla/5.0 (compatible; Clarus/1.0)",
+          Accept: "text/html",
+        },
+        signal: controller.signal,
+        redirect: "manual",
+      })
+
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get("location")
+        if (!location || redirectCount >= MAX_REDIRECTS) {
+          clearTimeout(timeout)
+          return NextResponse.json({ title: null })
+        }
+        // Resolve relative redirects against the current URL
+        const resolved = new URL(location, targetUrl).href
+        // Re-validate the redirect target against SSRF protection
+        const redirectValidation = validateUrl(resolved)
+        if (!redirectValidation.isValid || !redirectValidation.sanitized) {
+          clearTimeout(timeout)
+          return NextResponse.json({ title: null })
+        }
+        targetUrl = redirectValidation.sanitized
+        redirectCount++
+        continue
+      }
+      break
+    }
 
     clearTimeout(timeout)
 

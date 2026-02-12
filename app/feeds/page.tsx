@@ -96,7 +96,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
     fetchYoutubeSubs()
   }, [fetchPodcastSubs, fetchYoutubeSubs])
 
-  const handleDeletePodcast = async (id: string, name: string) => {
+  const handleDeletePodcast = useCallback(async (id: string, name: string) => {
     if (deletingId) return
     setDeletingId(id)
     try {
@@ -114,9 +114,9 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
     } finally {
       setDeletingId(null)
     }
-  }
+  }, [deletingId, expandedId])
 
-  const handleDeleteYouTube = async (id: string, name: string) => {
+  const handleDeleteYouTube = useCallback(async (id: string, name: string) => {
     if (deletingId) return
     setDeletingId(id)
     try {
@@ -134,7 +134,16 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
     } finally {
       setDeletingId(null)
     }
-  }
+  }, [deletingId, expandedId])
+
+  const handleTabChange = useCallback((tab: FeedTab) => {
+    setActiveTab(tab)
+    setExpandedId(null)
+  }, [])
+
+  const handleToggleExpanded = useCallback((id: string) => {
+    setExpandedId((prev) => (prev === id ? null : id))
+  }, [])
 
   const podcastLimit = TIER_LIMITS[userTier].podcastSubscriptions
   const youtubeLimit = TIER_LIMITS[userTier].youtubeSubscriptions
@@ -150,7 +159,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
     <div className="min-h-screen bg-black text-white">
       <SiteHeader />
 
-      <main className="max-w-3xl mx-auto px-4 py-8 pb-24 sm:pb-8">
+      <main id="main-content" className="max-w-3xl mx-auto px-4 py-8 pb-24 sm:pb-8">
         {/* Page header */}
         <div className="flex items-center justify-between mb-6">
           <div>
@@ -185,10 +194,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
           {tabs.map((tab) => (
             <button
               key={tab.id}
-              onClick={() => {
-                setActiveTab(tab.id)
-                setExpandedId(null)
-              }}
+              onClick={() => handleTabChange(tab.id)}
               className={cn(
                 "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors relative focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black focus-visible:outline-none active:opacity-80",
                 activeTab === tab.id
@@ -280,7 +286,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                     icon={Podcast}
                     isExpanded={expandedId === sub.id}
                     isDeleting={deletingId === sub.id}
-                    onToggle={() => setExpandedId(expandedId === sub.id ? null : sub.id)}
+                    onToggle={() => handleToggleExpanded(sub.id)}
                     onDelete={() => handleDeletePodcast(sub.id, sub.podcast_name)}
                   >
                     <EpisodeList subscriptionId={sub.id} podcastName={sub.podcast_name} />
@@ -355,7 +361,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                     icon={Youtube}
                     isExpanded={expandedId === sub.id}
                     isDeleting={deletingId === sub.id}
-                    onToggle={() => setExpandedId(expandedId === sub.id ? null : sub.id)}
+                    onToggle={() => handleToggleExpanded(sub.id)}
                     onDelete={() => handleDeleteYouTube(sub.id, sub.channel_name)}
                   >
                     <VideoList subscriptionId={sub.id} channelName={sub.channel_name} />
@@ -376,8 +382,9 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
 
 function LoadingSpinner() {
   return (
-    <div className="flex items-center justify-center py-16">
+    <div role="status" className="flex items-center justify-center py-16">
       <Loader2 className="w-6 h-6 animate-spin text-white/40" />
+      <span className="sr-only">Loading</span>
     </div>
   )
 }

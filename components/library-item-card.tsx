@@ -308,7 +308,11 @@ function LibraryItemCardComponent({
       {/* Main card content */}
       <div
         className="p-4 cursor-pointer"
+        role="button"
+        tabIndex={0}
         onClick={(e) => onToggleExpand(e, item.id)}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggleExpand(e as unknown as React.MouseEvent, item.id) } }}
+        aria-expanded={isExpanded}
       >
         <div className="flex gap-4">
           {/* Thumbnail */}
