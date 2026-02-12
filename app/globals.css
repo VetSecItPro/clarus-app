@@ -34,6 +34,9 @@
   --input: hsl(0 0% 15%);
   --ring: hsl(217 91% 60%);
 
+  --brand: #1d9bf0;
+  --brand-hover: #1a8cd8;
+
   --radius: 0.5rem;
 
   --chart-1: hsl(220 70% 50%);
@@ -81,6 +84,9 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+
+  --color-brand: var(--brand);
+  --color-brand-hover: var(--brand-hover);
 
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
@@ -327,6 +333,11 @@ input:-webkit-autofill:active {
 /* Mobile bottom navigation safe area - extra padding for iPhone home indicator */
 .safe-area-pb {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+}
+
+/* DES-116: pb-safe utility for components needing safe area bottom padding */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Fixed bottom positioning above safe area - for sticky bottom navs */

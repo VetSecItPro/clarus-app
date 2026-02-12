@@ -155,7 +155,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-white flex items-center gap-3">
-              <Rss className="w-7 h-7 text-[#1d9bf0]" />
+              <Rss className="w-7 h-7 text-brand" />
               Feeds
             </h1>
             <p className="text-white/50 text-sm mt-1">
@@ -190,7 +190,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                 setExpandedId(null)
               }}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors relative",
+                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors relative focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black focus-visible:outline-none active:opacity-80",
                 activeTab === tab.id
                   ? "text-white"
                   : "text-white/40 hover:text-white/70"
@@ -209,7 +209,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
               {activeTab === tab.id && (
                 <motion.div
                   layoutId="feeds-tab-indicator"
-                  className="absolute bottom-0 left-2 right-2 h-0.5 bg-[#1d9bf0] rounded-full"
+                  className="absolute bottom-0 left-2 right-2 h-0.5 bg-brand rounded-full"
                 />
               )}
             </button>
@@ -229,7 +229,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                       "h-full rounded-full transition-all",
                       podcastSubs.length >= podcastLimit ? "bg-red-500"
                         : podcastSubs.length >= podcastLimit - 1 ? "bg-amber-500"
-                        : "bg-[#1d9bf0]"
+                        : "bg-brand"
                     )}
                     style={{ width: `${Math.min((podcastSubs.length / podcastLimit) * 100, 100)}%` }}
                   />

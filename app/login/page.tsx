@@ -84,7 +84,7 @@ export default function LoginPage() {
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Animated gradient orbs — CSS keyframes instead of framer-motion */}
         <div
-          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-[#1d9bf0]/30 blur-[120px]"
+          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-brand/30 blur-[120px]"
           style={{ animation: "loginOrb1 20s ease-in-out infinite" }}
         />
         <div
@@ -139,7 +139,7 @@ export default function LoginPage() {
             <h1 className="text-2xl font-bold text-white mb-2">Sign in</h1>
             <p className="text-white/50 text-sm">
               Don&apos;t have an account?{" "}
-              <Link href="/signup" className="text-[#1d9bf0] hover:text-[#1a8cd8] font-medium transition-colors">
+              <Link href="/signup" className="text-brand hover:text-brand-hover font-medium transition-colors">
                 Create one
               </Link>
             </p>
@@ -168,7 +168,7 @@ export default function LoginPage() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                  className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                 />
               </div>
             </div>
@@ -179,7 +179,7 @@ export default function LoginPage() {
                 <label htmlFor="password" className="block text-xs font-medium text-white/70">
                   Password
                 </label>
-                <Link href="/forgot-password" className="text-xs text-[#1d9bf0] hover:text-[#1a8cd8] transition-colors">
+                <Link href="/forgot-password" className="text-xs text-brand hover:text-brand-hover transition-colors">
                   Forgot password?
                 </Link>
               </div>
@@ -192,7 +192,7 @@ export default function LoginPage() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                  className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                 />
                 <button
                   type="button"
@@ -218,7 +218,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="px-8 h-9 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group shadow-lg shadow-[#1d9bf0]/25 hover:shadow-xl hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5"
+                className="px-8 h-9 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group shadow-lg shadow-brand/25 hover:shadow-xl hover:shadow-brand/40 hover:-translate-y-0.5"
               >
                 {isLoading ? (
                   "Signing in..."
@@ -233,7 +233,7 @@ export default function LoginPage() {
           </form>
 
           {/* Footer */}
-          <p className="mt-6 text-center text-[10px] text-white/30">
+          <p className="mt-6 text-center text-[0.625rem] text-white/30">
             By signing in, you agree to our{" "}
             <Link href="/terms" className="text-white/50 hover:text-white/70 underline">
               Terms of Service

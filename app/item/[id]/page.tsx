@@ -860,10 +860,10 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}
-          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#1d9bf0]/10 border border-[#1d9bf0]/20"
+          className="flex items-center gap-3 px-4 py-3 rounded-xl bg-brand/10 border border-brand/20"
         >
-          <Loader2 className="w-4 h-4 text-[#1d9bf0] animate-spin shrink-0" />
-          <p className="text-sm text-[#1d9bf0]/80">
+          <Loader2 className="w-4 h-4 text-brand animate-spin shrink-0" />
+          <p className="text-sm text-brand/80">
             Translating to {getLanguageConfig(analysisLanguage).name}...
           </p>
         </motion.div>
@@ -1143,7 +1143,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <button
                 onClick={() => handleRegenerate()}
                 disabled={isRegenerating}
-                className="px-4 py-2 rounded-full bg-[#1d9bf0] text-white text-sm hover:bg-[#1a8cd8] transition-all disabled:opacity-50"
+                className="px-4 py-2 rounded-full bg-brand text-white text-sm hover:bg-brand-hover transition-all disabled:opacity-50"
               >
                 Generate Summary
               </button>
@@ -1171,7 +1171,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     <BookOpen className="w-4 h-4" />
                     Detailed Analysis
                     {isPolling && !summary?.detailed_summary && (
-                      <Loader2 className="w-4 h-4 text-[#1d9bf0] animate-spin" />
+                      <Loader2 className="w-4 h-4 text-brand animate-spin" />
                     )}
                   </h3>
                   <div className="flex items-center gap-2">
@@ -1324,7 +1324,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     {/* FE: FIX-FE-001 — replaced nested Link>Button with Link styled as button */}
                     <Link
                       href="/"
-                      className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08] inline-flex items-center justify-center"
+                      className="h-10 w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white border border-white/[0.08] inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-brand/50 active:scale-95 transition-all"
                       aria-label="Back to home"
                     >
                       <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1341,9 +1341,9 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     <button
                       onClick={() => handleTabChange("summary")}
                       style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                      className={`px-3 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 ${
+                      className={`px-3 sm:px-5 py-1 sm:py-2 text-[0.625rem] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 ${
                         activeMainTab === "summary"
-                          ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
+                          ? "bg-brand text-white shadow-md shadow-blue-500/25"
                           : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
                       }`}
                     >
@@ -1352,9 +1352,9 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     <button
                       onClick={() => handleTabChange("fulltext")}
                       style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                      className={`px-3 sm:px-5 py-1 sm:py-2 text-[10px] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
+                      className={`px-3 sm:px-5 py-1 sm:py-2 text-[0.625rem] sm:text-sm font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
                         activeMainTab === "fulltext"
-                          ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
+                          ? "bg-brand text-white shadow-md shadow-blue-500/25"
                           : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
                       }`}
                     >
@@ -1380,7 +1380,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                             <RefreshCw className="w-3.5 h-3.5" />
                           )}
                           <span>Regenerate</span>
-                          <span className="text-[10px] opacity-60">{regenerationCount}/{maxRegenerations}</span>
+                          <span className="text-[0.625rem] opacity-60">{regenerationCount}/{maxRegenerations}</span>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -1402,8 +1402,8 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     />
                     {isTranslating && (
                       <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-1.5 whitespace-nowrap">
-                        <Loader2 className="w-3 h-3 text-[#1d9bf0] animate-spin" />
-                        <span className="text-[10px] text-white/50">Translating...</span>
+                        <Loader2 className="w-3 h-3 text-brand animate-spin" />
+                        <span className="text-[0.625rem] text-white/50">Translating...</span>
                       </div>
                     )}
                   </div>
@@ -1412,13 +1412,13 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
               {/* Mobile: Analysis/Chat tab switcher */}
               {!isDesktop && !isPdf && (
-                <div className="flex items-center gap-0.5 bg-white/[0.06] backdrop-blur-xl p-0.5 rounded-full border border-white/[0.08]">
+                <div className="flex items-center gap-0.5 bg-white/[0.06] backdrop-blur-xl p-0.5 rounded-full border border-white/[0.08] md:max-w-xs md:mx-auto">
                   <button
                     onClick={() => handleMobileTabChange("analysis")}
                     style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                    className={`px-3 py-1 text-[10px] font-medium rounded-full cursor-pointer transition-all duration-200 ${
+                    className={`px-3 py-1 text-[0.625rem] font-medium rounded-full cursor-pointer transition-all duration-200 ${
                       mobileTab === "analysis"
-                        ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
+                        ? "bg-brand text-white shadow-md shadow-blue-500/25"
                         : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
                     }`}
                   >
@@ -1427,9 +1427,9 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                   <button
                     onClick={() => handleMobileTabChange("chat")}
                     style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
-                    className={`px-3 py-1 text-[10px] font-medium rounded-full cursor-pointer transition-all duration-200 flex items-center gap-1 ${
+                    className={`px-3 py-1 text-[0.625rem] font-medium rounded-full cursor-pointer transition-all duration-200 flex items-center gap-1 ${
                       mobileTab === "chat"
-                        ? "bg-[#1d9bf0] text-white shadow-md shadow-blue-500/25"
+                        ? "bg-brand text-white shadow-md shadow-blue-500/25"
                         : "text-gray-400 hover:text-white hover:bg-white/[0.04] active:bg-white/[0.08]"
                     }`}
                   >
@@ -1445,7 +1445,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <button
                 onClick={handleToggleBookmark}
                 disabled={isTogglingBookmark}
-                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
+                className={`h-10 w-10 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 active:scale-95 ${
                   isBookmarked
                     ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                     : "bg-white/[0.06] text-white/50 border border-white/[0.1]"
@@ -1457,7 +1457,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
               <button
                 onClick={() => setIsShareModalOpen(true)}
-                className="h-8 w-8 flex items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 active:bg-emerald-500/30 transition-all"
+                className="h-10 w-10 flex items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 active:bg-emerald-500/30 active:scale-95 transition-all"
                 aria-label="Share"
               >
                 <Mail className="w-4 h-4" />
@@ -1466,7 +1466,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 active:bg-purple-500/30 transition-all"
+                    className="h-10 w-10 flex items-center justify-center rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 active:bg-purple-500/30 active:scale-95 transition-all"
                     aria-label="Export"
                   >
                     <Download className="w-4 h-4" />
@@ -1493,9 +1493,9 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <button
                 onClick={handleTogglePublish}
                 disabled={isTogglingPublish}
-                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
+                className={`h-10 w-10 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 active:scale-95 ${
                   isPublic
-                    ? "bg-[#1d9bf0]/20 text-[#1d9bf0] border border-[#1d9bf0]/30"
+                    ? "bg-brand/20 text-brand border border-brand/30"
                     : "bg-white/[0.06] text-white/50 border border-white/[0.1]"
                 }`}
                 aria-label={isPublic ? "Unpublish from feed" : "Publish to feed"}
@@ -1531,7 +1531,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     <RefreshCw className="w-4 h-4" />
                   )}
                 </button>
-                <span className="text-[9px] text-white/30">{regenerationCount}/{maxRegenerations}</span>
+                <span className="text-[0.5625rem] text-white/30">{regenerationCount}/{maxRegenerations}</span>
               </div>
 
             </div>
@@ -1603,7 +1603,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
           {/* MOBILE: Claim Timeline below player spacer */}
           {!isDesktop && (item.type === "youtube" || item.type === "podcast") && item.duration && summary?.truth_check && (summary.truth_check as unknown as TruthCheckData).issues?.length > 0 && (
-            <div className="px-3 mb-2">
+            <div className="px-3 md:px-6 mb-2">
               <ClaimTimeline
                 duration={item.duration}
                 issues={(summary.truth_check as unknown as TruthCheckData).issues}
@@ -1615,11 +1615,11 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
           {/* MOBILE: Tab content (Analysis or Chat) */}
           {!isDesktop && (
-            <div ref={mobileContentRef} className="px-3">
+            <div ref={mobileContentRef} className="px-3 md:px-6">
               {mobileTab === "analysis" ? (
                 <>
                   {/* Mobile content info */}
-                  <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden mb-4">
+                  <div className="p-3 md:p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden mb-4 md:max-w-2xl md:mx-auto">
                     <div className="flex gap-3">
                       {/* Community vote */}
                       <div className="shrink-0">
@@ -1654,7 +1654,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                             const modeOpt = getModeOption(analysisMode)
                             const ModeIcon = modeOpt.icon
                             return (
-                              <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center gap-1">
+                              <span className="px-2 py-1 rounded-lg bg-brand/10 text-brand flex items-center gap-1">
                                 <ModeIcon className="w-3 h-3" />
                                 {modeOpt.label}
                               </span>
@@ -1669,7 +1669,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                   <div className="flex items-center gap-0.5 bg-white/[0.06] backdrop-blur-xl p-0.5 rounded-full border border-white/[0.08] mb-4 w-fit">
                     <button
                       onClick={() => handleTabChange("summary")}
-                      className={`px-3 py-1 text-[10px] font-medium rounded-full cursor-pointer transition-all duration-200 ${
+                      className={`px-3 py-1 text-[0.625rem] font-medium rounded-full cursor-pointer transition-all duration-200 ${
                         activeMainTab === "summary"
                           ? "bg-white/[0.12] text-white"
                           : "text-gray-400 hover:text-white"
@@ -1679,7 +1679,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     </button>
                     <button
                       onClick={() => handleTabChange("fulltext")}
-                      className={`px-3 py-1 text-[10px] font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
+                      className={`px-3 py-1 text-[0.625rem] font-medium rounded-full cursor-pointer transition-all duration-200 whitespace-nowrap ${
                         activeMainTab === "fulltext"
                           ? "bg-white/[0.12] text-white"
                           : "text-gray-400 hover:text-white"
@@ -1725,6 +1725,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                         width={420}
                         height={236}
                         sizes="480px"
+                        priority
                         className="w-full h-auto aspect-video object-cover"
                         onError={(e) => (e.currentTarget.style.display = "none")}
                       />
@@ -1788,7 +1789,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                             const modeOpt = getModeOption(analysisMode)
                             const ModeIcon = modeOpt.icon
                             return (
-                              <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center gap-1">
+                              <span className="px-2 py-1 rounded-lg bg-brand/10 text-brand flex items-center gap-1">
                                 <ModeIcon className="w-3 h-3" />
                                 {modeOpt.label}
                               </span>
@@ -1926,27 +1927,27 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                         {(domainStats.accurate_count + domainStats.mostly_accurate_count + domainStats.mixed_count + domainStats.questionable_count + domainStats.unreliable_count) > 0 && (
                           <div className="flex flex-wrap gap-1.5 mt-2">
                             {domainStats.accurate_count > 0 && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                              <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
                                 {domainStats.accurate_count} Accurate
                               </span>
                             )}
                             {domainStats.mostly_accurate_count > 0 && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                              <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                                 {domainStats.mostly_accurate_count} Mostly Accurate
                               </span>
                             )}
                             {domainStats.mixed_count > 0 && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                              <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
                                 {domainStats.mixed_count} Mixed
                               </span>
                             )}
                             {domainStats.questionable_count > 0 && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                              <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
                                 {domainStats.questionable_count} Questionable
                               </span>
                             )}
                             {domainStats.unreliable_count > 0 && (
-                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                              <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
                                 {domainStats.unreliable_count} Unreliable
                               </span>
                             )}
@@ -2039,7 +2040,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                             className={cn(
                               "w-full transition-all",
                               isPublic
-                                ? "bg-[#1d9bf0]/20 hover:bg-[#1d9bf0]/30 text-[#1d9bf0] hover:text-[#1d9bf0] border border-[#1d9bf0]/30 hover:border-[#1d9bf0]/50"
+                                ? "bg-brand/20 hover:bg-brand/30 text-brand hover:text-brand border border-brand/30 hover:border-brand/50"
                                 : "bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.08] hover:border-white/[0.15]"
                             )}
                           >
@@ -2188,27 +2189,27 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                   {(domainStats.accurate_count + domainStats.mostly_accurate_count + domainStats.mixed_count + domainStats.questionable_count + domainStats.unreliable_count) > 0 && (
                     <div className="flex flex-wrap gap-1.5 mt-2">
                       {domainStats.accurate_count > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
+                        <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-green-500/20 text-green-400 border border-green-500/30">
                           {domainStats.accurate_count} Accurate
                         </span>
                       )}
                       {domainStats.mostly_accurate_count > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                        <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
                           {domainStats.mostly_accurate_count} Mostly Accurate
                         </span>
                       )}
                       {domainStats.mixed_count > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
+                        <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-400 border border-yellow-500/30">
                           {domainStats.mixed_count} Mixed
                         </span>
                       )}
                       {domainStats.questionable_count > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
+                        <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/30">
                           {domainStats.questionable_count} Questionable
                         </span>
                       )}
                       {domainStats.unreliable_count > 0 && (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                        <span className="text-[0.625rem] px-2 py-0.5 rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
                           {domainStats.unreliable_count} Unreliable
                         </span>
                       )}
@@ -2293,7 +2294,7 @@ export default function ItemPage({ params }: PageProps) {
   if (loading) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#1d9bf0] animate-spin" />
+        <Loader2 className="w-8 h-8 text-brand animate-spin" />
       </div>
     )
   }

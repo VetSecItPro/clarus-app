@@ -30,7 +30,7 @@ export function LandingHeader() {
                 priority
                 className="w-10 h-10 transition-all duration-300 group-hover:scale-105"
               />
-              <div className="absolute inset-0 bg-[#1d9bf0]/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+              <div className="absolute inset-0 bg-brand/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
             </div>
             <span className="text-white/90 font-bold text-3xl italic tracking-wide group-hover:text-white transition-colors duration-200" style={{ fontFamily: 'var(--font-cormorant)' }}>
               Clarus
@@ -48,7 +48,7 @@ export function LandingHeader() {
             <Link href="/login" prefetch={true} className="text-sm text-white/50 hover:text-white transition-colors">
               Log In
             </Link>
-            <Link href="/signup" prefetch={true} className="px-5 py-2 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-[#1d9bf0]/25 hover:shadow-lg hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5">
+            <Link href="/signup" prefetch={true} className="px-5 py-2 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-brand/25 hover:shadow-lg hover:shadow-brand/40 hover:-translate-y-0.5">
               Sign Up Free
             </Link>
           </div>
@@ -104,7 +104,7 @@ export function LandingHeader() {
                   href="/signup"
                   prefetch={true}
                   onClick={() => setMobileOpen(false)}
-                  className="block text-center px-5 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-colors shadow-md shadow-[#1d9bf0]/25"
+                  className="block text-center px-5 py-3 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-full transition-colors shadow-md shadow-brand/25"
                 >
                   Sign Up Free
                 </Link>

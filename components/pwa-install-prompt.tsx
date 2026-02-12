@@ -93,7 +93,7 @@ function ShareIcon() {
       strokeWidth="2"
       strokeLinecap="round"
       strokeLinejoin="round"
-      className="inline-block align-text-bottom mx-0.5 text-[#1d9bf0]"
+      className="inline-block align-text-bottom mx-0.5 text-brand"
       aria-hidden="true"
     >
       <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
@@ -246,14 +246,14 @@ export function PWAInstallPrompt() {
             {isIOS ? (
               <Link
                 href="/install"
-                className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                className="bg-brand hover:bg-brand-hover text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
               >
                 How to Install
               </Link>
             ) : (
               <button
                 onClick={handleInstall}
-                className="flex items-center gap-1.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                className="flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
               >
                 <Download className="w-4 h-4" />
                 Install

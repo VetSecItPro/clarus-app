@@ -23,12 +23,12 @@ export const HeroSection = memo(function HeroSection() {
         >
           Understand anything in{" "}
           <span className="relative inline-block">
-            <span className="relative z-10 text-[#1d9bf0]">seconds</span>
+            <span className="relative z-10 text-brand">seconds</span>
             <motion.span
               initial={{ scaleX: 0 }}
               animate={{ scaleX: 1 }}
               transition={{ duration: 0.6, delay: 0.4, ease: [0.22, 1, 0.36, 1] }}
-              className="absolute inset-0 bg-[#1d9bf0]/15 -skew-x-6 rounded origin-left"
+              className="absolute inset-0 bg-brand/15 -skew-x-6 rounded origin-left"
               style={{ top: '10%', bottom: '10%' }}
             />
           </span>
@@ -56,7 +56,7 @@ export const HeroSection = memo(function HeroSection() {
             <motion.button
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
-              className="group inline-flex items-center gap-2 px-8 py-3.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-full transition-all duration-200 shadow-[0_0_20px_rgba(29,155,240,0.3),0_0_60px_rgba(29,155,240,0.1)] hover:shadow-[0_0_25px_rgba(29,155,240,0.4),0_0_80px_rgba(29,155,240,0.15)]"
+              className="group inline-flex items-center gap-2 px-8 py-3.5 bg-brand hover:bg-brand-hover text-white font-semibold rounded-full transition-all duration-200 shadow-[0_0_20px_rgba(29,155,240,0.3),0_0_60px_rgba(29,155,240,0.1)] hover:shadow-[0_0_25px_rgba(29,155,240,0.4),0_0_80px_rgba(29,155,240,0.15)]"
             >
               Analyze your first link free
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

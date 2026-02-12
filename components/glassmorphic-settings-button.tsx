@@ -126,12 +126,12 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
           {variant === "mobile" ? (
             <button
               className={`flex flex-col items-center justify-center transition-colors focus:outline-none ${
-                isDropdownOpen ? "text-[#1d9bf0]" : "text-white/40"
+                isDropdownOpen ? "text-brand" : "text-white/40"
               }`}
               aria-label="Settings and Profile"
             >
               <Settings className="w-6 h-6" />
-              <span className="text-[11px] mt-1 font-medium">Settings</span>
+              <span className="text-[0.6875rem] mt-1 font-medium">Settings</span>
             </button>
           ) : (
             <button
@@ -177,7 +177,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
           {user && (
             <Link href="/dashboard" className="block">
               <DropdownMenuItem className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-200">
-                <BarChart3 className="h-4 w-4 text-[#1d9bf0]" />
+                <BarChart3 className="h-4 w-4 text-brand" />
                 <span>My Usage</span>
               </DropdownMenuItem>
             </Link>
@@ -237,7 +237,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
                 onMouseEnter={() => prefetchAdminMetrics(user.id)}
                 onFocus={() => prefetchAdminMetrics(user.id)}
               >
-                <DropdownMenuItem className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#1d9bf0]/10 cursor-pointer text-[#1d9bf0]">
+                <DropdownMenuItem className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-brand/10 cursor-pointer text-brand">
                   <LayoutDashboard className="h-4 w-4" />
                   <span>Admin Dashboard</span>
                 </DropdownMenuItem>

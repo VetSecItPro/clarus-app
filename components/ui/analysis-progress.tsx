@@ -138,7 +138,7 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 />
               </div>
-              <p className="text-[11px] text-white/30">Typically takes 2-5 minutes depending on episode length</p>
+              <p className="text-[0.6875rem] text-white/30">Typically takes 2-5 minutes depending on episode length</p>
             </div>
           ) : (
             <div className="space-y-3">

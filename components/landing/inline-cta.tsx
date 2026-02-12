@@ -25,7 +25,7 @@ export const InlineCTA = memo(function InlineCTA({ variant = "primary" }: Inline
             <motion.span
               whileHover={{ y: -2 }}
               whileTap={{ scale: 0.98 }}
-              className="group inline-flex items-center gap-2 px-7 py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-[0_0_20px_rgba(29,155,240,0.25)]"
+              className="group inline-flex items-center gap-2 px-7 py-3 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-[0_0_20px_rgba(29,155,240,0.25)]"
             >
               Analyze your first link free
               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />

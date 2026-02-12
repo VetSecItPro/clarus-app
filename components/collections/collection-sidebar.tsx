@@ -34,7 +34,7 @@ function CollectionIcon({
   size?: "sm" | "md"
 }) {
   const bgColor = color || "#1d9bf0"
-  const sizeClass = size === "sm" ? "w-6 h-6 text-[10px]" : "w-8 h-8 text-xs"
+  const sizeClass = size === "sm" ? "w-6 h-6 text-[0.625rem]" : "w-8 h-8 text-xs"
 
   return (
     <div
@@ -136,7 +136,7 @@ export function CollectionSidebar({
           <Library className="w-4 h-4 shrink-0" />
           <span className="flex-1 text-left truncate">All Items</span>
           {totalItems > 0 && (
-            <span className="text-[10px] text-white/40 tabular-nums">
+            <span className="text-[0.625rem] text-white/40 tabular-nums">
               {totalItems}
             </span>
           )}
@@ -152,7 +152,7 @@ export function CollectionSidebar({
             <p className="text-xs text-white/30 mb-2">No collections yet</p>
             <button
               onClick={() => setShowCreateDialog(true)}
-              className="text-xs text-[#1d9bf0] hover:text-[#1a8cd8] transition-colors"
+              className="text-xs text-brand hover:text-brand-hover transition-colors"
             >
               Create your first collection
             </button>
@@ -185,7 +185,7 @@ export function CollectionSidebar({
                     <span className="flex-1 text-left truncate">
                       {collection.name}
                     </span>
-                    <span className="text-[10px] text-white/40 tabular-nums group-hover:hidden">
+                    <span className="text-[0.625rem] text-white/40 tabular-nums group-hover:hidden">
                       {collection.item_count}
                     </span>
 
@@ -273,11 +273,11 @@ function SelectedCollectionDetail({
         </span>
       </div>
       {collection.description && (
-        <p className="text-[11px] text-white/40 line-clamp-2 mb-2">
+        <p className="text-[0.6875rem] text-white/40 line-clamp-2 mb-2">
           {collection.description}
         </p>
       )}
-      <div className="flex items-center gap-1 text-[10px] text-white/30">
+      <div className="flex items-center gap-1 text-[0.625rem] text-white/30">
         <span>{collection.item_count} items</span>
         <ChevronRight className="w-3 h-3" />
       </div>

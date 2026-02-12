@@ -11,9 +11,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import { AlertTriangle, CheckCircle, Loader2 } from "lucide-react"
+import SiteHeader from "@/components/site-header"
+import MobileBottomNav from "@/components/mobile-bottom-nav"
 
 // This component assumes it's rendered within an authenticated context
 
@@ -117,37 +118,40 @@ export default function AddContentPage() {
   }
 
   return (
-    <div className="container mx-auto p-4 flex justify-center">
-      <Card className="w-full max-w-lg">
-        <CardHeader>
-          <CardTitle>Add New Content</CardTitle>
-          <CardDescription>Save something new to your reading list.</CardDescription>
-        </CardHeader>
-        <CardContent>
+    <div className="min-h-screen bg-black">
+      <SiteHeader />
+
+      <main className="mx-auto max-w-lg px-4 py-8 pb-24 sm:pb-8">
+        <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
+          <div className="mb-6">
+            <h1 className="text-xl font-semibold text-white">Add New Content</h1>
+            <p className="text-sm text-white/50 mt-1">Save an article, video, or podcast for analysis.</p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title" className="text-white/70">Title</Label>
               <Input
                 id="title"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 required
-                placeholder="e.g., How to learn Next.js"
+                placeholder="e.g., The Future of AI in Healthcare"
               />
             </div>
             <div>
-              <Label htmlFor="url">URL</Label>
+              <Label htmlFor="url" className="text-white/70">URL</Label>
               <Input
                 id="url"
                 type="url"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
                 required
-                placeholder="e.g., https://example.com/article"
+                placeholder="e.g., https://youtube.com/watch?v=..."
               />
             </div>
             <div>
-              <Label htmlFor="type">Type</Label>
+              <Label htmlFor="type" className="text-white/70">Type</Label>
               <Select onValueChange={setType} value={type} required>
                 <SelectTrigger id="type">
                   <SelectValue placeholder="Select content type" />
@@ -162,14 +166,14 @@ export default function AddContentPage() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="fullText">Full Text (Optional)</Label>
+              <Label htmlFor="fullText" className="text-white/70">Full Text (Optional)</Label>
               <textarea
                 id="fullText"
                 value={fullText}
                 onChange={(e) => setFullText(e.target.value)}
                 rows={4}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm dark:bg-gray-800 dark:border-gray-700 dark:text-white"
-                placeholder="Paste full text here if available..."
+                className="mt-1 block w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent text-sm"
+                placeholder="Paste full text here if the URL isn't scrapable..."
               />
             </div>
             {isAtLibraryLimit && (
@@ -189,28 +193,26 @@ export default function AddContentPage() {
               </Alert>
             )}
             {success && (
-              <Alert
-                variant="default"
-                className="bg-green-50 border-green-300 text-green-700 dark:bg-green-900 dark:border-green-700 dark:text-green-300"
-              >
-                <CheckCircle className="h-4 w-4" />
-                <AlertTitle>Success</AlertTitle>
-                <AlertDescription>{success}</AlertDescription>
-              </Alert>
+              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+                <CheckCircle className="h-4 w-4 shrink-0" />
+                <span>{success}</span>
+              </div>
             )}
             <Button type="submit" disabled={isLoading || isAtLibraryLimit} className="w-full">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Adding...
+                  Analyzing...
                 </>
               ) : (
-                "Add Content"
+                "Analyze Content"
               )}
             </Button>
           </form>
-        </CardContent>
-      </Card>
+        </div>
+      </main>
+
+      <MobileBottomNav />
     </div>
   )
 }

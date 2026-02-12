@@ -105,3 +105,8 @@ docs/
 # EXCEPTIONS: Public-facing files
 \!README.md
 \!.github/pull_request_template.md
+.playwright-mcp/
+
+# Playwright screenshots from design audits
+dashboard-*.png
+library-*.png

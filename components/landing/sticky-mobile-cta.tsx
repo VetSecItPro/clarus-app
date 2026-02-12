@@ -23,7 +23,7 @@ export function StickyMobileCTA() {
       <div className="bg-black/90 backdrop-blur-xl border-t border-white/[0.08] px-4 py-3">
         <Link
           href="/signup"
-          className="flex items-center justify-center gap-2 w-full py-3 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-colors shadow-lg shadow-[#1d9bf0]/30"
+          className="flex items-center justify-center gap-2 w-full py-3 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-full transition-colors shadow-lg shadow-brand/30"
         >
           Analyze your first link free
           <ArrowRight className="w-4 h-4" />

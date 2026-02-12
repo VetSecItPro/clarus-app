@@ -168,7 +168,7 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
                   Analyzed
                 </Link>
               ) : analyzingId === episode.id ? (
-                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-[#1d9bf0]/10 text-[#1d9bf0] border border-[#1d9bf0]/20">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-brand/10 text-brand border border-brand/20">
                   <Loader2 className="w-3.5 h-3.5 animate-spin" />
                   Analyzing...
                 </div>
@@ -187,7 +187,7 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
                   size="sm"
                   variant="ghost"
                   onClick={() => handleAnalyze(episode)}
-                  className="text-xs h-8 text-white/50 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="text-xs h-8 text-white/50 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                 >
                   <Play className="w-3.5 h-3.5" />
                   Analyze

@@ -124,7 +124,7 @@ export default function AdminOverview() {
           change={combinedMetrics?.userGrowthPercent}
           changeLabel={`${combinedMetrics?.newUsersToday || 0} today`}
           icon={Users}
-          iconColor="text-[#1d9bf0]"
+          iconColor="text-brand"
           loading={loading}
           href="/manage/users"
         />
@@ -203,7 +203,7 @@ export default function AdminOverview() {
                     <div className="flex items-center gap-3 text-left min-w-0">
                       <div
                         className={cn(
-                          "px-2 py-0.5 rounded text-[10px] font-medium uppercase shrink-0",
+                          "px-2 py-0.5 rounded text-[0.625rem] font-medium uppercase shrink-0",
                           item.severity === "critical" && "bg-red-500/20 text-red-400",
                           item.severity === "high" && "bg-orange-500/20 text-orange-400",
                           item.severity === "medium" && "bg-yellow-500/20 text-yellow-400"
@@ -217,7 +217,7 @@ export default function AdminOverview() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0 ml-3">
-                      <span className="text-[10px] text-white/30">
+                      <span className="text-[0.625rem] text-white/30">
                         {new Date(item.created_at).toLocaleDateString()}
                       </span>
                       {expandedFlagId === item.id ? (
@@ -240,7 +240,7 @@ export default function AdminOverview() {
                             {item.flag_categories.map((cat) => (
                               <span
                                 key={cat}
-                                className="px-1.5 py-0.5 bg-white/[0.06] rounded text-white/60 text-[10px]"
+                                className="px-1.5 py-0.5 bg-white/[0.06] rounded text-white/60 text-[0.625rem]"
                               >
                                 {cat}
                               </span>
@@ -319,7 +319,7 @@ export default function AdminOverview() {
               const total = tiers.free + tiers.starter + tiers.pro + tiers.day_pass
               const tierItems = [
                 { label: "Free", count: tiers.free, color: "bg-white/40", pct: total > 0 ? ((tiers.free / total) * 100).toFixed(1) : "0" },
-                { label: "Starter", count: tiers.starter, color: "bg-[#1d9bf0]", pct: total > 0 ? ((tiers.starter / total) * 100).toFixed(1) : "0" },
+                { label: "Starter", count: tiers.starter, color: "bg-brand", pct: total > 0 ? ((tiers.starter / total) * 100).toFixed(1) : "0" },
                 { label: "Pro", count: tiers.pro, color: "bg-purple-500", pct: total > 0 ? ((tiers.pro / total) * 100).toFixed(1) : "0" },
                 { label: "Day Pass", count: tiers.day_pass, color: "bg-amber-500", pct: total > 0 ? ((tiers.day_pass / total) * 100).toFixed(1) : "0" },
               ]
@@ -332,7 +332,7 @@ export default function AdminOverview() {
                       ) : null
                     )}
                   </div>
-                  <div className="flex items-center gap-6 mt-3">
+                  <div className="flex items-center gap-4 flex-wrap mt-3">
                     {tierItems.map((t) => (
                       <div key={t.label} className="flex items-center gap-2">
                         <div className={cn("w-3 h-3 rounded-full", t.color)} />

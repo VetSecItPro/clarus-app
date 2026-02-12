@@ -52,17 +52,17 @@ export function AnalysisModeSheet({ open, onOpenChange, selectedMode, onModeChan
                       onClick={() => onModeChange(mode.id)}
                       className="flex items-center gap-3 w-full p-3 rounded-xl hover:bg-white/[0.06] transition-colors text-left"
                     >
-                      <div className={`p-2 rounded-lg ${isActive ? "bg-[#1d9bf0]/15" : "bg-white/[0.06]"}`}>
-                        <Icon className={`w-4 h-4 ${isActive ? "text-[#1d9bf0]" : "text-white/50"}`} />
+                      <div className={`p-2 rounded-lg ${isActive ? "bg-brand/15" : "bg-white/[0.06]"}`}>
+                        <Icon className={`w-4 h-4 ${isActive ? "text-brand" : "text-white/50"}`} />
                       </div>
                       <div className="flex-1 min-w-0">
-                        <div className={`text-sm font-medium ${isActive ? "text-[#1d9bf0]" : "text-white/90"}`}>
+                        <div className={`text-sm font-medium ${isActive ? "text-brand" : "text-white/90"}`}>
                           {mode.label}
                         </div>
                         <div className="text-xs text-white/40">{mode.description}</div>
                       </div>
                       {isActive && (
-                        <Check className="w-4 h-4 text-[#1d9bf0] shrink-0" />
+                        <Check className="w-4 h-4 text-brand shrink-0" />
                       )}
                     </button>
                   )

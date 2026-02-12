@@ -75,7 +75,7 @@ export function DemoAnalysis() {
   return (
     <section className="relative py-16 sm:py-24 px-4 overflow-hidden">
         {/* Subtle ambient glow behind the demo */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-[#1d9bf0]/[0.03] rounded-full blur-[120px] pointer-events-none" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[600px] bg-brand/[0.03] rounded-full blur-[120px] pointer-events-none" />
       <div className="max-w-5xl mx-auto">
         {/* Section heading */}
         <motion.div
@@ -85,7 +85,7 @@ export function DemoAnalysis() {
           transition={{ duration: 0.6 }}
           className="text-center mb-10"
         >
-          <p className="text-[#1d9bf0] text-sm font-medium tracking-wide uppercase mb-3">
+          <p className="text-brand text-sm font-medium tracking-wide uppercase mb-3">
             See it in action
           </p>
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-3">
@@ -113,7 +113,7 @@ export function DemoAnalysis() {
             </div>
             <div className="flex items-center gap-1.5 px-3 py-1 bg-white/[0.04] rounded-full border border-white/[0.06]">
               <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-              <span className="text-[10px] text-white/40 font-mono">clarusapp.io/item/...</span>
+              <span className="text-[0.625rem] text-white/40 font-mono">clarusapp.io/item/...</span>
             </div>
             <div className="w-[52px]" />
           </div>
@@ -136,16 +136,16 @@ export function DemoAnalysis() {
                   {DEMO_CONTENT.title}
                 </h3>
                 <div className="flex items-center gap-1.5 flex-wrap">
-                  <span className="text-[9px] text-white/40 px-1.5 py-0.5 bg-white/[0.04] rounded">{DEMO_CONTENT.domain}</span>
-                  <span className="text-[9px] text-white/30 px-1.5 py-0.5 bg-white/[0.04] rounded flex items-center gap-0.5">
+                  <span className="text-[0.5625rem] text-white/40 px-1.5 py-0.5 bg-white/[0.04] rounded">{DEMO_CONTENT.domain}</span>
+                  <span className="text-[0.5625rem] text-white/30 px-1.5 py-0.5 bg-white/[0.04] rounded flex items-center gap-0.5">
                     <Play className="w-2 h-2" /> {DEMO_CONTENT.duration}
                   </span>
                 </div>
                 <div className="mt-2 flex items-center gap-1.5">
-                  <span className="text-[9px] px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/25 rounded text-amber-300">
+                  <span className="text-[0.5625rem] px-1.5 py-0.5 bg-amber-500/15 border border-amber-500/25 rounded text-amber-300">
                     {DEMO_CONTENT.detectedTone}
                   </span>
-                  <span className="text-[9px] px-1.5 py-0.5 bg-blue-500/15 border border-blue-500/25 rounded text-blue-300">
+                  <span className="text-[0.5625rem] px-1.5 py-0.5 bg-blue-500/15 border border-blue-500/25 rounded text-blue-300">
                     {DEMO_CONTENT.author}
                   </span>
                 </div>
@@ -222,7 +222,7 @@ export function DemoAnalysis() {
         >
           <Link
             href="/signup"
-            className="group inline-flex items-center gap-2 px-8 py-3.5 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white font-semibold rounded-full transition-colors duration-200 shadow-lg shadow-[#1d9bf0]/25"
+            className="group inline-flex items-center gap-2 px-8 py-3.5 bg-brand hover:bg-brand-hover text-white font-semibold rounded-full transition-colors duration-200 shadow-lg shadow-brand/25"
           >
             Analyze your own content — free
             <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -310,7 +310,7 @@ function AssessmentContent() {
             initial={{ width: 0 }}
             animate={{ width: `${DEMO_TRIAGE.quality_score * 10}%` }}
             transition={{ duration: 0.8, delay: 0.2, ease: "easeOut" }}
-            className="h-full rounded-full bg-[#1d9bf0]"
+            className="h-full rounded-full bg-brand"
           />
         </div>
       </motion.div>
@@ -417,16 +417,16 @@ function TruthCheckContent() {
                         {claim.explanation}
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${config.color}`}>
+                        <span className={`text-[0.625rem] font-medium px-2 py-0.5 rounded-full border ${config.color}`}>
                           {config.label}
                         </span>
                         {claim.timestamp && (
-                          <span className="text-[10px] text-white/30">
+                          <span className="text-[0.625rem] text-white/30">
                             {claim.timestamp}
                           </span>
                         )}
                         {claim.sources && claim.sources.length > 0 && (
-                          <span className="text-[10px] text-[#1d9bf0]/60 flex items-center gap-0.5">
+                          <span className="text-[0.625rem] text-brand/60 flex items-center gap-0.5">
                             <ExternalLink className="w-2.5 h-2.5" />
                             {claim.sources.length} {claim.sources.length === 1 ? "source" : "sources"}
                           </span>
@@ -545,7 +545,7 @@ function DeepDiveContent() {
               transition={{ duration: 0.25, delay: 0.05 * Math.min(i, 10) }}
               className="flex items-start gap-2 ml-2"
             >
-              <span className="text-[#1d9bf0] text-sm font-mono mt-0.5 shrink-0">
+              <span className="text-brand text-sm font-mono mt-0.5 shrink-0">
                 {trimmed.charAt(0)}.
               </span>
               <span className="text-sm text-white/65 leading-relaxed">

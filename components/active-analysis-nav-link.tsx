@@ -36,7 +36,7 @@ export function ActiveAnalysisNavLink({ variant }: ActiveAnalysisNavLinkProps) {
                 "flex flex-col items-center transition-all duration-200",
                 isComplete
                   ? "text-white"
-                  : "text-[#1d9bf0]"
+                  : "text-brand"
               )}
             >
               {isComplete ? (
@@ -44,13 +44,13 @@ export function ActiveAnalysisNavLink({ variant }: ActiveAnalysisNavLinkProps) {
               ) : (
                 <Loader2 className="w-6 h-6 animate-spin" />
               )}
-              <span className="text-[11px] mt-1 font-medium opacity-100">
+              <span className="text-[0.6875rem] mt-1 font-medium opacity-100">
                 {isComplete ? "Current" : "Analyzing"}
               </span>
             </div>
             {/* Active indicator dot */}
             <div
-              className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-[#1d9bf0]"
+              className="absolute -top-0.5 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-brand"
             />
           </Link>
         </motion.div>
@@ -77,7 +77,7 @@ export function ActiveAnalysisNavLink({ variant }: ActiveAnalysisNavLinkProps) {
               "flex items-center gap-2 transition-all duration-200",
               isComplete
                 ? "text-white"
-                : "text-[#1d9bf0]"
+                : "text-brand"
             )}
           >
             {isComplete ? (
@@ -94,8 +94,8 @@ export function ActiveAnalysisNavLink({ variant }: ActiveAnalysisNavLinkProps) {
             className={cn(
               "absolute bottom-0 left-1/2 -translate-x-1/2 h-[2px] rounded-full w-8 opacity-100 transition-colors duration-300",
               isComplete
-                ? "bg-gradient-to-r from-[#1d9bf0] to-[#06b6d4]"
-                : "bg-gradient-to-r from-[#1d9bf0] to-[#06b6d4] animate-pulse"
+                ? "bg-gradient-to-r from-brand to-[#06b6d4]"
+                : "bg-gradient-to-r from-brand to-[#06b6d4] animate-pulse"
             )}
           />
         </Link>

@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, Sparkles, Zap, Crown, Loader2 } from "lucide-react"
 import type { UserTier } from "@/types/database.types"
 import { TIER_LIMITS, TIER_FEATURES } from "@/lib/tier-limits"
+import { useIsDesktop } from "@/lib/hooks/use-media-query"
 
 interface UpgradeModalProps {
   isOpen: boolean
@@ -74,7 +75,7 @@ function TierCard({ tier, isRecommended }: { tier: "starter" | "pro"; isRecommen
   return (
     <div className={`relative rounded-xl border p-4 ${colors.bg} ${colors.border} ${isRecommended ? "ring-1 ring-blue-500/40" : ""}`}>
       {isRecommended && (
-        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-blue-500 text-[10px] font-semibold text-white uppercase tracking-wider">
+        <div className="absolute -top-2.5 left-1/2 -translate-x-1/2 px-2.5 py-0.5 rounded-full bg-blue-500 text-[0.625rem] font-semibold text-white uppercase tracking-wider">
           Recommended
         </div>
       )}
@@ -125,6 +126,7 @@ export function UpgradeModal({
 }: UpgradeModalProps) {
   const isLimitBased = currentCount !== undefined && limit !== undefined
   const suggestedTier = requiredTier ?? "starter"
+  const isDesktop = useIsDesktop()
 
   return (
     <AnimatePresence>
@@ -139,23 +141,34 @@ export function UpgradeModal({
             onClick={onClose}
           />
 
-          {/* Modal */}
+          {/* Modal — responsive: bottom sheet on mobile, centered on desktop */}
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            className={isDesktop
+              ? "fixed inset-0 z-50 flex items-center justify-center p-4"
+              : "fixed bottom-0 left-0 right-0 z-50"
+            }
+            initial={isDesktop ? { opacity: 0 } : { y: "100%" }}
+            animate={isDesktop ? { opacity: 1 } : { y: 0 }}
+            exit={isDesktop ? { opacity: 0 } : { y: "100%" }}
+            transition={isDesktop ? undefined : { type: "spring", damping: 30, stiffness: 300 }}
           >
-            {/* FIX-305: added role, aria-modal, aria-labelledby */}
+            {/* Drag handle (mobile only) */}
+            {!isDesktop && (
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
+              </div>
+            )}
             <motion.div
               role="dialog"
               aria-modal="true"
               aria-labelledby="upgrade-modal-title"
-              className="w-full max-w-md bg-gray-900 border border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden"
-              initial={{ scale: 0.95, y: 20 }}
-              animate={{ scale: 1, y: 0 }}
-              exit={{ scale: 0.95, y: 20 }}
-              transition={{ type: "spring", duration: 0.3 }}
+              className={`w-full bg-gray-900 border border-white/[0.1] shadow-2xl overflow-hidden ${
+                isDesktop ? "max-w-md rounded-2xl" : "rounded-t-2xl pb-safe"
+              }`}
+              initial={isDesktop ? { scale: 0.95, y: 20 } : undefined}
+              animate={isDesktop ? { scale: 1, y: 0 } : undefined}
+              exit={isDesktop ? { scale: 0.95, y: 20 } : undefined}
+              transition={isDesktop ? { type: "spring", duration: 0.3 } : undefined}
               onClick={(e) => e.stopPropagation()}
             >
               {/* Header */}
@@ -168,7 +181,7 @@ export function UpgradeModal({
                 <button
                   onClick={onClose}
                   aria-label="Close upgrade dialog"
-                  className="p-1.5 rounded-lg hover:bg-white/[0.08] text-white/40 hover:text-white/80 transition-colors"
+                  className="p-2.5 rounded-lg hover:bg-white/[0.08] text-white/40 hover:text-white/80 transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 active:scale-95"
                 >
                   <X className="w-4 h-4" />
                 </button>

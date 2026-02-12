@@ -114,7 +114,7 @@ function MiniSummaryLine({ item }: { item: LibraryItem }) {
     <div className="flex items-center gap-2 flex-wrap">
       {accuracy && (
         <span className={cn(
-          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border",
+          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[0.625rem] font-medium border",
           accuracy.issueCount === 0
             ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
             : accuracy.issueCount <= 2
@@ -132,10 +132,10 @@ function MiniSummaryLine({ item }: { item: LibraryItem }) {
         </span>
       )}
       {accuracy?.overallRating && (
-        <span className="text-[10px] text-white/40">{accuracy.overallRating}</span>
+        <span className="text-[0.625rem] text-white/40">{accuracy.overallRating}</span>
       )}
       {qualityScore && (
-        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400">
+        <span className="inline-flex items-center gap-1 text-[0.625rem] text-emerald-400">
           <Star className="w-2.5 h-2.5" />
           {qualityScore}/10
         </span>
@@ -195,7 +195,7 @@ function LibraryItemCardComponent({
             )}
             {/* Duration badge for videos */}
             {item.type === "youtube" && item.duration && (
-              <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-white font-medium">
+              <div className="absolute bottom-2 right-2 px-1.5 py-0.5 bg-black/80 rounded text-[0.625rem] text-white font-medium">
                 {formatDuration(item.duration)}
               </div>
             )}
@@ -205,7 +205,7 @@ function LibraryItemCardComponent({
           <div className="p-3">
             {/* Type badge & Signal */}
             <div className="flex items-center justify-between mb-2">
-              <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium", typeBadge.color)}>
+              <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.625rem] font-medium", typeBadge.color)}>
                 <TypeIcon className="w-2.5 h-2.5" />
                 {typeBadge.label}
               </div>
@@ -231,13 +231,13 @@ function LibraryItemCardComponent({
                 {item.tags.slice(0, 2).map((tag) => (
                   <span
                     key={tag}
-                    className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[9px] text-purple-400 capitalize"
+                    className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[0.5625rem] text-purple-400 capitalize"
                   >
                     {tag}
                   </span>
                 ))}
                 {item.tags.length > 2 && (
-                  <span className="text-[9px] text-white/40">+{item.tags.length - 2}</span>
+                  <span className="text-[0.5625rem] text-white/40">+{item.tags.length - 2}</span>
                 )}
               </div>
             )}
@@ -246,7 +246,7 @@ function LibraryItemCardComponent({
 
         {/* Action buttons */}
         <TooltipProvider delayDuration={300}>
-          <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-all z-10">
+          <div className="absolute top-2 right-2 flex gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-all z-10">
             {/* FIX-304: added aria-labels for grid view icon-only buttons */}
             <Tooltip>
               <TooltipTrigger asChild>
@@ -332,7 +332,7 @@ function LibraryItemCardComponent({
             )}
             {/* Duration badge for videos */}
             {item.type === "youtube" && item.duration && (
-              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 rounded text-[10px] text-white font-medium">
+              <div className="absolute bottom-1 right-1 px-1.5 py-0.5 bg-black/80 rounded text-[0.625rem] text-white font-medium">
                 {formatDuration(item.duration)}
               </div>
             )}
@@ -342,7 +342,7 @@ function LibraryItemCardComponent({
           <div className="flex-1 min-w-0">
             {/* Type badge & Signal */}
             <div className="flex items-center gap-2 mb-1.5">
-              <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full border text-[10px] font-medium", typeBadge.color)}>
+              <div className={cn("flex items-center gap-1 px-2 py-0.5 rounded-full border text-[0.625rem] font-medium", typeBadge.color)}>
                 <TypeIcon className="w-2.5 h-2.5" />
                 {typeBadge.label}
               </div>
@@ -391,13 +391,13 @@ function LibraryItemCardComponent({
                 {item.tags.slice(0, 3).map((tag) => (
                   <span
                     key={tag}
-                    className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[10px] text-purple-400 capitalize"
+                    className="px-1.5 py-0.5 bg-purple-500/20 border border-purple-500/30 rounded text-[0.625rem] text-purple-400 capitalize"
                   >
                     {tag}
                   </span>
                 ))}
                 {item.tags.length > 3 && (
-                  <span className="text-[10px] text-white/40">+{item.tags.length - 3}</span>
+                  <span className="text-[0.625rem] text-white/40">+{item.tags.length - 3}</span>
                 )}
               </div>
             )}
@@ -477,7 +477,7 @@ function LibraryItemCardComponent({
               href={`/item/${item.id}`}
               onClick={(e) => e.stopPropagation()}
               prefetch={true}
-              className="group/btn inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#1d9bf0] to-[#0d8bdf] hover:from-[#1a8cd8] hover:to-[#0a7bc8] text-white rounded-full transition-all text-sm font-semibold shadow-lg shadow-[#1d9bf0]/25 hover:shadow-[#1d9bf0]/40 hover:scale-[1.02] active:scale-[0.98]"
+              className="group/btn inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-brand to-[#0d8bdf] hover:from-brand-hover hover:to-[#0a7bc8] text-white rounded-full transition-all text-sm font-semibold shadow-lg shadow-brand/25 hover:shadow-brand/40 hover:scale-[1.02] active:scale-[0.98]"
             >
               View Full Analysis
               <ArrowRight className="w-4 h-4 transition-transform group-hover/btn:translate-x-0.5" />

@@ -130,7 +130,7 @@ export default function FeaturesIndexPage() {
               <div className={`inline-flex p-2.5 rounded-xl ${feature.bg} mb-4`}>
                 <Icon className={`w-5 h-5 ${feature.color}`} />
               </div>
-              <h2 className="text-base font-semibold text-white group-hover:text-[#1d9bf0] transition-colors mb-2">
+              <h2 className="text-base font-semibold text-white group-hover:text-brand transition-colors mb-2">
                 {feature.title}
               </h2>
               <p className="text-sm text-white/40 leading-relaxed">

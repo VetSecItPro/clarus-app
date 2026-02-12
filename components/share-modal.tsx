@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from "framer-motion"
 import { X, Mail, Loader2, CheckCircle2, AlertCircle, Link2, Copy, Check } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { toast } from "sonner"
+import { useIsDesktop } from "@/lib/hooks/use-media-query"
 
 interface ShareModalProps {
   isOpen: boolean
@@ -33,6 +34,7 @@ export function ShareModal({
   const [shareUrl, setShareUrl] = useState<string | null>(null)
   const [isGenerating, setIsGenerating] = useState(false)
   const [linkCopied, setLinkCopied] = useState(false)
+  const isDesktop = useIsDesktop()
 
   const handleGenerateLink = async () => {
     if (!contentId) return
@@ -136,18 +138,27 @@ export function ShareModal({
             className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50"
           />
 
-          {/* Modal — FIX-305: added role, aria-modal, aria-labelledby */}
+          {/* Modal — responsive: bottom sheet on mobile, centered on desktop */}
           <motion.div
             role="dialog"
             aria-modal="true"
             aria-labelledby="share-modal-title"
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            transition={{ type: "spring", duration: 0.3 }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 p-4"
+            initial={isDesktop ? { opacity: 0, scale: 0.95, y: 20 } : { y: "100%" }}
+            animate={isDesktop ? { opacity: 1, scale: 1, y: 0 } : { y: 0 }}
+            exit={isDesktop ? { opacity: 0, scale: 0.95, y: 20 } : { y: "100%" }}
+            transition={isDesktop ? { type: "spring", duration: 0.3 } : { type: "spring", damping: 30, stiffness: 300 }}
+            className={isDesktop
+              ? "fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-md z-50 p-4"
+              : "fixed bottom-0 left-0 right-0 z-50"
+            }
           >
-            <div className="bg-gray-900 border border-white/[0.1] rounded-2xl shadow-2xl overflow-hidden">
+            {/* Drag handle (mobile only) */}
+            {!isDesktop && (
+              <div className="flex justify-center pt-3 pb-1">
+                <div className="w-10 h-1 rounded-full bg-white/20" />
+              </div>
+            )}
+            <div className={`bg-gray-900 border border-white/[0.1] shadow-2xl overflow-hidden ${isDesktop ? "rounded-2xl" : "rounded-t-2xl pb-safe"}`}>
               {/* Header */}
               <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.08]">
                 <div className="flex items-center gap-3">

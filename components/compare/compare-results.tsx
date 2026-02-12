@@ -51,7 +51,7 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
         <div className="space-y-2">
           {sources.map((source, i) => (
             <div key={source.id} className="flex items-center gap-3">
-              <span className="w-6 h-6 rounded-full bg-[#1d9bf0]/20 text-[#1d9bf0] text-xs font-semibold flex items-center justify-center shrink-0">
+              <span className="w-6 h-6 rounded-full bg-brand/20 text-brand text-xs font-semibold flex items-center justify-center shrink-0">
                 {i + 1}
               </span>
               <div className="flex-1 min-w-0">
@@ -63,7 +63,7 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
                 href={source.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/30 hover:text-[#1d9bf0] transition-colors shrink-0"
+                className="text-white/30 hover:text-brand transition-colors shrink-0"
                 aria-label={`Open source: ${source.title ?? "Untitled"}`}
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -162,7 +162,7 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ duration: 0.3, delay: 0.35 + i * 0.05 }}
               >
-                <div className="text-xs text-[#1d9bf0]/80 font-semibold uppercase tracking-wider mb-2">
+                <div className="text-xs text-brand/80 font-semibold uppercase tracking-wider mb-2">
                   {source.source_title}
                 </div>
                 <div className="space-y-1.5 ml-1">
@@ -216,7 +216,7 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
                 transition={{ duration: 0.3, delay: 0.55 + i * 0.05 }}
                 className="flex items-start gap-3"
               >
-                <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 text-[0.625rem] font-bold flex items-center justify-center shrink-0 mt-0.5">
                   {i + 1}
                 </span>
                 <span className="text-sm text-white/70">{takeaway}</span>

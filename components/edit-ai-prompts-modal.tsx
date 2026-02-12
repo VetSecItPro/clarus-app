@@ -151,7 +151,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
     }
   }
 
-  const inputClassName = "bg-black/40 border-white/10 text-white text-sm placeholder-white/30 focus:border-[#1d9bf0]/50 focus:ring-0 rounded-lg"
+  const inputClassName = "bg-black/40 border-white/10 text-white text-sm placeholder-white/30 focus:border-brand/50 focus:ring-0 rounded-lg"
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
@@ -160,7 +160,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
       >
         <DialogHeader className="px-6 pt-6 pb-4 border-b border-white/[0.06]">
           <DialogTitle className="text-lg font-semibold text-white flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-[#1d9bf0]" />
+            <Sparkles className="w-5 h-5 text-brand" />
             AI Analysis Prompts
           </DialogTitle>
           <DialogDescription className="text-sm text-white/50">
@@ -170,7 +170,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
 
         {isLoading ? (
           <div className="flex justify-center items-center h-64">
-            <Loader2 className="w-6 h-6 animate-spin text-[#1d9bf0]" />
+            <Loader2 className="w-6 h-6 animate-spin text-brand" />
           </div>
         ) : (
           <div className="flex flex-col">
@@ -187,7 +187,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
                       className={cn(
                         "flex items-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all",
                         isSelected
-                          ? "bg-[#1d9bf0] text-white"
+                          ? "bg-brand text-white"
                           : "bg-white/[0.05] text-white/60 hover:bg-white/[0.1] hover:text-white"
                       )}
                     >
@@ -280,7 +280,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
                 {/* Web Search Toggle */}
                 <div className="flex items-center justify-between py-3 px-4 bg-white/[0.03] rounded-lg border border-white/[0.06]">
                   <div className="flex items-center gap-3">
-                    <Globe className="w-4 h-4 text-[#1d9bf0]" />
+                    <Globe className="w-4 h-4 text-brand" />
                     <div>
                       <Label className="text-sm text-white/90 font-medium">Web Search</Label>
                       <p className="text-xs text-white/40">Enable Tavily web search for fact-checking</p>
@@ -289,7 +289,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
                   <Switch
                     checked={editedPrompt.use_web_search !== false}
                     onCheckedChange={(checked) => handleChange("use_web_search", checked)}
-                    className="data-[state=checked]:bg-[#1d9bf0]"
+                    className="data-[state=checked]:bg-brand"
                   />
                 </div>
               </div>
@@ -311,7 +311,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
                 <Button
                   onClick={handleSave}
                   disabled={isSaving || !hasChanges}
-                  className="bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white h-9 px-5 disabled:opacity-40"
+                  className="bg-brand hover:bg-brand-hover text-white h-9 px-5 disabled:opacity-40"
                 >
                   {isSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                   Save Changes

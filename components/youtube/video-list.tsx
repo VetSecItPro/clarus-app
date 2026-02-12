@@ -184,7 +184,7 @@ export function VideoList({ subscriptionId, channelName }: VideoListProps) {
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                     confirmingId === video.id
                       ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
-                      : "bg-[#1d9bf0]/10 text-[#1d9bf0] hover:bg-[#1d9bf0]/20"
+                      : "bg-brand/10 text-brand hover:bg-brand/20"
                   } disabled:opacity-50`}
                 >
                   {analyzingId === video.id ? (

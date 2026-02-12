@@ -50,7 +50,7 @@ export default function UsersPage() {
           change={metrics?.userGrowthPercent}
           changeLabel={`${metrics?.newUsersToday || 0} today`}
           icon={Users}
-          iconColor="text-[#1d9bf0]"
+          iconColor="text-brand"
           loading={loading}
         />
         <MetricCard

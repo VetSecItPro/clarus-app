@@ -54,7 +54,7 @@ export function MetricCard({
   change,
   changeLabel,
   icon: Icon,
-  iconColor = "text-[#1d9bf0]",
+  iconColor = "text-brand",
   loading = false,
   href,
 }: {
@@ -177,7 +177,7 @@ export function TimeFilter({ value, onChange }: { value: number; onChange: (v: n
           onClick={() => onChange(opt.value)}
           className={cn(
             "px-3 py-1.5 text-xs font-medium rounded-md transition-all",
-            value === opt.value ? "bg-[#1d9bf0] text-white" : "text-white/50 hover:text-white/70"
+            value === opt.value ? "bg-brand text-white" : "text-white/50 hover:text-white/70"
           )}
         >
           {opt.label}

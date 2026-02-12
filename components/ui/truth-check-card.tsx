@@ -55,14 +55,14 @@ function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
     <span className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[10px] font-medium hover:bg-purple-500/30 transition-all cursor-pointer"
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[0.625rem] font-medium hover:bg-purple-500/30 transition-all cursor-pointer"
         title={`This claim appears in ${matches.length} other ${matches.length === 1 ? "analysis" : "analyses"}`}
       >
         Seen in {matches.length} other {matches.length === 1 ? "analysis" : "analyses"}
       </button>
       {isOpen && (
         <div className="absolute z-20 top-full left-0 mt-1.5 w-64 bg-black/95 border border-purple-500/30 rounded-xl shadow-xl p-3 space-y-2">
-          <div className="text-[10px] text-white/40 uppercase tracking-wider mb-1">
+          <div className="text-[0.625rem] text-white/40 uppercase tracking-wider mb-1">
             Also appears in:
           </div>
           {matches.map((match) => (
@@ -75,13 +75,13 @@ function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
               <div className="text-xs text-white/80 font-medium line-clamp-2">
                 {match.contentTitle}
               </div>
-              <div className="text-[10px] text-purple-300/60 mt-1">
+              <div className="text-[0.625rem] text-purple-300/60 mt-1">
                 {Math.round(match.similarityScore * 100)}% match
               </div>
             </Link>
           ))}
           <button
-            className="text-[10px] text-white/30 hover:text-white/50 w-full text-center pt-1"
+            className="text-[0.625rem] text-white/30 hover:text-white/50 w-full text-center pt-1"
             onClick={() => setIsOpen(false)}
           >
             Close
@@ -123,7 +123,7 @@ function InlineCitedText({ text, references }: { text: string; references?: Cita
           href={ref.url}
           target="_blank"
           rel="noopener noreferrer"
-          className="text-[10px] text-[#1d9bf0] font-semibold cursor-pointer hover:underline align-super ml-0.5 mr-0.5"
+          className="text-[0.625rem] text-brand font-semibold cursor-pointer hover:underline align-super ml-0.5 mr-0.5"
           title={`${ref.title} — ${ref.url}`}
         >
           [{refNum}]
@@ -165,7 +165,7 @@ function LegacyCitationLinks({ sources }: { sources: CitationSource[] }) {
             href={source.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 text-[#1d9bf0] text-[10px] hover:bg-[#1d9bf0]/20 transition-colors max-w-[200px]"
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-brand/10 border border-brand/20 text-brand text-[0.625rem] hover:bg-brand/20 transition-colors max-w-[200px]"
             title={source.url}
           >
             <ExternalLink className="w-2.5 h-2.5 shrink-0" />
@@ -201,11 +201,11 @@ function ReferenceList({ references }: { references: CitationSource[] }) {
 
           return (
             <div key={ref.url} className="flex items-center gap-2">
-              <span className="text-[11px] text-[#1d9bf0] font-semibold shrink-0 mt-px w-4 text-right">
+              <span className="text-[0.6875rem] text-brand font-semibold shrink-0 mt-px w-4 text-right">
                 {i + 1}.
               </span>
               <span className={cn(
-                "px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0",
+                "px-1.5 py-0.5 rounded text-[0.5625rem] font-medium shrink-0",
                 classification.bg, classification.border, classification.color,
                 "border"
               )}>
@@ -215,7 +215,7 @@ function ReferenceList({ references }: { references: CitationSource[] }) {
                 href={ref.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-xs text-white/60 hover:text-[#1d9bf0] transition-colors flex items-center gap-1 min-w-0"
+                className="text-xs text-white/60 hover:text-brand transition-colors flex items-center gap-1 min-w-0"
               >
                 <span className="truncate">
                   {ref.title && ref.title !== domain ? `${ref.title} — ` : ""}{domain}
@@ -374,7 +374,7 @@ export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFl
                       {issue.timestamp && <span>{issue.timestamp}</span>}
                       {/* Severity badge with color coding */}
                       <span className={cn(
-                        "px-1.5 py-0.5 rounded text-[10px] font-medium border capitalize",
+                        "px-1.5 py-0.5 rounded text-[0.625rem] font-medium border capitalize",
                         severityStyle.bg, severityStyle.border, severityStyle.text
                       )}>
                         {issue.severity}
@@ -384,7 +384,7 @@ export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFl
                         <CrossRefBadge matches={matches} />
                       )}
                       {isFlagged && (
-                        <span className="text-[10px] text-red-400/60 flex items-center gap-0.5">
+                        <span className="text-[0.625rem] text-red-400/60 flex items-center gap-0.5">
                           <Flag className="w-2.5 h-2.5" /> Flagged
                         </span>
                       )}

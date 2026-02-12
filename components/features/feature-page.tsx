@@ -29,7 +29,7 @@ export function FeaturePage({
     <main className="max-w-4xl mx-auto px-4 lg:px-6 py-16">
       {/* Hero */}
       <div className="text-center mb-16">
-        <span className="inline-block px-3 py-1.5 rounded-full bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 text-xs font-medium text-[#1d9bf0] mb-6">
+        <span className="inline-block px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-xs font-medium text-brand mb-6">
           {badge}
         </span>
         <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight">
@@ -56,7 +56,7 @@ export function FeaturePage({
               key={step.number}
               className="bg-white/[0.03] border border-white/[0.06] rounded-2xl p-6"
             >
-              <div className="w-8 h-8 rounded-full bg-[#1d9bf0]/10 border border-[#1d9bf0]/20 flex items-center justify-center text-sm font-semibold text-[#1d9bf0] mb-4">
+              <div className="w-8 h-8 rounded-full bg-brand/10 border border-brand/20 flex items-center justify-center text-sm font-semibold text-brand mb-4">
                 {step.number}
               </div>
               <h3 className="text-base font-semibold text-white mb-2">{step.title}</h3>
@@ -96,7 +96,7 @@ export function FeaturePage({
               href={feature.href}
               className="group bg-white/[0.03] border border-white/[0.06] rounded-2xl p-5 hover:bg-white/[0.06] hover:border-white/[0.1] transition-all"
             >
-              <h3 className="text-sm font-semibold text-white group-hover:text-[#1d9bf0] transition-colors mb-1">
+              <h3 className="text-sm font-semibold text-white group-hover:text-brand transition-colors mb-1">
                 {feature.title}
               </h3>
               <p className="text-xs text-white/40">{feature.description}</p>

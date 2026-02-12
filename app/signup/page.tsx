@@ -225,7 +225,7 @@ export default function SignUpPage() {
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           {/* Animated gradient orbs — CSS keyframes */}
           <div
-            className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-[#1d9bf0]/30 blur-[120px]"
+            className="absolute top-1/4 left-1/4 w-[500px] h-[500px] rounded-full bg-brand/30 blur-[120px]"
             style={{ animation: "signupOrb1 20s ease-in-out infinite" }}
           />
           <div
@@ -277,7 +277,7 @@ export default function SignUpPage() {
               <h1 className="text-2xl font-bold text-white mb-2">Create account</h1>
               <p className="text-white/50 text-sm">
                 Already have an account?{" "}
-                <Link href="/login" className="text-[#1d9bf0] hover:text-[#1a8cd8] font-medium transition-colors">
+                <Link href="/login" className="text-brand hover:text-brand-hover font-medium transition-colors">
                   Sign in
                 </Link>
               </p>
@@ -299,7 +299,7 @@ export default function SignUpPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
-                    className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                    className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                   />
                 </div>
               </div>
@@ -318,7 +318,7 @@ export default function SignUpPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
-                    className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                    className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                   />
                 </div>
               </div>
@@ -337,7 +337,7 @@ export default function SignUpPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
-                    className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                    className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                   />
                   <button
                     type="button"
@@ -365,7 +365,7 @@ export default function SignUpPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
-                    className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-[#1d9bf0] focus:ring-1 focus:ring-[#1d9bf0] transition-all outline-none"
+                    className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                   />
                   <button
                     type="button"
@@ -388,15 +388,15 @@ export default function SignUpPage() {
                   type="checkbox"
                   checked={agreeToTerms}
                   onChange={(e) => setAgreeToTerms(e.target.checked)}
-                  className="mt-0.5 w-3.5 h-3.5 rounded border-white/20 bg-white/[0.04] text-[#1d9bf0] focus:ring-[#1d9bf0] focus:ring-offset-0 focus:ring-1"
+                  className="mt-0.5 w-3.5 h-3.5 rounded border-white/20 bg-white/[0.04] text-brand focus:ring-brand focus:ring-offset-0 focus:ring-1"
                 />
                 <label htmlFor="terms" className="text-xs text-white/50">
                   I agree to the{" "}
-                  <Link href="/terms" className="text-[#1d9bf0] hover:underline">
+                  <Link href="/terms" className="text-brand hover:underline">
                     Terms of Service
                   </Link>{" "}
                   and{" "}
-                  <Link href="/privacy" className="text-[#1d9bf0] hover:underline">
+                  <Link href="/privacy" className="text-brand hover:underline">
                     Privacy Policy
                   </Link>
                 </label>
@@ -415,7 +415,7 @@ export default function SignUpPage() {
                 <button
                   type="submit"
                   disabled={isLoading || !agreeToTerms}
-                  className="px-8 h-9 bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white text-sm font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group shadow-lg shadow-[#1d9bf0]/25 hover:shadow-xl hover:shadow-[#1d9bf0]/40 hover:-translate-y-0.5"
+                  className="px-8 h-9 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-full transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 group shadow-lg shadow-brand/25 hover:shadow-xl hover:shadow-brand/40 hover:-translate-y-0.5"
                 >
                   {isLoading ? (
                     "Creating account..."
@@ -428,7 +428,7 @@ export default function SignUpPage() {
                 </button>
               </div>
               {!agreeToTerms && !isLoading && (
-                <p className="text-[10px] text-white/40 text-center">
+                <p className="text-[0.625rem] text-white/40 text-center">
                   Please agree to the Terms of Service to continue
                 </p>
               )}

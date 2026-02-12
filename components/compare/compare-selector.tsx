@@ -133,7 +133,7 @@ export function CompareSelector({
       >
         <DialogHeader>
           <DialogTitle className="text-white flex items-center gap-2">
-            <GitCompareArrows className="w-5 h-5 text-[#1d9bf0]" />
+            <GitCompareArrows className="w-5 h-5 text-brand" />
             Compare Content
           </DialogTitle>
           <DialogDescription className="text-white/50">
@@ -196,7 +196,7 @@ export function CompareSelector({
                   className={cn(
                     "w-full flex items-center gap-3 p-3 rounded-xl text-left transition-all",
                     isSelected
-                      ? "bg-[#1d9bf0]/15 border border-[#1d9bf0]/30"
+                      ? "bg-brand/15 border border-brand/30"
                       : "bg-white/[0.03] border border-transparent hover:bg-white/[0.06] hover:border-white/[0.08]",
                     isDisabled && "opacity-40 cursor-not-allowed"
                   )}
@@ -206,7 +206,7 @@ export function CompareSelector({
                     className={cn(
                       "w-5 h-5 rounded-md flex items-center justify-center shrink-0 transition-colors",
                       isSelected
-                        ? "bg-[#1d9bf0] border-[#1d9bf0]"
+                        ? "bg-brand border-brand"
                         : "border border-white/20 bg-white/[0.04]"
                     )}
                   >
@@ -249,7 +249,7 @@ export function CompareSelector({
             className={cn(
               "flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all",
               selectedIds.size >= 2
-                ? "bg-[#1d9bf0] hover:bg-[#1a8cd8] text-white"
+                ? "bg-brand hover:bg-brand-hover text-white"
                 : "bg-white/[0.06] text-white/30 cursor-not-allowed"
             )}
           >

@@ -35,7 +35,7 @@ export function AnalysisModeSelector({ selectedMode, onModeChange, isLocked }: A
                       "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all",
                       "border",
                       isActive
-                        ? "bg-[#1d9bf0]/10 border-[#1d9bf0]/30 text-[#1d9bf0]"
+                        ? "bg-brand/10 border-brand/30 text-brand"
                         : "bg-white/[0.04] border-white/[0.08] text-white/50 hover:text-white/70 hover:bg-white/[0.06]",
                       isLocked && "opacity-40 cursor-not-allowed"
                     )}
@@ -64,7 +64,7 @@ export function AnalysisModeSelector({ selectedMode, onModeChange, isLocked }: A
         className={cn(
           "sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
           "border",
-          "bg-[#1d9bf0]/10 border-[#1d9bf0]/30 text-[#1d9bf0]",
+          "bg-brand/10 border-brand/30 text-brand",
           isLocked && "opacity-40 cursor-not-allowed"
         )}
       >

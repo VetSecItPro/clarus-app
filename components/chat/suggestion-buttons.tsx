@@ -170,10 +170,10 @@ export function SuggestionButtons({
               transition={{ duration: 0.2, delay: index * 0.05 }}
               onClick={() => onSelect(action.action)}
               disabled={disabled}
-              className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-[#1d9bf0]/10 hover:bg-[#1d9bf0]/20 border border-[#1d9bf0]/30 hover:border-[#1d9bf0]/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+              className="group flex items-center gap-2 px-3 py-2 rounded-xl bg-brand/10 hover:bg-brand/20 border border-brand/30 hover:border-brand/50 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              <Icon className="w-4 h-4 text-[#1d9bf0]" />
-              <span className="text-sm font-medium text-[#1d9bf0]">
+              <Icon className="w-4 h-4 text-brand" />
+              <span className="text-sm font-medium text-brand">
                 {action.label}
               </span>
             </motion.button>
