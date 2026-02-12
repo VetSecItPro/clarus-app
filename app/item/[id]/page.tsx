@@ -49,6 +49,8 @@ const UpgradeModal = dynamic(() => import("@/components/upgrade-modal").then(m =
 const EditAIPromptsModal = dynamic(() => import("@/components/edit-ai-prompts-modal").then(m => ({ default: m.EditAIPromptsModal })), { ssr: false })
 const TranscriptViewer = dynamic(() => import("@/components/ui/transcript-viewer").then(m => ({ default: m.TranscriptViewer })), { ssr: false })
 const HighlightedTranscript = dynamic(() => import("@/components/ui/highlighted-transcript").then(m => ({ default: m.HighlightedTranscript })), { ssr: false })
+const ClaimTimeline = dynamic(() => import("@/components/ui/claim-timeline").then(m => ({ default: m.ClaimTimeline })), { ssr: false })
+const VoteButton = dynamic(() => import("@/components/discover/vote-button").then(m => ({ default: m.VoteButton })), { ssr: false })
 
 // Next.js page props
 interface PageProps {
@@ -173,6 +175,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const [isPublic, setIsPublic] = useState(false)
   const [isTogglingPublish, setIsTogglingPublish] = useState(false)
   const [crossReferences, setCrossReferences] = useState<CrossReference[]>([])
+  const [userVote, setUserVote] = useState<number | null>(null)
   const upgradeModal = useUpgradeModal()
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("apply")
 
@@ -181,6 +184,8 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   type ClaimFlagEntry = { claim_index: number; flag_reason: string | null }
   const [sectionFeedback, setSectionFeedback] = useState<FeedbackMap>({})
   const [claimFlags, setClaimFlags] = useState<ClaimFlagEntry[]>([])
+  const [highlightedIssueIndex, setHighlightedIssueIndex] = useState(-1)
+  const highlightTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   const isDesktop = useIsDesktop()
   const { startTracking: startAnalysisTracking, markComplete: markAnalysisComplete, pausePolling, resumePolling } = useActiveAnalysis()
@@ -230,6 +235,27 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     if (youtubePlayerRef.current) {
       youtubePlayerRef.current.seekTo(seconds)
     }
+  }, [])
+
+  /** Timeline marker click: seek player + scroll to issue + highlight briefly */
+  const handleTimelineMarkerClick = useCallback((issueIndex: number, seconds: number) => {
+    // Seek the player
+    if (youtubePlayerRef.current) {
+      youtubePlayerRef.current.seekTo(seconds)
+    }
+    // Highlight the issue in the truth check card
+    setHighlightedIssueIndex(issueIndex)
+    // Clear any previous timeout
+    if (highlightTimeoutRef.current) clearTimeout(highlightTimeoutRef.current)
+    // Auto-clear highlight after 3 seconds
+    highlightTimeoutRef.current = setTimeout(() => {
+      setHighlightedIssueIndex(-1)
+    }, 3000)
+    // Scroll to the issue element
+    requestAnimationFrame(() => {
+      const el = document.querySelector(`[data-issue-index="${issueIndex}"]`)
+      if (el) el.scrollIntoView({ behavior: "smooth", block: "center" })
+    })
   }, [])
 
   const regenerationCount = item?.regeneration_count ?? 0
@@ -440,11 +466,22 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
             .eq("user_id", session.user.id)
             .maybeSingle()
         : Promise.resolve({ data: null })
+      const votePromise = session?.user?.id
+        ? supabase
+            .from("content_votes")
+            .select("vote")
+            .eq("content_id", contentId)
+            .eq("user_id", session.user.id)
+            .maybeSingle()
+        : Promise.resolve({ data: null })
 
-      const [contentData, ratingResult] = await Promise.all([contentPromise, ratingPromise])
+      const [contentData, ratingResult, voteResult] = await Promise.all([contentPromise, ratingPromise, votePromise])
 
       if (ratingResult.data) {
         setCurrentUserContentRating({ signal_score: ratingResult.data.signal_score })
+      }
+      if (voteResult.data) {
+        setUserVote(voteResult.data.vote)
       }
 
       if (isContentProcessing(contentData)) {
@@ -1020,7 +1057,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 headerRight={summary?.truth_check && !isPolling ? <SectionFeedback contentId={contentId} sectionType="accuracy" initialValue={sectionFeedback.accuracy ?? null} /> : undefined}
               >
                 {summary?.truth_check ? (
-                  <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} crossReferences={crossReferences} contentId={contentId} claimFlags={claimFlags} onFlagClaim={handleFlagClaim} />
+                  <TruthCheckCard truthCheck={summary.truth_check as unknown as TruthCheckData} crossReferences={crossReferences} contentId={contentId} claimFlags={claimFlags} onFlagClaim={handleFlagClaim} highlightedIssueIndex={highlightedIssueIndex} />
                 ) : (
                   <div className="space-y-4" style={{ minHeight: "650px" }}>
                     <div>
@@ -1564,6 +1601,18 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
           {/* Spacer for fixed video on mobile */}
           {!isDesktop && <div className="w-full mt-2" style={{ paddingBottom: "56.25%" }} />}
 
+          {/* MOBILE: Claim Timeline below player spacer */}
+          {!isDesktop && (item.type === "youtube" || item.type === "podcast") && item.duration && summary?.truth_check && (summary.truth_check as unknown as TruthCheckData).issues?.length > 0 && (
+            <div className="px-3 mb-2">
+              <ClaimTimeline
+                duration={item.duration}
+                issues={(summary.truth_check as unknown as TruthCheckData).issues}
+                onMarkerClick={handleTimelineMarkerClick}
+                highlightedIndex={highlightedIssueIndex}
+              />
+            </div>
+          )}
+
           {/* MOBILE: Tab content (Analysis or Chat) */}
           {!isDesktop && (
             <div ref={mobileContentRef} className="px-3">
@@ -1571,36 +1620,48 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 <>
                   {/* Mobile content info */}
                   <div className="p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden mb-4">
-                    <h1 className="text-base font-semibold text-white leading-tight mb-2 break-words">
-                      {item.title || "Processing Title..."}
-                    </h1>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 overflow-hidden">
-                      <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{displayDomain}</span>
-                      {item.author && <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{item.author}</span>}
-                      <span className="px-2 py-1 rounded-lg bg-white/[0.06] flex items-center gap-1">
-                        {item.type === "youtube" ? (
-                          <>
-                            <Play className="w-3 h-3" />
-                            {displayDuration}
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="w-3 h-3" />
-                            Article
-                          </>
-                        )}
-                      </span>
-                      <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
-                      {(() => {
-                        const modeOpt = getModeOption(analysisMode)
-                        const ModeIcon = modeOpt.icon
-                        return (
-                          <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center gap-1">
-                            <ModeIcon className="w-3 h-3" />
-                            {modeOpt.label}
+                    <div className="flex gap-3">
+                      {/* Community vote */}
+                      <div className="shrink-0">
+                        <VoteButton
+                          contentId={contentId}
+                          initialVoteScore={item.vote_score ?? 0}
+                          initialUserVote={userVote}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h1 className="text-base font-semibold text-white leading-tight mb-2 break-words">
+                          {item.title || "Processing Title..."}
+                        </h1>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 overflow-hidden">
+                          <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{displayDomain}</span>
+                          {item.author && <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{item.author}</span>}
+                          <span className="px-2 py-1 rounded-lg bg-white/[0.06] flex items-center gap-1">
+                            {item.type === "youtube" ? (
+                              <>
+                                <Play className="w-3 h-3" />
+                                {displayDuration}
+                              </>
+                            ) : (
+                              <>
+                                <FileText className="w-3 h-3" />
+                                Article
+                              </>
+                            )}
                           </span>
-                        )
-                      })()}
+                          <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
+                          {(() => {
+                            const modeOpt = getModeOption(analysisMode)
+                            const ModeIcon = modeOpt.icon
+                            return (
+                              <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center gap-1">
+                                <ModeIcon className="w-3 h-3" />
+                                {modeOpt.label}
+                              </span>
+                            )
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -1676,41 +1737,65 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                       </div>
                     )}
                   </div>
+
+                  {/* Claim Timeline — shows accuracy issue markers along the content timeline */}
+                  {(item.type === "youtube" || item.type === "podcast") && item.duration && summary?.truth_check && (summary.truth_check as unknown as TruthCheckData).issues?.length > 0 && (
+                    <div className="mt-1 px-1">
+                      <ClaimTimeline
+                        duration={item.duration}
+                        issues={(summary.truth_check as unknown as TruthCheckData).issues}
+                        onMarkerClick={handleTimelineMarkerClick}
+                        highlightedIndex={highlightedIssueIndex}
+                      />
+                    </div>
+                  )}
                 </div>
 
                 <div className="space-y-2 sm:space-y-4">
                   {/* Content info card */}
                   <div className="mx-3 sm:mx-4 lg:mx-0 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
-                    <h1 className="text-base font-semibold text-white leading-tight mb-2 break-words">
-                      {item.title || "Processing Title..."}
-                    </h1>
-                    <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 overflow-hidden">
-                      <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{displayDomain}</span>
-                      {item.author && <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{item.author}</span>}
-                      <span className="px-2 py-1 rounded-lg bg-white/[0.06] flex items-center gap-1">
-                        {item.type === "youtube" ? (
-                          <>
-                            <Play className="w-3 h-3" />
-                            {displayDuration}
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="w-3 h-3" />
-                            Article
-                          </>
-                        )}
-                      </span>
-                      <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
-                      {(() => {
-                        const modeOpt = getModeOption(analysisMode)
-                        const ModeIcon = modeOpt.icon
-                        return (
-                          <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center gap-1">
-                            <ModeIcon className="w-3 h-3" />
-                            {modeOpt.label}
+                    <div className="flex gap-3">
+                      {/* Community vote */}
+                      <div className="shrink-0">
+                        <VoteButton
+                          contentId={contentId}
+                          initialVoteScore={item.vote_score ?? 0}
+                          initialUserVote={userVote}
+                        />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <h1 className="text-base font-semibold text-white leading-tight mb-2 break-words">
+                          {item.title || "Processing Title..."}
+                        </h1>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-gray-400 overflow-hidden">
+                          <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{displayDomain}</span>
+                          {item.author && <span className="px-2 py-1 rounded-lg bg-white/[0.06]">{item.author}</span>}
+                          <span className="px-2 py-1 rounded-lg bg-white/[0.06] flex items-center gap-1">
+                            {item.type === "youtube" ? (
+                              <>
+                                <Play className="w-3 h-3" />
+                                {displayDuration}
+                              </>
+                            ) : (
+                              <>
+                                <FileText className="w-3 h-3" />
+                                Article
+                              </>
+                            )}
                           </span>
-                        )
-                      })()}
+                          <span className="px-2 py-1 rounded-lg bg-white/[0.06]">Analyzed {displaySavedAt}</span>
+                          {(() => {
+                            const modeOpt = getModeOption(analysisMode)
+                            const ModeIcon = modeOpt.icon
+                            return (
+                              <span className="px-2 py-1 rounded-lg bg-[#1d9bf0]/10 text-[#1d9bf0] flex items-center gap-1">
+                                <ModeIcon className="w-3 h-3" />
+                                {modeOpt.label}
+                              </span>
+                            )
+                          })()}
+                        </div>
+                      </div>
                     </div>
                   </div>
 

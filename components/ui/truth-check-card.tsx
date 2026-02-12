@@ -32,6 +32,8 @@ interface TruthCheckCardProps {
   contentId?: string
   claimFlags?: ClaimFlag[]
   onFlagClaim?: (claimIndex: number) => void
+  /** Original issue index to highlight (from timeline marker click) */
+  highlightedIssueIndex?: number
 }
 
 // Severity sort order: high first, then medium, then low
@@ -281,7 +283,7 @@ function findMatchesForClaim(claim: string, crossReferences: CrossReference[]): 
   return []
 }
 
-export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFlags, onFlagClaim }: TruthCheckCardProps) {
+export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFlags, onFlagClaim, highlightedIssueIndex }: TruthCheckCardProps) {
   const hasReferences = truthCheck.references && truthCheck.references.length > 0
 
   const getIssueIcon = (type: string) => {
@@ -338,9 +340,17 @@ export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFl
                 : []
               const severityStyle = SEVERITY_STYLES[issue.severity] || SEVERITY_STYLES.medium
               const isFlagged = flaggedIndices.has(originalIndex)
+              const isHighlighted = highlightedIssueIndex === originalIndex
 
               return (
-                <div key={sortedIdx} className="flex items-start gap-3">
+                <div
+                  key={sortedIdx}
+                  data-issue-index={originalIndex}
+                  className={cn(
+                    "flex items-start gap-3 rounded-xl px-2 py-2 -mx-2 transition-all duration-500",
+                    isHighlighted && "bg-white/[0.06] ring-1 ring-white/[0.12]"
+                  )}
+                >
                   <span className="text-base mt-0.5">{getIssueIcon(issue.type)}</span>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between gap-2 mb-1">
