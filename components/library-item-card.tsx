@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { formatDistanceToNow } from "date-fns"
 import { cn, formatDuration } from "@/lib/utils"
-import { FileText, Play, Trash2, Loader2, Zap, Twitter, ChevronDown, ChevronUp, ArrowRight, Star, TrendingUp, Bookmark } from "lucide-react"
+import { FileText, Play, Trash2, Loader2, Zap, Twitter, ChevronDown, ChevronUp, ArrowRight, Star, TrendingUp, Bookmark, ShieldCheck, AlertTriangle, Clock } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { LibraryItem } from "@/lib/hooks/use-library"
 
@@ -20,6 +20,11 @@ type SummaryData = {
     signal_noise_score?: number
     worth_your_time?: string
     one_liner?: string
+  } | null
+  truth_check: {
+    overall_rating?: string
+    issues?: unknown[]
+    sources_quality?: string
   } | null
 }
 
@@ -78,6 +83,73 @@ const getSummaryPreview = (item: LibraryItem) => {
   return overview.length > 80 ? overview.slice(0, 80) + "..." : overview
 }
 
+/** Build a compact accuracy summary line from truth check data */
+const getAccuracySummary = (item: LibraryItem): {
+  issueCount: number
+  overallRating: string | null
+  sourcesQuality: string | null
+} | null => {
+  const summary = getSummaryData(item)
+  const tc = summary?.truth_check
+  if (!tc) return null
+
+  const issues = Array.isArray(tc.issues) ? tc.issues : []
+  return {
+    issueCount: issues.length,
+    overallRating: tc.overall_rating ?? null,
+    sourcesQuality: tc.sources_quality ?? null,
+  }
+}
+
+/** Mini-summary badge row for accuracy + quality at a glance */
+function MiniSummaryLine({ item }: { item: LibraryItem }) {
+  const accuracy = getAccuracySummary(item)
+  const summaryData = getSummaryData(item)
+  const qualityScore = summaryData?.triage?.quality_score
+
+  // Only render if we have at least one data point
+  if (!accuracy && !qualityScore) return null
+
+  return (
+    <div className="flex items-center gap-2 flex-wrap">
+      {accuracy && (
+        <span className={cn(
+          "inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium border",
+          accuracy.issueCount === 0
+            ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+            : accuracy.issueCount <= 2
+              ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+              : "bg-red-500/10 border-red-500/20 text-red-400"
+        )}>
+          {accuracy.issueCount === 0 ? (
+            <ShieldCheck className="w-2.5 h-2.5" />
+          ) : (
+            <AlertTriangle className="w-2.5 h-2.5" />
+          )}
+          {accuracy.issueCount === 0
+            ? "No issues"
+            : `${accuracy.issueCount} ${accuracy.issueCount === 1 ? "issue" : "issues"}`}
+        </span>
+      )}
+      {accuracy?.overallRating && (
+        <span className="text-[10px] text-white/40">{accuracy.overallRating}</span>
+      )}
+      {qualityScore && (
+        <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400">
+          <Star className="w-2.5 h-2.5" />
+          {qualityScore}/10
+        </span>
+      )}
+    </div>
+  )
+}
+
+/** Compute analysis age in days from date_added */
+function getAnalysisAgeDays(item: LibraryItem): number | null {
+  if (!item.date_added) return null
+  return Math.floor((Date.now() - new Date(item.date_added).getTime()) / (1000 * 60 * 60 * 24))
+}
+
 function LibraryItemCardComponent({
   item,
   viewMode,
@@ -94,6 +166,9 @@ function LibraryItemCardComponent({
   const summaryPreview = getSummaryPreview(item)
   const summaryData = getSummaryData(item)
   const triage = summaryData?.triage
+  const ageDays = getAnalysisAgeDays(item)
+  const isStale = ageDays !== null && ageDays > 7
+  const isVeryStale = ageDays !== null && ageDays > 30
 
   if (viewMode === "grid") {
     return (
@@ -146,6 +221,10 @@ function LibraryItemCardComponent({
               {item.title || "Processing..."}
             </h3>
             <p className="text-white/40 text-xs mb-1.5">{getDomain(item.url)}</p>
+            {/* Mini-summary line */}
+            <div className="mb-1.5">
+              <MiniSummaryLine item={item} />
+            </div>
             {/* Tags */}
             {item.tags && item.tags.length > 0 && (
               <div className="flex flex-wrap gap-1">
@@ -273,12 +352,6 @@ function LibraryItemCardComponent({
                   <span>{signalScore}</span>
                 </div>
               )}
-              {triage?.quality_score && (
-                <div className="flex items-center gap-1 text-emerald-400 text-xs">
-                  <Star className="w-3 h-3" />
-                  <span>{triage.quality_score}/10</span>
-                </div>
-              )}
             </div>
 
             <h3 className="text-white font-medium text-sm line-clamp-2 mb-1">
@@ -290,12 +363,25 @@ function LibraryItemCardComponent({
               <p className="text-white/50 text-xs line-clamp-1 mb-1">{summaryPreview}</p>
             )}
 
+            {/* Mini-summary line - only when collapsed */}
+            {!isExpanded && (
+              <div className="mb-1">
+                <MiniSummaryLine item={item} />
+              </div>
+            )}
+
             <div className="flex items-center gap-2 text-xs text-white/40 mb-1">
               <span>{getDomain(item.url)}</span>
               {item.date_added && (
                 <>
                   <span>•</span>
-                  <span>Analyzed {formatDistanceToNow(new Date(item.date_added), { addSuffix: true })}</span>
+                  <span className={cn(
+                    isVeryStale && "text-red-400/60",
+                    isStale && !isVeryStale && "text-amber-400/60"
+                  )}>
+                    {isStale && <Clock className="w-3 h-3 inline mr-0.5 -mt-px" />}
+                    Analyzed {formatDistanceToNow(new Date(item.date_added), { addSuffix: true })}
+                  </span>
                 </>
               )}
             </div>

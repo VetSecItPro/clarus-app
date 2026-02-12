@@ -1,10 +1,12 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useState, type ReactNode } from "react"
+import { useState, useCallback, type ReactNode } from "react"
 import Link from "next/link"
-import { ExternalLink } from "lucide-react"
+import { ExternalLink, Flag } from "lucide-react"
+import { cn } from "@/lib/utils"
 import type { TruthCheckData, CitationSource } from "@/types/database.types"
+import { classifySource } from "@/lib/source-classification"
 
 interface CrossReferenceMatch {
   contentId: string
@@ -19,9 +21,27 @@ export interface CrossReference {
   matches: CrossReferenceMatch[]
 }
 
+interface ClaimFlag {
+  claim_index: number
+  flag_reason: string | null
+}
+
 interface TruthCheckCardProps {
   truthCheck: TruthCheckData
   crossReferences?: CrossReference[]
+  contentId?: string
+  claimFlags?: ClaimFlag[]
+  onFlagClaim?: (claimIndex: number) => void
+}
+
+// Severity sort order: high first, then medium, then low
+const SEVERITY_ORDER: Record<string, number> = { high: 0, medium: 1, low: 2 }
+
+// Severity badge styles
+const SEVERITY_STYLES: Record<string, { bg: string; border: string; text: string }> = {
+  high: { bg: "bg-red-500/15", border: "border-red-500/25", text: "text-red-400" },
+  medium: { bg: "bg-amber-500/15", border: "border-amber-500/25", text: "text-amber-400" },
+  low: { bg: "bg-emerald-500/15", border: "border-emerald-500/25", text: "text-emerald-400" },
 }
 
 function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
@@ -75,8 +95,6 @@ function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
 
 /**
  * Renders assessment text with Perplexity-style [N] inline citations.
- * Parses `[1]`, `[2]`, etc. and renders them as superscript links that
- * either scroll to the reference list or open the source URL directly.
  */
 function InlineCitedText({ text, references }: { text: string; references?: CitationSource[] }) {
   if (!references || references.length === 0) {
@@ -89,7 +107,6 @@ function InlineCitedText({ text, references }: { text: string; references?: Cita
   let match: RegExpExecArray | null
 
   while ((match = regex.exec(text)) !== null) {
-    // Add text before the citation
     if (match.index > lastIndex) {
       parts.push(text.slice(lastIndex, match.index))
     }
@@ -111,14 +128,12 @@ function InlineCitedText({ text, references }: { text: string; references?: Cita
         </a>
       )
     } else {
-      // Invalid ref number — render as plain text
       parts.push(match[0])
     }
 
     lastIndex = match.index + match[0].length
   }
 
-  // Add remaining text after last citation
   if (lastIndex < text.length) {
     parts.push(text.slice(lastIndex))
   }
@@ -160,7 +175,7 @@ function LegacyCitationLinks({ sources }: { sources: CitationSource[] }) {
   )
 }
 
-/** Numbered reference list rendered at the bottom of the truth check section */
+/** Numbered reference list with source credibility badges */
 function ReferenceList({ references }: { references: CitationSource[] }) {
   if (references.length === 0) return null
 
@@ -171,7 +186,7 @@ function ReferenceList({ references }: { references: CitationSource[] }) {
       transition={{ duration: 0.3, delay: 0.35 }}
     >
       <div className="text-xs text-white/40 uppercase tracking-wider mb-2">Sources</div>
-      <div className="space-y-1">
+      <div className="space-y-1.5">
         {references.map((ref, i) => {
           let domain: string
           try {
@@ -180,10 +195,19 @@ function ReferenceList({ references }: { references: CitationSource[] }) {
             domain = ref.url
           }
 
+          const classification = classifySource(ref.url)
+
           return (
-            <div key={ref.url} className="flex items-start gap-2">
+            <div key={ref.url} className="flex items-center gap-2">
               <span className="text-[11px] text-[#1d9bf0] font-semibold shrink-0 mt-px w-4 text-right">
                 {i + 1}.
+              </span>
+              <span className={cn(
+                "px-1.5 py-0.5 rounded text-[9px] font-medium shrink-0",
+                classification.bg, classification.border, classification.color,
+                "border"
+              )}>
+                {classification.label}
               </span>
               <a
                 href={ref.url}
@@ -204,6 +228,44 @@ function ReferenceList({ references }: { references: CitationSource[] }) {
   )
 }
 
+/** Flag button for individual truth check issues */
+function ClaimFlagButton({ issueIndex, isFlagged, onFlag }: {
+  issueIndex: number
+  isFlagged: boolean
+  onFlag?: (index: number) => void
+}) {
+  const [submitting, setSubmitting] = useState(false)
+
+  const handleClick = useCallback(async () => {
+    if (!onFlag || submitting) return
+    setSubmitting(true)
+    try {
+      onFlag(issueIndex)
+    } finally {
+      setSubmitting(false)
+    }
+  }, [issueIndex, onFlag, submitting])
+
+  if (!onFlag) return null
+
+  return (
+    <button
+      onClick={handleClick}
+      disabled={submitting}
+      aria-label={isFlagged ? "Inaccuracy flagged" : "Flag as inaccurate"}
+      title={isFlagged ? "You flagged this as inaccurate" : "Flag as inaccurate"}
+      className={cn(
+        "p-1 rounded transition-all",
+        isFlagged
+          ? "text-red-400 bg-red-500/15"
+          : "text-white/25 hover:text-red-400 hover:bg-red-500/10"
+      )}
+    >
+      <Flag className={cn("w-3 h-3", isFlagged && "fill-current")} />
+    </button>
+  )
+}
+
 function findMatchesForClaim(claim: string, crossReferences: CrossReference[]): CrossReferenceMatch[] {
   const normalizedClaim = claim.toLowerCase().trim()
   for (const ref of crossReferences) {
@@ -219,20 +281,31 @@ function findMatchesForClaim(claim: string, crossReferences: CrossReference[]): 
   return []
 }
 
-export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardProps) {
-  // Determine if we have top-level references (new Perplexity-style) or need legacy per-issue links
+export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFlags, onFlagClaim }: TruthCheckCardProps) {
   const hasReferences = truthCheck.references && truthCheck.references.length > 0
 
   const getIssueIcon = (type: string) => {
     const icons: Record<string, string> = {
-      "misinformation": "🚫",
-      "misleading": "⚠️",
-      "bias": "⚖️",
-      "unjustified_certainty": "❓",
-      "missing_context": "📝",
+      "misinformation": "\u{1F6AB}",
+      "misleading": "\u{26A0}\u{FE0F}",
+      "bias": "\u{2696}\u{FE0F}",
+      "unjustified_certainty": "\u{2753}",
+      "missing_context": "\u{1F4DD}",
     }
-    return icons[type] || "⚠️"
+    return icons[type] || "\u{26A0}\u{FE0F}"
   }
+
+  // Sort issues by severity: high → medium → low
+  const sortedIssues = truthCheck.issues
+    ? [...truthCheck.issues].sort((a, b) => {
+        const aOrder = SEVERITY_ORDER[a.severity] ?? 99
+        const bOrder = SEVERITY_ORDER[b.severity] ?? 99
+        return aOrder - bOrder
+      })
+    : []
+
+  // Build a map from original index to sorted position for flag lookup
+  const flaggedIndices = new Set(claimFlags?.map(f => f.claim_index) ?? [])
 
   return (
     <div className="space-y-5">
@@ -246,27 +319,41 @@ export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardPr
         <div className="text-lg font-semibold text-white">{truthCheck.overall_rating}</div>
       </motion.div>
 
-      {/* Issues */}
-      {truthCheck.issues && truthCheck.issues.length > 0 && (
+      {/* Issues — sorted by severity */}
+      {sortedIssues.length > 0 && (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
           <div className="text-xs text-white/40 uppercase tracking-wider mb-3">
-            Issues Found ({truthCheck.issues.length})
+            Issues Found ({sortedIssues.length})
           </div>
           <div className="space-y-4">
-            {truthCheck.issues.map((issue, i) => {
+            {sortedIssues.map((issue, sortedIdx) => {
+              // Find original index for flag lookup
+              const originalIndex = truthCheck.issues.indexOf(issue)
               const matches = crossReferences
                 ? findMatchesForClaim(issue.claim_or_issue, crossReferences)
                 : []
+              const severityStyle = SEVERITY_STYLES[issue.severity] || SEVERITY_STYLES.medium
+              const isFlagged = flaggedIndices.has(originalIndex)
+
               return (
-                <div key={i} className="flex items-start gap-3">
+                <div key={sortedIdx} className="flex items-start gap-3">
                   <span className="text-base mt-0.5">{getIssueIcon(issue.type)}</span>
                   <div className="flex-1 min-w-0">
-                    <div className="text-sm text-white/90 font-medium mb-1">{issue.claim_or_issue}</div>
-                    <div className="text-xs text-white/60 mb-1">
+                    <div className="flex items-start justify-between gap-2 mb-1">
+                      <div className="text-sm text-white/90 font-medium">{issue.claim_or_issue}</div>
+                      {contentId && (
+                        <ClaimFlagButton
+                          issueIndex={originalIndex}
+                          isFlagged={isFlagged}
+                          onFlag={onFlagClaim}
+                        />
+                      )}
+                    </div>
+                    <div className="text-xs text-white/60 mb-1.5">
                       {hasReferences ? (
                         <InlineCitedText text={issue.assessment} references={truthCheck.references} />
                       ) : (
@@ -274,15 +361,25 @@ export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardPr
                       )}
                     </div>
                     <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap">
-                      <span>
-                        {issue.timestamp && <span className="mr-2">{issue.timestamp}</span>}
-                        <span className="capitalize">{issue.severity} · {issue.type.replace("_", " ")}</span>
+                      {issue.timestamp && <span>{issue.timestamp}</span>}
+                      {/* Severity badge with color coding */}
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded text-[10px] font-medium border capitalize",
+                        severityStyle.bg, severityStyle.border, severityStyle.text
+                      )}>
+                        {issue.severity}
                       </span>
+                      <span className="capitalize text-white/30">{issue.type.replace("_", " ")}</span>
                       {matches.length > 0 && (
                         <CrossRefBadge matches={matches} />
                       )}
+                      {isFlagged && (
+                        <span className="text-[10px] text-red-400/60 flex items-center gap-0.5">
+                          <Flag className="w-2.5 h-2.5" /> Flagged
+                        </span>
+                      )}
                     </div>
-                    {/* Legacy per-issue citation links — only when no top-level references */}
+                    {/* Legacy per-issue citation links */}
                     {!hasReferences && issue.sources && issue.sources.length > 0 && (
                       <LegacyCitationLinks sources={issue.sources} />
                     )}
@@ -305,7 +402,7 @@ export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardPr
           <div className="space-y-1.5">
             {truthCheck.strengths.map((strength, i) => (
               <div key={i} className="text-sm text-white/70 flex items-start gap-2">
-                <span className="text-white/50">✓</span>
+                <span className="text-white/50">{"\u2713"}</span>
                 <span>{strength}</span>
               </div>
             ))}
@@ -325,7 +422,7 @@ export function TruthCheckCard({ truthCheck, crossReferences }: TruthCheckCardPr
         </motion.div>
       )}
 
-      {/* Reference List — Perplexity-style numbered sources at bottom */}
+      {/* Reference List with credibility badges */}
       {hasReferences && (
         <ReferenceList references={truthCheck.references!} />
       )}

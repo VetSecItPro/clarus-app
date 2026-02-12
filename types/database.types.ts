@@ -1298,6 +1298,55 @@ export interface Database {
           },
         ]
       }
+      section_feedback: {
+        Row: {
+          id: string
+          content_id: string
+          user_id: string
+          section_type: string
+          is_helpful: boolean | null
+          claim_index: number | null
+          flag_reason: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          content_id: string
+          user_id: string
+          section_type: string
+          is_helpful?: boolean | null
+          claim_index?: number | null
+          flag_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          content_id?: string
+          user_id?: string
+          section_type?: string
+          is_helpful?: boolean | null
+          claim_index?: number | null
+          flag_reason?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "section_feedback_content_id_fkey"
+            columns: ["content_id"]
+            referencedRelation: "content"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "section_feedback_user_id_fkey"
+            columns: ["user_id"]
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: { [_ in never]: never }
     Functions: {

@@ -12,6 +12,7 @@ interface SectionCardProps {
   icon?: ReactNode
   headerColor?: "blue" | "amber" | "emerald" | "yellow" | "orange" | "violet" | "cyan"
   minContentHeight?: string // Ensures consistent card height during loading
+  headerRight?: ReactNode // Optional slot for feedback buttons, badges, etc.
 }
 
 const headerColorStyles: Record<string, { bg: string; border: string; text: string; icon: string }> = {
@@ -59,7 +60,7 @@ const headerColorStyles: Record<string, { bg: string; border: string; text: stri
   },
 }
 
-export function SectionCard({ title, children, isLoading, delay = 0, icon, headerColor, minContentHeight }: SectionCardProps) {
+export function SectionCard({ title, children, isLoading, delay = 0, icon, headerColor, minContentHeight, headerRight }: SectionCardProps) {
   const colors = headerColor ? headerColorStyles[headerColor] : null
 
   return (
@@ -75,9 +76,12 @@ export function SectionCard({ title, children, isLoading, delay = 0, icon, heade
           {icon && <span className={colors ? colors.icon : "text-white/50"}>{icon}</span>}
           {title}
         </h3>
-        {isLoading && (
-          <Loader2 className="w-4 h-4 text-white/50 animate-spin" />
-        )}
+        <div className="flex items-center gap-2">
+          {headerRight}
+          {isLoading && (
+            <Loader2 className="w-4 h-4 text-white/50 animate-spin" />
+          )}
+        </div>
       </div>
       <div
         className="px-4 sm:px-5 py-4 sm:py-5"
