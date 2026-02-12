@@ -103,13 +103,15 @@ function DashboardPage({ session }: DashboardPageProps) {
         </div>
 
         {/* Tabs */}
-        <div className="flex items-center gap-1 mb-8 border-b border-white/[0.06]">
+        <div role="tablist" aria-label="Dashboard sections" className="flex items-center gap-1 mb-8 border-b border-white/[0.06]">
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
             return (
               <button
                 key={tab.id}
+                role="tab"
+                aria-selected={isActive}
                 onClick={() => setActiveTab(tab.id)}
                 className={cn(
                   "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black focus-visible:outline-none active:opacity-80",
@@ -156,8 +158,9 @@ function DashboardPage({ session }: DashboardPageProps) {
 
             {/* Loading state */}
             {isLoading && (
-              <div className="flex items-center justify-center py-16">
+              <div role="status" className="flex items-center justify-center py-16">
                 <Loader2 className="w-6 h-6 animate-spin text-white/40" />
+                <span className="sr-only">Loading dashboard</span>
               </div>
             )}
 

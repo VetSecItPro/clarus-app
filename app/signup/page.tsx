@@ -101,9 +101,9 @@ function SuccessOverlay({ onComplete }: { onComplete: () => void }) {
             <Check className="w-10 h-10 text-green-400" />
           </div>
         </div>
-        <h2 className="text-2xl font-bold text-white mb-2 animate-[fadeInUp_0.4s_ease-out_0.5s_both]">
+        <p className="text-2xl font-bold text-white mb-2 animate-[fadeInUp_0.4s_ease-out_0.5s_both]">
           Account Created!
-        </h2>
+        </p>
         <p className="text-white/50 animate-[fadeInUp_0.4s_ease-out_0.6s_both]">
           Check your email to verify your account
         </p>
@@ -248,10 +248,10 @@ export default function SignUpPage() {
                   className="h-36 w-auto"
                 />
               </Link>
-              <h2 className="text-4xl font-bold text-white mb-4">
+              <p className="text-4xl font-bold text-white mb-4">
                 Start your journey to{" "}
                 <span className="gradient-text">clarity</span>
-              </h2>
+              </p>
               <p className="text-white/50 text-lg max-w-md">
                 Join thousands of users who trust us to understand content and make informed decisions.
               </p>
@@ -291,7 +291,7 @@ export default function SignUpPage() {
                   Full name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                   <input
                     id="name"
                     type="text"
@@ -299,6 +299,7 @@ export default function SignUpPage() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     required
+                    autoComplete="name"
                     className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                   />
                 </div>
@@ -310,7 +311,7 @@ export default function SignUpPage() {
                   Email address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                   <input
                     id="email"
                     type="email"
@@ -318,6 +319,7 @@ export default function SignUpPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     required
+                    autoComplete="email"
                     className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                   />
                 </div>
@@ -329,7 +331,7 @@ export default function SignUpPage() {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -337,12 +339,13 @@ export default function SignUpPage() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
+                    autoComplete="new-password"
                     className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -357,7 +360,7 @@ export default function SignUpPage() {
                   Confirm password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
                   <input
                     id="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
@@ -365,19 +368,20 @@ export default function SignUpPage() {
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
+                    autoComplete="new-password"
                     className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
                   />
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
                     aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
                 </div>
                 {confirmPassword && password !== confirmPassword && (
-                  <p className="text-xs text-red-400 mt-1">Passwords don&apos;t match</p>
+                  <p className="text-xs text-red-400 mt-1" role="alert">Passwords don&apos;t match</p>
                 )}
               </div>
 
@@ -404,7 +408,7 @@ export default function SignUpPage() {
 
               {/* Error message */}
               {error && (
-                <div className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
+                <div role="alert" className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
                   <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
                   <span>{error}</span>
                 </div>

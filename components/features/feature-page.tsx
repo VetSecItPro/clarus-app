@@ -26,7 +26,7 @@ export function FeaturePage({
   relatedFeatures,
 }: FeaturePageProps) {
   return (
-    <main className="max-w-4xl mx-auto px-4 lg:px-6 py-16">
+    <main id="main-content" className="max-w-4xl mx-auto px-4 lg:px-6 py-16">
       {/* Hero */}
       <div className="text-center mb-16">
         <span className="inline-block px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-xs font-medium text-brand mb-6">
@@ -76,7 +76,7 @@ export function FeaturePage({
               className="flex items-start gap-3 p-4 bg-white/[0.03] border border-white/[0.06] rounded-xl"
             >
               <div className="w-5 h-5 rounded-full bg-green-500/10 border border-green-500/20 flex items-center justify-center mt-0.5 shrink-0">
-                <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                <svg className="w-3 h-3 text-green-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3} aria-hidden="true">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
               </div>

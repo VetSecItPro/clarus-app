@@ -55,8 +55,14 @@ export async function GET(request: Request) {
   const supabase = getAdminClient()
   const now = new Date()
 
-  // Fetch all active subscriptions that need checking
-  // "Need checking" = last_checked_at is null OR older than check_frequency_hours
+  // PERF: Push filtering to database instead of fetching all and filtering in JS
+  // Calculate the cutoff timestamp for check_frequency_hours
+  // We fetch only subscriptions that need checking (last_checked_at is null OR older than check_frequency_hours)
+  // NOTE: This requires a query that compares timestamps, which is more complex.
+  // For simplicity and correctness, we'll keep the JS filter but add a database-level filter for active subscriptions only.
+  // A fully optimized version would use a SQL function or computed column.
+
+  // Fetch all active subscriptions (we still need to filter by check_frequency_hours in JS due to variable hours)
   const { data: subscriptions, error: subError } = await supabase
     .from("podcast_subscriptions")
     .select("id, user_id, feed_url, podcast_name, last_checked_at, check_frequency_hours, last_episode_date")
@@ -73,6 +79,10 @@ export async function GET(request: Request) {
   }
 
   // Filter to subscriptions that need checking based on check_frequency_hours
+  // NOTE: Pushing this to SQL would require a WHERE clause like:
+  // WHERE last_checked_at IS NULL OR last_checked_at < NOW() - INTERVAL '1 hour' * check_frequency_hours
+  // However, Supabase query builder doesn't support dynamic intervals easily.
+  // For now, we filter in JS (the dataset is small — max 200 subscriptions).
   const dueSubscriptions = subscriptions.filter((sub) => {
     if (!sub.last_checked_at) return true
     const lastChecked = new Date(sub.last_checked_at)

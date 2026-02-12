@@ -129,10 +129,20 @@ export default function DiscoverPage() {
     return () => observer.disconnect()
   }, [hasMore, loadingMore, loading, page, fetchItems])
 
+  // Memoized handlers for filter buttons
+  const handleSortChange = useCallback((newSort: SortOption) => {
+    setSort(newSort)
+  }, [])
+
+  const handleTypeFilterChange = useCallback((newType: TypeFilter) => {
+    setTypeFilter(newType)
+  }, [])
+
   if (!authChecked) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div role="status" className="min-h-screen bg-black flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-brand animate-spin" />
+        <span className="sr-only">Loading</span>
       </div>
     )
   }
@@ -141,7 +151,7 @@ export default function DiscoverPage() {
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
 
-      <main className="flex-1 max-w-3xl mx-auto px-4 lg:px-6 py-6 sm:py-10 w-full pb-24 sm:pb-10">
+      <main id="main-content" className="flex-1 max-w-3xl mx-auto px-4 lg:px-6 py-6 sm:py-10 w-full pb-24 sm:pb-10">
         {/* Header */}
         <div className="mb-6 sm:mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-brand/10 border border-brand/20 mb-4">
@@ -161,7 +171,7 @@ export default function DiscoverPage() {
               return (
                 <button
                   key={option.value}
-                  onClick={() => setSort(option.value)}
+                  onClick={() => handleSortChange(option.value)}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
                     sort === option.value
@@ -183,7 +193,7 @@ export default function DiscoverPage() {
               return (
                 <button
                   key={option.value}
-                  onClick={() => setTypeFilter(option.value)}
+                  onClick={() => handleTypeFilterChange(option.value)}
                   className={cn(
                     "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all",
                     typeFilter === option.value

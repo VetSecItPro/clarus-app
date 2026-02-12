@@ -32,6 +32,9 @@ export function AnalysisModeSheet({ open, onOpenChange, selectedMode, onModeChan
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 300 }}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Select analysis mode"
             className="fixed bottom-0 left-0 right-0 z-50 rounded-t-2xl bg-[#111] border-t border-white/[0.1] pb-safe"
           >
             {/* Drag handle */}

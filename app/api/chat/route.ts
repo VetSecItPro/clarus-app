@@ -204,16 +204,44 @@ export async function POST(req: NextRequest) {
     // Determine if we need full_text (only for first few messages to save tokens)
     const isFirstMessages = limitedMessages.filter((m: UIMessage) => m.role === "user").length <= 2
 
-    // Fetch content — always include full_text in select but only use it for first messages
-    const { data: contentData, error: contentError } = await supabaseAdmin
-      .from("content")
-      .select("title, url, full_text, type, author, user_id, detected_tone")
-      .eq("id", contentIdValidation.sanitized!)
-      .single()
+    // PERF: Conditionally select full_text only when needed (first messages)
+    // This saves ~50KB per request for follow-up messages in long conversations
+    type ContentDataWithoutFullText = {
+      title: string | null
+      url: string
+      type: string | null
+      author: string | null
+      user_id: string
+      detected_tone: string | null
+    }
+    type ContentDataWithFullText = ContentDataWithoutFullText & { full_text: string | null }
 
-    if (contentError || !contentData) {
-      console.error("Chat API: Error fetching content from DB.", contentError)
-      return NextResponse.json({ error: "Content not found" }, { status: 404 })
+    let contentData: ContentDataWithoutFullText | ContentDataWithFullText
+
+    if (isFirstMessages) {
+      const { data, error: contentError } = await supabaseAdmin
+        .from("content")
+        .select("title, url, full_text, type, author, user_id, detected_tone")
+        .eq("id", contentIdValidation.sanitized!)
+        .single()
+
+      if (contentError || !data) {
+        console.error("Chat API: Error fetching content from DB.", contentError)
+        return NextResponse.json({ error: "Content not found" }, { status: 404 })
+      }
+      contentData = data as ContentDataWithFullText
+    } else {
+      const { data, error: contentError } = await supabaseAdmin
+        .from("content")
+        .select("title, url, type, author, user_id, detected_tone")
+        .eq("id", contentIdValidation.sanitized!)
+        .single()
+
+      if (contentError || !data) {
+        console.error("Chat API: Error fetching content from DB.", contentError)
+        return NextResponse.json({ error: "Content not found" }, { status: 404 })
+      }
+      contentData = data as ContentDataWithoutFullText
     }
 
     // Verify the authenticated user owns this content
@@ -349,7 +377,7 @@ export async function POST(req: NextRequest) {
 
     // Full text (transcript/article) - ONLY for first messages to save tokens
     // For follow-up questions, the summaries + conversation history provide enough context
-    if (contentData.full_text && isFirstMessages) {
+    if (isFirstMessages && "full_text" in contentData && contentData.full_text) {
       // Truncate very long content to avoid token limits
       const maxFullTextChars = 50000 // ~12.5k tokens
       const fullText = contentData.full_text.length > maxFullTextChars
@@ -359,7 +387,7 @@ export async function POST(req: NextRequest) {
       const sanitizedFullText = sanitizeForPrompt(fullText, { context: "chat-full-text" })
       contextParts.push(`## Full Content`)
       contextParts.push(wrapUserContent(sanitizedFullText))
-    } else if (contentData.full_text && !isFirstMessages) {
+    } else if (!isFirstMessages) {
       // For follow-up messages, just note that full content was provided earlier
       contextParts.push(`## Note`)
       contextParts.push(`The full content/transcript was provided in earlier context. Use the summaries and conversation history to answer. If the user asks about specific quotes or details, you can reference what was discussed earlier.`)

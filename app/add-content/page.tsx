@@ -121,7 +121,7 @@ export default function AddContentPage() {
     <div className="min-h-screen bg-black">
       <SiteHeader />
 
-      <main className="mx-auto max-w-lg px-4 py-8 pb-24 sm:pb-8">
+      <main id="main-content" className="mx-auto max-w-lg px-4 py-8 pb-24 sm:pb-8">
         <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
           <div className="mb-6">
             <h1 className="text-xl font-semibold text-white">Add New Content</h1>
@@ -193,7 +193,7 @@ export default function AddContentPage() {
               </Alert>
             )}
             {success && (
-              <div className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
+              <div role="status" className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
                 <CheckCircle className="h-4 w-4 shrink-0" />
                 <span>{success}</span>
               </div>

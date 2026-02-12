@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useRef } from "react"
+import { useState, useRef, memo, useCallback } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import Link from "next/link"
 import {
@@ -57,20 +57,20 @@ const TAB_COLORS: Record<DemoTab["color"], { activeBg: string; activeBorder: str
 // Main DemoAnalysis component
 // =============================================
 
-export function DemoAnalysis() {
+export const DemoAnalysis = memo(function DemoAnalysis() {
   const [activeTab, setActiveTab] = useState("overview")
   const contentRef = useRef<HTMLDivElement>(null)
 
   const currentTab = DEMO_TABS.find((t) => t.id === activeTab) ?? DEMO_TABS[0]
   const colors = TAB_COLORS[currentTab.color]
 
-  const handleTabChange = (tabId: string) => {
+  const handleTabChange = useCallback((tabId: string) => {
     setActiveTab(tabId)
     // Scroll the content area to top on tab change
     if (contentRef.current) {
       contentRef.current.scrollTop = 0
     }
-  }
+  }, [])
 
   return (
     <section className="relative py-16 sm:py-24 px-4 overflow-hidden">
@@ -234,7 +234,7 @@ export function DemoAnalysis() {
       </div>
     </section>
   )
-}
+})
 
 // =============================================
 // Safe markdown bold renderer (replaces dangerouslySetInnerHTML)

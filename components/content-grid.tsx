@@ -47,7 +47,7 @@ export default function ContentGrid({
 
   if (isLoading && items.length === 0) {
     return (
-      <div className="flex-grow flex items-center justify-center">
+      <div role="status" className="flex-grow flex items-center justify-center">
         <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
         <p className="ml-2 text-gray-400">Loading content...</p>
       </div>
@@ -151,7 +151,7 @@ export default function ContentGrid({
                 <div className="pt-2">
                   <button
                     onClick={(e) => handleOpenOriginal(e, item.url)}
-                    className="inline-flex items-center text-xs text-blue-400 hover:text-blue-300 hover:underline focus:outline-none"
+                    className="inline-flex items-center text-xs text-blue-400 hover:text-blue-300 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:rounded"
                     aria-label={`Open original content for ${item.title || "item"}`}
                   >
                     Open Original <ExternalLink className="w-3 h-3 ml-1" />

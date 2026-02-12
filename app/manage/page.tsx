@@ -108,7 +108,7 @@ export default function AdminOverview() {
             onClick={() => refresh()}
             disabled={isRefreshing}
             className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] transition-colors disabled:opacity-50"
-            title="Refresh now"
+            aria-label="Refresh now"
           >
             <RefreshCw className={cn("w-4 h-4 text-white/70", isRefreshing && "animate-spin")} />
             <span className="text-sm text-white/70 hidden sm:inline">Refresh</span>
@@ -198,6 +198,7 @@ export default function AdminOverview() {
                 >
                   <button
                     onClick={() => setExpandedFlagId(expandedFlagId === item.id ? null : item.id)}
+                    aria-expanded={expandedFlagId === item.id}
                     className="w-full flex items-center justify-between p-3 hover:bg-white/[0.02] transition-colors rounded-xl"
                   >
                     <div className="flex items-center gap-3 text-left min-w-0">

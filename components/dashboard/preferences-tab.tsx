@@ -168,6 +168,9 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
         </div>
         <button
           onClick={() => updatePref("is_active", !prefs.is_active)}
+          role="switch"
+          aria-checked={prefs.is_active}
+          aria-label="Use custom preferences"
           className={cn(
             "relative w-11 h-6 rounded-full transition-colors",
             prefs.is_active ? "bg-brand" : "bg-white/10"

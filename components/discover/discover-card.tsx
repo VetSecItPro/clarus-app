@@ -1,5 +1,6 @@
 "use client"
 
+import { memo } from "react"
 import Link from "next/link"
 import { FileText, Play, MessageSquare, FileIcon, Mic } from "lucide-react"
 import { motion } from "framer-motion"
@@ -44,7 +45,7 @@ interface DiscoverCardProps {
   isOwnContent?: boolean
 }
 
-export function DiscoverCard({ item, index, isOwnContent = false }: DiscoverCardProps) {
+export const DiscoverCard = memo(function DiscoverCard({ item, index, isOwnContent = false }: DiscoverCardProps) {
   const linkHref = isOwnContent
     ? `/item/${item.id}`
     : item.shareToken
@@ -116,4 +117,4 @@ export function DiscoverCard({ item, index, isOwnContent = false }: DiscoverCard
       </div>
     </motion.div>
   )
-}
+})

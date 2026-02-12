@@ -122,7 +122,7 @@ export function SharePageContent({ content, summary }: SharePageContentProps) {
       </div>
 
       {/* Analysis cards */}
-      <main className="max-w-4xl mx-auto px-4 lg:px-6 pb-20">
+      <main id="main-content" className="max-w-4xl mx-auto px-4 lg:px-6 pb-20">
         {!summary || summary.processingStatus !== "complete" ? (
           <div className="py-12 text-center rounded-2xl bg-white/[0.02] border border-white/[0.06]">
             <p className="text-white/40 text-sm">This analysis is still processing. Check back soon.</p>

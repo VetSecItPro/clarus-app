@@ -69,7 +69,7 @@ export function ContactForm() {
 
   if (formState === "success") {
     return (
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
+      <div role="status" className="rounded-xl border border-white/[0.08] bg-white/[0.02] p-8 text-center">
         <CheckCircle className="w-12 h-12 text-emerald-400 mx-auto mb-4" />
         <h2 className="text-xl font-semibold text-white mb-2">Message sent</h2>
         <p className="text-white/40">We&apos;ll get back to you as soon as possible.</p>
@@ -79,8 +79,8 @@ export function ContactForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5">
-      <Field label="Name" name="name" type="text" placeholder="Your name" error={fieldErrors.name} disabled={formState === "submitting"} />
-      <Field label="Email" name="email" type="email" placeholder="you@example.com" error={fieldErrors.email} disabled={formState === "submitting"} />
+      <Field label="Name" name="name" type="text" placeholder="Your name" error={fieldErrors.name} disabled={formState === "submitting"} autoComplete="name" />
+      <Field label="Email" name="email" type="email" placeholder="you@example.com" error={fieldErrors.email} disabled={formState === "submitting"} autoComplete="email" />
       <Field label="Subject" name="subject" type="text" placeholder="What is this about?" error={fieldErrors.subject} disabled={formState === "submitting"} />
 
       <div>
@@ -93,15 +93,17 @@ export function ContactForm() {
           rows={5}
           placeholder="Your message (min 10 characters)"
           disabled={formState === "submitting"}
+          aria-invalid={!!fieldErrors.message}
+          aria-describedby={fieldErrors.message ? "message-error" : undefined}
           className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-brand/50 focus:border-brand/50 disabled:opacity-50 resize-y min-h-[120px]"
         />
         {fieldErrors.message && (
-          <p className="mt-1 text-sm text-red-400">{fieldErrors.message}</p>
+          <p id="message-error" className="mt-1 text-sm text-red-400" role="alert">{fieldErrors.message}</p>
         )}
       </div>
 
       {formState === "error" && errorMessage && (
-        <div className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
+        <div role="alert" className="flex items-center gap-2 rounded-lg bg-red-500/10 border border-red-500/20 px-4 py-3 text-sm text-red-400">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {errorMessage}
         </div>
@@ -135,6 +137,7 @@ function Field({
   placeholder,
   error,
   disabled,
+  autoComplete,
 }: {
   label: string
   name: string
@@ -142,7 +145,9 @@ function Field({
   placeholder: string
   error?: string
   disabled: boolean
+  autoComplete?: string
 }) {
+  const errorId = `${name}-error`
   return (
     <div>
       <label htmlFor={name} className="block text-sm font-medium text-white/40 mb-1.5">
@@ -154,10 +159,13 @@ function Field({
         type={type}
         placeholder={placeholder}
         disabled={disabled}
+        autoComplete={autoComplete}
+        aria-invalid={!!error}
+        aria-describedby={error ? errorId : undefined}
         className="w-full rounded-lg bg-white/[0.03] border border-white/[0.08] px-4 py-3 text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-brand/50 focus:border-brand/50 disabled:opacity-50"
       />
       {error && (
-        <p className="mt-1 text-sm text-red-400">{error}</p>
+        <p id={errorId} className="mt-1 text-sm text-red-400" role="alert">{error}</p>
       )}
     </div>
   )

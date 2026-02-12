@@ -24,7 +24,7 @@ export interface YouTubeChannelInfo {
 /**
  * Builds the canonical YouTube RSS feed URL from a channel ID.
  */
-export function buildFeedUrl(channelId: string): string {
+function buildFeedUrl(channelId: string): string {
   return `https://www.youtube.com/feeds/videos.xml?channel_id=${channelId}`
 }
 

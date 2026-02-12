@@ -104,8 +104,9 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-6">
+      <div className="flex items-center justify-center py-6" role="status">
         <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+        <span className="sr-only">Loading episodes</span>
       </div>
     )
   }

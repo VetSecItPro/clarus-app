@@ -92,10 +92,3 @@ export async function prefetchLibrary(userId: string): Promise<void> {
   }
 }
 
-/**
- * Clears the prefetch tracking set.
- * Call this on logout to avoid stale cache entries from the previous user session.
- */
-export function clearPrefetchCache(): void {
-  prefetchedContent.clear()
-}

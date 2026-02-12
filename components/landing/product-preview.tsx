@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, memo, useCallback } from "react"
 import Link from "next/link"
 import {
   Play,
@@ -21,8 +21,12 @@ import {
 
 type PreviewTab = "analysis" | "library"
 
-export function ProductPreview() {
+export const ProductPreview = memo(function ProductPreview() {
   const [activeTab, setActiveTab] = useState<PreviewTab>("analysis")
+
+  const handleTabChange = useCallback((tab: PreviewTab) => {
+    setActiveTab(tab)
+  }, [])
 
   return (
     <section className="py-16 sm:py-24 px-4">
@@ -50,7 +54,7 @@ export function ProductPreview() {
             {/* Tab switcher */}
             <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-full border border-white/[0.06]">
               <button
-                onClick={() => setActiveTab("analysis")}
+                onClick={() => handleTabChange("analysis")}
                 className={`px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
                   activeTab === "analysis"
                     ? "bg-brand text-white shadow-md shadow-blue-500/25"
@@ -60,7 +64,7 @@ export function ProductPreview() {
                 Analysis
               </button>
               <button
-                onClick={() => setActiveTab("library")}
+                onClick={() => handleTabChange("library")}
                 className={`px-5 py-2 text-sm font-medium rounded-full transition-all duration-200 ${
                   activeTab === "library"
                     ? "bg-brand text-white shadow-md shadow-blue-500/25"
@@ -113,7 +117,7 @@ export function ProductPreview() {
       </div>
     </section>
   )
-}
+})
 
 // =============================================
 // Analysis Preview — simplified split layout

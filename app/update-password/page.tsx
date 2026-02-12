@@ -130,6 +130,7 @@ export default function UpdatePasswordPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                autoComplete="new-password"
                 className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
               />
               <button
@@ -157,6 +158,7 @@ export default function UpdatePasswordPage() {
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 required
+                autoComplete="new-password"
                 className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
               />
               <button
@@ -172,7 +174,7 @@ export default function UpdatePasswordPage() {
 
           {/* Error message */}
           {error && (
-            <div className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
+            <div role="alert" className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 animate-[fadeIn_0.3s_ease-out]">
               <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
               <span>{error}</span>
             </div>
@@ -180,7 +182,7 @@ export default function UpdatePasswordPage() {
 
           {/* Success message */}
           {message && (
-            <div className="flex items-center p-3 text-xs text-green-400 bg-green-500/10 rounded-lg border border-green-500/20 animate-[fadeIn_0.3s_ease-out]">
+            <div role="status" className="flex items-center p-3 text-xs text-green-400 bg-green-500/10 rounded-lg border border-green-500/20 animate-[fadeIn_0.3s_ease-out]">
               <CheckCircle2 className="w-4 h-4 mr-2 flex-shrink-0" />
               <span>{message}</span>
             </div>

@@ -182,8 +182,10 @@ export function validateChatMessage(message: string): ValidationResult {
   // about security topics
   let sanitized = trimmed
 
-  // Remove any script tags or event handlers
-  sanitized = sanitized.replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  // PERF: Simplified regex to avoid nested quantifiers (ReDoS prevention)
+  // Old pattern had nested quantifiers: [^<]* inside (?:...)* which could cause exponential backtracking
+  // New pattern: match opening tag, then everything until closing tag (non-greedy), simpler and safer
+  sanitized = sanitized.replace(/<script\b[^>]*>.*?<\/script>/gi, '')
   sanitized = sanitized.replace(/on\w+\s*=\s*["'][^"']*["']/gi, '')
 
   return { isValid: true, sanitized }

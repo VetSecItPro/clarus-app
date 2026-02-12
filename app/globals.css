@@ -110,6 +110,8 @@
 
 html {
   scrollbar-gutter: stable;
+  /* Accessibility: Account for mobile bottom nav at 200% zoom */
+  scroll-padding-bottom: 5rem;
 }
 
 body {
@@ -158,37 +160,6 @@ input:-webkit-autofill:active {
 .dark .prose-invert ul > li::marker,
 .dark .prose-invert ol > li::marker {
   color: var(--muted-foreground);
-}
-
-/* Updated glassmorphism utilities for clean black theme */
-/* Reduced blur on mobile for better performance */
-.glass-panel {
-  background-color: hsl(0 0% 5% / 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid hsl(0 0% 100% / 0.1);
-}
-
-.glass-button {
-  background-color: hsl(0 0% 5% / 0.8);
-  backdrop-filter: blur(8px);
-  border: 1px solid hsl(0 0% 100% / 0.1);
-  transition: all 0.2s;
-}
-
-/* Enhanced blur on desktop where GPU can handle it */
-@media (min-width: 640px) {
-  .glass-panel {
-    background-color: hsl(0 0% 5% / 0.6);
-    backdrop-filter: blur(24px);
-  }
-  .glass-button {
-    background-color: hsl(0 0% 5% / 0.6);
-    backdrop-filter: blur(24px);
-  }
-}
-
-.glass-button:hover {
-  background-color: hsl(0 0% 10% / 0.6);
 }
 
 /* Hide scrollbar for Chrome, Safari and Opera */
@@ -245,16 +216,6 @@ input:-webkit-autofill:active {
   background-clip: text;
 }
 
-/* Animated gradient background keyframes */
-@keyframes gradient-shift {
-  0%, 100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
 /* Sound bar animation for voice input */
 @keyframes soundbar {
   0%, 100% {
@@ -263,12 +224,6 @@ input:-webkit-autofill:active {
   50% {
     transform: scaleY(1);
   }
-}
-
-.animated-gradient-bg {
-  background: linear-gradient(-45deg, #0a0a0a, #1a1a2e, #16213e, #0a0a0a);
-  background-size: 400% 400%;
-  animation: gradient-shift 15s ease infinite;
 }
 
 /* Floating orb animation */
@@ -302,32 +257,6 @@ input:-webkit-autofill:active {
 /* Font family override for Inter */
 .font-sans {
   font-family: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-}
-
-/* Landing page specific utilities */
-.landing-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  padding: 0 1.5rem;
-}
-
-/* Feature card hover effect */
-.feature-card {
-  transition: all 0.3s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-4px);
-  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-}
-
-/* Auth form styling */
-.auth-input {
-  transition: all 0.2s ease;
-}
-
-.auth-input:focus {
-  box-shadow: 0 0 0 3px rgba(29, 155, 240, 0.1);
 }
 
 /* Mobile bottom navigation safe area - extra padding for iPhone home indicator */

@@ -183,7 +183,7 @@ export function BaseEmail({ previewText, children }: BaseEmailProps) {
             <Row style={baseStyles.headerRow}>
               <Column style={baseStyles.logoColumn}>
                 <Img
-                  src="https://clarusapp.io/clarus-email-logo.png"
+                  src="https://clarusapp.io/clarus-email-logo-optimized.png"
                   width="120"
                   height="auto"
                   alt="Clarus"

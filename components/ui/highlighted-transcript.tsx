@@ -286,8 +286,12 @@ function DesktopHighlight({ segment, onClick }: { segment: TextSegment; onClick:
       <Tooltip>
         <TooltipTrigger asChild>
           <span
-            className={`cursor-pointer rounded px-0.5 -mx-0.5 transition-colors ${colors.bg} ${colors.border}`}
+            role="button"
+            tabIndex={0}
+            className={`cursor-pointer rounded px-0.5 -mx-0.5 transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:outline-none ${colors.bg} ${colors.border}`}
             onClick={onClick}
+            onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick() } }}
+            aria-label={`Claim: ${segment.claim?.exact_text?.slice(0, 50) ?? "View claim details"}`}
           >
             {segment.text}
           </span>
@@ -327,8 +331,12 @@ function MobileHighlight({ segment, onClick }: { segment: TextSegment; onClick: 
 
   return (
     <span
-      className={`rounded px-0.5 -mx-0.5 active:opacity-80 transition-opacity ${colors.bg} ${colors.border}`}
+      role="button"
+      tabIndex={0}
+      className={`rounded px-0.5 -mx-0.5 active:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:outline-none ${colors.bg} ${colors.border}`}
       onClick={onClick}
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick() } }}
+      aria-label={`Claim: ${segment.claim?.exact_text?.slice(0, 50) ?? "View claim details"}`}
     >
       {segment.text}
     </span>
@@ -362,6 +370,9 @@ function ClaimDetailSheet({
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
           transition={{ type: "spring", damping: 25, stiffness: 300 }}
+          role="dialog"
+          aria-modal="true"
+          aria-label="Claim details"
           className="absolute bottom-0 left-0 right-0 bg-[#1a1a1a] rounded-t-3xl border-t border-white/10 max-h-[70vh] overflow-y-auto"
           onClick={(e) => e.stopPropagation()}
         >

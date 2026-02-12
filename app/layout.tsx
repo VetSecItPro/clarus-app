@@ -81,8 +81,12 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${cormorant.variable} dark bg-[#0a0e1a]`}>
       <head>
         {/* Preconnect to critical external domains for faster resource loading */}
-        <link rel="preconnect" href="https://srqmutgamvktxqmylied.supabase.co" />
-        <link rel="dns-prefetch" href="https://srqmutgamvktxqmylied.supabase.co" />
+        {process.env.NEXT_PUBLIC_SUPABASE_URL && (
+          <>
+            <link rel="preconnect" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+            <link rel="dns-prefetch" href={process.env.NEXT_PUBLIC_SUPABASE_URL} />
+          </>
+        )}
         <link rel="preconnect" href="https://www.youtube.com" />
         <link rel="dns-prefetch" href="https://www.youtube.com" />
         <link rel="dns-prefetch" href="https://i.ytimg.com" />
@@ -151,6 +155,9 @@ export default function RootLayout({
         />
       </head>
       <body className="font-sans antialiased">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-[200] focus:px-4 focus:py-2 focus:bg-brand focus:text-white focus:rounded-lg focus:text-sm focus:font-medium">
+          Skip to main content
+        </a>
         <SWRProvider>
           <ActiveAnalysisProvider>
             <MotionConfigProvider>

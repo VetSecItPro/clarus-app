@@ -44,11 +44,8 @@ const MIN_ARTICLE_LENGTH = 500
 
 /**
  * Checks whether a URL belongs to a domain known to paywall most of its content.
- *
- * @param url - The URL to check
- * @returns `true` if the domain is in the known paywall list
  */
-export function isPaywalledDomain(url: string): boolean {
+function isPaywalledDomain(url: string): boolean {
   try {
     const hostname = new URL(url).hostname.replace(/^www\./, "")
     return PAYWALLED_DOMAINS.has(hostname)

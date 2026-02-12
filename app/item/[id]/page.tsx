@@ -808,7 +808,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
+      <div role="status" className="min-h-screen bg-black flex items-center justify-center">
         <Loader2 className="w-6 h-6 text-white/40 animate-spin" />
         <p className="ml-2 text-white/60 text-sm">Loading...</p>
       </div>
@@ -1164,6 +1164,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                   onClick={() => setIsDetailedExpanded(!isDetailedExpanded)}
                   role="button"
                   tabIndex={0}
+                  aria-expanded={isDetailedExpanded}
                   onKeyDown={(e) => e.key === 'Enter' && setIsDetailedExpanded(!isDetailedExpanded)}
                   className="w-full px-4 sm:px-5 py-3 sm:py-4 flex items-center justify-between text-left hover:bg-violet-500/20 transition-colors bg-violet-500/15 border-b border-violet-500/20 cursor-pointer"
                 >
@@ -1412,8 +1413,10 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
               {/* Mobile: Analysis/Chat tab switcher */}
               {!isDesktop && !isPdf && (
-                <div className="flex items-center gap-0.5 bg-white/[0.06] backdrop-blur-xl p-0.5 rounded-full border border-white/[0.08] md:max-w-xs md:mx-auto">
+                <div role="tablist" aria-label="Content view" className="flex items-center gap-0.5 bg-white/[0.06] backdrop-blur-xl p-0.5 rounded-full border border-white/[0.08] md:max-w-xs md:mx-auto">
                   <button
+                    role="tab"
+                    aria-selected={mobileTab === "analysis"}
                     onClick={() => handleMobileTabChange("analysis")}
                     style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                     className={`px-3 py-1 text-[0.625rem] font-medium rounded-full cursor-pointer transition-all duration-200 ${
@@ -1425,6 +1428,8 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     Analysis
                   </button>
                   <button
+                    role="tab"
+                    aria-selected={mobileTab === "chat"}
                     onClick={() => handleMobileTabChange("chat")}
                     style={{ WebkitTapHighlightColor: 'transparent', touchAction: 'manipulation' }}
                     className={`px-3 py-1 text-[0.625rem] font-medium rounded-full cursor-pointer transition-all duration-200 flex items-center gap-1 ${
@@ -1542,7 +1547,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       {/* Spacer for fixed nav bar on mobile */}
       <div className="h-[48px] sm:hidden" />
 
-      <main className="max-w-7xl mx-auto lg:px-6 py-2 sm:py-6 lg:py-8 flex-1 pb-20 sm:pb-24">
+      <main id="main-content" className="max-w-7xl mx-auto lg:px-6 py-2 sm:py-6 lg:py-8 flex-1 pb-20 sm:pb-24">
         {/* PDF: Full-width layout */}
         {isPdf ? (
           <div className="max-w-4xl mx-auto">

@@ -62,6 +62,9 @@ docs/security/
 # Design
 .design-reports/
 .design-audit.json
+# Accessibility
+.a11y/
+.a11y-audit.json
 # Compliance
 .compliance/
 .compliance-audit.json
