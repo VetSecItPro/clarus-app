@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import type { Json } from "@/types/database.types"
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
-import { uuidSchema } from "@/lib/schemas"
+import { uuidSchema, translateContentSchema, parseBody } from "@/lib/schemas"
 import { checkRateLimit } from "@/lib/validation"
 import { logApiUsage } from "@/lib/api-usage"
 import { isValidLanguage, getLanguageConfig, type AnalysisLanguage } from "@/lib/languages"
@@ -417,15 +417,20 @@ export async function POST(
     }
 
     // 5. Parse + validate language
-    let body: { language?: string }
+    let rawBody: unknown
     try {
-      body = await request.json()
+      rawBody = await request.json()
     } catch {
       return AuthErrors.badRequest("Invalid JSON body")
     }
 
-    const targetLang = body.language
-    if (!targetLang || !isValidLanguage(targetLang)) {
+    const bodyResult = parseBody(translateContentSchema, rawBody)
+    if (!bodyResult.success) {
+      return AuthErrors.badRequest(bodyResult.error)
+    }
+
+    const targetLang = bodyResult.data.language
+    if (!isValidLanguage(targetLang)) {
       return AuthErrors.badRequest("Invalid or missing language code")
     }
 

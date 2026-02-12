@@ -313,7 +313,7 @@ function correctTranscriptFromMetadata(
     }
   }
 
-  if (corrections.length > 0) {
+  if (corrections.length > 0 && process.env.NODE_ENV === "development") {
     console.log(
       `[transcript-correction] Fixed ${corrections.length} error(s): ` +
       corrections.map(c => `"${c.from}" → "${c.to}" (×${c.count})`).join(", ")

@@ -13,10 +13,11 @@
 
 import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, getAdminClient } from "@/lib/auth"
-import { checkRateLimit, validateContentId } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/validation"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { parseAiResponseOrThrow } from "@/lib/ai-response-parser"
 import { logApiUsage, createTimer } from "@/lib/api-usage"
+import { compareContentSchema, parseBody } from "@/lib/schemas"
 import type { UserTier } from "@/types/database.types"
 
 export const maxDuration = 120
@@ -67,9 +68,9 @@ export async function POST(request: NextRequest) {
     }
 
     // 3. Parse and validate request body
-    let body: { contentIds?: unknown }
+    let rawBody: unknown
     try {
-      body = await request.json()
+      rawBody = await request.json()
     } catch {
       return NextResponse.json(
         { error: "Invalid request body" },
@@ -77,38 +78,12 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { contentIds } = body
-
-    if (!Array.isArray(contentIds)) {
-      return NextResponse.json(
-        { error: "contentIds must be an array" },
-        { status: 400 }
-      )
+    const bodyResult = parseBody(compareContentSchema, rawBody)
+    if (!bodyResult.success) {
+      return NextResponse.json({ error: bodyResult.error }, { status: 400 })
     }
 
-    if (contentIds.length < 2 || contentIds.length > 3) {
-      return NextResponse.json(
-        { error: "Please select 2 or 3 content items to compare" },
-        { status: 400 }
-      )
-    }
-
-    // Validate each ID is a valid UUID
-    for (const id of contentIds) {
-      if (typeof id !== "string") {
-        return NextResponse.json(
-          { error: "Each content ID must be a string" },
-          { status: 400 }
-        )
-      }
-      const validation = validateContentId(id)
-      if (!validation.isValid) {
-        return NextResponse.json(
-          { error: validation.error ?? "Invalid content ID" },
-          { status: 400 }
-        )
-      }
-    }
+    const { contentIds } = bodyResult.data
 
     // 4. Tier check: Pro and Day Pass only
     const adminClient = getAdminClient()

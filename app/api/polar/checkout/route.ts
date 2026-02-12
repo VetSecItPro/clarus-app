@@ -3,6 +3,7 @@ import { polar, PRODUCTS } from "@/lib/polar"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { checkRateLimit } from "@/lib/validation"
+import { polarCheckoutSchema, parseBody } from "@/lib/schemas"
 
 export async function POST(request: Request) {
   // Rate limiting - prevent checkout spam
@@ -13,15 +14,17 @@ export async function POST(request: Request) {
   }
 
   try {
-    const { tier, interval } = await request.json()
+    const rawBody = await request.json()
+    const parsed = parseBody(polarCheckoutSchema, rawBody)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error }, { status: 400 })
+    }
 
-    // Validate input
-    const validSubscriptionTiers = ["starter", "pro"] as const
-    const validIntervals = ["monthly", "annual"] as const
+    const { tier, interval } = parsed.data
     const isDayPass = tier === "day_pass"
 
-    if (!isDayPass && (!validSubscriptionTiers.includes(tier) || !validIntervals.includes(interval))) {
-      return NextResponse.json({ error: "Invalid tier or interval" }, { status: 400 })
+    if (!isDayPass && !interval) {
+      return NextResponse.json({ error: "Interval is required for subscription tiers" }, { status: 400 })
     }
 
     // Resolve product ID

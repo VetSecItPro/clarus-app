@@ -211,6 +211,8 @@ const contentTypeSchema = z.enum([
 export const processContentSchema = z.object({
   content_id: uuidSchema,
   force_regenerate: z.boolean().optional().default(false),
+  language: z.string().min(2).max(5).optional().default("en"),
+  skipScraping: z.boolean().optional().default(false),
 })
 
 /**
@@ -458,6 +460,39 @@ export const addToCollectionSchema = z.object({
 
 /** Exported preset colors for UI use */
 export { COLLECTION_COLORS }
+
+// ===========================================
+// ADDITIONAL API REQUEST SCHEMAS
+// ===========================================
+
+/**
+ * Compare content request — accepts 2-3 content IDs
+ */
+export const compareContentSchema = z.object({
+  contentIds: z.array(uuidSchema).min(2, "At least 2 items required").max(3, "Maximum 3 items allowed"),
+})
+
+/**
+ * Fetch title request — accepts a URL
+ */
+export const fetchTitleSchema = z.object({
+  url: safeUrlSchema,
+})
+
+/**
+ * Translate content request — accepts a language code
+ */
+export const translateContentSchema = z.object({
+  language: z.string().trim().min(2, "Language code is required").max(5, "Invalid language code"),
+})
+
+/**
+ * Polar checkout request (actual route shape — tier + interval)
+ */
+export const polarCheckoutSchema = z.object({
+  tier: z.enum(["starter", "pro", "day_pass"]),
+  interval: z.enum(["monthly", "annual"]).optional(),
+})
 
 // ===========================================
 // HELPER FUNCTIONS

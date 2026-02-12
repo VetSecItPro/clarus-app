@@ -14,15 +14,13 @@ export function ServiceWorkerRegister() {
       navigator.serviceWorker
         .register("/sw.js")
         .then((registration) => {
-          console.log("SW registered:", registration.scope)
-
           // Check for updates periodically
           intervalRef.current = setInterval(() => {
             registration.update()
           }, 60 * 60 * 1000) // Check every hour
         })
-        .catch((error) => {
-          console.log("SW registration failed:", error)
+        .catch(() => {
+          // Service worker registration failed — non-critical
         })
     }
 
