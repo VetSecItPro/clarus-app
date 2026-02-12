@@ -33,7 +33,7 @@ function CollectionIcon({
   color: string | null
   size?: "sm" | "md"
 }) {
-  const bgColor = color || "#1d9bf0"
+  const bgColor = color || "var(--brand)"
   const sizeClass = size === "sm" ? "w-6 h-6 text-[0.625rem]" : "w-8 h-8 text-xs"
 
   return (
@@ -224,7 +224,7 @@ export function CollectionSidebar({
                     <motion.div
                       layoutId="activeCollection"
                       className="absolute left-0 top-1/2 -translate-y-1/2 w-0.5 h-4 rounded-full"
-                      style={{ backgroundColor: collection.color || "#1d9bf0" }}
+                      style={{ backgroundColor: collection.color || "var(--brand)" }}
                     />
                   )}
                 </motion.div>

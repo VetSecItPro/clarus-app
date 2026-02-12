@@ -32,6 +32,8 @@ interface ChatThreadCardProps {
   onClick: () => void
   onBookmark?: () => void
   onDelete?: () => void
+  /** Extra action buttons rendered in the action row (e.g. AddToCollectionButton) */
+  extraActions?: React.ReactNode
 }
 
 // Recommendation labels
@@ -77,6 +79,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
   onClick,
   onBookmark,
   onDelete,
+  extraActions,
 }: ChatThreadCardProps) {
   const router = useRouter()
   const domain = getDomainFromUrl(url)
@@ -154,6 +157,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
           <div className="shrink-0 flex flex-col items-end gap-1.5">
             {/* Action buttons (always visible on mobile, hover-reveal on desktop) */}
             <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+              {extraActions}
               {onBookmark && (
                 <button
                   onClick={(e) => {

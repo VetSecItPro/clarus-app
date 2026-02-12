@@ -19,7 +19,7 @@ export const CTASection = memo(function CTASection() {
           Stop guessing. Start knowing.
         </h2>
         <p className="text-lg text-white/60 mb-3">
-          Skip, Skim, Worth It, or Must See — in under 60 seconds.
+          Skip, Skim, Worth It, or Must See in under 60 seconds.
         </p>
 
         <p className="text-white/50 text-base mb-8 max-w-md mx-auto">

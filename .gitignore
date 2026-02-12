@@ -113,3 +113,5 @@ docs/
 # Playwright screenshots from design audits
 dashboard-*.png
 library-*.png
+.admin-dashboard/
+landing-full.png

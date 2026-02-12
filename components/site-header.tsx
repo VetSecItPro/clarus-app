@@ -3,7 +3,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
-import { Home, Clock, Compass, Rss, BarChart3 } from "lucide-react"
+import { Home, Clock, Rss, BarChart3 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { getCachedSession } from "@/components/with-auth"
@@ -17,11 +17,10 @@ import type { UserTier } from "@/types/database.types"
 const baseNavItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Clock },
-  { href: "/discover", label: "Discover", icon: Compass },
-  { href: "/dashboard", label: "Dashboard", icon: BarChart3 },
 ]
 
 const feedsNavItem = { href: "/feeds", label: "Feeds", icon: Rss }
+const dashboardNavItem = { href: "/dashboard", label: "Dashboard", icon: BarChart3 }
 
 const TIER_BADGE_CONFIG: Record<UserTier, { label: string; bg: string; text: string; border: string } | null> = {
   free: { label: "Free", bg: "bg-white/[0.06]", text: "text-white/50", border: "border-white/[0.08]" },
@@ -45,7 +44,9 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
 
   // Build nav items dynamically based on tier (Feeds visible for Starter+)
   const showFeeds = TIER_FEATURES[userTier].podcastSubscriptions || TIER_FEATURES[userTier].youtubeSubscriptions
-  const navItems = showFeeds ? [...baseNavItems, feedsNavItem] : baseNavItems
+  const navItems = showFeeds
+    ? [...baseNavItems, feedsNavItem, dashboardNavItem]
+    : [...baseNavItems, dashboardNavItem]
 
   return (
     <header className="sticky top-0 z-50 bg-black/80 backdrop-blur-2xl border-b border-white/[0.06] hidden sm:block">

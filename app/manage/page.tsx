@@ -20,6 +20,7 @@ import {
   MetricCard, ChartCard, TimeFilter,
   ADMIN_COLORS, CHART_TOOLTIP_STYLE, AXIS_TICK
 } from "./components"
+import { ExportButton } from "@/components/manage/export-button"
 
 const COLORS = ADMIN_COLORS
 const AUTO_REFRESH_INTERVAL_MS = 5 * 60 * 1000
@@ -104,6 +105,27 @@ export default function AdminOverview() {
         </div>
         <div className="flex items-center gap-3">
           <TimeFilter value={timeRange} onChange={setTimeRange} />
+          <ExportButton
+            disabled={loading}
+            filename="clarus-overview"
+            data={combinedMetrics ? [{
+              date: new Date().toISOString().slice(0, 10),
+              time_range_days: timeRange,
+              total_users: combinedMetrics.totalUsers,
+              new_users_today: combinedMetrics.newUsersToday,
+              user_growth_pct: combinedMetrics.userGrowthPercent,
+              total_content: combinedMetrics.totalContent,
+              active_subscriptions: combinedMetrics.activeSubscriptions,
+              mrr: combinedMetrics.mrr,
+              mrr_growth_pct: combinedMetrics.mrrGrowthPercent,
+              active_users: combinedMetrics.activeUsers,
+              avg_content_per_user: combinedMetrics.avgContentPerUser,
+              chat_threads: combinedMetrics.chatThreads,
+              processing_success_rate: combinedMetrics.processingSuccessRate,
+              api_costs_today: combinedMetrics.apiCostsToday,
+              error_rate: combinedMetrics.errorRate,
+            }] : []}
+          />
           <button
             onClick={() => refresh()}
             disabled={isRefreshing}

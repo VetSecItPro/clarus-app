@@ -406,7 +406,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                 >
                   <span
                     className="w-2 h-2 rounded-full shrink-0"
-                    style={{ backgroundColor: c.color || "#1d9bf0" }}
+                    style={{ backgroundColor: c.color || "var(--brand)" }}
                   />
                   {c.name}
                   <span className="text-white/30">{c.item_count}</span>
@@ -654,7 +654,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                   {group.items.map((item) => {
                     const summary = Array.isArray(item.summaries) ? item.summaries[0] : item.summaries
                     return (
-                      <div key={item.id} className="relative group/card">
+                      <div key={item.id}>
                         <ChatThreadCard
                           id={item.id}
                           title={item.title || "Untitled"}
@@ -668,14 +668,14 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                           onClick={() => handleItemClick(item.id)}
                           onBookmark={() => handleToggleBookmark(item)}
                           onDelete={() => handleDelete(item.id)}
+                          extraActions={
+                            <AddToCollectionButton
+                              contentId={item.id}
+                              compact
+                              className="w-9 h-9"
+                            />
+                          }
                         />
-                        {/* Add to Collection button */}
-                        <div className="absolute top-2 right-24 opacity-0 group-hover/card:opacity-100 transition-opacity z-10">
-                          <AddToCollectionButton
-                            contentId={item.id}
-                            compact
-                          />
-                        </div>
                       </div>
                     )
                   })}

@@ -3,10 +3,9 @@
 import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import Image from "next/image"
-import { Loader2, MessageSquare, Youtube, FileText, FileUp, Twitter, Headphones, Layers } from "lucide-react"
+import { Loader2, MessageSquare, Youtube, FileText, FileUp, Twitter, Headphones } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
-import dynamic from "next/dynamic"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { supabase } from "@/lib/supabase"
@@ -25,18 +24,31 @@ import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
 import { useUserTier } from "@/lib/hooks/use-user-tier"
 import type { AnalysisMode } from "@/lib/analysis-modes"
 import { AnalysisModeSelector } from "@/components/analysis-mode-selector"
+// PERF: Static import — LandingPage shell is lightweight (~63 lines), its heavy
+// sub-sections (ProductPreview, DemoAnalysis) are already dynamically imported within it.
+// This eliminates a ~200-500ms dynamic import delay for first-time visitors.
+import { LandingPage } from "@/components/landing/landing-page"
 
-// PERF: FIX-PERF-001 — Dynamic import LandingPage to reduce authenticated user's bundle
-const LandingPage = dynamic(
-  () => import("@/components/landing/landing-page").then(mod => mod.LandingPage),
-  { loading: () => <div className="min-h-screen bg-black flex items-center justify-center"><Loader2 className="w-8 h-8 text-brand animate-spin" /></div> }
-)
-
-// PERF: Dynamic import — BulkImportDialog only shown on button click
-const BulkImportDialog = dynamic(
-  () => import("@/components/bulk-import-dialog").then(mod => ({ default: mod.BulkImportDialog })),
-  { ssr: false }
-)
+/**
+ * Synchronous check for Supabase auth token in localStorage.
+ * Returns true if a token exists (user might be authenticated).
+ * Returns false if no token (user is definitely not authenticated).
+ * This avoids the ~500ms async getSession() call for first-time visitors.
+ */
+function hasLocalAuthToken(): boolean {
+  if (typeof window === "undefined") return false
+  try {
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
+        return true
+      }
+    }
+  } catch {
+    // localStorage may be inaccessible (e.g. private browsing restrictions)
+  }
+  return false
+}
 
 const rotatingPrompts = [
   "What do you want to explore today?",
@@ -70,7 +82,7 @@ function HomePageContent({ session }: HomePageProps) {
   const userId = session?.user?.id || null
 
   // PERF: shared SWR hook eliminates duplicate query for tier + name (was independent useEffect+fetch)
-  const { tier: userTier, name: dbName, features } = useUserTier(userId)
+  const { name: dbName, features } = useUserTier(userId)
 
   // Username — prefer DB name, then auth metadata, then email prefix
   const username = useMemo(() => {
@@ -126,9 +138,6 @@ function HomePageContent({ session }: HomePageProps) {
       }).catch(() => { /* toast handled by the UI, local state already updated */ })
     }
   }, [modeSelectionEnabled])
-
-  // Bulk import dialog state
-  const [bulkImportOpen, setBulkImportOpen] = useState(false)
 
   // Track when we're navigating to /item/[id] to prevent chat view flash
   const [isNavigating, setIsNavigating] = useState(false)
@@ -312,32 +321,6 @@ function HomePageContent({ session }: HomePageProps) {
               ))}
             </motion.div>
 
-            {/* Bulk Import Button */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              className="mt-4"
-            >
-              <button
-                onClick={() => setBulkImportOpen(true)}
-                disabled={!userId}
-                className="flex items-center gap-1.5 text-white/30 hover:text-brand transition-colors text-xs disabled:opacity-50 disabled:cursor-not-allowed"
-                aria-label="Open bulk import dialog"
-              >
-                <Layers className="w-3.5 h-3.5" />
-                <span>Bulk Import</span>
-              </button>
-            </motion.div>
-
-            {/* Bulk Import Dialog */}
-            <BulkImportDialog
-              open={bulkImportOpen}
-              onOpenChange={setBulkImportOpen}
-              userId={userId}
-              userTier={userTier}
-            />
-
           </div>
         ) : (
           // Chat mode - messages + input at bottom
@@ -423,52 +406,65 @@ export default function HomePage() {
 
     let isMounted = true
 
-    const getSessionWithTimeout = async () => {
-      try {
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          setTimeout(() => reject(new Error("Session timeout")), 5000)
-        })
+    // PERF: Fast path for first-time visitors. If no Supabase auth token
+    // exists in localStorage, the user is definitely not authenticated.
+    // This skips the async getSession() round-trip and resolves in ~16ms
+    // (one React commit) instead of ~500ms-1s.
+    if (hasLocalAuthToken()) {
+      // Token exists — validate the session asynchronously (returning user)
+      const getSessionWithTimeout = async () => {
+        try {
+          const timeoutPromise = new Promise<never>((_, reject) => {
+            setTimeout(() => reject(new Error("Session timeout")), 5000)
+          })
 
-        const {
-          data: { session },
-        } = await Promise.race([supabase.auth.getSession(), timeoutPromise])
+          const {
+            data: { session },
+          } = await Promise.race([supabase.auth.getSession(), timeoutPromise])
 
-        if (isMounted) {
-          setSession(session)
+          if (isMounted) {
+            setSession(session)
 
-          // Also fetch subscription status for auth cache
-          type SubscriptionStatus = "active" | "trialing" | "grandfathered" | "enterprise" | "canceled" | "none" | null
-          let subscriptionStatus: SubscriptionStatus = null
-          if (session?.user) {
-            const { data: userData } = await supabase
-              .from("users")
-              .select("subscription_status")
-              .eq("id", session.user.id)
-              .single()
-            subscriptionStatus = (userData?.subscription_status as SubscriptionStatus) || "none"
+            // Also fetch subscription status for auth cache
+            type SubscriptionStatus = "active" | "trialing" | "grandfathered" | "enterprise" | "canceled" | "none" | null
+            let subscriptionStatus: SubscriptionStatus = null
+            if (session?.user) {
+              const { data: userData } = await supabase
+                .from("users")
+                .select("subscription_status")
+                .eq("id", session.user.id)
+                .single()
+              subscriptionStatus = (userData?.subscription_status as SubscriptionStatus) || "none"
+            }
+
+            setAuthCache(session, subscriptionStatus)
+            setLoading(false)
           }
-
-          setAuthCache(session, subscriptionStatus) // Update global cache so Library/Community pages work
-          setLoading(false)
-        }
-      } catch {
-        if (isMounted) {
-          setSession(null)
-          setAuthCache(null)
-          setLoading(false)
+        } catch {
+          if (isMounted) {
+            setSession(null)
+            setAuthCache(null)
+            setLoading(false)
+          }
         }
       }
+
+      getSessionWithTimeout()
+    } else {
+      // No token in localStorage — user is definitely not authenticated.
+      // Resolve immediately without any network calls.
+      setSession(null)
+      setAuthCache(null)
+      setLoading(false)
     }
 
-    getSessionWithTimeout()
-
+    // Auth state listener — needed in both paths for when user logs in
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (_event, session) => {
       if (isMounted) {
         setSession(session)
 
-        // Fetch subscription status before updating cache
         type SubStatus = "active" | "trialing" | "grandfathered" | "enterprise" | "canceled" | "none" | null
         let subStatus: SubStatus = null
         if (session?.user) {
@@ -480,7 +476,7 @@ export default function HomePage() {
           subStatus = (userData?.subscription_status as SubStatus) || "none"
         }
 
-        setAuthCache(session, subStatus) // Keep global cache in sync with subscription
+        setAuthCache(session, subStatus)
         setLoading(false)
       }
     })

@@ -245,6 +245,19 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
             </>
           )}
 
+          {/* Account */}
+          {user && (
+            <>
+              <DropdownMenuSeparator className="bg-neutral-700/50 my-1" />
+              <Link href="/account" className="block">
+                <DropdownMenuItem className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-neutral-800/70 cursor-pointer text-neutral-200">
+                  <UserIcon className="h-4 w-4 text-neutral-400" />
+                  <span>Account & Data</span>
+                </DropdownMenuItem>
+              </Link>
+            </>
+          )}
+
           {/* Legal links */}
           <DropdownMenuSeparator className="bg-neutral-700/50 my-1" />
           <Link href="/terms" className="block">

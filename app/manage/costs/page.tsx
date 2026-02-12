@@ -13,6 +13,7 @@ import {
   MetricCard, ChartCard, TimeFilter, SubpageHeader,
   ADMIN_COLORS, CHART_TOOLTIP_STYLE, AXIS_TICK, AXIS_TICK_SMALL
 } from "../components"
+import { ExportButton } from "@/components/manage/export-button"
 
 const COLORS = ADMIN_COLORS
 
@@ -48,7 +49,18 @@ export default function CostsPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <SubpageHeader title="Costs" description="API spending, cost per service, model usage, and revenue" />
-        <TimeFilter value={timeRange} onChange={setTimeRange} />
+        <div className="flex items-center gap-3">
+          <ExportButton
+            disabled={loading}
+            filename="clarus-costs"
+            data={costBreakdown.length > 0 ? costBreakdown.map((c) => ({
+              service: c.api,
+              cost_usd: c.cost.toFixed(4),
+              api_calls: c.calls,
+            })) : []}
+          />
+          <TimeFilter value={timeRange} onChange={setTimeRange} />
+        </div>
       </div>
 
       {/* Key metrics */}

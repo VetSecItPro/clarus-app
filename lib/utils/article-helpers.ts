@@ -27,8 +27,8 @@ export const categoryConfig: Record<
   "content-analysis": {
     label: "Content Analysis",
     icon: Youtube,
-    color: "text-[#1d9bf0]",
-    bg: "bg-[#1d9bf0]/10",
+    color: "text-brand",
+    bg: "bg-brand/10",
   },
   "fact-checking": {
     label: "Fact-Checking",

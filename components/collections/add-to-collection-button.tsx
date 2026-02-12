@@ -138,7 +138,7 @@ export function AddToCollectionButton({
         className={cn(
           "transition-all",
           compact
-            ? "w-7 h-7 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-white"
+            ? "w-7 h-7 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-white focus-visible:ring-2 focus-visible:ring-brand/50 active:scale-95"
             : "w-10 h-10 flex items-center justify-center bg-white/[0.06] border border-white/[0.08] hover:bg-white/[0.1] hover:border-white/[0.15] text-white/50 hover:text-white rounded-full",
           className
         )}
@@ -200,7 +200,7 @@ export function AddToCollectionButton({
                       <div
                         className="w-2.5 h-2.5 rounded-full shrink-0"
                         style={{
-                          backgroundColor: collection.color || "#1d9bf0",
+                          backgroundColor: collection.color || "var(--brand)",
                         }}
                       />
                       <span className="flex-1 text-left truncate text-xs">

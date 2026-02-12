@@ -39,10 +39,13 @@ export const HeroSection = memo(function HeroSection() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.15, ease: [0.22, 1, 0.36, 1] }}
-          className="text-lg sm:text-xl text-white/60 max-w-xl mx-auto leading-relaxed font-light mb-8"
+          className="text-lg sm:text-xl text-white/60 max-w-2xl mx-auto leading-relaxed font-light mb-8"
         >
-          Drop any link — video, podcast, article, or PDF — and get an instant verdict:{" "}
-          <span className="text-white/70">Skip it, skim the highlights, or dive in. Plus accuracy analysis, speaker breakdowns, and AI chat to go deeper.</span>
+          Drop any link (video, podcast, article, or PDF) and get an instant verdict.
+          <br />
+          <span className="text-white/70">Skip it, skim the highlights, or dive in.</span>
+          <br />
+          <span className="text-white/70">Plus accuracy analysis, speaker breakdowns, and AI chat to go deeper.</span>
         </motion.p>
 
         {/* CTA Buttons */}
@@ -68,7 +71,7 @@ export const HeroSection = memo(function HeroSection() {
               whileTap={{ scale: 0.98 }}
               className="inline-flex items-center gap-2 px-8 py-3.5 text-white/80 hover:text-white font-medium rounded-full border border-white/[0.15] hover:border-white/[0.30] transition-all duration-200"
             >
-              See how it works
+              How It Works
             </motion.button>
           </a>
         </motion.div>

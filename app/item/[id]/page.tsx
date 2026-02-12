@@ -2,8 +2,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
-import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, MessageSquare, Bookmark, BookmarkCheck, Globe } from "lucide-react"
-import { Button } from "@/components/ui/button"
+import { ArrowLeft, Play, Loader2, FileText, Sparkles, ChevronDown, Eye, Shield, Lightbulb, BookOpen, Target, Mail, RefreshCw, Tag, Plus, X, Download, MessageSquare, Bookmark, BookmarkCheck, MoreHorizontal, Trash2 } from "lucide-react"
 import { useState, useEffect, useCallback, useRef, use } from "react"
 import { supabase } from "@/lib/supabase"
 import type { Tables, TriageData, TruthCheckData, ActionItemsData, ContentCategory } from "@/types/database.types"
@@ -50,8 +49,6 @@ const EditAIPromptsModal = dynamic(() => import("@/components/edit-ai-prompts-mo
 const TranscriptViewer = dynamic(() => import("@/components/ui/transcript-viewer").then(m => ({ default: m.TranscriptViewer })), { ssr: false })
 const HighlightedTranscript = dynamic(() => import("@/components/ui/highlighted-transcript").then(m => ({ default: m.HighlightedTranscript })), { ssr: false })
 const ClaimTimeline = dynamic(() => import("@/components/ui/claim-timeline").then(m => ({ default: m.ClaimTimeline })), { ssr: false })
-const VoteButton = dynamic(() => import("@/components/discover/vote-button").then(m => ({ default: m.VoteButton })), { ssr: false })
-
 // Next.js page props
 interface PageProps {
   params: Promise<{ id: string }>
@@ -104,9 +101,11 @@ function parseProcessingError(fullText: string, contentType: string | null): str
 }
 
 function ItemDetailPageContent({ contentId, session }: { contentId: string; session: Session }) {
+  const itemRouter = useRouter()
   const [item, setItem] = useState<ContentWithSummary | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
   const [activeMainTab, setActiveMainTab] = useState(() => {
     if (typeof window !== "undefined") {
       return localStorage.getItem("clarus-last-tab") || "summary"
@@ -172,10 +171,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   const [isBookmarked, setIsBookmarked] = useState(false)
   const [isTogglingBookmark, setIsTogglingBookmark] = useState(false)
-  const [isPublic, setIsPublic] = useState(false)
-  const [isTogglingPublish, setIsTogglingPublish] = useState(false)
   const [crossReferences, setCrossReferences] = useState<CrossReference[]>([])
-  const [userVote, setUserVote] = useState<number | null>(null)
   const upgradeModal = useUpgradeModal()
   const [analysisMode, setAnalysisMode] = useState<AnalysisMode>("apply")
 
@@ -332,32 +328,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     }
   }, [item, isBookmarked, isTogglingBookmark, upgradeModal])
 
-  const handleTogglePublish = useCallback(async () => {
-    if (!item || isTogglingPublish) return
-    const newState = !isPublic
-    setIsPublic(newState) // Optimistic
-    setIsTogglingPublish(true)
-    try {
-      const response = await fetch(`/api/content/${item.id}/publish`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      })
-      const data = await response.json()
-      if (!data.success) {
-        setIsPublic(!newState) // Revert
-        toast.error("Failed to update publish status")
-      } else {
-        toast.success(data.is_public ? "Published to Discovery Feed" : "Removed from Discovery Feed")
-        setIsPublic(data.is_public)
-      }
-    } catch {
-      setIsPublic(!newState) // Revert
-      toast.error("Failed to update publish status")
-    } finally {
-      setIsTogglingPublish(false)
-    }
-  }, [item, isPublic, isTogglingPublish])
-
   const handleExport = useCallback(async (format: "pdf" | "markdown") => {
     if (!item) return
     try {
@@ -395,11 +365,26 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     }
   }, [item, upgradeModal, analysisLanguage])
 
+  const handleDelete = useCallback(async () => {
+    if (!item || isDeleting) return
+    if (!window.confirm(`Delete "${item.title || "this item"}"? This cannot be undone.`)) return
+    setIsDeleting(true)
+    try {
+      const { error: deleteError } = await supabase.from("content").delete().eq("id", item.id)
+      if (deleteError) throw deleteError
+      toast.success("Item deleted")
+      itemRouter.push("/")
+    } catch {
+      toast.error("Failed to delete item")
+      setIsDeleting(false)
+    }
+  }, [item, isDeleting, itemRouter])
+
   const fetchContentData = useCallback(async (showLoadingState = true) => {
     if (showLoadingState) setLoading(true)
 
     // PERF: FIX-219 — select explicit columns to avoid pulling in unexpected future columns
-    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language, is_public, vote_score"
+    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language"
     const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language"
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select(contentColumns).eq("id", contentId).single(),
@@ -433,7 +418,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   const pollContentAndUpdate = useCallback(async (): Promise<boolean> => {
     // PERF: FIX-219 — select explicit columns for polling too
-    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language, is_public, vote_score"
+    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language"
     const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language"
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select(contentColumns).eq("id", contentId).single(),
@@ -466,22 +451,10 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
             .eq("user_id", session.user.id)
             .maybeSingle()
         : Promise.resolve({ data: null })
-      const votePromise = session?.user?.id
-        ? supabase
-            .from("content_votes")
-            .select("vote")
-            .eq("content_id", contentId)
-            .eq("user_id", session.user.id)
-            .maybeSingle()
-        : Promise.resolve({ data: null })
-
-      const [contentData, ratingResult, voteResult] = await Promise.all([contentPromise, ratingPromise, votePromise])
+      const [contentData, ratingResult] = await Promise.all([contentPromise, ratingPromise])
 
       if (ratingResult.data) {
         setCurrentUserContentRating({ signal_score: ratingResult.data.signal_score })
-      }
-      if (voteResult.data) {
-        setUserVote(voteResult.data.vote)
       }
 
       if (isContentProcessing(contentData)) {
@@ -593,7 +566,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   useEffect(() => {
     if (item) {
       setIsBookmarked(item.is_bookmarked ?? false)
-      setIsPublic(item.is_public ?? false)
     }
   }, [item])
 
@@ -1335,7 +1307,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 </Tooltip>
               </TooltipProvider>
 
-              {/* Desktop: Summary/Full Text tabs + Regenerate + Publish */}
+              {/* Desktop: Summary/Full Text tabs + Regenerate */}
               {isDesktop && (
                 <>
                   <div className="flex items-center gap-0.5 sm:gap-1 bg-white/[0.06] backdrop-blur-xl p-0.5 sm:p-1 rounded-full border border-white/[0.08]">
@@ -1446,11 +1418,11 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
             </div>
 
             {/* Right side: action buttons (mobile only) */}
-            <div className="flex sm:hidden items-center gap-1.5">
+            <div className="flex sm:hidden items-center gap-1">
               <button
                 onClick={handleToggleBookmark}
                 disabled={isTogglingBookmark}
-                className={`h-10 w-10 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 active:scale-95 ${
+                className={`h-9 w-9 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 active:scale-95 ${
                   isBookmarked
                     ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                     : "bg-white/[0.06] text-white/50 border border-white/[0.1]"
@@ -1458,54 +1430,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 aria-label={isBookmarked ? "Remove bookmark" : "Add bookmark"}
               >
                 {isBookmarked ? <BookmarkCheck className="w-4 h-4" /> : <Bookmark className="w-4 h-4" />}
-              </button>
-
-              <button
-                onClick={() => setIsShareModalOpen(true)}
-                className="h-10 w-10 flex items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 active:bg-emerald-500/30 active:scale-95 transition-all"
-                aria-label="Share"
-              >
-                <Mail className="w-4 h-4" />
-              </button>
-
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button
-                    className="h-10 w-10 flex items-center justify-center rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 active:bg-purple-500/30 active:scale-95 transition-all"
-                    aria-label="Export"
-                  >
-                    <Download className="w-4 h-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="bg-[#1a1a1a] border-white/10">
-                  <DropdownMenuItem
-                    onClick={() => handleExport("pdf")}
-                    className="cursor-pointer hover:bg-white/10 text-white/80"
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    PDF Report
-                  </DropdownMenuItem>
-                  <DropdownMenuItem
-                    onClick={() => handleExport("markdown")}
-                    className="cursor-pointer hover:bg-white/10 text-white/80"
-                  >
-                    <FileText className="mr-2 h-4 w-4" />
-                    Markdown
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              <button
-                onClick={handleTogglePublish}
-                disabled={isTogglingPublish}
-                className={`h-10 w-10 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 active:scale-95 ${
-                  isPublic
-                    ? "bg-brand/20 text-brand border border-brand/30"
-                    : "bg-white/[0.06] text-white/50 border border-white/[0.1]"
-                }`}
-                aria-label={isPublic ? "Unpublish from feed" : "Publish to feed"}
-              >
-                <Globe className="w-4 h-4" />
               </button>
 
               <LanguageSelector
@@ -1517,28 +1441,58 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 dropdownDirection="down"
               />
 
-              <div className="flex flex-col items-center gap-0.5">
-                <button
-                  onClick={() => handleRegenerate()}
-                  disabled={isRegenerating || regenerationCount >= maxRegenerations}
-                  className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
-                    regenerationCount >= maxRegenerations
-                      ? "bg-white/[0.04] text-white/30 border border-white/[0.06] cursor-not-allowed"
-                      : "bg-blue-500/20 text-blue-300 border border-blue-500/30 active:bg-blue-500/30"
-                  }`}
-                  aria-label={regenerationCount >= maxRegenerations
-                    ? `Regeneration limit reached`
-                    : `Regenerate (${maxRegenerations - regenerationCount} remaining)`}
-                >
-                  {isRegenerating ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <RefreshCw className="w-4 h-4" />
-                  )}
-                </button>
-                <span className="text-[0.5625rem] text-white/30">{regenerationCount}/{maxRegenerations}</span>
-              </div>
-
+              {/* Overflow menu — all secondary actions */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className="h-9 w-9 flex items-center justify-center rounded-lg bg-white/[0.06] text-white/50 border border-white/[0.1] active:bg-white/[0.12] active:scale-95 transition-all"
+                    aria-label="More actions"
+                  >
+                    <MoreHorizontal className="w-4 h-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" sideOffset={8} className="w-52 bg-neutral-900/95 backdrop-blur-xl border border-neutral-700/50 rounded-xl p-1.5 shadow-2xl">
+                  <DropdownMenuItem
+                    onClick={() => setIsShareModalOpen(true)}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-emerald-300 hover:bg-emerald-500/10"
+                  >
+                    <Mail className="h-4 w-4" />
+                    <span>Share</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("pdf")}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-purple-300 hover:bg-purple-500/10"
+                  >
+                    <Download className="h-4 w-4" />
+                    <span>Export PDF</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleExport("markdown")}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-purple-300 hover:bg-purple-500/10"
+                  >
+                    <FileText className="h-4 w-4" />
+                    <span>Export Markdown</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => handleRegenerate()}
+                    disabled={isRegenerating || regenerationCount >= maxRegenerations}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-blue-300 hover:bg-blue-500/10 disabled:opacity-40"
+                  >
+                    {isRegenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+                    <span>Regenerate</span>
+                    <span className="ml-auto text-[0.625rem] text-white/30">{regenerationCount}/{maxRegenerations}</span>
+                  </DropdownMenuItem>
+                  <div className="my-1 border-t border-white/[0.08]" />
+                  <DropdownMenuItem
+                    onClick={handleDelete}
+                    disabled={isDeleting}
+                    className="flex items-center gap-3 px-3 py-2.5 rounded-lg cursor-pointer text-red-400 hover:bg-red-500/10"
+                  >
+                    {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                    <span>Delete</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>
@@ -1625,16 +1579,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 <>
                   {/* Mobile content info */}
                   <div className="p-3 md:p-4 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden mb-4 md:max-w-2xl md:mx-auto">
-                    <div className="flex gap-3">
-                      {/* Community vote */}
-                      <div className="shrink-0">
-                        <VoteButton
-                          contentId={contentId}
-                          initialVoteScore={item.vote_score ?? 0}
-                          initialUserVote={userVote}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
+                      <div>
                         <h1 className="text-base font-semibold text-white leading-tight mb-2 break-words">
                           {item.title || "Processing Title..."}
                         </h1>
@@ -1667,7 +1612,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                           })()}
                         </div>
                       </div>
-                    </div>
                   </div>
 
                   {/* Summary/Full Text sub-tabs for mobile analysis */}
@@ -1760,16 +1704,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 <div className="space-y-2 sm:space-y-4">
                   {/* Content info card */}
                   <div className="mx-3 sm:mx-4 lg:mx-0 p-3 rounded-2xl bg-white/[0.03] border border-white/[0.08] overflow-hidden">
-                    <div className="flex gap-3">
-                      {/* Community vote */}
-                      <div className="shrink-0">
-                        <VoteButton
-                          contentId={contentId}
-                          initialVoteScore={item.vote_score ?? 0}
-                          initialUserVote={userVote}
-                        />
-                      </div>
-                      <div className="flex-1 min-w-0">
+                      <div>
                         <h1 className="text-base font-semibold text-white leading-tight mb-2 break-words">
                           {item.title || "Processing Title..."}
                         </h1>
@@ -1802,7 +1737,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                           })()}
                         </div>
                       </div>
-                    </div>
                   </div>
 
                   {/* Tags Management */}
@@ -1962,101 +1896,64 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     </div>
                   )}
 
-                  {/* Action buttons */}
-                  <TooltipProvider delayDuration={300}>
-                    <div className="hidden sm:grid grid-cols-3 gap-2">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={handleToggleBookmark}
-                            disabled={isTogglingBookmark}
-                            size="sm"
-                            className={`w-full transition-all ${
-                              isBookmarked
-                                ? "bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 hover:text-amber-200 border border-amber-500/30 hover:border-amber-500/50"
-                                : "bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.08] hover:border-white/[0.15]"
-                            }`}
-                          >
-                            {isBookmarked ? (
-                              <BookmarkCheck className="mr-2 h-4 w-4 shrink-0" />
-                            ) : (
-                              <Bookmark className="mr-2 h-4 w-4 shrink-0" />
-                            )}
-                            <span className="truncate">{isBookmarked ? "Saved" : "Save"}</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{isBookmarked ? "Remove from Reading List" : "Add to Reading List"}</TooltipContent>
-                      </Tooltip>
+                  {/* Action buttons — pill-shaped with labels */}
+                  <div className="hidden sm:flex items-center gap-2 flex-wrap">
+                    <button
+                      onClick={handleToggleBookmark}
+                      disabled={isTogglingBookmark}
+                      className={cn(
+                        "h-8 px-3 flex items-center gap-1.5 rounded-full text-xs font-medium transition-all disabled:opacity-50 active:scale-[0.97]",
+                        isBookmarked
+                          ? "bg-amber-500/15 hover:bg-amber-500/25 text-amber-300 border border-amber-500/25"
+                          : "bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.08]"
+                      )}
+                    >
+                      {isBookmarked ? <BookmarkCheck className="w-3.5 h-3.5" /> : <Bookmark className="w-3.5 h-3.5" />}
+                      {isBookmarked ? "Saved" : "Save"}
+                    </button>
 
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={() => setIsShareModalOpen(true)}
-                            size="sm"
-                            className="w-full bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 hover:text-emerald-200 border border-emerald-500/30 hover:border-emerald-500/50 transition-all"
-                          >
-                            <Mail className="mr-2 h-4 w-4 shrink-0" />
-                            <span className="truncate">Share</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Share analysis via email or link</TooltipContent>
-                      </Tooltip>
+                    <button
+                      onClick={() => setIsShareModalOpen(true)}
+                      className="h-8 px-3 flex items-center gap-1.5 rounded-full text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.08] active:scale-[0.97] transition-all"
+                    >
+                      <Mail className="w-3.5 h-3.5" />
+                      Share
+                    </button>
 
-                      <DropdownMenu>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <DropdownMenuTrigger asChild>
-                              <Button
-                                size="sm"
-                                className="w-full bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 hover:text-purple-200 border border-purple-500/30 hover:border-purple-500/50 transition-all"
-                              >
-                                <Download className="mr-2 h-4 w-4 shrink-0" />
-                                <span className="truncate">Export</span>
-                              </Button>
-                            </DropdownMenuTrigger>
-                          </TooltipTrigger>
-                          <TooltipContent>Export as PDF or Markdown</TooltipContent>
-                        </Tooltip>
-                        <DropdownMenuContent align="center" className="bg-[#1a1a1a] border-white/10">
-                          <DropdownMenuItem
-                            onClick={() => handleExport("pdf")}
-                            className="cursor-pointer hover:bg-white/10 text-white/80"
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            PDF Report
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => handleExport("markdown")}
-                            className="cursor-pointer hover:bg-white/10 text-white/80"
-                          >
-                            <FileText className="mr-2 h-4 w-4" />
-                            Markdown
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button className="h-8 px-3 flex items-center gap-1.5 rounded-full text-xs font-medium bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.08] active:scale-[0.97] transition-all">
+                          <Download className="w-3.5 h-3.5" />
+                          Export
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="center" className="bg-[#1a1a1a] border-white/10">
+                        <DropdownMenuItem
+                          onClick={() => handleExport("pdf")}
+                          className="cursor-pointer hover:bg-white/10 text-white/80"
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          PDF Report
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleExport("markdown")}
+                          className="cursor-pointer hover:bg-white/10 text-white/80"
+                        >
+                          <FileText className="mr-2 h-4 w-4" />
+                          Markdown
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
 
-                      {/* Publish to Feed toggle */}
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            onClick={handleTogglePublish}
-                            disabled={isTogglingPublish}
-                            size="sm"
-                            className={cn(
-                              "w-full transition-all",
-                              isPublic
-                                ? "bg-brand/20 hover:bg-brand/30 text-brand hover:text-brand border border-brand/30 hover:border-brand/50"
-                                : "bg-white/[0.04] hover:bg-white/[0.08] text-white/60 hover:text-white border border-white/[0.08] hover:border-white/[0.15]"
-                            )}
-                          >
-                            <Globe className="mr-2 h-4 w-4 shrink-0" />
-                            <span className="truncate">{isPublic ? "Published" : "Publish"}</span>
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>{isPublic ? "Remove from Discovery Feed" : "Publish to Discovery Feed"}</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  </TooltipProvider>
+                    <button
+                      onClick={handleDelete}
+                      disabled={isDeleting}
+                      className="h-8 px-3 flex items-center gap-1.5 rounded-full text-xs font-medium bg-white/[0.04] hover:bg-red-500/15 text-white/40 hover:text-red-400 border border-white/[0.08] hover:border-red-500/25 active:scale-[0.97] transition-all disabled:opacity-50"
+                    >
+                      {isDeleting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
+                      Delete
+                    </button>
+                  </div>
 
                   {/* INLINE CHAT - Desktop left panel */}
                   <div className="lg:mx-0">

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { authenticateAdmin, getAdminClient } from "@/lib/auth"
 import { z } from "zod"
 import { parseBody } from "@/lib/schemas"
+import { checkRateLimit } from "@/lib/admin/rate-limit"
 
 /**
  * GET /api/admin/flagged-content
@@ -14,6 +15,15 @@ import { parseBody } from "@/lib/schemas"
 export async function GET() {
   const auth = await authenticateAdmin()
   if (!auth.success) return auth.response
+
+  // Rate limit: 40 requests per minute (moderation needs frequent refresh)
+  const rl = checkRateLimit(`admin-flagged:${auth.user.id}`, { maxRequests: 40, windowMs: 60_000 })
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    )
+  }
 
   const supabase = getAdminClient()
 
@@ -54,6 +64,15 @@ const updateSchema = z.object({
 export async function PATCH(request: NextRequest) {
   const auth = await authenticateAdmin()
   if (!auth.success) return auth.response
+
+  // Rate limit: 30 PATCH requests per minute (moderation actions)
+  const rl = checkRateLimit(`admin-flagged-patch:${auth.user.id}`, { maxRequests: 30, windowMs: 60_000 })
+  if (rl.limited) {
+    return NextResponse.json(
+      { error: "Too many requests" },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+    )
+  }
 
   const validation = await parseBody(updateSchema, request)
   if (!validation.success) {

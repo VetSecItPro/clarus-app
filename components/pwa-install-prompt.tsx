@@ -206,59 +206,59 @@ export function PWAInstallPrompt() {
       role="banner"
       aria-label="Install Clarus app"
     >
-      <div className="max-w-3xl mx-auto px-4 py-3">
-        <div className="flex items-center gap-3">
+      <div className="max-w-3xl mx-auto px-3 sm:px-4 py-2 sm:py-3">
+        <div className="flex items-center gap-2.5">
           {/* App icon and text */}
           <Image
             src="/icon-192x192.png"
             alt="Clarus app icon"
-            width={40}
-            height={40}
-            sizes="40px"
-            className="rounded-lg flex-shrink-0"
+            width={32}
+            height={32}
+            sizes="32px"
+            className="rounded-lg flex-shrink-0 w-8 h-8"
           />
 
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-white">
+            <p className="text-xs sm:text-sm font-semibold text-white">
               Add Clarus to your {isMobile ? "home screen" : "desktop"}
             </p>
             {isIOS ? (
-              <p className="text-xs text-white/50 mt-0.5">
+              <p className="text-[0.625rem] sm:text-xs text-white/50 mt-0.5">
                 Tap <ShareIcon /> then &ldquo;Add to Home Screen&rdquo;
               </p>
             ) : (
-              <p className="text-xs text-white/50 mt-0.5">
-                Installs locally — no app store, works offline
+              <p className="text-[0.625rem] sm:text-xs text-white/50 mt-0.5">
+                No app store needed, works offline
               </p>
             )}
           </div>
 
-          {/* Action buttons */}
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <button
-              onClick={dismiss}
-              className="p-1.5 text-white/40 hover:text-white/70 transition-colors"
-              aria-label="Dismiss install prompt"
-            >
-              <X className="w-4 h-4" />
-            </button>
-
+          {/* Action buttons — install/link first, then dismiss */}
+          <div className="flex items-center gap-1.5 flex-shrink-0">
             {isIOS ? (
               <Link
                 href="/install"
-                className="bg-brand hover:bg-brand-hover text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                className="bg-brand hover:bg-brand-hover text-white px-3 py-1.5 rounded-lg font-medium text-xs transition-colors"
               >
-                How to Install
+                Install
               </Link>
             ) : (
               <button
                 onClick={handleInstall}
-                className="flex items-center gap-1.5 bg-brand hover:bg-brand-hover text-white px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+                className="flex items-center gap-1 bg-brand hover:bg-brand-hover text-white px-3 py-1.5 rounded-lg font-medium text-xs transition-colors"
               >
-                <Download className="w-4 h-4" />
+                <Download className="w-3.5 h-3.5" />
                 Install
               </button>
             )}
+
+            <button
+              onClick={dismiss}
+              className="p-1 text-white/40 hover:text-white/70 transition-colors"
+              aria-label="Dismiss install prompt"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </div>

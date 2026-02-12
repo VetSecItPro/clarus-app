@@ -13,6 +13,7 @@ import {
   MetricCard, ChartCard, TimeFilter, SubpageHeader,
   ADMIN_COLORS, CHART_TOOLTIP_STYLE, AXIS_TICK
 } from "../components"
+import { ExportButton } from "@/components/manage/export-button"
 
 const COLORS = ADMIN_COLORS
 
@@ -39,7 +40,27 @@ export default function UsersPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <SubpageHeader title="Users" description="User growth, tiers, and subscription analytics" />
-        <TimeFilter value={timeRange} onChange={setTimeRange} />
+        <div className="flex items-center gap-3">
+          <ExportButton
+            disabled={loading}
+            filename="clarus-users"
+            data={metrics ? [{
+              date: new Date().toISOString().slice(0, 10),
+              total_users: metrics.totalUsers,
+              new_users_today: metrics.newUsersToday,
+              active_users: metrics.activeUsers,
+              user_growth_pct: metrics.userGrowthPercent,
+              free_users: tiers.free,
+              starter_users: tiers.starter,
+              pro_users: tiers.pro,
+              day_pass_users: tiers.day_pass,
+              active_subscriptions: mrrData?.activeSubscriptions ?? 0,
+              churn_rate: churnRate,
+              arpu: (mrrData?.mrr ?? 0) / Math.max(mrrData?.activeSubscriptions ?? 1, 1),
+            }] : []}
+          />
+          <TimeFilter value={timeRange} onChange={setTimeRange} />
+        </div>
       </div>
 
       {/* Key metrics */}
