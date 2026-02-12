@@ -15,15 +15,15 @@ export const DEMO_CONTENT = {
   detectedTone: "persuasive",
 } as const
 
-export const DEMO_OVERVIEW = `Johann Hari challenges the conventional understanding of addiction, arguing that it is not primarily caused by chemical hooks in drugs but by disconnection and lack of meaningful bonds. Drawing on research from rat experiments ("Rat Park") and real-world examples like Portugal's decriminalization policy, Hari makes the case that the opposite of addiction is not sobriety — it is human connection.
+export const DEMO_OVERVIEW = `Johann Hari challenges the conventional understanding of addiction, arguing that it is not primarily caused by chemical hooks in drugs but by disconnection and lack of meaningful bonds. Drawing on research from rat experiments ("Rat Park") and real-world examples like Portugal's decriminalization policy, Hari makes the case that the opposite of addiction is not sobriety, but human connection.
 
 The talk is well-structured and emotionally engaging, using personal anecdotes alongside academic research. Hari references Professor Bruce Alexander's work and the Vietnam War heroin statistics to build his argument, though some claims warrant additional context.`
 
 export const DEMO_TRIAGE: TriageData = {
   quality_score: 8,
-  worth_your_time: "Yes — a compelling reframing of addiction that challenges widely held assumptions. Even if you disagree with some conclusions, the research cited is worth knowing about.",
+  worth_your_time: "Yes, a compelling reframing of addiction that challenges widely held assumptions. Even if you disagree with some conclusions, the research cited is worth knowing about.",
   target_audience: ["Psychology enthusiasts", "Public health professionals", "Educators", "Policy makers", "Anyone affected by addiction"],
-  content_density: "High — packs multiple research studies, historical examples, and a policy case study into under 15 minutes. No filler.",
+  content_density: "High. Packs multiple research studies, historical examples, and a policy case study into under 15 minutes. No filler.",
   estimated_value: "A new mental model for understanding addiction that may change how you think about drug policy, personal relationships, and social isolation.",
   signal_noise_score: 2,
   content_category: "educational",
@@ -75,7 +75,7 @@ export const DEMO_TRUTH_CHECK: TruthCheckData = {
     {
       type: "missing_context",
       claim_or_issue: "Chemical hooks are dismissed too broadly",
-      assessment: "While Hari correctly highlights the social dimension of addiction, he understates the role of neurochemistry. Modern addiction science recognizes both biological vulnerability and environmental factors — it is not either/or.",
+      assessment: "While Hari correctly highlights the social dimension of addiction, he understates the role of neurochemistry. Modern addiction science recognizes both biological vulnerability and environmental factors. It is not either/or.",
       severity: "medium",
       timestamp: "2:10",
       sources: [
@@ -100,7 +100,7 @@ export const DEMO_TRUTH_CHECK: TruthCheckData = {
       severity: "low",
       timestamp: "4:22",
       sources: [
-        { url: "https://doi.org/10.1016/0091-3057(81)90149-2", title: "Alexander et al. (1981) — Rat Park Study" },
+        { url: "https://doi.org/10.1016/0091-3057(81)90149-2", title: "Alexander et al. (1981): Rat Park Study" },
       ],
     },
   ],
@@ -111,7 +111,7 @@ export const DEMO_TRUTH_CHECK: TruthCheckData = {
     "Personal disclosure about family members with addiction adds authenticity",
     "Portugal case study provides a real-world policy example with measurable outcomes",
   ],
-  sources_quality: "Good. Primary sources include peer-reviewed research (Bruce Alexander's Rat Park, Lee Robins' Vietnam study) and national policy data from Portugal. However, the talk is a popular summary — some nuance from the original studies is lost in translation.",
+  sources_quality: "Good. Primary sources include peer-reviewed research (Bruce Alexander's Rat Park, Lee Robins' Vietnam study) and national policy data from Portugal. However, the talk is a popular summary; some nuance from the original studies is lost in translation.",
 }
 
 export const DEMO_ACTION_ITEMS: ActionItemsData = [
@@ -151,17 +151,17 @@ export const DEMO_DETAILED_ANALYSIS = `## The Core Argument
 
 Hari structures his talk around a single thesis: **addiction is an adaptation to environment, not a response to chemical hooks.** He builds this argument in three moves:
 
-1. **Dismantling the chemical-hook model** — He points out that hospital patients routinely receive diamorphine (medical heroin) for pain management but rarely become addicted, which contradicts the idea that exposure alone causes addiction.
+1. **Dismantling the chemical-hook model.** He points out that hospital patients routinely receive diamorphine (medical heroin) for pain management but rarely become addicted, which contradicts the idea that exposure alone causes addiction.
 
-2. **Introducing environmental evidence** — The Rat Park experiment and Vietnam veteran data both suggest that environment and social connection dramatically influence addictive behavior.
+2. **Introducing environmental evidence.** The Rat Park experiment and Vietnam veteran data both suggest that environment and social connection dramatically influence addictive behavior.
 
-3. **Proposing a policy solution** — Portugal's decriminalization is presented as proof that treating addiction as a health issue rather than a criminal one produces better outcomes.
+3. **Proposing a policy solution.** Portugal's decriminalization is presented as proof that treating addiction as a health issue rather than a criminal one produces better outcomes.
 
 ## What Works Well
 
 The talk is effective because it uses **concrete, verifiable examples** rather than abstract theorizing. The progression from rat experiments to human data to national policy gives the argument escalating credibility. Hari's personal connection to the topic (family members with addiction) grounds what could otherwise feel like a detached academic exercise.
 
-The central metaphor — "the opposite of addiction is connection" — is memorable and directionally correct, even if it oversimplifies the clinical reality.
+The central metaphor, "the opposite of addiction is connection," is memorable and directionally correct, even if it oversimplifies the clinical reality.
 
 ## Where It Falls Short
 

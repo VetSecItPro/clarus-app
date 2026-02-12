@@ -57,24 +57,25 @@ export function AnalysisModeSelector({ selectedMode, onModeChange, isLocked }: A
         </div>
       </TooltipProvider>
 
-      {/* Mobile: Single compact chip */}
+      {/* Mobile: Compact pill with context label */}
       <button
         onClick={() => !isLocked ? setSheetOpen(true) : undefined}
         disabled={isLocked}
         className={cn(
-          "sm:hidden flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+          "sm:hidden flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition-all",
           "border",
-          "bg-brand/10 border-brand/30 text-brand",
+          "bg-white/[0.04] border-white/[0.08] text-white/60",
           isLocked && "opacity-40 cursor-not-allowed"
         )}
       >
+        <span className="text-white/40">Mode:</span>
         {isLocked ? (
-          <Lock className="w-3 h-3" />
+          <Lock className="w-3 h-3 text-brand" />
         ) : (
-          <activeOption.icon className="w-3 h-3" />
+          <activeOption.icon className="w-3 h-3 text-brand" />
         )}
-        <span>{activeOption.label}</span>
-        <ChevronDown className="w-3 h-3" />
+        <span className="text-brand">{activeOption.label}</span>
+        <ChevronDown className="w-3 h-3 text-white/30" />
       </button>
 
       {/* Mobile bottom sheet */}

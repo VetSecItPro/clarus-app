@@ -308,11 +308,13 @@ export async function enforceAndIncrementUsage(
 
   // Try atomic path first (migration 216: increment_usage_if_allowed).
   // Cast needed: RPC not yet in generated database types.
-  const rpcCall = supabase.rpc as unknown as (
-    fn: string,
-    params: Record<string, unknown>
-  ) => PromiseLike<{ data: number | null; error: { message: string } | null }>
-  const { data, error } = await rpcCall(
+  // NOTE: Call .rpc() directly on the client — extracting it into a variable
+  // loses the `this` binding, causing "Cannot read properties of undefined
+  // (reading 'rest')" when the Supabase client tries to access its internals.
+  const { data, error } = await (supabase as unknown as {
+    rpc: (fn: string, params: Record<string, unknown>) =>
+      PromiseLike<{ data: number | null; error: { message: string } | null }>
+  }).rpc(
     "increment_usage_if_allowed",
     { p_user_id: userId, p_period: period, p_field: field, p_limit: limit }
   )

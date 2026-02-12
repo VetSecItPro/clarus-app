@@ -72,7 +72,7 @@ export const BeforeYouPlay = memo(function BeforeYouPlay() {
             Four verdicts. Zero wasted time.
           </h2>
           <p className="text-white/60 text-base max-w-lg mx-auto">
-            Every analysis starts with a triage verdict so you can decide where to invest your attention — before you read, watch, or listen.
+            Every analysis starts with a triage verdict so you can decide where to invest your attention before you read, watch, or listen.
           </p>
         </motion.div>
 

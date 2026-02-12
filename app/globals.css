@@ -202,7 +202,7 @@ input:-webkit-autofill:active {
 
 /* Gradient text utility */
 .gradient-text {
-  background: linear-gradient(135deg, #1d9bf0 0%, #0ea5e9 50%, #14b8a6 100%);
+  background: linear-gradient(135deg, var(--brand) 0%, #0ea5e9 50%, #14b8a6 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -210,7 +210,7 @@ input:-webkit-autofill:active {
 
 /* Gradient text - blue variant */
 .gradient-text-blue {
-  background: linear-gradient(135deg, #1d9bf0 0%, #38bdf8 100%);
+  background: linear-gradient(135deg, var(--brand) 0%, #38bdf8 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -495,7 +495,7 @@ iframe {
 }
 
 .article-content blockquote {
-  border-left: 3px solid rgba(29, 155, 240, 0.4);
+  border-left: 3px solid color-mix(in srgb, var(--brand) 40%, transparent);
   padding-left: 1.25rem;
   margin: 1.5rem 0;
   color: rgba(255, 255, 255, 0.5);
@@ -503,7 +503,7 @@ iframe {
 }
 
 .article-content a {
-  color: #1d9bf0;
+  color: var(--brand);
   text-decoration: underline;
   text-underline-offset: 2px;
   transition: color 0.2s;

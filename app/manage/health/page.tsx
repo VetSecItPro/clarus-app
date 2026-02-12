@@ -13,6 +13,7 @@ import {
   MetricCard, ChartCard, TimeFilter, SubpageHeader,
   ADMIN_COLORS, CHART_TOOLTIP_STYLE, AXIS_TICK_SMALL
 } from "../components"
+import { ExportButton } from "@/components/manage/export-button"
 
 const COLORS = ADMIN_COLORS
 
@@ -35,7 +36,19 @@ export default function HealthPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <SubpageHeader title="System Health" description="Service status, errors, and processing performance" />
-        <TimeFilter value={timeRange} onChange={setTimeRange} />
+        <div className="flex items-center gap-3">
+          <ExportButton
+            disabled={loading}
+            filename="clarus-health"
+            data={statuses.length > 0 ? statuses.map((s) => ({
+              service: s.name,
+              status: s.status,
+              total_calls: s.totalCalls,
+              error_rate_pct: s.errorRate,
+            })) : []}
+          />
+          <TimeFilter value={timeRange} onChange={setTimeRange} />
+        </div>
       </div>
 
       {/* Key metrics */}

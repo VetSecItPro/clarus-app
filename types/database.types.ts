@@ -270,8 +270,6 @@ export interface Database {
           detected_tone: string | null
           regeneration_count: number | null
           analysis_language: string | null
-          is_public: boolean | null
-          vote_score: number | null
         }
         Insert: {
           author?: string | null
@@ -298,8 +296,6 @@ export interface Database {
           detected_tone?: string | null
           regeneration_count?: number | null
           analysis_language?: string | null
-          is_public?: boolean | null
-          vote_score?: number | null
         }
         Update: {
           author?: string | null
@@ -326,49 +322,10 @@ export interface Database {
           detected_tone?: string | null
           regeneration_count?: number | null
           analysis_language?: string | null
-          is_public?: boolean | null
-          vote_score?: number | null
         }
         Relationships: [
           {
             foreignKeyName: "content_user_id_fkey"
-            columns: ["user_id"]
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      content_votes: {
-        Row: {
-          id: string
-          content_id: string
-          user_id: string
-          vote: number
-          created_at: string | null
-        }
-        Insert: {
-          id?: string
-          content_id: string
-          user_id: string
-          vote: number
-          created_at?: string | null
-        }
-        Update: {
-          id?: string
-          content_id?: string
-          user_id?: string
-          vote?: number
-          created_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "content_votes_content_id_fkey"
-            columns: ["content_id"]
-            referencedRelation: "content"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "content_votes_user_id_fkey"
             columns: ["user_id"]
             referencedRelation: "users"
             referencedColumns: ["id"]

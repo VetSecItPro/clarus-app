@@ -7,19 +7,24 @@ export function LandingFooter() {
       <div className="max-w-6xl mx-auto">
         {/* Top row: logo + links */}
         <div className="flex flex-col sm:flex-row items-center sm:items-start justify-between gap-6">
-          {/* Logo and tagline */}
-          <div className="flex items-center gap-2.5">
-            <Image
-              src="/clarus-logo.webp"
-              alt="Clarus"
-              width={32}
-              height={32}
-              sizes="32px"
-              className="w-8 h-8"
-            />
-            <span className="text-white/70 font-bold text-2xl italic tracking-wide" style={{ fontFamily: 'var(--font-cormorant)' }}>
-              Clarus
-            </span>
+          {/* Logo and copyright */}
+          <div className="flex flex-col items-center sm:items-start gap-1.5">
+            <div className="flex items-center gap-2.5">
+              <Image
+                src="/clarus-logo.webp"
+                alt="Clarus"
+                width={32}
+                height={32}
+                sizes="32px"
+                className="w-8 h-8"
+              />
+              <span className="text-white/70 font-bold text-2xl italic tracking-wide" style={{ fontFamily: 'var(--font-cormorant)' }}>
+                Clarus
+              </span>
+            </div>
+            <p className="text-xs text-white/30">
+              &copy; {new Date().getFullYear()} Clarus. Veteran-Owned &amp; Operated.
+            </p>
           </div>
 
           {/* Links — wrap on mobile */}
@@ -34,7 +39,7 @@ export function LandingFooter() {
               Contact
             </Link>
             <Link href="/install" className="hover:text-white/70 transition-colors">
-              Install App
+              Add to Home Screen
             </Link>
             <Link href="/terms" className="hover:text-white/70 transition-colors">
               Terms
@@ -45,12 +50,6 @@ export function LandingFooter() {
           </div>
         </div>
 
-        {/* Bottom bar */}
-        <div className="mt-6 pt-4 border-t border-white/[0.04] text-center sm:text-left">
-          <p className="text-xs text-white/30">
-            &copy; {new Date().getFullYear()} Clarus. Veteran-Owned &amp; Operated. All rights reserved.
-          </p>
-        </div>
       </div>
     </footer>
   )

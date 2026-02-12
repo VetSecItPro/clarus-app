@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { authenticateAdmin, getAdminClient, AuthErrors } from "@/lib/auth"
 import { z } from "zod"
 import { parseQuery } from "@/lib/schemas"
+import { checkRateLimit } from "@/lib/admin/rate-limit"
 
 // Schema for metrics query params
 const metricsQuerySchema = z.object({
@@ -143,6 +144,15 @@ export async function GET(request: NextRequest) {
     const auth = await authenticateAdmin()
     if (!auth.success) {
       return auth.response
+    }
+
+    // Rate limit: 30 requests per minute per admin user
+    const rl = checkRateLimit(`admin-metrics:${auth.user.id}`, { maxRequests: 30, windowMs: 60_000 })
+    if (rl.limited) {
+      return NextResponse.json(
+        { error: "Too many requests" },
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      )
     }
 
     // Validate query parameters

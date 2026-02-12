@@ -4,7 +4,7 @@
  *
  * Provides type-safe wrappers for each email template used by Clarus:
  *   - **Subscription lifecycle** -- welcome, payment failed, cancellation
- *   - **Engagement** -- weekly digest, discovery newsletter
+ *   - **Engagement** -- weekly digest
  *   - **Sharing** -- share analysis with another user
  *   - **Contact** -- contact form forwarding to admin inbox
  *
@@ -28,7 +28,6 @@ import { SubscriptionCancelledEmail } from "@/emails/subscription-cancelled"
 import { WeeklyDigestEmail } from "@/emails/weekly-digest"
 import type { WeeklyInsights } from "@/types/database.types"
 import { ShareAnalysisEmail } from "@/emails/share-analysis"
-import { DiscoveryNewsletterEmail } from "@/emails/discovery-newsletter"
 import { NewEpisodeEmail } from "@/emails/new-episode"
 
 // Lazy initialization to avoid build errors when API key is missing
@@ -148,28 +147,6 @@ export async function sendWeeklyDigestEmail(
     WeeklyDigestEmail({ userName, weekOf, totalAnalyses, topAnalyses, avgQualityScore, insights })
   )
   return sendEmail(to, "Clarus - Your Weekly Digest", html)
-}
-
-// ==================== Discovery Newsletter ====================
-
-/** Sends the discovery newsletter featuring trending shared analyses. */
-export async function sendDiscoveryNewsletterEmail(
-  to: string,
-  userName: string | undefined,
-  weekOf: string,
-  trendingItems: Array<{
-    title: string
-    shareUrl: string
-    type: string
-    domain: string
-    teaser: string
-    qualityScore: number
-  }>
-) {
-  const html = await render(
-    DiscoveryNewsletterEmail({ userName, weekOf, trendingItems })
-  )
-  return sendEmail(to, "Clarus - Trending This Week", html)
 }
 
 // ==================== Sharing Emails ====================

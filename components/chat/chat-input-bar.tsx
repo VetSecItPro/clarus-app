@@ -482,85 +482,124 @@ export function ChatInputBar({
             </button>
           )}
 
-          {/* File upload button - before send */}
-          {showFileUpload && onSubmitFile && mode !== "chat-only" && (
-            <InstantTooltip content="Upload file">
+          {/* File upload + Language — inline on desktop only (hidden on mobile, shown in row below) */}
+          <div className="hidden sm:flex items-center gap-1">
+            {/* File upload button */}
+            {showFileUpload && onSubmitFile && mode !== "chat-only" && (
+              <InstantTooltip content="Upload file">
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={disabled || isProcessing}
+                  className={cn(
+                    "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0",
+                    selectedFile
+                      ? "bg-orange-500/20 text-orange-400"
+                      : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+                  )}
+                  aria-label="Upload file"
+                >
+                  <FileUp className="w-4 h-4" />
+                </button>
+              </InstantTooltip>
+            )}
+
+            {/* Language selector */}
+            {analysisLanguage && onLanguageChange && mode !== "chat-only" && (
+              <LanguageSelector
+                value={analysisLanguage}
+                onValueChange={onLanguageChange}
+                multiLanguageEnabled={multiLanguageEnabled}
+                disabled={disabled || isProcessing}
+                compact
+              />
+            )}
+          </div>
+
+          {/* Mic + Send grouped tightly */}
+          <div className="flex items-center gap-1 flex-shrink-0">
+            {/* Microphone button */}
+            {sttSupported && (
+              <InstantTooltip content={isListening ? "Stop recording" : "Voice input"}>
+                <button
+                  type="button"
+                  onClick={isListening ? stopListening : startListening}
+                  disabled={disabled || isProcessing}
+                  className={cn(
+                    "h-8 w-8 rounded-lg flex items-center justify-center transition-all relative",
+                    isListening
+                      ? "bg-red-500 hover:bg-red-600 text-white"
+                      : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+                  )}
+                  aria-label={isListening ? "Stop recording" : "Start voice input"}
+                >
+                  {isListening ? (
+                    <>
+                      <span className="absolute inset-0 rounded-lg bg-red-500 animate-ping opacity-30" />
+                      <Square className="w-3.5 h-3.5 relative z-10 fill-white" />
+                    </>
+                  ) : (
+                    <Mic className="w-4 h-4" />
+                  )}
+                </button>
+              </InstantTooltip>
+            )}
+
+            {/* Send button */}
+            <InstantTooltip content={isUrlMode ? "Analyze" : "Send"}>
+              <button
+                onClick={handleSubmit}
+                disabled={!canSubmit}
+                aria-label={isUrlMode ? "Analyze content" : "Send message"}
+                className={cn(
+                  "h-8 w-8 rounded-lg flex items-center justify-center transition-all",
+                  canSubmit
+                    ? "bg-brand hover:bg-brand-hover text-white"
+                    : "text-white/30"
+                )}
+              >
+                {isProcessing ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Send className="w-4 h-4" />
+                )}
+              </button>
+            </InstantTooltip>
+          </div>
+        </div>
+
+        {/* Mobile secondary toolbar — file upload + language below input on small screens */}
+        {(showFileUpload || (analysisLanguage && onLanguageChange)) && mode !== "chat-only" && (
+          <div className="flex sm:hidden items-center gap-2 mt-2 px-1">
+            {showFileUpload && onSubmitFile && (
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
                 disabled={disabled || isProcessing}
                 className={cn(
-                  "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0",
+                  "flex items-center gap-1.5 h-7 px-2.5 rounded-full transition-all",
                   selectedFile
                     ? "bg-orange-500/20 text-orange-400"
                     : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
                 )}
                 aria-label="Upload file"
               >
-                <FileUp className="w-4 h-4" />
+                <FileUp className="w-3.5 h-3.5" />
+                <span className="text-xs">Upload</span>
               </button>
-            </InstantTooltip>
-          )}
+            )}
 
-          {/* Language selector — before mic, only in url-only mode */}
-          {analysisLanguage && onLanguageChange && mode !== "chat-only" && (
-            <LanguageSelector
-              value={analysisLanguage}
-              onValueChange={onLanguageChange}
-              multiLanguageEnabled={multiLanguageEnabled}
-              disabled={disabled || isProcessing}
-              compact
-            />
-          )}
-
-          {/* Microphone button - before send */}
-          {sttSupported && (
-            <InstantTooltip content={isListening ? "Stop recording" : "Voice input"}>
-              <button
-                type="button"
-                onClick={isListening ? stopListening : startListening}
+            {analysisLanguage && onLanguageChange && (
+              <LanguageSelector
+                value={analysisLanguage}
+                onValueChange={onLanguageChange}
+                multiLanguageEnabled={multiLanguageEnabled}
                 disabled={disabled || isProcessing}
-                className={cn(
-                  "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0 relative",
-                  isListening
-                    ? "bg-red-500 hover:bg-red-600 text-white"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
-                )}
-                aria-label={isListening ? "Stop recording" : "Start voice input"}
-              >
-                {isListening ? (
-                  <>
-                    <span className="absolute inset-0 rounded-lg bg-red-500 animate-ping opacity-30" />
-                    <Square className="w-3.5 h-3.5 relative z-10 fill-white" />
-                  </>
-                ) : (
-                  <Mic className="w-4 h-4" />
-                )}
-              </button>
-            </InstantTooltip>
-          )}
-
-          {/* Send button */}
-          <InstantTooltip content={isUrlMode ? "Analyze" : "Send"}>
-            <button
-              onClick={handleSubmit}
-              disabled={!canSubmit}
-              aria-label={isUrlMode ? "Analyze content" : "Send message"}
-              className={cn(
-                "h-8 w-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-all",
-                canSubmit
-                  ? "bg-brand hover:bg-brand-hover text-white"
-                  : "text-white/30"
-              )}
-            >
-              {isProcessing ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : (
-                <Send className="w-4 h-4" />
-              )}
-            </button>
-          </InstantTooltip>
-        </div>
+                compact
+              />
+            )}
+          </div>
+        )}
 
         {/* Helper text and character count */}
         <div className="flex items-center justify-between mt-2 px-1">

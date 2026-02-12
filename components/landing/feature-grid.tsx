@@ -12,7 +12,7 @@ const features = [
   {
     icon: ShieldCheck,
     title: "Skip, Skim, or Dive In",
-    description: "Every analysis starts with a verdict — Skip, Skim, Worth It, or Must See — so you know where to spend your time.",
+    description: "Every analysis starts with a verdict: Skip, Skim, Worth It, or Must See. You know where to spend your time.",
     badge: "Core",
     span: true,
   },

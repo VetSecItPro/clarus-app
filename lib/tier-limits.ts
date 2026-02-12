@@ -37,7 +37,6 @@ export interface TierLimits {
   podcastAnalyses: number
   podcastSubscriptions: number
   youtubeSubscriptions: number
-  bulkImportBatchSize: number
   collections: number
 }
 
@@ -55,7 +54,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     podcastAnalyses: 0,
     podcastSubscriptions: 0,
     youtubeSubscriptions: 0,
-    bulkImportBatchSize: 2,
+
     collections: 3,
   },
   starter: {
@@ -70,7 +69,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     podcastAnalyses: 10,
     podcastSubscriptions: 3,
     youtubeSubscriptions: 3,
-    bulkImportBatchSize: 5,
+
     collections: 50,
   },
   pro: {
@@ -85,7 +84,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     podcastAnalyses: 30,
     podcastSubscriptions: 10,
     youtubeSubscriptions: 10,
-    bulkImportBatchSize: 15,
+
     collections: 100,
   },
   day_pass: {
@@ -100,7 +99,7 @@ export const TIER_LIMITS: Record<UserTier, TierLimits> = {
     podcastAnalyses: 3,
     podcastSubscriptions: 1,
     youtubeSubscriptions: 1,
-    bulkImportBatchSize: 5,
+
     collections: 10,
   },
 }

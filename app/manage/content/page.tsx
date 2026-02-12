@@ -13,6 +13,7 @@ import {
   MetricCard, ChartCard, TimeFilter, SubpageHeader,
   ADMIN_COLORS, CHART_TOOLTIP_STYLE, AXIS_TICK
 } from "../components"
+import { ExportButton } from "@/components/manage/export-button"
 
 const COLORS = ADMIN_COLORS
 
@@ -27,7 +28,22 @@ export default function ContentPage() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <SubpageHeader title="Content" description="Analysis volume, types, quality scores, and domains" />
-        <TimeFilter value={timeRange} onChange={setTimeRange} />
+        <div className="flex items-center gap-3">
+          <ExportButton
+            disabled={loading}
+            filename="clarus-content"
+            data={metrics ? [{
+              date: new Date().toISOString().slice(0, 10),
+              total_analyzed: metrics.totalContent,
+              content_today: metrics.contentToday,
+              content_growth_pct: metrics.contentGrowthPercent,
+              avg_content_per_user: metrics.avgContentPerUser,
+              processing_success_rate: metrics.processingSuccessRate,
+              avg_processing_time_s: metrics.avgProcessingTime,
+            }] : []}
+          />
+          <TimeFilter value={timeRange} onChange={setTimeRange} />
+        </div>
       </div>
 
       {/* Key metrics */}

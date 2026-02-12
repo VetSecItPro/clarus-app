@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Home, Clock, Compass, Rss } from "lucide-react"
+import { Home, Clock, Rss } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { ActiveAnalysisNavLink } from "@/components/active-analysis-nav-link"
@@ -15,7 +15,6 @@ import { useUserTier } from "@/lib/hooks/use-user-tier"
 const baseNavItems = [
   { href: "/", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Clock },
-  { href: "/discover", label: "Discover", icon: Compass },
 ]
 
 const feedsNavItem = { href: "/feeds", label: "Feeds", icon: Rss }

@@ -12,7 +12,6 @@ const PUBLIC_ROUTES = [
   "/terms",
   "/privacy",
   "/pricing",
-  "/discover",
   "/articles",
   "/contact",
 ]
@@ -24,7 +23,6 @@ const PUBLIC_PREFIXES = [
   "/api/polar/webhook",
   "/api/assemblyai-webhook",
   "/api/crons/",
-  "/api/discover",
   "/api/contact",
 ]
 
@@ -81,6 +79,31 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
+  // Admin routes: verify user is authenticated AND has is_admin flag
+  if (pathname.startsWith("/manage")) {
+    const { supabase, response } = createMiddlewareClient(request)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) {
+      return NextResponse.redirect(new URL("/login", request.url))
+    }
+
+    const { data: userData } = await supabase
+      .from("users")
+      .select("is_admin")
+      .eq("id", user.id)
+      .single()
+
+    if (!userData?.is_admin) {
+      return NextResponse.redirect(new URL("/", request.url))
+    }
+
+    setSecurityHeaders(response)
+    return response
+  }
+
   // For authenticated routes, refresh the session to keep users logged in
   const { supabase, response } = createMiddlewareClient(request)
   await supabase.auth.getSession()
@@ -97,7 +120,7 @@ function setCacheHeaders(response: NextResponse, pathname: string) {
     response.headers.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400")
   } else if (pathname === "/contact") {
     response.headers.set("Cache-Control", "public, max-age=3600, stale-while-revalidate=86400")
-  } else if (pathname === "/pricing" || pathname === "/discover") {
+  } else if (pathname === "/pricing") {
     // Semi-static pages — short cache, long stale
     response.headers.set("Cache-Control", "public, max-age=300, stale-while-revalidate=3600")
   }
