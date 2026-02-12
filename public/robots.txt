@@ -1,0 +1,26 @@
+# Clarus — clarusapp.io
+# Allow search engines to index public pages only
+
+User-agent: *
+Allow: /
+Allow: /pricing
+Allow: /privacy
+Allow: /terms
+
+# Block authenticated/internal pages
+Disallow: /api/
+Disallow: /login
+Disallow: /signup
+Disallow: /forgot-password
+Disallow: /auth/
+Disallow: /library
+Disallow: /item/
+Disallow: /dashboard
+Disallow: /feeds
+Disallow: /discover
+Disallow: /settings
+Disallow: /manage
+Disallow: /podcasts
+
+# Sitemap
+Sitemap: https://clarusapp.io/sitemap.xml
