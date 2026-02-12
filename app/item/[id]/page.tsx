@@ -1342,13 +1342,14 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                           ) : (
                             <RefreshCw className="w-3.5 h-3.5" />
                           )}
-                          <span>{regenerationCount >= maxRegenerations ? `${maxRegenerations}/${maxRegenerations}` : `Regenerate`}</span>
+                          <span>Regenerate</span>
+                          <span className="text-[10px] opacity-60">{regenerationCount}/{maxRegenerations}</span>
                         </button>
                       </TooltipTrigger>
                       <TooltipContent>
                         {regenerationCount >= maxRegenerations
                           ? `Regeneration limit reached (${maxRegenerations}/${maxRegenerations})`
-                          : `Re-analyze this content (${regenerationCount}/${maxRegenerations} used)`}
+                          : `${maxRegenerations - regenerationCount} regeneration${maxRegenerations - regenerationCount === 1 ? "" : "s"} remaining`}
                       </TooltipContent>
                     </Tooltip>
 
@@ -1474,22 +1475,27 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                 dropdownDirection="down"
               />
 
-              <button
-                onClick={() => handleRegenerate()}
-                disabled={isRegenerating || regenerationCount >= maxRegenerations}
-                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
-                  regenerationCount >= maxRegenerations
-                    ? "bg-white/[0.04] text-white/30 border border-white/[0.06] cursor-not-allowed"
-                    : "bg-blue-500/20 text-blue-300 border border-blue-500/30 active:bg-blue-500/30"
-                }`}
-                aria-label={regenerationCount >= maxRegenerations ? `Regeneration limit reached` : "Regenerate"}
-              >
-                {isRegenerating ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="w-4 h-4" />
-                )}
-              </button>
+              <div className="flex flex-col items-center gap-0.5">
+                <button
+                  onClick={() => handleRegenerate()}
+                  disabled={isRegenerating || regenerationCount >= maxRegenerations}
+                  className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
+                    regenerationCount >= maxRegenerations
+                      ? "bg-white/[0.04] text-white/30 border border-white/[0.06] cursor-not-allowed"
+                      : "bg-blue-500/20 text-blue-300 border border-blue-500/30 active:bg-blue-500/30"
+                  }`}
+                  aria-label={regenerationCount >= maxRegenerations
+                    ? `Regeneration limit reached`
+                    : `Regenerate (${maxRegenerations - regenerationCount} remaining)`}
+                >
+                  {isRegenerating ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <RefreshCw className="w-4 h-4" />
+                  )}
+                </button>
+                <span className="text-[9px] text-white/30">{regenerationCount}/{maxRegenerations}</span>
+              </div>
 
             </div>
           </div>

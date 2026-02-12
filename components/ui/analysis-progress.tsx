@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, Mic } from "lucide-react"
+import { Check, Mic, Clock } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 
 interface AnalysisProgressProps {
@@ -47,7 +47,9 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
 
   const [showComplete, setShowComplete] = useState(false)
   const [shouldRender, setShouldRender] = useState(true)
+  const [elapsedSeconds, setElapsedSeconds] = useState(0)
   const wasPollingRef = useRef(false)
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const completed = getCompletedSegments(props)
   const completedCount = completed.size
@@ -61,6 +63,22 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
       wasPollingRef.current = true
     }
   }, [isPolling])
+
+  // Elapsed timer for transcription phase
+  useEffect(() => {
+    if (isTranscribing) {
+      setElapsedSeconds(0)
+      timerRef.current = setInterval(() => {
+        setElapsedSeconds(prev => prev + 1)
+      }, 1000)
+    } else if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current)
+    }
+  }, [isTranscribing])
 
   // Handle completion: show checkmark briefly, then collapse
   useEffect(() => {
@@ -96,16 +114,22 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
           {/* Transcribing phase (podcast only) */}
           {isTranscribing && contentType === "podcast" ? (
             <div className="space-y-3">
-              <div className="flex items-center gap-2.5">
-                <div className="relative">
-                  <Mic className="w-4 h-4 text-blue-400" />
-                  <motion.div
-                    className="absolute inset-0 rounded-full bg-blue-400/30"
-                    animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0, 0.5] }}
-                    transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                  />
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2.5">
+                  <div className="relative">
+                    <Mic className="w-4 h-4 text-blue-400" />
+                    <motion.div
+                      className="absolute inset-0 rounded-full bg-blue-400/30"
+                      animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0, 0.5] }}
+                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                    />
+                  </div>
+                  <span className="text-sm text-white/70 font-medium">Transcribing audio...</span>
                 </div>
-                <span className="text-sm text-white/70 font-medium">Transcribing audio...</span>
+                <div className="flex items-center gap-1.5 text-xs text-white/40">
+                  <Clock className="w-3 h-3" />
+                  <span>{Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, "0")}</span>
+                </div>
               </div>
               <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
                 <motion.div
@@ -114,6 +138,7 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 />
               </div>
+              <p className="text-[11px] text-white/30">Typically takes 2-5 minutes depending on episode length</p>
             </div>
           ) : (
             <div className="space-y-3">
