@@ -59,7 +59,7 @@ export function SectionFeedback({ contentId, sectionType, initialValue = null }:
         disabled={isSubmitting}
         aria-label="This section was helpful"
         className={cn(
-          "p-1.5 rounded-lg transition-all",
+          "p-2.5 rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black active:scale-95",
           value === true
             ? "bg-emerald-500/20 text-emerald-400"
             : "text-white/30 hover:text-emerald-400 hover:bg-emerald-500/10"
@@ -72,7 +72,7 @@ export function SectionFeedback({ contentId, sectionType, initialValue = null }:
         disabled={isSubmitting}
         aria-label="This section was not helpful"
         className={cn(
-          "p-1.5 rounded-lg transition-all",
+          "p-2.5 rounded-lg transition-all focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black active:scale-95",
           value === false
             ? "bg-red-500/20 text-red-400"
             : "text-white/30 hover:text-red-400 hover:bg-red-500/10"

@@ -50,7 +50,7 @@ export default function ManageLayout({ children }: { children: React.ReactNode }
                     key={item.href}
                     href={item.href}
                     className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
+                      "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors whitespace-nowrap focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black focus-visible:outline-none active:opacity-80",
                       isActive
                         ? "border-[#1d9bf0] text-white"
                         : "border-transparent text-white/50 hover:text-white/70 hover:border-white/20"

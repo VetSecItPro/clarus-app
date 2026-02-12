@@ -120,6 +120,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
                 src={thumbnail_url}
                 alt=""
                 fill
+                sizes="(max-width: 640px) 64px, 80px"
                 className="object-cover"
                 unoptimized
               />
@@ -151,20 +152,21 @@ export const ChatThreadCard = memo(function ChatThreadCard({
 
           {/* Right side: actions + scores */}
           <div className="shrink-0 flex flex-col items-end gap-1.5">
-            {/* Action buttons (show on hover) */}
-            <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+            {/* Action buttons (always visible on mobile, hover-reveal on desktop) */}
+            <div className="flex items-center gap-1 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
               {onBookmark && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation()
                     onBookmark()
                   }}
-                  className="w-7 h-7 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-white transition-colors"
+                  aria-label={is_bookmarked ? "Remove bookmark" : "Add bookmark"}
+                  className="w-9 h-9 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-white transition-colors focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 active:scale-95"
                 >
                   {is_bookmarked ? (
-                    <BookmarkCheck className="w-3.5 h-3.5 text-[#1d9bf0]" />
+                    <BookmarkCheck className="w-4 h-4 text-[#1d9bf0]" />
                   ) : (
-                    <Bookmark className="w-3.5 h-3.5" />
+                    <Bookmark className="w-4 h-4" />
                   )}
                 </button>
               )}
@@ -174,9 +176,10 @@ export const ChatThreadCard = memo(function ChatThreadCard({
                     e.stopPropagation()
                     onDelete()
                   }}
-                  className="w-7 h-7 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-red-400 transition-colors"
+                  aria-label="Delete item"
+                  className="w-9 h-9 rounded-lg bg-black/80 hover:bg-black flex items-center justify-center text-white/60 hover:text-red-400 transition-colors focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 active:scale-95"
                 >
-                  <Trash2 className="w-3.5 h-3.5" />
+                  <Trash2 className="w-4 h-4" />
                 </button>
               )}
             </div>

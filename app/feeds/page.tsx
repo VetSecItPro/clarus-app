@@ -190,7 +190,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                 setExpandedId(null)
               }}
               className={cn(
-                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors relative",
+                "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors relative focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black focus-visible:outline-none active:opacity-80",
                 activeTab === tab.id
                   ? "text-white"
                   : "text-white/40 hover:text-white/70"

@@ -329,6 +329,11 @@ input:-webkit-autofill:active {
   padding-bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
 }
 
+/* DES-116: pb-safe utility for components needing safe area bottom padding */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
 /* Fixed bottom positioning above safe area - for sticky bottom navs */
 .fixed-bottom-safe {
   bottom: calc(env(safe-area-inset-bottom, 0px) + 8px);

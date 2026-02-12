@@ -36,7 +36,7 @@ export default function MobileBottomNav() {
   const navItems = showFeeds ? [...baseNavItems, feedsNavItem] : baseNavItems
 
   return (
-    <nav className="fixed left-0 right-0 z-50 bg-black/95 backdrop-blur-2xl border-t border-white/[0.06] rounded-t-2xl sm:hidden fixed-bottom-safe">
+    <nav className="fixed left-0 right-0 z-50 bg-black/95 backdrop-blur-2xl border-t border-white/[0.06] rounded-t-2xl sm:hidden fixed-bottom-safe select-none">
       <div className="flex items-center justify-around h-[60px]">
         {navItems.map((item, index) => {
           // Only show as active if Settings dropdown is NOT open

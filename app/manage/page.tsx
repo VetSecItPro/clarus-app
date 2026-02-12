@@ -332,7 +332,7 @@ export default function AdminOverview() {
                       ) : null
                     )}
                   </div>
-                  <div className="flex items-center gap-6 mt-3">
+                  <div className="flex items-center gap-4 flex-wrap mt-3">
                     {tierItems.map((t) => (
                       <div key={t.label} className="flex items-center gap-2">
                         <div className={cn("w-3 h-3 rounded-full", t.color)} />

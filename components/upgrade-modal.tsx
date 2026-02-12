@@ -168,7 +168,7 @@ export function UpgradeModal({
                 <button
                   onClick={onClose}
                   aria-label="Close upgrade dialog"
-                  className="p-1.5 rounded-lg hover:bg-white/[0.08] text-white/40 hover:text-white/80 transition-colors"
+                  className="p-2.5 rounded-lg hover:bg-white/[0.08] text-white/40 hover:text-white/80 transition-colors focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 active:scale-95"
                 >
                   <X className="w-4 h-4" />
                 </button>

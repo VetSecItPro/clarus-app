@@ -68,6 +68,7 @@ export const viewport = {
   initialScale: 1,
   maximumScale: 5,
   userScalable: true, // Allow zoom for accessibility
+  viewportFit: "cover", // DES-115: Enable env(safe-area-inset-*) on notched devices
 }
 
 export default function RootLayout({

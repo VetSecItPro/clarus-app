@@ -187,7 +187,7 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
                   size="sm"
                   variant="ghost"
                   onClick={() => handleAnalyze(episode)}
-                  className="text-xs h-8 text-white/50 hover:text-white opacity-0 group-hover:opacity-100 transition-opacity"
+                  className="text-xs h-8 text-white/50 hover:text-white sm:opacity-0 sm:group-hover:opacity-100 transition-opacity"
                 >
                   <Play className="w-3.5 h-3.5" />
                   Analyze

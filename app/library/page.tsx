@@ -526,7 +526,8 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                       onClick={() =>
                         setSelectedTags(selectedTags.filter((t) => t !== tag))
                       }
-                      className="hover:text-white transition-colors"
+                      aria-label={`Remove ${tag} filter`}
+                      className="p-1 -m-0.5 rounded hover:text-white hover:bg-white/10 transition-colors"
                     >
                       <X className="w-3 h-3" />
                     </button>

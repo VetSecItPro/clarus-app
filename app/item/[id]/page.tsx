@@ -1324,7 +1324,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     {/* FE: FIX-FE-001 — replaced nested Link>Button with Link styled as button */}
                     <Link
                       href="/"
-                      className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-gray-400 hover:text-white border border-white/[0.08] inline-flex items-center justify-center"
+                      className="h-10 w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white border border-white/[0.08] inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-[#1d9bf0]/50 active:scale-95 transition-all"
                       aria-label="Back to home"
                     >
                       <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
@@ -1445,7 +1445,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <button
                 onClick={handleToggleBookmark}
                 disabled={isTogglingBookmark}
-                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
+                className={`h-10 w-10 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 active:scale-95 ${
                   isBookmarked
                     ? "bg-amber-500/20 text-amber-300 border border-amber-500/30"
                     : "bg-white/[0.06] text-white/50 border border-white/[0.1]"
@@ -1457,7 +1457,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
               <button
                 onClick={() => setIsShareModalOpen(true)}
-                className="h-8 w-8 flex items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 active:bg-emerald-500/30 transition-all"
+                className="h-10 w-10 flex items-center justify-center rounded-lg bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 active:bg-emerald-500/30 active:scale-95 transition-all"
                 aria-label="Share"
               >
                 <Mail className="w-4 h-4" />
@@ -1466,7 +1466,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
-                    className="h-8 w-8 flex items-center justify-center rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 active:bg-purple-500/30 transition-all"
+                    className="h-10 w-10 flex items-center justify-center rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 active:bg-purple-500/30 active:scale-95 transition-all"
                     aria-label="Export"
                   >
                     <Download className="w-4 h-4" />
@@ -1493,7 +1493,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <button
                 onClick={handleTogglePublish}
                 disabled={isTogglingPublish}
-                className={`h-8 w-8 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 ${
+                className={`h-10 w-10 flex items-center justify-center rounded-lg transition-all disabled:opacity-50 active:scale-95 ${
                   isPublic
                     ? "bg-[#1d9bf0]/20 text-[#1d9bf0] border border-[#1d9bf0]/30"
                     : "bg-white/[0.06] text-white/50 border border-white/[0.1]"
@@ -1725,6 +1725,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                         width={420}
                         height={236}
                         sizes="480px"
+                        priority
                         className="w-full h-auto aspect-video object-cover"
                         onError={(e) => (e.currentTarget.style.display = "none")}
                       />
