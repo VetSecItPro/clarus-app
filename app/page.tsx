@@ -23,6 +23,8 @@ import { type AnalysisLanguage, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
 // PERF: use shared SWR hook instead of independent Supabase query for tier + name
 import { useUserTier } from "@/lib/hooks/use-user-tier"
+import type { AnalysisMode } from "@/lib/analysis-modes"
+import { AnalysisModeSelector } from "@/components/analysis-mode-selector"
 
 // PERF: FIX-PERF-001 — Dynamic import LandingPage to reduce authenticated user's bundle
 const LandingPage = dynamic(
@@ -93,6 +95,37 @@ function HomePageContent({ session }: HomePageProps) {
 
   // User tier for gating multi-language
   const multiLanguageEnabled = features.multiLanguageAnalysis
+
+  // Analysis mode selector state
+  const [selectedMode, setSelectedMode] = useState<AnalysisMode>("apply")
+  const modeSelectionEnabled = features.analysisPreferences
+
+  // Fetch saved preference on mount
+  useEffect(() => {
+    if (!userId) return
+    let cancelled = false
+    fetch("/api/preferences")
+      .then(res => res.ok ? res.json() : null)
+      .then(data => {
+        if (!cancelled && data?.preferences?.analysis_mode) {
+          setSelectedMode(data.preferences.analysis_mode as AnalysisMode)
+        }
+      })
+      .catch(() => { /* silently use default */ })
+    return () => { cancelled = true }
+  }, [userId])
+
+  // Save preference on mode change (Starter+ only)
+  const handleModeChange = useCallback((mode: AnalysisMode) => {
+    setSelectedMode(mode)
+    if (modeSelectionEnabled) {
+      fetch("/api/preferences", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ analysis_mode: mode }),
+      }).catch(() => { /* toast handled by the UI, local state already updated */ })
+    }
+  }, [modeSelectionEnabled])
 
   // Bulk import dialog state
   const [bulkImportOpen, setBulkImportOpen] = useState(false)
@@ -241,6 +274,22 @@ function HomePageContent({ session }: HomePageProps) {
                 multiLanguageEnabled={multiLanguageEnabled}
               />
             </motion.div>
+
+            {/* Analysis mode selector */}
+            {userId && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.5, delay: 0.2 }}
+                className="flex justify-center mt-4"
+              >
+                <AnalysisModeSelector
+                  selectedMode={selectedMode}
+                  onModeChange={handleModeChange}
+                  isLocked={!modeSelectionEnabled}
+                />
+              </motion.div>
+            )}
 
             {/* Content type hints */}
             <motion.div

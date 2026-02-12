@@ -332,6 +332,18 @@ const TYPE_INSTRUCTIONS: Record<string, string[]> = {
     "Note the document's purpose: research paper, whitepaper, legal document, or manual.",
     "Prioritize the abstract/executive summary and conclusions for key takeaways.",
   ],
+  music: [
+    "This is music/entertainment content. Focus on describing the content rather than fact-checking.",
+    "Skip action items — they are not applicable to music content.",
+    "For triage, rate enjoyment and production value rather than informational value.",
+    "Do not apply signal_noise_score for informational value — set to -1 to indicate not applicable.",
+  ],
+  entertainment: [
+    "This is entertainment content. Focus on describing the content and its entertainment value.",
+    "Fact-checking and action items are less applicable — only include if genuinely relevant.",
+    "For triage, rate entertainment value and production quality rather than informational density.",
+    "Adjust your analysis depth — entertainment content does not need the same rigor as news or research.",
+  ],
 }
 
 /**
@@ -563,8 +575,11 @@ async function extractVerifiableClaims(text: string, maxClaims = 5): Promise<Ver
 IMPORTANT: Generate all search queries in English, even if the content is in another language. English queries produce better web search results.
 
 Focus on:
-- Version numbers and release dates (e.g., "GPT-5.2 was released")
+- Version numbers and release dates (e.g., "Product X version 2.0 was released")
 - Statistics and figures (e.g., "85% of users prefer X")
+- Health and medical claims (e.g., "X reduces risk of Y by Z%")
+- Financial claims (e.g., "Company X revenue grew Z% year-over-year")
+- Scientific findings (e.g., "Study shows correlation between X and Y")
 - Product availability and features (e.g., "Service X now supports Y")
 - Recent events and announcements (e.g., "Company acquired Z")
 - Pricing and technical specifications
@@ -1841,29 +1856,31 @@ async function generateTruthCheck(fullText: string, contentType: string, userId?
   const truthCheck = result.content as TruthCheckData | null
   if (!truthCheck) return null
 
-  if (truthCheck.issues) {
-    const availableUrls: Array<{ url: string; title: string }> = []
-    // Collect URLs from generic web search
-    if (webSearchContext?.searches) {
-      for (const search of webSearchContext.searches) {
-        for (const r of search.results) {
-          if (r.url && r.title) {
-            availableUrls.push({ url: r.url, title: r.title })
-          }
+  // Build set of all available URLs from Tavily search results (anti-hallucination gate)
+  const availableUrlSet = new Set<string>()
+  const availableUrlMap = new Map<string, string>() // url → title
+  if (webSearchContext?.searches) {
+    for (const search of webSearchContext.searches) {
+      for (const r of search.results) {
+        if (r.url && r.title) {
+          availableUrlSet.add(r.url)
+          if (!availableUrlMap.has(r.url)) availableUrlMap.set(r.url, r.title)
         }
       }
     }
-    // Collect URLs from targeted claim searches
-    if (claimSearchCtx?.searches) {
-      for (const search of claimSearchCtx.searches) {
-        for (const r of search.results) {
-          if (r.url && r.title) {
-            availableUrls.push({ url: r.url, title: r.title })
-          }
+  }
+  if (claimSearchCtx?.searches) {
+    for (const search of claimSearchCtx.searches) {
+      for (const r of search.results) {
+        if (r.url && r.title) {
+          availableUrlSet.add(r.url)
+          if (!availableUrlMap.has(r.url)) availableUrlMap.set(r.url, r.title)
         }
       }
     }
+  }
 
+  if (truthCheck.issues) {
     for (const issue of truthCheck.issues) {
       if (issue.sources && Array.isArray(issue.sources)) {
         const rawSources = issue.sources as unknown[]
@@ -1891,6 +1908,59 @@ async function generateTruthCheck(fullText: string, contentType: string, userId?
         }
       } else {
         delete issue.sources
+      }
+    }
+
+    // Build deduplicated top-level references array from:
+    // 1. AI-returned references (if the model included them)
+    // 2. Per-issue sources
+    // Only keep URLs that exist in availableUrlSet (anti-hallucination gate)
+    const refSeen = new Set<string>()
+    const references: Array<{ url: string; title: string }> = []
+
+    // First, collect from AI-returned top-level references (if model followed the protocol)
+    // The AI JSON is parsed into TruthCheckData which now has an optional references field
+    const aiRefs = truthCheck.references
+    if (Array.isArray(aiRefs)) {
+      for (const ref of aiRefs) {
+        const url = ref.url
+        const title = ref.title || availableUrlMap.get(url) || url
+        if (url && availableUrlSet.has(url) && !refSeen.has(url)) {
+          refSeen.add(url)
+          references.push({ url, title })
+        }
+      }
+    }
+
+    // Then collect from per-issue sources (for backward compat and completeness)
+    for (const issue of truthCheck.issues) {
+      if (issue.sources) {
+        for (const src of issue.sources) {
+          if (src.url && !refSeen.has(src.url)) {
+            refSeen.add(src.url)
+            // Only include if from Tavily results (anti-hallucination)
+            if (availableUrlSet.has(src.url)) {
+              references.push({ url: src.url, title: src.title })
+            }
+          }
+        }
+      }
+    }
+
+    if (references.length > 0) {
+      truthCheck.references = references
+
+      // Validate [N] citations in assessment text — strip any [N] where N > references.length
+      const maxRef = references.length
+      for (const issue of truthCheck.issues) {
+        if (issue.assessment) {
+          issue.assessment = issue.assessment.replace(/\[(\d+)\]/g, (match, numStr) => {
+            const num = parseInt(numStr as string, 10)
+            return num >= 1 && num <= maxRef ? match : ""
+          })
+          // Clean up double spaces left by stripped citations
+          issue.assessment = issue.assessment.replace(/\s{2,}/g, " ").trim()
+        }
       }
     }
   }

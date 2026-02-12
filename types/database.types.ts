@@ -59,6 +59,7 @@ export interface TruthCheckData {
   }>
   strengths: string[]
   sources_quality: string
+  references?: CitationSource[] // Deduplicated numbered reference list for Perplexity-style [N] citations
 }
 
 // Action items extracted from content
