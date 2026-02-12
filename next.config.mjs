@@ -1,3 +1,5 @@
+import { withSentryConfig } from "@sentry/nextjs"
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   images: {
@@ -51,4 +53,19 @@ const nextConfig = {
   generateEtags: true,
 }
 
-export default nextConfig
+export default withSentryConfig(nextConfig, {
+  // Suppress source map upload warnings when SENTRY_AUTH_TOKEN is not set
+  silent: !process.env.SENTRY_AUTH_TOKEN,
+
+  // Upload source maps for better stack traces
+  widenClientFileUpload: true,
+
+  // Automatically tree-shake Sentry logger statements
+  disableLogger: true,
+
+  // Hide source maps from users
+  hideSourceMaps: true,
+
+  // Tunnel Sentry events to avoid ad blockers
+  tunnelRoute: "/monitoring",
+})

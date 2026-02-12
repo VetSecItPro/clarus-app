@@ -16,21 +16,15 @@
 
 import { NextResponse, type NextRequest } from "next/server"
 import { timingSafeEqual } from "crypto"
-import { validateContentId, checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/validation"
 import { authenticateRequest } from "@/lib/auth"
 import { isValidLanguage, type AnalysisLanguage } from "@/lib/languages"
 import { processContent, ProcessContentError } from "@/lib/process-content"
+import { processContentSchema, parseBody } from "@/lib/schemas"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
 export const maxDuration = 300
-
-interface ProcessContentRequestBody {
-  content_id: string
-  force_regenerate?: boolean
-  language?: string
-  skipScraping?: boolean
-}
 
 export async function POST(req: NextRequest) {
   // Rate limiting by IP
@@ -65,32 +59,29 @@ export async function POST(req: NextRequest) {
   }
 
   // Parse and validate request body
-  let contentId: string
-  let language: AnalysisLanguage = "en"
-  let forceRegenerate = false
-  let skipScraping = false
-
+  let rawBody: unknown
   try {
-    const body: ProcessContentRequestBody = await req.json()
-    forceRegenerate = body.force_regenerate || false
-    skipScraping = body.skipScraping || false
-
-    // Validate content_id
-    const contentIdValidation = validateContentId(body.content_id)
-    if (!contentIdValidation.isValid) {
-      return NextResponse.json({ error: contentIdValidation.error || "Invalid content_id" }, { status: 400 })
-    }
-    contentId = contentIdValidation.sanitized!
-
-    // Validate language parameter
-    if (body.language) {
-      if (!isValidLanguage(body.language)) {
-        return NextResponse.json({ error: "Invalid language code" }, { status: 400 })
-      }
-      language = body.language
-    }
+    rawBody = await req.json()
   } catch {
     return NextResponse.json({ error: "Invalid request body." }, { status: 400 })
+  }
+
+  const parsed = parseBody(processContentSchema, rawBody)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 })
+  }
+
+  const contentId = parsed.data.content_id
+  const forceRegenerate = parsed.data.force_regenerate
+  const skipScraping = parsed.data.skipScraping
+
+  // Validate language parameter beyond Zod (check against supported list)
+  let language: AnalysisLanguage = "en"
+  if (parsed.data.language && parsed.data.language !== "en") {
+    if (!isValidLanguage(parsed.data.language)) {
+      return NextResponse.json({ error: "Invalid language code" }, { status: 400 })
+    }
+    language = parsed.data.language
   }
 
   // Call core processing function

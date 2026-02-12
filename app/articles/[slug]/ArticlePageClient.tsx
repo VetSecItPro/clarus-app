@@ -1,7 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import Link from "next/link"
+import DOMPurify from "dompurify"
 import { ArrowLeft, ArrowRight, Share2, Check, ChevronDown, ChevronUp } from "lucide-react"
 import type { BlogArticle } from "@/lib/data/blog-articles"
 import { categoryConfig } from "@/lib/utils/article-helpers"
@@ -18,6 +19,15 @@ export function ArticlePageClient({
   const [copied, setCopied] = useState(false)
   const config = categoryConfig[article.category]
   const Icon = config.icon
+
+  // DOMPurify requires a browser DOM — during SSG prerendering, pass through
+  // developer-controlled HTML as-is; sanitize client-side after hydration
+  const sanitizedHtml = useMemo(
+    () => typeof window !== "undefined"
+      ? DOMPurify.sanitize(article.htmlContent, { USE_PROFILES: { html: true } })
+      : article.htmlContent,
+    [article.htmlContent]
+  )
 
   function handleShare() {
     const url = `https://clarusapp.io/articles/${article.slug}`
@@ -93,7 +103,7 @@ export function ArticlePageClient({
       {/* Article content */}
       <article
         className="article-content"
-        dangerouslySetInnerHTML={{ __html: article.htmlContent }}
+        dangerouslySetInnerHTML={{ __html: sanitizedHtml }}
       />
 
       {/* FAQs */}

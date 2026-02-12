@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
-import { validateUrl, checkRateLimit } from "@/lib/validation"
+import { checkRateLimit, validateUrl } from "@/lib/validation"
+import { fetchTitleSchema, parseBody } from "@/lib/schemas"
 
 const FETCH_TIMEOUT = 5_000
 
@@ -21,28 +22,25 @@ export async function POST(request: NextRequest) {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
 
-  let body: { url?: string }
+  let rawBody: unknown
   try {
-    body = await request.json()
+    rawBody = await request.json()
   } catch {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
 
-  const { url } = body
-  if (!url || typeof url !== "string") {
-    return NextResponse.json({ error: "url is required" }, { status: 400 })
+  const parsed = parseBody(fetchTitleSchema, rawBody)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 })
   }
 
-  const validation = validateUrl(url)
-  if (!validation.isValid || !validation.sanitized) {
-    return NextResponse.json({ error: "Invalid URL" }, { status: 400 })
-  }
+  const url = parsed.data.url
 
   try {
     const controller = new AbortController()
     const timeout = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
 
-    let targetUrl = validation.sanitized
+    let targetUrl = url
     let redirectCount = 0
     const MAX_REDIRECTS = 3
 

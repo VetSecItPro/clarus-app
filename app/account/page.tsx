@@ -1,19 +1,50 @@
 "use client"
 
 import { useState } from "react"
-import { Download, Trash2, Loader2, AlertTriangle, ArrowLeft, Shield } from "lucide-react"
+import { Download, Trash2, Loader2, AlertTriangle, ArrowLeft, Shield, CreditCard, ExternalLink } from "lucide-react"
 import Link from "next/link"
 import { supabase } from "@/lib/supabase"
-import { clearAuthCache } from "@/components/with-auth"
+import { clearAuthCache, getCachedSession } from "@/components/with-auth"
+import { useUserTier } from "@/lib/hooks/use-user-tier"
 import { toast } from "sonner"
 import SiteHeader from "@/components/site-header"
 import MobileBottomNav from "@/components/mobile-bottom-nav"
 
+const TIER_DISPLAY: Record<string, string> = {
+  free: "Free",
+  starter: "Starter",
+  pro: "Pro",
+  day_pass: "Day Pass",
+}
+
 export default function AccountPage() {
+  const { session } = getCachedSession()
+  const { tier, subscriptionStatus, isLoading: tierLoading } = useUserTier(session?.user?.id ?? null)
   const [isExporting, setIsExporting] = useState(false)
+  const [isLoadingPortal, setIsLoadingPortal] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [deleteInput, setDeleteInput] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
+
+  const hasPaidSubscription = tier !== "free" && tier !== "day_pass"
+  const hasDayPass = tier === "day_pass"
+
+  const handleManageSubscription = async () => {
+    setIsLoadingPortal(true)
+    try {
+      const response = await fetch("/api/polar/portal", { method: "POST" })
+      const data = await response.json()
+      if (!response.ok) {
+        toast.error(data.error || "Failed to open billing portal")
+        return
+      }
+      window.open(data.url, "_blank", "noopener,noreferrer")
+    } catch {
+      toast.error("Failed to open billing portal")
+    } finally {
+      setIsLoadingPortal(false)
+    }
+  }
 
   const handleExport = async () => {
     setIsExporting(true)
@@ -120,6 +151,74 @@ export default function AccountPage() {
               </>
             )}
           </button>
+        </section>
+
+        {/* Subscription & Billing Section */}
+        <section className="p-5 rounded-2xl bg-white/[0.03] border border-white/[0.08] mb-6">
+          <div className="flex items-start gap-3 mb-4">
+            <div className="h-9 w-9 rounded-lg bg-brand/10 flex items-center justify-center shrink-0">
+              <CreditCard className="w-4 h-4 text-brand" />
+            </div>
+            <div className="flex-1">
+              <h2 className="text-base font-semibold text-white">Subscription & Billing</h2>
+              {tierLoading ? (
+                <div className="h-4 w-32 mt-1.5 rounded bg-white/[0.06] animate-pulse" />
+              ) : (
+                <p className="text-sm text-white/50 mt-1">
+                  Current plan:{" "}
+                  <span className="text-white font-medium">{TIER_DISPLAY[tier] ?? tier}</span>
+                  {subscriptionStatus === "active" && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      Active
+                    </span>
+                  )}
+                  {subscriptionStatus === "trialing" && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400 border border-blue-500/20">
+                      Trial
+                    </span>
+                  )}
+                  {subscriptionStatus === "past_due" && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                      Past Due
+                    </span>
+                  )}
+                  {hasDayPass && (
+                    <span className="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-purple-500/10 text-purple-400 border border-purple-500/20">
+                      24hr Access
+                    </span>
+                  )}
+                </p>
+              )}
+            </div>
+          </div>
+
+          {hasPaidSubscription ? (
+            <button
+              onClick={handleManageSubscription}
+              disabled={isLoadingPortal}
+              className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand/10 hover:bg-brand/20 text-brand border border-brand/20 hover:border-brand/30 text-sm font-medium transition-all disabled:opacity-50"
+            >
+              {isLoadingPortal ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Opening portal...
+                </>
+              ) : (
+                <>
+                  <ExternalLink className="w-4 h-4" />
+                  Manage Subscription
+                </>
+              )}
+            </button>
+          ) : (
+            <Link
+              href="/pricing"
+              className="inline-flex items-center gap-2 px-4 py-2.5 rounded-lg bg-brand/10 hover:bg-brand/20 text-brand border border-brand/20 hover:border-brand/30 text-sm font-medium transition-all"
+            >
+              <CreditCard className="w-4 h-4" />
+              {hasDayPass ? "View Plans" : "Upgrade Plan"}
+            </Link>
+          )}
         </section>
 
         {/* Delete Account Section */}
