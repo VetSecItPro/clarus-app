@@ -31,7 +31,6 @@ const nextConfig = {
       '@radix-ui/react-select',
       '@radix-ui/react-tooltip',
       '@radix-ui/react-scroll-area',
-      '@radix-ui/react-tabs',
       // Data/utility libraries
       'date-fns',
       '@supabase/supabase-js',
@@ -60,8 +59,10 @@ export default withSentryConfig(nextConfig, {
   // Upload source maps for better stack traces
   widenClientFileUpload: true,
 
-  // Automatically tree-shake Sentry logger statements
-  disableLogger: true,
+  // Tree-shake Sentry debug statements for smaller bundles
+  bundleSizeOptimizations: {
+    excludeDebugStatements: true,
+  },
 
   // Hide source maps from users
   hideSourceMaps: true,

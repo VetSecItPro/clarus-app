@@ -1,9 +1,10 @@
 import type { TruthCheckData, TriageData, ActionItemsData, ClaimHighlight } from "@/types/database.types"
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { exportSchema, parseQuery } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { enforceAndIncrementUsage } from "@/lib/usage"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
+import { logger } from "@/lib/logger"
 
 // PERF: FIX-213 — set maxDuration for serverless function (PDF generation can be slow)
 export const maxDuration = 30
@@ -23,7 +24,7 @@ export async function GET(request: Request) {
   try {
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`export-pdf:${clientIp}`, 20, 60000) // 20 per minute
+    const rateLimit = await checkRateLimit(`export-pdf:${clientIp}`, 20, 60000) // 20 per minute
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -105,7 +106,7 @@ export async function GET(request: Request) {
       },
     })
   } catch (error) {
-    console.error("PDF export error:", error)
+    logger.error("PDF export error:", error)
     return new Response("Export failed", { status: 500 })
   }
 }

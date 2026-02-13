@@ -125,7 +125,7 @@ export const BeforeYouPlay = memo(function BeforeYouPlay() {
               </div>
               <div>
                 <p className="text-sm font-medium text-white/70">{useCase.label}</p>
-                <p className="text-xs text-white/30">{useCase.time}</p>
+                <p className="text-xs text-white/50">{useCase.time}</p>
               </div>
             </motion.div>
           ))}

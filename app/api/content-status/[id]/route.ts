@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
-import { validateContentId, checkRateLimit } from "@/lib/validation"
+import { validateContentId } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { authenticateRequest } from "@/lib/auth"
 
 export const dynamic = "force-dynamic"
@@ -12,7 +13,7 @@ export async function GET(
     // Rate limiting
     const clientIp =
       request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`content-status:${clientIp}`, 60, 60000) // 60 per minute
+    const rateLimit = await checkRateLimit(`content-status:${clientIp}`, 60, 60000) // 60 per minute
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many requests" },

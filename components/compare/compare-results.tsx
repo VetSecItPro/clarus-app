@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import {
   CheckCircle2,
   AlertTriangle,
@@ -39,13 +38,10 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
   return (
     <div className="space-y-6">
       {/* Sources header */}
-      <motion.div
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-        className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 sm:p-5"
+      <div
+        className="rounded-2xl bg-white/[0.03] border border-white/[0.08] p-4 sm:p-5 animate-fade-in-up"
       >
-        <div className="text-xs text-white/40 uppercase tracking-wider mb-3">
+        <div className="text-xs text-white/50 uppercase tracking-wider mb-3">
           Sources Compared
         </div>
         <div className="space-y-2">
@@ -63,7 +59,7 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
                 href={source.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-white/30 hover:text-brand transition-colors shrink-0"
+                className="text-white/50 hover:text-brand transition-colors shrink-0"
                 aria-label={`Open source: ${source.title ?? "Untitled"}`}
               >
                 <ExternalLink className="w-3.5 h-3.5" />
@@ -71,7 +67,7 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
             </div>
           ))}
         </div>
-      </motion.div>
+      </div>
 
       {/* Agreements */}
       {comparison.agreements.length > 0 && (
@@ -83,12 +79,10 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
         >
           <div className="space-y-4">
             {comparison.agreements.map((agreement, i) => (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: 0.15 + i * 0.05 }}
-                className="flex items-start gap-3"
+                className="flex items-start gap-3 animate-fade-in-up"
+                style={{ animationDelay: `${0.15 + i * 0.05}s` }}
               >
                 <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
                 <div>
@@ -99,7 +93,7 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
                     {agreement.detail}
                   </div>
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </SectionCard>
@@ -115,11 +109,10 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
         >
           <div className="space-y-5">
             {comparison.disagreements.map((disagreement, i) => (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: 0.25 + i * 0.05 }}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${0.25 + i * 0.05}s` }}
               >
                 <div className="text-sm text-white/90 font-medium mb-2 flex items-center gap-2">
                   <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
@@ -140,7 +133,7 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
                     </div>
                   ))}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </SectionCard>
@@ -156,11 +149,10 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
         >
           <div className="space-y-5">
             {comparison.unique_insights.map((source, i) => (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, x: -10 }}
-                animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.3, delay: 0.35 + i * 0.05 }}
+                className="animate-fade-in-up"
+                style={{ animationDelay: `${0.35 + i * 0.05}s` }}
               >
                 <div className="text-xs text-brand/80 font-semibold uppercase tracking-wider mb-2">
                   {source.source_title}
@@ -173,7 +165,7 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
                     </div>
                   ))}
                 </div>
-              </motion.div>
+              </div>
             ))}
           </div>
         </SectionCard>
@@ -187,15 +179,14 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
           icon={<Shield className="w-4 h-4" />}
           headerColor="violet"
         >
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3, delay: 0.45 }}
+          <div
+            className="animate-fade-in-up"
+            style={{ animationDelay: "0.45s" }}
           >
             <p className="text-sm text-white/70 leading-relaxed">
               {comparison.reliability_assessment}
             </p>
-          </motion.div>
+          </div>
         </SectionCard>
       )}
 
@@ -209,32 +200,28 @@ export function CompareResults({ comparison, sources }: CompareResultsProps) {
         >
           <div className="space-y-3">
             {comparison.key_takeaways.map((takeaway, i) => (
-              <motion.div
+              <div
                 key={i}
-                initial={{ opacity: 0, y: 5 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3, delay: 0.55 + i * 0.05 }}
-                className="flex items-start gap-3"
+                className="flex items-start gap-3 animate-fade-in-up"
+                style={{ animationDelay: `${0.55 + i * 0.05}s` }}
               >
                 <span className="w-5 h-5 rounded-full bg-cyan-500/20 text-cyan-400 text-[0.625rem] font-bold flex items-center justify-center shrink-0 mt-0.5">
                   {i + 1}
                 </span>
                 <span className="text-sm text-white/70">{takeaway}</span>
-              </motion.div>
+              </div>
             ))}
           </div>
         </SectionCard>
       )}
 
       {/* Generated timestamp */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.3, delay: 0.6 }}
-        className="text-center text-xs text-white/20 pb-4"
+      <div
+        className="text-center text-xs text-white/50 pb-4 animate-fade-in-up"
+        style={{ animationDelay: "0.6s" }}
       >
         Generated {new Date(comparison.generated_at).toLocaleString()}
-      </motion.div>
+      </div>
     </div>
   )
 }

@@ -87,7 +87,7 @@ export default function UpdatePasswordPage() {
   if (!isSessionReady) {
     return (
       <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="animate-pulse text-white/40 text-sm">Waiting for password recovery session...</div>
+        <div className="animate-pulse text-white/50 text-sm">Waiting for password recovery session...</div>
       </div>
     )
   }
@@ -122,7 +122,7 @@ export default function UpdatePasswordPage() {
               New Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
               <input
                 id="password"
                 type={showPassword ? "text" : "password"}
@@ -136,7 +136,7 @@ export default function UpdatePasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/60 transition-colors"
                 aria-label={showPassword ? "Hide password" : "Show password"}
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -150,7 +150,7 @@ export default function UpdatePasswordPage() {
               Confirm New Password
             </label>
             <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
               <input
                 id="confirm-password"
                 type={showConfirmPassword ? "text" : "password"}
@@ -164,7 +164,7 @@ export default function UpdatePasswordPage() {
               <button
                 type="button"
                 onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/30 hover:text-white/60 transition-colors"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/60 transition-colors"
                 aria-label={showConfirmPassword ? "Hide password" : "Show password"}
               >
                 {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -208,7 +208,7 @@ export default function UpdatePasswordPage() {
         </form>
 
         {/* Footer */}
-        <p className="mt-6 text-center text-xs text-white/40">
+        <p className="mt-6 text-center text-xs text-white/50">
           <Link href="/login" className="text-brand hover:text-brand-hover font-medium transition-colors">
             Back to Log In
           </Link>

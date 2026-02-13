@@ -98,11 +98,11 @@ export function MetricCard({
       ) : (
         <p className="text-2xl font-semibold text-white mb-1">{value}</p>
       )}
-      <p className={cn("text-sm", loading ? "text-white/30" : "text-white/50")}>{title}</p>
+      <p className={cn("text-sm", loading ? "text-white/50" : "text-white/50")}>{title}</p>
       {loading ? (
         <Skeleton className="h-4 w-16 mt-1" />
       ) : changeLabel ? (
-        <p className="text-xs text-white/30 mt-1">{changeLabel}</p>
+        <p className="text-xs text-white/50 mt-1">{changeLabel}</p>
       ) : null}
     </>
   )
@@ -116,7 +116,7 @@ export function MetricCard({
     return (
       <Link href={href} className={cardClass}>
         {content}
-        <div className="flex items-center gap-1 mt-2 text-xs text-white/0 group-hover:text-white/40 transition-colors">
+        <div className="flex items-center gap-1 mt-2 text-xs text-white/0 group-hover:text-white/50 transition-colors">
           <span>View details</span>
           <ArrowUpRight className="w-3 h-3" />
         </div>
@@ -144,7 +144,7 @@ export function ChartCard({
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-sm font-medium text-white/70">{title}</h3>
         {href && (
-          <span className="text-xs text-white/0 group-hover:text-white/40 transition-colors flex items-center gap-1">
+          <span className="text-xs text-white/0 group-hover:text-white/50 transition-colors flex items-center gap-1">
             View details <ArrowUpRight className="w-3 h-3" />
           </span>
         )}

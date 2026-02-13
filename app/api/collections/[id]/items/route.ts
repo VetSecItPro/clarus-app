@@ -8,7 +8,8 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { uuidSchema, addToCollectionSchema, parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { logger } from "@/lib/logger"
 
 export async function POST(
   request: Request,
@@ -19,7 +20,7 @@ export async function POST(
 
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`collection-items-add:${clientIp}`, 60, 60000)
+    const rateLimit = await checkRateLimit(`collection-items-add:${clientIp}`, 60, 60000)
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -86,7 +87,7 @@ export async function POST(
       if (insertError.code === "23505") {
         return AuthErrors.badRequest("This content is already in this collection")
       }
-      console.error("Collection item insert error:", insertError)
+      logger.error("Collection item insert error:", insertError)
       return NextResponse.json(
         { success: false, error: "Failed to add item to collection. Please try again." },
         { status: 500 }

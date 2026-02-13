@@ -50,7 +50,7 @@ export default function MobileBottomNav() {
               >
                 <div className={cn(
                   "flex flex-col items-center transition-all duration-200",
-                  isActive ? "text-brand" : "text-white/40 group-active:text-white/70"
+                  isActive ? "text-brand" : "text-white/50 group-active:text-white/70"
                 )}>
                   <Icon className={cn(
                     "w-6 h-6 transition-transform duration-200",

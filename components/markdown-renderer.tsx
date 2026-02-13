@@ -77,13 +77,13 @@ text-[15px] text-gray-300 leading-[1.7]
 /* Lists - Clean and compact */
 [&_ul]:list-none [&_ul]:pl-0 [&_ul]:mb-3 [&_ul]:space-y-1
 [&_ul>li]:relative [&_ul>li]:pl-4 [&_ul>li]:text-sm
-[&_ul>li]:before:content-['•'] [&_ul>li]:before:absolute [&_ul>li]:before:left-0 [&_ul>li]:before:text-white/30
+[&_ul>li]:before:content-['•'] [&_ul>li]:before:absolute [&_ul>li]:before:left-0 [&_ul>li]:before:text-white/50
 [&_ul_ul]:pl-3 [&_ul_ul]:mt-1 [&_ul_ul]:mb-0 [&_ul_ul]:space-y-1
 [&_ol]:list-decimal [&_ol]:pl-5 [&_ol]:mb-3 [&_ol]:space-y-1
 [&_ol_ol]:list-[lower-alpha] [&_ol_ol]:pl-4 [&_ol_ol]:mt-1 [&_ol_ol]:space-y-1
 [&_li]:text-gray-300 [&_li]:leading-[1.6]
 [&_li_p]:mb-1
-[&_li::marker]:text-white/40 [&_li::marker]:font-medium
+[&_li::marker]:text-white/50 [&_li::marker]:font-medium
 
 /* Section dividers - Subtle */
 [&_hr]:my-5 [&_hr]:border-0 [&_hr]:h-px [&_hr]:bg-white/10

@@ -63,14 +63,14 @@ export function UsageBar({ label, used, limit, icon: Icon, compact = false }: Us
         <div className="flex items-center gap-2.5">
           {Icon && (
             <div className="w-8 h-8 rounded-lg bg-white/[0.04] flex items-center justify-center">
-              <Icon className="w-4 h-4 text-white/40" />
+              <Icon className="w-4 h-4 text-white/50" />
             </div>
           )}
           <span className="text-sm text-white/70">{label}</span>
         </div>
         <span className={cn("text-sm font-medium tabular-nums", textColor)}>
           {used}
-          <span className="text-white/30"> / {limit}</span>
+          <span className="text-white/50"> / {limit}</span>
         </span>
       </div>
       <div className="h-2 bg-white/[0.06] rounded-full overflow-hidden">

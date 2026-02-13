@@ -62,7 +62,7 @@ export function AnalysisModeSheet({ open, onOpenChange, selectedMode, onModeChan
                         <div className={`text-sm font-medium ${isActive ? "text-brand" : "text-white/90"}`}>
                           {mode.label}
                         </div>
-                        <div className="text-xs text-white/40">{mode.description}</div>
+                        <div className="text-xs text-white/50">{mode.description}</div>
                       </div>
                       {isActive && (
                         <Check className="w-4 h-4 text-brand shrink-0" />

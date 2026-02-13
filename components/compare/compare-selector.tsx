@@ -144,7 +144,7 @@ export function CompareSelector({
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
           <input
             type="text"
             placeholder="Search your content..."
@@ -157,7 +157,7 @@ export function CompareSelector({
 
         {/* Selection count */}
         <div className="flex items-center justify-between px-1">
-          <span className="text-xs text-white/40">
+          <span className="text-xs text-white/50">
             {selectedIds.size}/3 selected
           </span>
           {selectedIds.size > 0 && (
@@ -174,10 +174,10 @@ export function CompareSelector({
         <div className="flex-1 overflow-y-auto space-y-1 min-h-[200px] max-h-[400px] pr-1">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-6 h-6 text-white/40 animate-spin" />
+              <Loader2 className="w-6 h-6 text-white/50 animate-spin" />
             </div>
           ) : filteredItems.length === 0 ? (
-            <div className="text-center py-12 text-white/40 text-sm">
+            <div className="text-center py-12 text-white/50 text-sm">
               {searchQuery
                 ? "No matching content found"
                 : "No analyzed content available"}
@@ -221,7 +221,7 @@ export function CompareSelector({
                     <div className="text-sm text-white/90 font-medium truncate">
                       {item.title ?? "Untitled"}
                     </div>
-                    <div className="text-xs text-white/40 truncate">
+                    <div className="text-xs text-white/50 truncate">
                       {item.date_added
                         ? formatDistanceToNow(new Date(item.date_added), {
                             addSuffix: true,
@@ -250,7 +250,7 @@ export function CompareSelector({
               "flex items-center gap-2 px-5 py-2.5 rounded-full text-sm font-medium transition-all",
               selectedIds.size >= 2
                 ? "bg-brand hover:bg-brand-hover text-white"
-                : "bg-white/[0.06] text-white/30 cursor-not-allowed"
+                : "bg-white/[0.06] text-white/50 cursor-not-allowed"
             )}
           >
             {isComparing ? (

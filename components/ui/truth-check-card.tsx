@@ -1,7 +1,7 @@
 "use client"
 
 import { motion } from "framer-motion"
-import { useState, useCallback, type ReactNode } from "react"
+import { useState, useCallback, useEffect, type ReactNode } from "react"
 import Link from "next/link"
 import { ExternalLink, Flag } from "lucide-react"
 import { cn } from "@/lib/utils"
@@ -49,20 +49,37 @@ const SEVERITY_STYLES: Record<string, { bg: string; border: string; text: string
 function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
   const [isOpen, setIsOpen] = useState(false)
 
+  useEffect(() => {
+    if (!isOpen) return
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setIsOpen(false)
+      }
+    }
+    document.addEventListener("keydown", handleEscape)
+    return () => document.removeEventListener("keydown", handleEscape)
+  }, [isOpen])
+
   if (matches.length === 0) return null
 
   return (
     <span className="relative inline-block">
       <button
         onClick={() => setIsOpen(!isOpen)}
+        aria-expanded={isOpen}
+        aria-haspopup="dialog"
         className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[0.625rem] font-medium hover:bg-purple-500/30 transition-all cursor-pointer"
         title={`This claim appears in ${matches.length} other ${matches.length === 1 ? "analysis" : "analyses"}`}
       >
         Seen in {matches.length} other {matches.length === 1 ? "analysis" : "analyses"}
       </button>
       {isOpen && (
-        <div className="absolute z-20 top-full left-0 mt-1.5 w-64 bg-black/95 border border-purple-500/30 rounded-xl shadow-xl p-3 space-y-2">
-          <div className="text-[0.625rem] text-white/40 uppercase tracking-wider mb-1">
+        <div
+          role="dialog"
+          aria-label="Cross-reference details"
+          className="absolute z-20 top-full left-0 mt-1.5 w-64 bg-black/95 border border-purple-500/30 rounded-xl shadow-xl p-3 space-y-2"
+        >
+          <div className="text-[0.625rem] text-white/50 uppercase tracking-wider mb-1">
             Also appears in:
           </div>
           {matches.map((match) => (
@@ -81,7 +98,7 @@ function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
             </Link>
           ))}
           <button
-            className="text-[0.625rem] text-white/30 hover:text-white/50 w-full text-center pt-1"
+            className="text-[0.625rem] text-white/50 hover:text-white/50 w-full text-center pt-1"
             onClick={() => setIsOpen(false)}
           >
             Close
@@ -89,7 +106,12 @@ function CrossRefBadge({ matches }: { matches: CrossReferenceMatch[] }) {
         </div>
       )}
       {isOpen && (
-        <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
+        <div
+          className="fixed inset-0 z-10"
+          onClick={() => setIsOpen(false)}
+          onKeyDown={(e) => { if (e.key === "Escape") setIsOpen(false) }}
+          role="presentation"
+        />
       )}
     </span>
   )
@@ -187,7 +209,7 @@ function ReferenceList({ references }: { references: CitationSource[] }) {
       animate={{ opacity: 1 }}
       transition={{ duration: 0.3, delay: 0.35 }}
     >
-      <div className="text-xs text-white/40 uppercase tracking-wider mb-2">Sources</div>
+      <div className="text-xs text-white/50 uppercase tracking-wider mb-2">Sources</div>
       <div className="space-y-1.5">
         {references.map((ref, i) => {
           let domain: string
@@ -220,7 +242,7 @@ function ReferenceList({ references }: { references: CitationSource[] }) {
                 <span className="truncate">
                   {ref.title && ref.title !== domain ? `${ref.title} — ` : ""}{domain}
                 </span>
-                <ExternalLink className="w-2.5 h-2.5 shrink-0 text-white/30" />
+                <ExternalLink className="w-2.5 h-2.5 shrink-0 text-white/50" />
               </a>
             </div>
           )
@@ -317,7 +339,7 @@ export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFl
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3 }}
       >
-        <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Overall Rating</div>
+        <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Overall Rating</div>
         <div className="text-lg font-semibold text-white">{truthCheck.overall_rating}</div>
       </motion.div>
 
@@ -328,7 +350,7 @@ export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFl
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.1 }}
         >
-          <div className="text-xs text-white/40 uppercase tracking-wider mb-3">
+          <div className="text-xs text-white/50 uppercase tracking-wider mb-3">
             Issues Found ({sortedIssues.length})
           </div>
           <div className="space-y-4">
@@ -370,7 +392,7 @@ export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFl
                         issue.assessment
                       )}
                     </div>
-                    <div className="text-xs text-white/40 flex items-center gap-2 flex-wrap">
+                    <div className="text-xs text-white/50 flex items-center gap-2 flex-wrap">
                       {issue.timestamp && <span>{issue.timestamp}</span>}
                       {/* Severity badge with color coding */}
                       <span className={cn(
@@ -379,7 +401,7 @@ export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFl
                       )}>
                         {issue.severity}
                       </span>
-                      <span className="capitalize text-white/30">{issue.type.replace("_", " ")}</span>
+                      <span className="capitalize text-white/50">{issue.type.replace("_", " ")}</span>
                       {matches.length > 0 && (
                         <CrossRefBadge matches={matches} />
                       )}
@@ -408,7 +430,7 @@ export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFl
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          <div className="text-xs text-white/40 uppercase tracking-wider mb-2">Strengths</div>
+          <div className="text-xs text-white/50 uppercase tracking-wider mb-2">Strengths</div>
           <div className="space-y-1.5">
             {truthCheck.strengths.map((strength, i) => (
               <div key={i} className="text-sm text-white/70 flex items-start gap-2">
@@ -427,7 +449,7 @@ export function TruthCheckCard({ truthCheck, crossReferences, contentId, claimFl
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Sources Quality</div>
+          <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Sources Quality</div>
           <div className="text-sm text-white/70">{truthCheck.sources_quality}</div>
         </motion.div>
       )}

@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { authenticateAdmin, getAdminClient, AuthErrors } from "@/lib/auth"
 import { z } from "zod"
 import { parseQuery } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/admin/rate-limit"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { logger } from "@/lib/logger"
 
 // Schema for metrics query params
 const metricsQuerySchema = z.object({
@@ -147,11 +148,11 @@ export async function GET(request: NextRequest) {
     }
 
     // Rate limit: 30 requests per minute per admin user
-    const rl = checkRateLimit(`admin-metrics:${auth.user.id}`, { maxRequests: 30, windowMs: 60_000 })
-    if (rl.limited) {
+    const rl = await checkRateLimit(`admin-metrics:${auth.user.id}`, 30, 60_000)
+    if (!rl.allowed) {
       return NextResponse.json(
         { error: "Too many requests" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetIn / 1000)) } }
       )
     }
 
@@ -170,7 +171,7 @@ export async function GET(request: NextRequest) {
       .rpc("get_admin_metrics", { p_time_range_days: timeRange })
 
     if (rpcError) {
-      console.error("Admin metrics RPC error:", rpcError)
+      logger.error("Admin metrics RPC error:", rpcError)
       return NextResponse.json(
         { error: "Failed to fetch metrics" },
         { status: 500 }
@@ -377,7 +378,7 @@ export async function GET(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error("Admin metrics API error:", error)
+    logger.error("Admin metrics API error:", error)
     return NextResponse.json(
       { error: "Failed to fetch metrics" },
       { status: 500 }

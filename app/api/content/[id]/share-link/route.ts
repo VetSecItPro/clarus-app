@@ -2,7 +2,7 @@ import { NextResponse } from "next/server"
 import { authenticateRequest, verifyContentOwnership } from "@/lib/auth"
 import { uuidSchema } from "@/lib/schemas"
 import { generateShareToken } from "@/lib/share-token"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { enforceAndIncrementUsage } from "@/lib/usage"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 
@@ -48,7 +48,7 @@ export async function POST(
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
 
-  const rateLimitResult = checkRateLimit(`share-link:${auth.user.id}`, 20, 60000)
+  const rateLimitResult = await checkRateLimit(`share-link:${auth.user.id}`, 20, 60000)
   if (!rateLimitResult.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

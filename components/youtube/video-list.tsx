@@ -100,7 +100,7 @@ export function VideoList({ subscriptionId, channelName }: VideoListProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8" role="status">
-        <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+        <Loader2 className="w-5 h-5 animate-spin text-white/50" />
         <span className="sr-only">Loading videos</span>
       </div>
     )
@@ -108,7 +108,7 @@ export function VideoList({ subscriptionId, channelName }: VideoListProps) {
 
   if (videos.length === 0) {
     return (
-      <p className="text-center text-white/40 text-sm py-6">
+      <p className="text-center text-white/50 text-sm py-6">
         No videos found yet. New videos will appear after the next feed check.
       </p>
     )
@@ -116,7 +116,7 @@ export function VideoList({ subscriptionId, channelName }: VideoListProps) {
 
   return (
     <div className="space-y-2">
-      <p className="text-xs text-white/30 mb-3">
+      <p className="text-xs text-white/50 mb-3">
         {videos.length} video{videos.length !== 1 ? "s" : ""}
         {channelName ? ` from ${channelName}` : ""}
       </p>
@@ -149,7 +149,7 @@ export function VideoList({ subscriptionId, channelName }: VideoListProps) {
               </a>
             ) : (
               <div className="w-[120px] h-[68px] rounded-lg bg-white/5 flex items-center justify-center shrink-0">
-                <Play className="w-5 h-5 text-white/20" />
+                <Play className="w-5 h-5 text-white/50" />
               </div>
             )}
 
@@ -163,7 +163,7 @@ export function VideoList({ subscriptionId, channelName }: VideoListProps) {
               >
                 {video.video_title}
               </a>
-              <p className="text-xs text-white/30 mt-1">
+              <p className="text-xs text-white/50 mt-1">
                 {formatDate(video.published_date)}
               </p>
             </div>
@@ -204,7 +204,7 @@ export function VideoList({ subscriptionId, channelName }: VideoListProps) {
                 href={video.video_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="p-1.5 rounded-md text-white/20 hover:text-white/50 transition-colors"
+                className="p-1.5 rounded-md text-white/50 hover:text-white/50 transition-colors"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
               </a>

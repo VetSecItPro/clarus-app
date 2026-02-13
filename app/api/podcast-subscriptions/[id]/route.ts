@@ -8,6 +8,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
+import { logger } from "@/lib/logger"
 
 /**
  * DELETE /api/podcast-subscriptions/[id]
@@ -35,7 +36,7 @@ export async function DELETE(
     .eq("user_id", user.id)
 
   if (error) {
-    console.error("[podcast-subscriptions] Failed to delete subscription:", error.message)
+    logger.error("[podcast-subscriptions] Failed to delete subscription:", error.message)
     return AuthErrors.serverError()
   }
 

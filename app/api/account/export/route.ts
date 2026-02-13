@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server"
 import { authenticateRequest, getAdminClient } from "@/lib/auth"
+import { logger } from "@/lib/logger"
 
 export async function GET() {
   const auth = await authenticateRequest()
@@ -111,7 +112,7 @@ export async function GET() {
       },
     })
   } catch (err) {
-    console.error("[account/export] Failed to export data:", err)
+    logger.error("[account/export] Failed to export data:", err)
     return NextResponse.json({ error: "Failed to export data" }, { status: 500 })
   }
 }

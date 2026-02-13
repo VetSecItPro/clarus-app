@@ -46,7 +46,7 @@ export const InlineCTA = memo(function InlineCTA({ variant = "primary" }: Inline
             <Link
               href="/pricing"
               prefetch={true}
-              className="text-sm text-white/40 hover:text-white/60 transition-colors"
+              className="text-sm text-white/50 hover:text-white/60 transition-colors"
             >
               See pricing
             </Link>

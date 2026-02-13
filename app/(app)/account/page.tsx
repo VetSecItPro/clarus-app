@@ -114,7 +114,7 @@ export default function AccountPage() {
           </Link>
           <div>
             <h1 className="text-xl font-bold text-white">Account</h1>
-            <p className="text-sm text-white/40">Manage your data and privacy</p>
+            <p className="text-sm text-white/50">Manage your data and privacy</p>
           </div>
         </div>
 
@@ -255,7 +255,7 @@ export default function AccountPage() {
                   value={deleteInput}
                   onChange={(e) => setDeleteInput(e.target.value)}
                   placeholder="Type DELETE"
-                  className="flex-1 px-3 py-2 rounded-lg bg-black/50 border border-red-500/20 text-white text-sm placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                  className="flex-1 px-3 py-2 rounded-lg bg-black/50 border border-red-500/20 text-white text-sm placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-red-500/30"
                   autoComplete="off"
                   spellCheck={false}
                 />

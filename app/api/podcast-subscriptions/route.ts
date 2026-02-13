@@ -8,11 +8,12 @@
 
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { getUserTier } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
 import { parseBody, addPodcastSubscriptionSchema } from "@/lib/schemas"
 import { fetchAndParseFeed } from "@/lib/rss-parser"
+import { logger } from "@/lib/logger"
 
 /**
  * GET /api/podcast-subscriptions
@@ -32,7 +33,7 @@ export async function GET() {
     .limit(100)
 
   if (error) {
-    console.error("[podcast-subscriptions] Failed to fetch subscriptions:", error.message)
+    logger.error("[podcast-subscriptions] Failed to fetch subscriptions:", error.message)
     return AuthErrors.serverError()
   }
 
@@ -84,7 +85,7 @@ export async function POST(request: Request) {
   const { user, supabase } = auth
 
   // Rate limit: 10 requests per minute
-  const rateCheck = checkRateLimit(`podcast-sub:${user.id}`, 10, 60_000)
+  const rateCheck = await checkRateLimit(`podcast-sub:${user.id}`, 10, 60_000)
   if (!rateCheck.allowed) {
     return AuthErrors.rateLimit(rateCheck.resetIn)
   }
@@ -124,7 +125,7 @@ export async function POST(request: Request) {
   }
 
   if (countResult.error) {
-    console.error("[podcast-subscriptions] Failed to count subscriptions:", countResult.error.message)
+    logger.error("[podcast-subscriptions] Failed to count subscriptions:", countResult.error.message)
     return AuthErrors.serverError()
   }
 
@@ -157,14 +158,14 @@ export async function POST(request: Request) {
       podcast_name: feedData.feed.title,
       podcast_image_url: feedData.feed.imageUrl,
     })
-    .select()
+    .select("id, feed_url, podcast_name, podcast_image_url, created_at")
     .single()
 
   if (insertError) {
     if (insertError.code === "23505") {
       return AuthErrors.badRequest("You're already subscribed to this podcast feed")
     }
-    console.error("[podcast-subscriptions] Failed to insert subscription:", insertError.message)
+    logger.error("[podcast-subscriptions] Failed to insert subscription:", insertError.message)
     return AuthErrors.serverError()
   }
 

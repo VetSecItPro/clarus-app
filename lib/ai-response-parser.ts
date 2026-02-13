@@ -8,6 +8,8 @@
  * - Multiple JSON blocks (picks the first valid one)
  */
 
+import { logger } from "@/lib/logger"
+
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -202,7 +204,7 @@ export function parseAiResponse<T>(raw: string): ParseResult<T> {
   if (fenceContent) {
     try {
       const data = JSON.parse(fenceContent) as T
-      console.warn("[ai-response-parser] Parsed JSON from markdown code fence")
+      logger.warn("[ai-response-parser] Parsed JSON from markdown code fence")
       return { success: true, data, usedFallback: true }
     } catch {
       // Fall through — fence content itself may be malformed
@@ -214,14 +216,14 @@ export function parseAiResponse<T>(raw: string): ParseResult<T> {
   if (jsonSubstring) {
     try {
       const data = JSON.parse(jsonSubstring) as T
-      console.warn("[ai-response-parser] Parsed JSON by extracting substring from prose")
+      logger.warn("[ai-response-parser] Parsed JSON by extracting substring from prose")
       return { success: true, data, usedFallback: true }
     } catch {
       // 4. Attempt truncation repair on the extracted substring
       try {
         const repaired = repairTruncatedJson(jsonSubstring)
         const data = JSON.parse(repaired) as T
-        console.warn("[ai-response-parser] Parsed JSON after repairing truncated response")
+        logger.warn("[ai-response-parser] Parsed JSON after repairing truncated response")
         return { success: true, data, usedFallback: true }
       } catch {
         // All strategies exhausted

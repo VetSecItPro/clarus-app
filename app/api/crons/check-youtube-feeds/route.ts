@@ -18,6 +18,7 @@ import { getAdminClient } from "@/lib/auth"
 import { fetchAndParseFeed } from "@/lib/rss-parser"
 import { sendNewVideoEmail } from "@/lib/email"
 import { extractYouTubeVideoId } from "@/lib/youtube-resolver"
+import { logger } from "@/lib/logger"
 
 export const maxDuration = 60
 
@@ -31,7 +32,7 @@ export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET
 
   if (!cronSecret) {
-    console.error("CRON_SECRET not configured")
+    logger.error("CRON_SECRET not configured")
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 })
   }
 
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
     .limit(200)
 
   if (subError) {
-    console.error("[check-youtube-feeds] Failed to fetch subscriptions:", subError.message)
+    logger.error("[check-youtube-feeds] Failed to fetch subscriptions:", subError.message)
     return NextResponse.json({ error: "Failed to fetch subscriptions" }, { status: 500 })
   }
 
@@ -134,7 +135,7 @@ export async function GET(request: Request) {
         .select("id, video_title, published_date")
 
       if (insertError) {
-        console.error(`[check-youtube-feeds] Failed to insert videos for ${sub.channel_name}:`, insertError.message)
+        logger.error(`[check-youtube-feeds] Failed to insert videos for ${sub.channel_name}:`, insertError.message)
         return
       }
 
@@ -188,7 +189,7 @@ export async function GET(request: Request) {
         })
         .eq("id", sub.id)
     } catch (err) {
-      console.error(`[check-youtube-feeds] Error processing ${sub.channel_name} (${sub.feed_url}):`, err)
+      logger.error(`[check-youtube-feeds] Error processing ${sub.channel_name} (${sub.feed_url}):`, err)
       // Still update last_checked_at to avoid hammering a broken feed
       await supabase
         .from("youtube_subscriptions")
@@ -229,10 +230,10 @@ export async function GET(request: Request) {
           if (result.success) {
             emailsSent++
           } else {
-            console.error(`[check-youtube-feeds] Failed to send email to user ${userId}:`, result.error)
+            logger.error(`[check-youtube-feeds] Failed to send email to user ${userId}:`, result.error)
           }
         } catch (err) {
-          console.error(`[check-youtube-feeds] Error sending email to user ${userId}:`, err)
+          logger.error(`[check-youtube-feeds] Error sending email to user ${userId}:`, err)
         }
       })()
     )

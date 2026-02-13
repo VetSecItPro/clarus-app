@@ -180,7 +180,7 @@ function PlatformCard({
           )}
         </div>
         {/* Decorative step icon */}
-        <StepIcon className="ml-auto w-4 h-4 text-white/20" />
+        <StepIcon className="ml-auto w-4 h-4 text-white/50" />
       </div>
 
       {/* Steps */}
@@ -323,7 +323,7 @@ export default function InstallPageClient() {
         <div className="pt-2 pb-4">
           <Link
             href="/"
-            className="inline-flex items-center gap-2 text-sm text-white/40 hover:text-white/70 transition-colors"
+            className="inline-flex items-center gap-2 text-sm text-white/50 hover:text-white/70 transition-colors"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Home

@@ -2,9 +2,10 @@ import { NextRequest, NextResponse } from "next/server"
 import { SupabaseClient } from "@supabase/supabase-js"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { searchSchema, parseQuery, parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { z } from "zod"
 import type { Database } from "@/types/database.types"
+import { logger } from "@/lib/logger"
 
 /** Escape special LIKE/ILIKE characters to prevent pattern injection */
 function escapeLikePattern(input: string): string {
@@ -28,7 +29,7 @@ interface SearchResult {
 export async function GET(request: NextRequest) {
   // Rate limiting
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-  const rateLimit = checkRateLimit(`search:${clientIp}`, 60, 60000) // 60 per minute
+  const rateLimit = await checkRateLimit(`search:${clientIp}`, 60, 60000) // 60 per minute
   if (!rateLimit.allowed) {
     return AuthErrors.rateLimit(rateLimit.resetIn)
   }
@@ -64,7 +65,7 @@ export async function GET(request: NextRequest) {
     if (error) {
       // If the function doesn't exist yet (migration not applied), fall back to ILIKE search
       if (error.message.includes("function") || error.code === "42883") {
-        console.warn("Full-text search function not available, using fallback ILIKE search")
+        logger.warn("Full-text search function not available, using fallback ILIKE search")
         return fallbackSearch(auth.supabase, userId, query, contentType || null, limit, offset)
       }
       throw error
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
     response.headers.set("Cache-Control", "private, max-age=5, stale-while-revalidate=30")
     return response
   } catch (error) {
-    console.error("Search error:", error)
+    logger.error("Search error:", error)
     return NextResponse.json(
       { error: "Failed to search content" },
       { status: 500 }
@@ -179,7 +180,7 @@ export async function POST(request: NextRequest) {
   try {
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`search-suggest:${clientIp}`, 120, 60000) // 120 per minute
+    const rateLimit = await checkRateLimit(`search-suggest:${clientIp}`, 120, 60000) // 120 per minute
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -225,7 +226,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({ success: true, suggestions: data || [] })
   } catch (error) {
-    console.error("Suggestions error:", error)
+    logger.error("Suggestions error:", error)
     return NextResponse.json({ error: "Failed to get suggestions" }, { status: 500 })
   }
 }

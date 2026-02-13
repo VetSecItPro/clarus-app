@@ -30,16 +30,16 @@ export function TriageCard({ triage }: TriageCardProps) {
         <div className="flex items-center justify-between gap-4 flex-wrap">
           {/* Quality Score */}
           <div className="flex items-center gap-3">
-            <div className="text-xs text-white/40 uppercase tracking-wider">Quality</div>
+            <div className="text-xs text-white/50 uppercase tracking-wider">Quality</div>
             <div className="text-2xl font-bold text-white">
               {triage.quality_score}
-              <span className="text-base text-white/40">/10</span>
+              <span className="text-base text-white/50">/10</span>
             </div>
           </div>
 
           {/* Recommendation Score */}
           <div className="flex items-center gap-3">
-            <div className="text-xs text-white/40 uppercase tracking-wider">Recommendation</div>
+            <div className="text-xs text-white/50 uppercase tracking-wider">Recommendation</div>
             <div className={`px-3 py-1.5 rounded-full ${recommendation.bg} ${recommendation.border} border`}>
               <span className={`text-sm font-semibold ${recommendation.color}`}>
                 {recommendation.label}
@@ -65,7 +65,7 @@ export function TriageCard({ triage }: TriageCardProps) {
         animate={{ opacity: 1 }}
         transition={{ duration: 0.3, delay: 0.1 }}
       >
-        <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Worth Your Time?</div>
+        <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Worth Your Time?</div>
         <div className="text-sm text-white/90">{triage.worth_your_time}</div>
       </motion.div>
 
@@ -76,7 +76,7 @@ export function TriageCard({ triage }: TriageCardProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.2 }}
         >
-          <div className="text-xs text-white/40 uppercase tracking-wider mb-2">Target Audience</div>
+          <div className="text-xs text-white/50 uppercase tracking-wider mb-2">Target Audience</div>
           <div className="text-sm text-white/70">
             {triage.target_audience.join(" · ")}
           </div>
@@ -90,7 +90,7 @@ export function TriageCard({ triage }: TriageCardProps) {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.3, delay: 0.3 }}
         >
-          <div className="text-xs text-white/40 uppercase tracking-wider mb-1">Content Density</div>
+          <div className="text-xs text-white/50 uppercase tracking-wider mb-1">Content Density</div>
           <div className="text-sm text-white/70">{triage.content_density}</div>
         </motion.div>
       )}

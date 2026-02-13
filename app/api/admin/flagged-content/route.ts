@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server"
 import { authenticateAdmin, getAdminClient } from "@/lib/auth"
 import { z } from "zod"
 import { parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/admin/rate-limit"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { logger } from "@/lib/logger"
 
 /**
  * GET /api/admin/flagged-content
@@ -17,11 +18,11 @@ export async function GET() {
   if (!auth.success) return auth.response
 
   // Rate limit: 40 requests per minute (moderation needs frequent refresh)
-  const rl = checkRateLimit(`admin-flagged:${auth.user.id}`, { maxRequests: 40, windowMs: 60_000 })
-  if (rl.limited) {
+  const rl = await checkRateLimit(`admin-flagged:${auth.user.id}`, 40, 60_000)
+  if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetIn / 1000)) } }
     )
   }
 
@@ -34,7 +35,7 @@ export async function GET() {
     .limit(100)
 
   if (error) {
-    console.error("Failed to fetch flagged content:", error)
+    logger.error("Failed to fetch flagged content:", error)
     return NextResponse.json({ error: "Failed to fetch flagged content" }, { status: 500 })
   }
 
@@ -66,11 +67,11 @@ export async function PATCH(request: NextRequest) {
   if (!auth.success) return auth.response
 
   // Rate limit: 30 PATCH requests per minute (moderation actions)
-  const rl = checkRateLimit(`admin-flagged-patch:${auth.user.id}`, { maxRequests: 30, windowMs: 60_000 })
-  if (rl.limited) {
+  const rl = await checkRateLimit(`admin-flagged-patch:${auth.user.id}`, 30, 60_000)
+  if (!rl.allowed) {
     return NextResponse.json(
       { error: "Too many requests" },
-      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetIn / 1000)) } }
     )
   }
 
@@ -103,7 +104,7 @@ export async function PATCH(request: NextRequest) {
     .eq("id", id)
 
   if (error) {
-    console.error("Failed to update flagged content:", error)
+    logger.error("Failed to update flagged content:", error)
     return NextResponse.json({ error: "Failed to update" }, { status: 500 })
   }
 

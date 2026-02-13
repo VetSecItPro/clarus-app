@@ -11,6 +11,7 @@
 
 import { NextResponse } from "next/server"
 import { authenticateRequest, getAdminClient } from "@/lib/auth"
+import { logger } from "@/lib/logger"
 
 export async function DELETE(request: Request) {
   const auth = await authenticateRequest()
@@ -114,7 +115,7 @@ export async function DELETE(request: Request) {
     const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId)
 
     if (authDeleteError) {
-      console.error("[account/delete] Auth account deletion failed:", authDeleteError.message)
+      logger.error("[account/delete] Auth account deletion failed:", authDeleteError.message)
       // Data is already deleted — log the auth failure but don't fail the request
       // The orphaned auth account will have no data and no user record
     }
@@ -124,7 +125,7 @@ export async function DELETE(request: Request) {
       message: "Your account and all associated data have been permanently deleted.",
     })
   } catch (err) {
-    console.error("[account/delete] Failed to delete account:", err)
+    logger.error("[account/delete] Failed to delete account:", err)
     return NextResponse.json(
       { error: "Failed to delete account. Please contact support." },
       { status: 500 }

@@ -3,12 +3,14 @@ import { createOpenRouter } from "@openrouter/ai-sdk-provider"
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database.types"
 import { type NextRequest, NextResponse } from "next/server"
-import { validateContentId, validateChatMessage, checkRateLimit } from "@/lib/validation"
+import { validateContentId, validateChatMessage } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { z } from "zod"
 import { enforceAndIncrementUsage } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
 import { authenticateRequest } from "@/lib/auth"
 import { sanitizeForPrompt, sanitizeChatMessage, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
+import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
@@ -19,7 +21,7 @@ const openRouterApiKey = process.env.OPENROUTER_API_KEY
 const tavilyApiKey = process.env.TAVILY_API_KEY
 
 if (!supabaseUrl || !supabaseKey || !openRouterApiKey) {
-  console.warn("Chat API: Some environment variables are not set. API may not work correctly.")
+  logger.warn("Chat API: Some environment variables are not set. API may not work correctly.")
 }
 
 // Tavily web search function for chat (on-demand, AI-triggered).
@@ -74,7 +76,7 @@ async function searchWeb(query: string): Promise<string> {
 
     return result || "No results found."
   } catch (error) {
-    console.error("Web search error:", error)
+    logger.error("Web search error:", error)
     return "Web search failed. Please try again or ask questions based on the provided content."
   }
 }
@@ -94,9 +96,9 @@ export async function POST(req: NextRequest) {
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "unknown"
 
   // Multi-tier rate limiting
-  const minuteLimit = checkRateLimit(`chat:minute:${clientIp}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000)
-  const hourLimit = checkRateLimit(`chat:hour:${clientIp}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000)
-  const dayLimit = checkRateLimit(`chat:day:${clientIp}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000)
+  const minuteLimit = await checkRateLimit(`chat:minute:${clientIp}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000)
+  const hourLimit = await checkRateLimit(`chat:hour:${clientIp}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000)
+  const dayLimit = await checkRateLimit(`chat:day:${clientIp}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000)
 
   if (!minuteLimit.allowed) {
     return NextResponse.json(
@@ -122,9 +124,9 @@ export async function POST(req: NextRequest) {
   if (!auth.success) return auth.response
 
   // Per-user rate limiting (prevents bypass via rotating IPs)
-  const userMinuteLimit = checkRateLimit(`chat:minute:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000)
-  const userHourLimit = checkRateLimit(`chat:hour:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000)
-  const userDayLimit = checkRateLimit(`chat:day:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000)
+  const userMinuteLimit = await checkRateLimit(`chat:minute:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000)
+  const userHourLimit = await checkRateLimit(`chat:hour:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000)
+  const userDayLimit = await checkRateLimit(`chat:day:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000)
   if (!userMinuteLimit.allowed || !userHourLimit.allowed || !userDayLimit.allowed) {
     return NextResponse.json(
       { error: "Rate limit reached. Please try again later." },
@@ -226,7 +228,7 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (contentError || !data) {
-        console.error("Chat API: Error fetching content from DB.", contentError)
+        logger.error("Chat API: Error fetching content from DB.", contentError)
         return NextResponse.json({ error: "Content not found" }, { status: 404 })
       }
       contentData = data as ContentDataWithFullText
@@ -238,7 +240,7 @@ export async function POST(req: NextRequest) {
         .single()
 
       if (contentError || !data) {
-        console.error("Chat API: Error fetching content from DB.", contentError)
+        logger.error("Chat API: Error fetching content from DB.", contentError)
         return NextResponse.json({ error: "Content not found" }, { status: 404 })
       }
       contentData = data as ContentDataWithoutFullText
@@ -307,7 +309,7 @@ export async function POST(req: NextRequest) {
     const { data: promptData, error: promptError } = promptQueryResult
 
     if (promptError || !promptData) {
-      console.error("[Chat API] Error fetching prompt:", promptError)
+      logger.error("[Chat API] Error fetching prompt:", promptError)
       return NextResponse.json({ error: "Could not load chat prompt." }, { status: 500 })
     }
 
@@ -481,7 +483,7 @@ ${INSTRUCTION_ANCHOR}`
         }),
         execute: async ({ query }) => {
           // Rate limit web searches per conversation
-          const searchLimit = checkRateLimit(searchKey, LIMITS.MAX_WEB_SEARCHES_PER_CONVERSATION, 3600000) // 1 hour window
+          const searchLimit = await checkRateLimit(searchKey, LIMITS.MAX_WEB_SEARCHES_PER_CONVERSATION, 3600000) // 1 hour window
           if (!searchLimit.allowed) {
             return "Search limit reached for this conversation. Please ask questions based on the content provided."
           }
@@ -504,7 +506,7 @@ ${INSTRUCTION_ANCHOR}`
         // Monitor for prompt injection leakage (non-blocking — response already sent)
         const leakage = detectOutputLeakage(text, "chat-response")
         if (leakage.length > 0) {
-          console.warn(`[Chat] Output leakage detected for content ${contentIdValidation.sanitized}: [${leakage.join(", ")}]`)
+          logger.warn(`[Chat] Output leakage detected for content ${contentIdValidation.sanitized}: [${leakage.join(", ")}]`)
         }
       },
     })
@@ -513,7 +515,7 @@ ${INSTRUCTION_ANCHOR}`
       consumeSseStream: consumeStream,
     })
   } catch (error: unknown) {
-    console.error("[Chat API] Error:", error)
+    logger.error("[Chat API] Error:", error)
     return NextResponse.json({ error: "An unexpected error occurred. Please try again." }, { status: 500 })
   }
 }

@@ -105,7 +105,7 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-6" role="status">
-        <Loader2 className="w-5 h-5 animate-spin text-white/40" />
+        <Loader2 className="w-5 h-5 animate-spin text-white/50" />
         <span className="sr-only">Loading episodes</span>
       </div>
     )
@@ -113,7 +113,7 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
 
   if (episodes.length === 0) {
     return (
-      <p className="text-white/40 text-sm py-4 text-center">
+      <p className="text-white/50 text-sm py-4 text-center">
         No episodes found yet. Episodes will appear after the next feed check.
       </p>
     )
@@ -138,12 +138,12 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
               <p className="text-white/90 text-sm font-medium truncate">
                 {episode.episode_title}
               </p>
-              <div className="flex items-center gap-2 mt-1 text-xs text-white/40">
+              <div className="flex items-center gap-2 mt-1 text-xs text-white/50">
                 {episode.episode_date && (
                   <span>{formatDate(episode.episode_date)}</span>
                 )}
                 {episode.episode_date && episode.duration_seconds && (
-                  <span className="text-white/20">·</span>
+                  <span className="text-white/50">·</span>
                 )}
                 {episode.duration_seconds && (
                   <span className="flex items-center gap-1">
@@ -203,7 +203,7 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
       {episodes.length > 5 && (
         <button
           onClick={() => setExpanded(!expanded)}
-          className="flex items-center gap-1 w-full justify-center py-2 text-xs text-white/40 hover:text-white/60 transition-colors"
+          className="flex items-center gap-1 w-full justify-center py-2 text-xs text-white/50 hover:text-white/60 transition-colors"
         >
           {expanded ? (
             <>

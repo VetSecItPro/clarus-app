@@ -9,6 +9,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
 import { parseQuery, youtubeVideosQuerySchema } from "@/lib/schemas"
+import { logger } from "@/lib/logger"
 
 /**
  * GET /api/youtube-subscriptions/[id]/videos
@@ -56,7 +57,7 @@ export async function GET(
     .range(offset, offset + limit - 1)
 
   if (vidError) {
-    console.error("[youtube-videos] Failed to fetch videos:", vidError.message)
+    logger.error("[youtube-videos] Failed to fetch videos:", vidError.message)
     return AuthErrors.serverError()
   }
 

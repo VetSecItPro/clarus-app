@@ -12,6 +12,7 @@ import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
 import { checkUsageLimit } from "@/lib/usage"
 import { processContent, ProcessContentError } from "@/lib/process-content"
+import { logger } from "@/lib/logger"
 
 /**
  * POST /api/youtube-subscriptions/[id]/videos/[videoId]/analyze
@@ -101,7 +102,7 @@ export async function POST(
     .single()
 
   if (contentError) {
-    console.error("[youtube-analyze] Failed to create content entry:", contentError.message)
+    logger.error("[youtube-analyze] Failed to create content entry:", contentError.message)
     return AuthErrors.serverError()
   }
 
@@ -112,7 +113,7 @@ export async function POST(
     .eq("id", video.id)
 
   if (linkError) {
-    console.error("[youtube-analyze] Failed to link video to content:", linkError.message)
+    logger.error("[youtube-analyze] Failed to link video to content:", linkError.message)
   }
 
   // Usage increment handled atomically by processContent() — no separate increment here
@@ -125,9 +126,9 @@ export async function POST(
     })
   } catch (err) {
     if (err instanceof ProcessContentError) {
-      console.error("[youtube-analyze] Process-content failed:", err.message)
+      logger.error("[youtube-analyze] Process-content failed:", err.message)
     } else {
-      console.error("[youtube-analyze] Failed to trigger process-content:", err)
+      logger.error("[youtube-analyze] Failed to trigger process-content:", err)
     }
   }
 

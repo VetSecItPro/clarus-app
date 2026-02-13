@@ -102,7 +102,7 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
               </div>
               <div className="flex items-center gap-1.5 px-3 py-1 bg-white/[0.04] rounded-full border border-white/[0.06]">
                 <div className="w-2.5 h-2.5 rounded-full bg-green-500/60" />
-                <span className="text-[0.625rem] text-white/40 font-mono">clarusapp.io/item/...</span>
+                <span className="text-[0.625rem] text-white/50 font-mono">clarusapp.io/item/...</span>
               </div>
               <div className="w-[52px]" />
             </div>
@@ -128,8 +128,8 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
                     {DEMO_CONTENT.title}
                   </h3>
                   <div className="flex items-center gap-1.5 mt-1.5 flex-wrap">
-                    <span className="text-[0.5625rem] text-white/40 px-1.5 py-0.5 bg-white/[0.04] rounded">{DEMO_CONTENT.domain}</span>
-                    <span className="text-[0.5625rem] text-white/30 px-1.5 py-0.5 bg-white/[0.04] rounded flex items-center gap-0.5">
+                    <span className="text-[0.5625rem] text-white/50 px-1.5 py-0.5 bg-white/[0.04] rounded">{DEMO_CONTENT.domain}</span>
+                    <span className="text-[0.5625rem] text-white/50 px-1.5 py-0.5 bg-white/[0.04] rounded flex items-center gap-0.5">
                       <Play className="w-2 h-2" /> {DEMO_CONTENT.duration}
                     </span>
                   </div>
@@ -150,7 +150,7 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
                       {recommendation.label}
                     </span>
                     <span className="text-lg font-bold text-white">
-                      {DEMO_TRIAGE.quality_score}<span className="text-xs text-white/30">/10</span>
+                      {DEMO_TRIAGE.quality_score}<span className="text-xs text-white/50">/10</span>
                     </span>
                   </div>
                   <div className="h-1.5 bg-white/[0.08] rounded-full overflow-hidden">
@@ -172,13 +172,13 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
 
                 {/* Detected tone */}
                 <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-                  <p className="text-[0.5625rem] text-white/40 mb-1">Detected Tone</p>
+                  <p className="text-[0.5625rem] text-white/50 mb-1">Detected Tone</p>
                   <span className="text-[0.5625rem] font-medium text-white/70">Persuasive, Emotional</span>
                 </div>
 
                 {/* Source history */}
                 <div className="p-2 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-                  <p className="text-[0.5625rem] text-white/40 mb-1">Source History</p>
+                  <p className="text-[0.5625rem] text-white/50 mb-1">Source History</p>
                   <div className="flex items-center gap-1.5">
                     <div className="flex-1 h-1 bg-white/[0.08] rounded-full overflow-hidden">
                       <div className="h-full w-[65%] bg-gradient-to-r from-red-500 via-yellow-500 to-green-500 rounded-full" />
@@ -199,7 +199,7 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
                   <div className="min-w-0">
                     <p className="text-xs font-medium text-white truncate">{DEMO_CONTENT.title}</p>
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="text-[0.625rem] text-white/40">{DEMO_CONTENT.domain}</span>
+                      <span className="text-[0.625rem] text-white/50">{DEMO_CONTENT.domain}</span>
                       <span className="text-[0.5625rem] px-1.5 py-0.5 rounded-full border font-medium bg-emerald-500/15 text-emerald-400 border-emerald-500/25">
                         {recommendation.label}
                       </span>
@@ -220,9 +220,9 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
                     <div className="p-2.5 rounded-xl bg-white/[0.02] border border-white/[0.06]">
                       <div className="flex items-center justify-between gap-4 flex-wrap">
                         <div className="flex items-center gap-2">
-                          <span className="text-[0.5625rem] text-white/40 uppercase tracking-wider">Quality</span>
+                          <span className="text-[0.5625rem] text-white/50 uppercase tracking-wider">Quality</span>
                           <span className="text-base font-bold text-white">
-                            {DEMO_TRIAGE.quality_score}<span className="text-[0.5625rem] text-white/30">/10</span>
+                            {DEMO_TRIAGE.quality_score}<span className="text-[0.5625rem] text-white/50">/10</span>
                           </span>
                         </div>
                         <span className={`text-[0.5625rem] px-2 py-0.5 rounded-full border font-semibold ${recommendation.bg} ${recommendation.border} ${recommendation.color}`}>
@@ -240,11 +240,11 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
                       </div>
                     </div>
                     <div>
-                      <span className="text-[0.5625rem] text-white/40 uppercase tracking-wider">Worth Your Time?</span>
+                      <span className="text-[0.5625rem] text-white/50 uppercase tracking-wider">Worth Your Time?</span>
                       <p className="text-xs text-white/65 mt-0.5 leading-relaxed line-clamp-2">{DEMO_TRIAGE.worth_your_time}</p>
                     </div>
                     <div>
-                      <span className="text-[0.5625rem] text-white/40 uppercase tracking-wider">Audience</span>
+                      <span className="text-[0.5625rem] text-white/50 uppercase tracking-wider">Audience</span>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {DEMO_TRIAGE.target_audience.slice(0, 4).map((a) => (
                           <span key={a} className="text-[0.5625rem] px-1.5 py-0.5 bg-white/[0.04] border border-white/[0.06] rounded-full text-white/50">
@@ -332,7 +332,7 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
 
                     {/* Strengths preview */}
                     <div>
-                      <span className="text-[0.5625rem] text-white/40 uppercase tracking-wider">Strengths</span>
+                      <span className="text-[0.5625rem] text-white/50 uppercase tracking-wider">Strengths</span>
                       <div className="mt-1 space-y-1">
                         {DEMO_TRUTH_CHECK.strengths.slice(0, 2).map((s, i) => (
                           <div key={i} className="flex items-start gap-1.5">
@@ -366,7 +366,7 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
                           <div className={`w-1.5 h-1.5 rounded-full mt-1.5 shrink-0 ${priorityColors[item.priority] ?? "bg-white/30"}`} />
                           <div className="min-w-0">
                             <p className="text-xs text-white/80 font-medium leading-snug">{item.title}</p>
-                            <p className="text-[0.625rem] text-white/40 mt-0.5 line-clamp-1">{item.description}</p>
+                            <p className="text-[0.625rem] text-white/50 mt-0.5 line-clamp-1">{item.description}</p>
                           </div>
                         </motion.div>
                       )
@@ -399,8 +399,8 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
                         The Rat Park experiment <span className="text-brand text-[0.5625rem]">[1]</span> is legitimate but has limitations. It was published in <span className="text-white/80">Psychopharmacology (1981)</span> but some replication attempts had mixed results.
                       </p>
                       <div className="flex items-center gap-2 mt-2 pt-2 border-t border-white/[0.04]">
-                        <ThumbsUp className="w-2.5 h-2.5 text-white/20" />
-                        <ThumbsDown className="w-2.5 h-2.5 text-white/20" />
+                        <ThumbsUp className="w-2.5 h-2.5 text-white/50" />
+                        <ThumbsDown className="w-2.5 h-2.5 text-white/50" />
                       </div>
                     </div>
                   </div>
@@ -425,8 +425,8 @@ export const DemoAnalysis = memo(function DemoAnalysis() {
                 {/* Chat input */}
                 <div className="px-3 py-2.5 border-t border-white/[0.06]">
                   <div className="flex items-center gap-2 px-3 py-2 bg-white/[0.04] border border-white/[0.06] rounded-xl">
-                    <span className="flex-1 text-[0.625rem] text-white/20">Ask a follow-up...</span>
-                    <Send className="w-3 h-3 text-white/20" />
+                    <span className="flex-1 text-[0.625rem] text-white/50">Ask a follow-up...</span>
+                    <Send className="w-3 h-3 text-white/50" />
                   </div>
                 </div>
               </div>

@@ -176,8 +176,8 @@ export async function authenticateAdmin(): Promise<AuthResult | AuthError> {
     if (oldestKey) adminCache.delete(oldestKey)
   }
 
-  // Cache for 5 minutes
-  adminCache.set(auth.user.id, { isAdmin, expires: now + 5 * 60 * 1000, lastAccess: now })
+  // Cache for 60 seconds — short TTL limits exposure window if admin is revoked
+  adminCache.set(auth.user.id, { isAdmin, expires: now + 60 * 1000, lastAccess: now })
 
   if (!isAdmin) {
     return {

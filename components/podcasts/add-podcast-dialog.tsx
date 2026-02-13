@@ -140,7 +140,7 @@ export function AddPodcastDialog({ currentCount, limit, onSubscribed }: AddPodca
               }}
               disabled={isValidating || !!preview}
               className={cn(
-                "w-full px-4 py-3 rounded-xl bg-white/5 border text-white placeholder:text-white/30",
+                "w-full px-4 py-3 rounded-xl bg-white/5 border text-white placeholder:text-white/50",
                 "focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/30",
                 "disabled:opacity-50 transition-colors",
                 error ? "border-red-500/40" : "border-white/10"
@@ -184,7 +184,7 @@ export function AddPodcastDialog({ currentCount, limit, onSubscribed }: AddPodca
                   />
                 ) : (
                   <div className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center">
-                    <Rss className="w-6 h-6 text-white/40" />
+                    <Rss className="w-6 h-6 text-white/50" />
                   </div>
                 )}
                 <div>

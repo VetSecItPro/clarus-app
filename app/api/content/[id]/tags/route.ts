@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { uuidSchema, parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { getUserTier } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
 import { z } from "zod"
+import { logger } from "@/lib/logger"
 
 // Schema for tag operations
 const tagActionSchema = z.object({
@@ -63,7 +64,7 @@ export async function PATCH(
 
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`tags:${clientIp}`, 60, 60000) // 60 requests per minute
+    const rateLimit = await checkRateLimit(`tags:${clientIp}`, 60, 60000) // 60 requests per minute
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -159,7 +160,7 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error("Tags update error:", error)
+      logger.error("Tags update error:", error)
       return NextResponse.json({ success: false, error: "Failed to update tags. Please try again." }, { status: 500 })
     }
 

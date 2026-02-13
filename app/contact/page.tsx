@@ -38,7 +38,7 @@ export default function ContactPage() {
           </div>
           <div>
             <h1 className="text-2xl font-bold text-white">Contact Us</h1>
-            <p className="text-white/40 text-sm">We&apos;ll get back to you as soon as possible.</p>
+            <p className="text-white/50 text-sm">We&apos;ll get back to you as soon as possible.</p>
           </div>
         </div>
 

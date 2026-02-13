@@ -16,11 +16,12 @@
 
 import { NextResponse, type NextRequest } from "next/server"
 import { timingSafeEqual } from "crypto"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { authenticateRequest } from "@/lib/auth"
 import { isValidLanguage, type AnalysisLanguage } from "@/lib/languages"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 import { processContentSchema, parseBody } from "@/lib/schemas"
+import { logger } from "@/lib/logger"
 
 // Extend Vercel function timeout to 5 minutes (requires Pro plan)
 // This is critical for processing long videos that require multiple AI calls
@@ -29,7 +30,7 @@ export const maxDuration = 300
 export async function POST(req: NextRequest) {
   // Rate limiting by IP
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "unknown"
-  const rateLimit = checkRateLimit(`process:${clientIp}`, 30, 60000) // 30 requests per minute
+  const rateLimit = await checkRateLimit(`process:${clientIp}`, 30, 60000) // 30 requests per minute
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },
@@ -119,7 +120,7 @@ export async function POST(req: NextRequest) {
         { status: error.statusCode }
       )
     }
-    console.error("API: Unexpected error in process-content:", error)
+    logger.error("API: Unexpected error in process-content:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

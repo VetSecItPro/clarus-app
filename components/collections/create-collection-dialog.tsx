@@ -151,7 +151,7 @@ export function CreateCollectionDialog({
                     <h2 id="create-collection-title" className="text-lg font-semibold text-white">
                       {isEditing ? "Edit Collection" : "New Collection"}
                     </h2>
-                    <p className="text-xs text-white/40">
+                    <p className="text-xs text-white/50">
                       {isEditing
                         ? "Update your collection details"
                         : "Organize your content into folders"}
@@ -197,7 +197,7 @@ export function CreateCollectionDialog({
                     className="block text-xs font-medium text-white/50 uppercase tracking-wide mb-2"
                   >
                     Description{" "}
-                    <span className="text-white/30 normal-case">(optional)</span>
+                    <span className="text-white/50 normal-case">(optional)</span>
                   </label>
                   <textarea
                     id="collection-description"

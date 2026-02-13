@@ -7,6 +7,7 @@ import {
   sendSubscriptionCancelledEmail,
   sendPaymentFailedEmail,
 } from "@/lib/email"
+import { logger } from "@/lib/logger"
 
 // FIX-020: Create Supabase admin client inside handler to avoid stale module-level connections
 function createSupabaseAdmin() {
@@ -34,7 +35,7 @@ async function findUserByCustomerId(supabaseAdmin: AdminClient, customerId: stri
   const { data, error } = await supabaseAdmin.from("users").select("id").eq("polar_customer_id", customerId).single()
 
   if (error && error.code !== "PGRST116") {
-    console.error("[Polar Webhook] findUserByCustomerId error:", error.code)
+    logger.error("[Polar Webhook] findUserByCustomerId error:", error.code)
   }
 
   return data?.id ?? undefined
@@ -55,7 +56,7 @@ async function updateUserSubscription(
   const { error } = await supabaseAdmin.from("users").update(updates).eq("id", userId)
 
   if (error) {
-    console.error("[Polar Webhook] Failed to update user subscription:", error.code)
+    logger.error("[Polar Webhook] Failed to update user subscription:", error.code)
     return false
   }
 
@@ -95,7 +96,7 @@ export async function POST(request: Request) {
   // Verify webhook secret is configured BEFORE reading body
   const webhookSecret = process.env.POLAR_WEBHOOK_SECRET
   if (!webhookSecret) {
-    console.error("[Polar Webhook] CRITICAL: POLAR_WEBHOOK_SECRET not configured")
+    logger.error("[Polar Webhook] CRITICAL: POLAR_WEBHOOK_SECRET not configured")
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 })
   }
 
@@ -106,7 +107,7 @@ export async function POST(request: Request) {
     event = validateEvent(body, Object.fromEntries(request.headers), webhookSecret)
   } catch (err: unknown) {
     if (err instanceof WebhookVerificationError) {
-      console.error("[Polar Webhook] Signature verification failed")
+      logger.error("[Polar Webhook] Signature verification failed")
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     throw err
@@ -146,7 +147,7 @@ export async function POST(request: Request) {
               tier: "day_pass",
               day_pass_expires_at: expiresAt,
             })
-            console.log(`[Polar Webhook] Day pass activated for user ${userId}, expires ${expiresAt}`)
+            logger.info(`[Polar Webhook] Day pass activated for user ${userId}, expires ${expiresAt}`)
 
             // Send confirmation email
             const user = await getUserEmailAndName(supabaseAdmin, userId)
@@ -177,7 +178,7 @@ export async function POST(request: Request) {
         }
 
         if (!userId) {
-          console.error("[Polar Webhook] Could not find user for subscription event")
+          logger.error("[Polar Webhook] Could not find user for subscription event")
           return NextResponse.json({ error: "User not found" }, { status: 400 })
         }
 
@@ -286,7 +287,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ received: true })
   } catch (error: unknown) {
-    console.error("[Polar Webhook] Webhook handler error:", error)
+    logger.error("[Polar Webhook] Webhook handler error:", error)
     return NextResponse.json({ error: "Webhook processing failed" }, { status: 500 })
   }
 }

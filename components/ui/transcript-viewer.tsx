@@ -218,7 +218,7 @@ export function TranscriptViewer({
               <span>{block.startTimestamp}</span>
               {block.startTimestamp !== block.endTimestamp && (
                 <>
-                  <span className="text-white/30">&rarr;</span>
+                  <span className="text-white/50">&rarr;</span>
                   <span>{block.endTimestamp}</span>
                 </>
               )}

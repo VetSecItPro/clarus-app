@@ -25,9 +25,10 @@ import { DefaultChatTransport } from "ai"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import type { ChatMessageData, ChatMessageType } from "@/components/chat"
-import type { TriageData, TruthCheckData } from "@/types/database.types"
 import type { AnalysisLanguage } from "@/lib/languages"
 import { normalizeUrl } from "@/lib/utils"
+import { useStatusPolling, type ContentStatus } from "./use-status-polling"
+import { usePdfUpload } from "./use-pdf-upload"
 
 /**
  * The progression of states during a content analysis session.
@@ -42,23 +43,6 @@ export type ChatSessionState =
   | "processing" // URL submitted, analysis in progress
   | "initial_complete" // Initial analysis (Quality + TL;DR) done, showing suggestions
   | "chatting" // User is in active chat mode
-
-interface ContentStatus {
-  id: string
-  title: string | null
-  url: string
-  type: "youtube" | "article" | "x_post" | "podcast"
-  thumbnail_url?: string | null
-  author?: string | null
-  duration?: number | null
-  processing_status: string | null
-  triage: TriageData | null
-  brief_overview: string | null
-  detailed_summary: string | null
-  truth_check: TruthCheckData | null
-  hasError?: boolean
-  errorMessage?: string
-}
 
 interface UseChatSessionOptions {
   userId: string | null
@@ -112,10 +96,7 @@ export function useChatSession({
   const [messages, setMessages] = useState<ChatMessageData[]>([])
   const [contentStatus, setContentStatus] = useState<ContentStatus | null>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
-  const [analysisError, setAnalysisError] = useState<string | null>(null)
 
-  const pollingRef = useRef<NodeJS.Timeout | null>(null)
-  const pollCountRef = useRef<number>(0)
   const threadIdRef = useRef<string | null>(null)
 
   // Keep threadId ref in sync
@@ -123,7 +104,63 @@ export function useChatSession({
     threadIdRef.current = threadId
   }, [threadId])
 
-  // AI SDK chat hook for follow-up questions
+  // Helper to add a message
+  const addMessage = useCallback((message: ChatMessageData) => {
+    setMessages((prev) => [...prev, message])
+  }, [])
+
+  // --- Status Polling (extracted hook) ---
+
+  const { startPolling, stopPolling, retryAnalysis: retryPolling, analysisError } = useStatusPolling({
+    analysisLanguage,
+    onStatusUpdate: useCallback((data: ContentStatus) => {
+      setContentStatus(data)
+    }, []),
+    onInitialReady: useCallback((data: ContentStatus) => {
+      setMessages((prev) => {
+        const hasInitial = prev.some((m) => m.type === "analysis-initial")
+        if (hasInitial) return prev
+
+        return [
+          ...prev,
+          {
+            id: `analysis-initial-${Date.now()}`,
+            type: "analysis-initial" as ChatMessageType,
+            content: data.brief_overview || "",
+            triage: data.triage || undefined,
+            timestamp: new Date(),
+          },
+        ]
+      })
+      setState("initial_complete")
+      setShowSuggestions(true)
+    }, []),
+    onError: useCallback((error: string) => {
+      setState("initial_complete")
+      void error // error state managed by the polling hook
+    }, []),
+  })
+
+  const retryAnalysis = useCallback(async () => {
+    if (!contentId) return
+    setState("processing")
+    await retryPolling(contentId)
+  }, [contentId, retryPolling])
+
+  // --- PDF Upload (extracted hook) ---
+
+  const { submitPdf } = usePdfUpload({
+    userId,
+    analysisLanguage,
+    addMessage,
+    onContentCreated,
+    startPolling,
+    setContentId: useCallback((id: string) => setContentId(id), []),
+    setState: useCallback((s: "idle" | "processing") => setState(s), []),
+  })
+
+  // --- AI SDK chat hook for follow-up questions ---
+
   const {
     messages: aiMessages,
     status: aiStatus,
@@ -152,7 +189,6 @@ export function useChatSession({
         content,
       })
 
-      // Add to our messages
       addMessage({
         id: `ai-${Date.now()}`,
         type: "assistant",
@@ -167,108 +203,8 @@ export function useChatSession({
 
   const isAiLoading = aiStatus === "streaming" || aiStatus === "submitted"
 
-  // Helper to add a message
-  const addMessage = useCallback((message: ChatMessageData) => {
-    setMessages((prev) => [...prev, message])
-  }, [])
+  // --- URL Submission ---
 
-  // Poll for content status
-  const startPolling = useCallback((id: string) => {
-    // Clear any existing polling
-    if (pollingRef.current) {
-      clearInterval(pollingRef.current)
-    }
-    pollCountRef.current = 0
-    setAnalysisError(null)
-
-    const MAX_POLL_COUNT = 150 // 5 minutes at 2s intervals
-
-    const poll = async () => {
-      pollCountRef.current++
-
-      try {
-        const langParam = analysisLanguage !== "en" ? `?language=${analysisLanguage}` : ""
-        const response = await fetch(`/api/content-status/${id}${langParam}`)
-        if (!response.ok) {
-          // Check for specific errors
-          if (response.status === 404) {
-            setAnalysisError("Content not found. Please try again.")
-            if (pollingRef.current) {
-              clearInterval(pollingRef.current)
-              pollingRef.current = null
-            }
-          }
-          return
-        }
-
-        const data: ContentStatus = await response.json()
-        setContentStatus(data)
-
-        // Check for error status
-        if (data.processing_status === "error") {
-          setAnalysisError("Analysis failed. Please try again.")
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current)
-            pollingRef.current = null
-          }
-          setState("initial_complete")
-          return
-        }
-
-        // Check for timeout (no progress after many polls)
-        if (pollCountRef.current > MAX_POLL_COUNT && !data.brief_overview) {
-          setAnalysisError("Analysis is taking too long. Please try again later.")
-          if (pollingRef.current) {
-            clearInterval(pollingRef.current)
-            pollingRef.current = null
-          }
-          setState("initial_complete")
-          return
-        }
-
-        // Check if initial analysis is ready
-        if (data.triage && data.brief_overview) {
-          // Add initial analysis message
-          setMessages((prev) => {
-            // Check if we already have this message
-            const hasInitial = prev.some((m) => m.type === "analysis-initial")
-            if (hasInitial) return prev
-
-            return [
-              ...prev,
-              {
-                id: `analysis-initial-${Date.now()}`,
-                type: "analysis-initial" as ChatMessageType,
-                content: data.brief_overview || "",
-                triage: data.triage || undefined,
-                timestamp: new Date(),
-              },
-            ]
-          })
-
-          setState("initial_complete")
-          setShowSuggestions(true)
-
-          // Stop polling when complete
-          if (data.processing_status === "complete") {
-            if (pollingRef.current) {
-              clearInterval(pollingRef.current)
-              pollingRef.current = null
-            }
-          }
-        }
-      } catch (error) {
-        console.error("Polling error:", error)
-        // Don't set error on transient network issues
-      }
-    }
-
-    // Poll immediately, then every 2 seconds
-    poll()
-    pollingRef.current = setInterval(poll, 2000)
-  }, [analysisLanguage])
-
-  // Submit a URL for analysis
   const submitUrl = useCallback(
     async (url: string, urlMeta: UrlMeta) => {
       if (!userId) {
@@ -278,7 +214,6 @@ export function useChatSession({
 
       setState("processing")
 
-      // Add user message showing the URL
       addMessage({
         id: `user-url-${Date.now()}`,
         type: "user-url",
@@ -289,10 +224,9 @@ export function useChatSession({
       })
 
       try {
-        // Normalize URL for consistent cache matching (strips tracking params, www., etc.)
         const normalizedUrlValue = normalizeUrl(url)
 
-        // Check if user already has this URL analyzed (reuse content record to skip re-scraping)
+        // Check if user already has this URL analyzed
         const { data: existingContent } = await supabase
           .from("content")
           .select("id, full_text, title")
@@ -312,7 +246,6 @@ export function useChatSession({
             .maybeSingle()
 
           if (existingSummary?.processing_status === "complete") {
-            // Already analyzed in this language — navigate directly
             setContentId(existingContent.id)
             onContentCreated?.(existingContent.id)
             setState("idle")
@@ -320,7 +253,6 @@ export function useChatSession({
           }
 
           // Content exists with full_text but no summary in this language — reuse it
-          // Update analysis_language on the content record
           await supabase
             .from("content")
             .update({ analysis_language: analysisLanguage })
@@ -329,7 +261,6 @@ export function useChatSession({
           setContentId(existingContent.id)
           onContentCreated?.(existingContent.id)
 
-          // Trigger analysis in the new language (will skip scraping since full_text exists)
           fetch("/api/process-content", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
@@ -370,7 +301,6 @@ export function useChatSession({
           contentTitle ||
           `Analyzing: ${url.substring(0, 50)}${url.length > 50 ? "..." : ""}`
 
-        // Create content record (store normalized URL for consistent cache matching)
         const { data: newContent, error: insertError } = await supabase
           .from("content")
           .insert([
@@ -388,7 +318,6 @@ export function useChatSession({
         setContentId(newContent.id)
         onContentCreated?.(newContent.id)
 
-        // Start background processing (non-blocking)
         fetch("/api/process-content", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -405,7 +334,6 @@ export function useChatSession({
           }
         }).catch(console.error)
 
-        // Start polling for status
         startPolling(newContent.id)
       } catch {
         toast.error("Something went wrong")
@@ -415,7 +343,8 @@ export function useChatSession({
     [userId, addMessage, onContentCreated, startPolling, analysisLanguage]
   )
 
-  // Handle suggestion button clicks
+  // --- Suggestion Handling ---
+
   const handleSuggestion = useCallback(
     async (action: string) => {
       if (!contentStatus) return
@@ -444,7 +373,6 @@ export function useChatSession({
               timestamp: new Date(),
             })
           } else {
-            // Fetch if not loaded yet
             try {
               const langParam = analysisLanguage !== "en" ? `?language=${analysisLanguage}` : ""
               const response = await fetch(`/api/content-status/${contentId}${langParam}`)
@@ -468,7 +396,6 @@ export function useChatSession({
 
         case "truth_check":
           if (contentStatus.truth_check) {
-            // Format truth check as markdown
             const tc = contentStatus.truth_check
             let content = `**Overall Rating:** ${tc.overall_rating}\n\n`
 
@@ -477,10 +404,10 @@ export function useChatSession({
               tc.issues.forEach((issue) => {
                 const emoji =
                   issue.severity === "high"
-                    ? "🔴"
+                    ? "\u{1F534}"
                     : issue.severity === "medium"
-                    ? "⚠️"
-                    : "ℹ️"
+                    ? "\u26A0\uFE0F"
+                    : "\u2139\uFE0F"
                 content += `${emoji} **${issue.type}**: ${issue.claim_or_issue}\n- ${issue.assessment}\n\n`
               })
             }
@@ -488,7 +415,7 @@ export function useChatSession({
             if (tc.strengths && tc.strengths.length > 0) {
               content += `**Strengths:**\n`
               tc.strengths.forEach((s) => {
-                content += `✓ ${s}\n`
+                content += `\u2713 ${s}\n`
               })
             }
 
@@ -506,14 +433,14 @@ export function useChatSession({
           break
 
         case "ask_questions":
-          // Just hide suggestions and enable chat mode
           break
       }
     },
     [contentStatus, contentId, addMessage, analysisLanguage]
   )
 
-  // Send a chat message
+  // --- Chat Messaging ---
+
   const sendChatMessage = useCallback(
     async (text: string) => {
       if (!userId || !contentId) return
@@ -521,7 +448,6 @@ export function useChatSession({
       setState("chatting")
       setShowSuggestions(false)
 
-      // Add user message to our list
       addMessage({
         id: `user-${Date.now()}`,
         type: "user",
@@ -557,20 +483,19 @@ export function useChatSession({
         setThreadId(currentThreadId)
       }
 
-      // Save user message to DB
       await supabase.from("chat_messages").insert({
         thread_id: currentThreadId,
         role: "user",
         content: text,
       })
 
-      // Send to AI
       sendMessage({ text })
     },
     [userId, contentId, threadId, addMessage, sendMessage]
   )
 
-  // Load existing content and chat history
+  // --- Content Loading ---
+
   const loadContent = useCallback(
     async (id: string) => {
       if (!userId) return
@@ -579,7 +504,6 @@ export function useChatSession({
       setState("processing")
 
       try {
-        // Fetch content status
         const langParam = analysisLanguage !== "en" ? `?language=${analysisLanguage}` : ""
         const response = await fetch(`/api/content-status/${id}${langParam}`)
         if (!response.ok) {
@@ -610,7 +534,6 @@ export function useChatSession({
             .limit(50)
 
           if (messagesData && messagesData.length > 0) {
-            // Convert to our format
             const chatMessages: ChatMessageData[] = messagesData.map((m) => ({
               id: m.id,
               type: m.role === "user" ? "user" : "assistant",
@@ -637,7 +560,6 @@ export function useChatSession({
           setState("initial_complete")
           setShowSuggestions(true)
         } else if (data.processing_status !== "complete") {
-          // Still processing
           startPolling(id)
         } else {
           setState("chatting")
@@ -651,15 +573,6 @@ export function useChatSession({
     [userId, startPolling, analysisLanguage]
   )
 
-  // Cleanup polling on unmount
-  useEffect(() => {
-    return () => {
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-      }
-    }
-  }, [])
-
   // Load initial content if provided
   useEffect(() => {
     if (initialContentId && userId) {
@@ -667,96 +580,14 @@ export function useChatSession({
     }
   }, [initialContentId, userId, loadContent])
 
-  // Retry analysis after error
-  const retryAnalysis = useCallback(async () => {
-    if (!contentId) return
+  // --- Streaming Message ---
 
-    setAnalysisError(null)
-    setState("processing")
-
-    try {
-      // Re-trigger processing
-      await fetch("/api/process-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content_id: contentId, force_regenerate: true, language: analysisLanguage }),
-      })
-
-      // Start polling again
-      startPolling(contentId)
-    } catch (error) {
-      console.error("Retry error:", error)
-      setAnalysisError("Failed to retry analysis. Please try again.")
-    }
-  }, [contentId, startPolling, analysisLanguage])
-
-  // Submit a PDF for analysis
-  const submitPdf = useCallback(
-    async (file: File) => {
-      if (!userId) {
-        toast.error("Please sign in to continue")
-        return
-      }
-
-      setState("processing")
-
-      // Add user message showing the PDF
-      addMessage({
-        id: `user-pdf-${Date.now()}`,
-        type: "user-url",
-        content: `📄 ${file.name}`,
-        url: `pdf://${file.name}`,
-        urlMeta: {
-          domain: "PDF Upload",
-          type: "article" as const,
-          favicon: "",
-        },
-        timestamp: new Date(),
-      })
-
-      try {
-        const formData = new FormData()
-        formData.append("file", file)
-        formData.append("userId", userId)
-        if (analysisLanguage !== "en") {
-          formData.append("language", analysisLanguage)
-        }
-
-        const response = await fetch("/api/process-pdf", {
-          method: "POST",
-          body: formData,
-        })
-
-        if (!response.ok) {
-          const data = await response.json()
-          toast.error(data.error || "Failed to upload PDF")
-          setState("idle")
-          return
-        }
-
-        const data = await response.json()
-        setContentId(data.contentId)
-        onContentCreated?.(data.contentId)
-
-        // Start polling for status
-        startPolling(data.contentId)
-      } catch (error) {
-        console.error("PDF upload error:", error)
-        toast.error("Failed to upload PDF")
-        setState("idle")
-      }
-    },
-    [userId, addMessage, onContentCreated, startPolling, analysisLanguage]
-  )
-
-  // Get streaming message from AI SDK
   const streamingMessage: ChatMessageData | null = (() => {
     if (aiStatus !== "streaming") return null
 
     const lastAiMessage = aiMessages[aiMessages.length - 1]
     if (!lastAiMessage || lastAiMessage.role !== "assistant") return null
 
-    // Extract text content from the message parts
     const msgWithParts = lastAiMessage as { parts?: Array<{ type: string; text?: string }>; content?: string }
     const parts = msgWithParts.parts
     const content = parts
@@ -775,7 +606,6 @@ export function useChatSession({
     }
   })()
 
-  // Combine regular messages with streaming message
   const allMessages = streamingMessage
     ? [...messages, streamingMessage]
     : messages
@@ -807,11 +637,7 @@ export function useChatSession({
       setMessages([])
       setContentStatus(null)
       setShowSuggestions(false)
-      setAnalysisError(null)
-      if (pollingRef.current) {
-        clearInterval(pollingRef.current)
-        pollingRef.current = null
-      }
-    }, []),
+      stopPolling()
+    }, [stopPolling]),
   }
 }

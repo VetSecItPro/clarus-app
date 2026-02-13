@@ -1,6 +1,5 @@
 "use client"
 
-import { motion } from "framer-motion"
 import { AlertTriangle, RefreshCw } from "lucide-react"
 
 interface AnalysisErrorProps {
@@ -11,12 +10,9 @@ interface AnalysisErrorProps {
 
 export function AnalysisError({ message, onRetry, isRetrying = false }: AnalysisErrorProps) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+    <div
       role="alert"
-      className="flex gap-3 max-w-xl mx-auto"
+      className="flex gap-3 max-w-xl mx-auto animate-fade-in-up"
     >
       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-red-500/20 flex items-center justify-center">
         <AlertTriangle className="w-4 h-4 text-red-400" />
@@ -34,6 +30,6 @@ export function AnalysisError({ message, onRetry, isRetrying = false }: Analysis
           </button>
         )}
       </div>
-    </motion.div>
+    </div>
   )
 }

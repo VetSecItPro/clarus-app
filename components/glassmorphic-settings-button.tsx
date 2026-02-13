@@ -126,7 +126,7 @@ export default function GlasmorphicSettingsButton({ variant = "default", onOpenC
           {variant === "mobile" ? (
             <button
               className={`flex flex-col items-center justify-center transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand/50 ${
-                isDropdownOpen ? "text-brand" : "text-white/40"
+                isDropdownOpen ? "text-brand" : "text-white/50"
               }`}
               aria-label="Settings and Profile"
             >

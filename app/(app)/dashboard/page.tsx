@@ -89,11 +89,11 @@ function DashboardPage({ session }: DashboardPageProps) {
 
   return (
     <div className="min-h-screen bg-black text-white">
-      <main className="max-w-2xl mx-auto px-4 py-8 pb-24 sm:pb-8">
+      <main id="main-content" className="max-w-2xl mx-auto px-4 py-8 pb-24 sm:pb-8">
         {/* Page header */}
         <div className="mb-8">
           <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-          <p className="text-white/40 text-sm mt-1">
+          <p className="text-white/50 text-sm mt-1">
             Track your usage and customize your experience.
           </p>
         </div>
@@ -113,7 +113,7 @@ function DashboardPage({ session }: DashboardPageProps) {
                   "flex items-center gap-2 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black focus-visible:outline-none active:opacity-80",
                   isActive
                     ? "border-brand text-white"
-                    : "border-transparent text-white/40 hover:text-white/60"
+                    : "border-transparent text-white/50 hover:text-white/60"
                 )}
               >
                 <Icon className="w-4 h-4" />
@@ -137,7 +137,7 @@ function DashboardPage({ session }: DashboardPageProps) {
                   {periodLabel || "This Month"}
                 </p>
                 {resetLabel && !isDayPass && (
-                  <p className="text-xs text-white/30 mt-0.5">
+                  <p className="text-xs text-white/50 mt-0.5">
                     Resets {resetLabel}
                   </p>
                 )}
@@ -155,7 +155,7 @@ function DashboardPage({ session }: DashboardPageProps) {
             {/* Loading state */}
             {isLoading && (
               <div role="status" className="flex items-center justify-center py-16">
-                <Loader2 className="w-6 h-6 animate-spin text-white/40" />
+                <Loader2 className="w-6 h-6 animate-spin text-white/50" />
                 <span className="sr-only">Loading dashboard</span>
               </div>
             )}
@@ -199,7 +199,7 @@ function DashboardPage({ session }: DashboardPageProps) {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-sm font-medium text-white">Need more?</p>
-                    <p className="text-xs text-white/40 mt-0.5">
+                    <p className="text-xs text-white/50 mt-0.5">
                       Upgrade your plan for higher limits and more features.
                     </p>
                   </div>

@@ -132,7 +132,7 @@ function MiniSummaryLine({ item }: { item: LibraryItem }) {
         </span>
       )}
       {accuracy?.overallRating && (
-        <span className="text-[0.625rem] text-white/40">{accuracy.overallRating}</span>
+        <span className="text-[0.625rem] text-white/50">{accuracy.overallRating}</span>
       )}
       {qualityScore && (
         <span className="inline-flex items-center gap-1 text-[0.625rem] text-emerald-400">
@@ -190,7 +190,7 @@ function LibraryItemCardComponent({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <TypeIcon className="w-8 h-8 text-white/20" />
+                <TypeIcon className="w-8 h-8 text-white/50" />
               </div>
             )}
             {/* Duration badge for videos */}
@@ -220,7 +220,7 @@ function LibraryItemCardComponent({
             <h3 className="text-white font-medium text-sm line-clamp-2 mb-1">
               {item.title || "Processing..."}
             </h3>
-            <p className="text-white/40 text-xs mb-1.5">{getDomain(item.url)}</p>
+            <p className="text-white/50 text-xs mb-1.5">{getDomain(item.url)}</p>
             {/* Mini-summary line */}
             <div className="mb-1.5">
               <MiniSummaryLine item={item} />
@@ -237,7 +237,7 @@ function LibraryItemCardComponent({
                   </span>
                 ))}
                 {item.tags.length > 2 && (
-                  <span className="text-[0.5625rem] text-white/40">+{item.tags.length - 2}</span>
+                  <span className="text-[0.5625rem] text-white/50">+{item.tags.length - 2}</span>
                 )}
               </div>
             )}
@@ -331,7 +331,7 @@ function LibraryItemCardComponent({
               />
             ) : (
               <div className="w-full h-full flex items-center justify-center">
-                <TypeIcon className="w-6 h-6 text-white/20" />
+                <TypeIcon className="w-6 h-6 text-white/50" />
               </div>
             )}
             {/* Duration badge for videos */}
@@ -374,7 +374,7 @@ function LibraryItemCardComponent({
               </div>
             )}
 
-            <div className="flex items-center gap-2 text-xs text-white/40 mb-1">
+            <div className="flex items-center gap-2 text-xs text-white/50 mb-1">
               <span>{getDomain(item.url)}</span>
               {item.date_added && (
                 <>
@@ -401,7 +401,7 @@ function LibraryItemCardComponent({
                   </span>
                 ))}
                 {item.tags.length > 3 && (
-                  <span className="text-[0.625rem] text-white/40">+{item.tags.length - 3}</span>
+                  <span className="text-[0.625rem] text-white/50">+{item.tags.length - 3}</span>
                 )}
               </div>
             )}
@@ -540,7 +540,7 @@ function LibraryItemCardComponent({
                     "p-2 rounded-lg transition-all",
                     item.is_bookmarked
                       ? "bg-amber-500/20 text-amber-400"
-                      : "hover:bg-amber-500/20 text-white/40 hover:text-amber-400"
+                      : "hover:bg-amber-500/20 text-white/50 hover:text-amber-400"
                   )}
                 >
                   {togglingBookmark === item.id ? (
@@ -563,7 +563,7 @@ function LibraryItemCardComponent({
                   {deletingId === item.id ? (
                     <Loader2 className="w-4 h-4 text-white/60 animate-spin" />
                   ) : (
-                    <Trash2 className="w-4 h-4 text-white/40 hover:text-red-400" />
+                    <Trash2 className="w-4 h-4 text-white/50 hover:text-red-400" />
                   )}
                 </button>
               </TooltipTrigger>

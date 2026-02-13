@@ -169,11 +169,11 @@ export function AddToCollectionButton({
             <div className="max-h-48 overflow-y-auto py-1">
               {isLoading ? (
                 <div className="flex items-center justify-center py-4">
-                  <Loader2 className="w-4 h-4 text-white/30 animate-spin" />
+                  <Loader2 className="w-4 h-4 text-white/50 animate-spin" />
                 </div>
               ) : collections.length === 0 && !showQuickCreate ? (
                 <div className="px-3 py-3 text-center">
-                  <p className="text-xs text-white/40 mb-2">
+                  <p className="text-xs text-white/50 mb-2">
                     No collections yet
                   </p>
                 </div>

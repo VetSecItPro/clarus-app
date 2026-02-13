@@ -219,7 +219,7 @@ export function ShareModal({
                   onClick={handleClose}
                   disabled={isSending}
                   aria-label="Close share dialog"
-                  className="p-2 rounded-lg text-white/40 hover:text-white hover:bg-white/[0.08] transition-all disabled:opacity-50"
+                  className="p-2 rounded-lg text-white/50 hover:text-white hover:bg-white/[0.08] transition-all disabled:opacity-50"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -235,7 +235,7 @@ export function ShareModal({
                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       activeTab === "link"
                         ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                        : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+                        : "text-white/50 hover:text-white/60 hover:bg-white/[0.04]"
                     }`}
                   >
                     <Link2 className="w-4 h-4" />
@@ -248,7 +248,7 @@ export function ShareModal({
                     className={`flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                       activeTab === "email"
                         ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                        : "text-white/40 hover:text-white/60 hover:bg-white/[0.04]"
+                        : "text-white/50 hover:text-white/60 hover:bg-white/[0.04]"
                     }`}
                   >
                     <Mail className="w-4 h-4" />
@@ -262,7 +262,7 @@ export function ShareModal({
                 {/* Content preview */}
                 <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
                   <p className="text-white/80 text-sm font-medium line-clamp-2">{contentTitle}</p>
-                  <p className="text-white/40 text-xs mt-1 truncate">{contentUrl}</p>
+                  <p className="text-white/50 text-xs mt-1 truncate">{contentUrl}</p>
                 </div>
 
                 {activeTab === "link" && contentId ? (
@@ -310,7 +310,7 @@ export function ShareModal({
                         )}
                       </Button>
                     )}
-                    <p className="text-white/30 text-xs text-center">
+                    <p className="text-white/50 text-xs text-center">
                       Anyone with this link can view this analysis without logging in.
                     </p>
                   </div>
@@ -328,7 +328,7 @@ export function ShareModal({
                         placeholder="friend@example.com"
                         disabled={isSending}
                         autoComplete="email"
-                        className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all disabled:opacity-50"
+                        className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all disabled:opacity-50"
                       />
                     </div>
                     <div>
@@ -340,7 +340,7 @@ export function ShareModal({
                         placeholder="Hey, thought you might find this interesting..."
                         rows={3}
                         disabled={isSending}
-                        className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white placeholder:text-white/30 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all resize-none disabled:opacity-50"
+                        className="w-full px-4 py-3 rounded-xl bg-white/[0.04] border border-white/[0.1] text-white placeholder:text-white/50 focus:outline-none focus:border-emerald-500/50 focus:ring-1 focus:ring-emerald-500/30 transition-all resize-none disabled:opacity-50"
                       />
                     </div>
                   </>

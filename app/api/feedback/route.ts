@@ -11,6 +11,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
 import { z } from "zod"
+import { logger } from "@/lib/logger"
 
 const VALID_SECTIONS = ["overview", "triage", "takeaways", "accuracy", "action_items", "detailed"] as const
 
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
     .single()
 
   if (error) {
-    console.error("[feedback] POST error:", error.message)
+    logger.error("[feedback] POST error:", error.message)
     return NextResponse.json({ error: "Failed to save feedback" }, { status: 500 })
   }
 
@@ -90,7 +91,7 @@ export async function GET(request: NextRequest) {
     .eq("user_id", user.id)
 
   if (error) {
-    console.error("[feedback] GET error:", error.message)
+    logger.error("[feedback] GET error:", error.message)
     return NextResponse.json({ error: "Failed to fetch feedback" }, { status: 500 })
   }
 

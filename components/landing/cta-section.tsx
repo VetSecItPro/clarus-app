@@ -37,7 +37,7 @@ export const CTASection = memo(function CTASection() {
           </motion.button>
         </Link>
 
-        <p className="mt-4 text-sm text-white/40">
+        <p className="mt-4 text-sm text-white/50">
           Free forever &middot; Pro from{" "}
           <Link href="/pricing" className="text-white/60 hover:text-white underline underline-offset-2 transition-colors">
             $18/mo

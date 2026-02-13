@@ -254,7 +254,7 @@ export function PWAInstallPrompt() {
 
             <button
               onClick={dismiss}
-              className="p-1 text-white/40 hover:text-white/70 transition-colors"
+              className="p-1 text-white/50 hover:text-white/70 transition-colors"
               aria-label="Dismiss install prompt"
             >
               <X className="w-3.5 h-3.5" />

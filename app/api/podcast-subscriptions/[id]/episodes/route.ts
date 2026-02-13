@@ -9,6 +9,7 @@ import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
 import { parseQuery, podcastEpisodesQuerySchema } from "@/lib/schemas"
+import { logger } from "@/lib/logger"
 
 /**
  * GET /api/podcast-subscriptions/[id]/episodes
@@ -56,7 +57,7 @@ export async function GET(
     .range(offset, offset + limit - 1)
 
   if (epError) {
-    console.error("[podcast-episodes] Failed to fetch episodes:", epError.message)
+    logger.error("[podcast-episodes] Failed to fetch episodes:", epError.message)
     return AuthErrors.serverError()
   }
 

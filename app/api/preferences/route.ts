@@ -13,6 +13,7 @@ import { authenticateRequest } from "@/lib/auth"
 import { getUserTier } from "@/lib/usage"
 import { TIER_FEATURES } from "@/lib/tier-limits"
 import { updatePreferencesSchema } from "@/lib/schemas"
+import { logger } from "@/lib/logger"
 
 const DEFAULT_PREFERENCES = {
   analysis_mode: "apply",
@@ -33,7 +34,7 @@ export async function GET() {
     .maybeSingle()
 
   if (error) {
-    console.error("[preferences] GET error:", error.message)
+    logger.error("[preferences] GET error:", error.message)
     return NextResponse.json({ error: "Failed to fetch preferences" }, { status: 500 })
   }
 
@@ -89,7 +90,7 @@ export async function PUT(request: Request) {
     .single()
 
   if (error) {
-    console.error("[preferences] PUT error:", error.message)
+    logger.error("[preferences] PUT error:", error.message)
     return NextResponse.json({ error: "Failed to save preferences" }, { status: 500 })
   }
 
