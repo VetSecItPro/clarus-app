@@ -2,7 +2,7 @@
  * @module api/crons/check-podcast-feeds
  * @description Cron job that checks subscribed podcast RSS feeds for new episodes.
  *
- * Runs every 6 hours via Vercel Cron. For each active subscription whose
+ * Runs daily via Vercel Cron (8:00 UTC). For each active subscription whose
  * last_checked_at is null or older than its check_frequency_hours, it:
  *   1. Fetches and parses the RSS feed
  *   2. Inserts any new episodes into podcast_episodes
@@ -34,7 +34,7 @@ function formatDuration(seconds: number): string {
 
 /**
  * GET /api/crons/check-podcast-feeds
- * Called by Vercel Cron every 6 hours.
+ * Called by Vercel Cron daily at 8:00 UTC.
  */
 export async function GET(request: Request) {
   // Verify cron secret
@@ -88,7 +88,7 @@ export async function GET(request: Request) {
     if (!sub.last_checked_at) return true
     const lastChecked = new Date(sub.last_checked_at)
     const hoursElapsed = (now.getTime() - lastChecked.getTime()) / (1000 * 60 * 60)
-    return hoursElapsed >= (sub.check_frequency_hours ?? 6)
+    return hoursElapsed >= (sub.check_frequency_hours ?? 24)
   })
 
   if (dueSubscriptions.length === 0) {

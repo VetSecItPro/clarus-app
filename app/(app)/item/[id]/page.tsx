@@ -42,6 +42,7 @@ const ShareModal = dynamic(() => import("@/components/share-modal").then(m => ({
 const UpgradeModal = dynamic(() => import("@/components/upgrade-modal").then(m => ({ default: m.UpgradeModal })), { ssr: false })
 const EditAIPromptsModal = dynamic(() => import("@/components/edit-ai-prompts-modal").then(m => ({ default: m.EditAIPromptsModal })), { ssr: false })
 const ClaimTimeline = dynamic(() => import("@/components/ui/claim-timeline").then(m => ({ default: m.ClaimTimeline })), { ssr: false })
+const SubscribePrompt = dynamic(() => import("@/components/subscribe-prompt").then(m => ({ default: m.SubscribePrompt })), { ssr: false })
 // Next.js page props
 interface PageProps {
   params: Promise<{ id: string }>
@@ -1169,6 +1170,18 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     className="md:p-4 mb-4 md:max-w-2xl md:mx-auto"
                   />
 
+                  {/* Subscribe to channel/podcast prompt */}
+                  {(item.type === "youtube" || item.type === "podcast") && session?.user?.id && (
+                    <SubscribePrompt
+                      contentType={item.type as "youtube" | "podcast"}
+                      contentUrl={item.url}
+                      channelId={item.channel_id}
+                      authorName={item.author}
+                      userId={session.user.id}
+                      className="mb-4"
+                    />
+                  )}
+
                   {/* Summary/Full Text sub-tabs for mobile analysis */}
                   <div className="flex items-center gap-0.5 bg-white/[0.06] backdrop-blur-xl p-0.5 rounded-full border border-white/[0.08] mb-4 w-fit">
                     <button
@@ -1268,6 +1281,18 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
                     analysisMode={analysisMode}
                     className="mx-3 sm:mx-4 lg:mx-0"
                   />
+
+                  {/* Subscribe to channel/podcast prompt */}
+                  {(item.type === "youtube" || item.type === "podcast") && session?.user?.id && (
+                    <SubscribePrompt
+                      contentType={item.type as "youtube" | "podcast"}
+                      contentUrl={item.url}
+                      channelId={item.channel_id}
+                      authorName={item.author}
+                      userId={session.user.id}
+                      className="mx-3 sm:mx-4 lg:mx-0"
+                    />
+                  )}
 
                   {/* Tags Management */}
                   <div className="hidden sm:block sm:mx-4 lg:mx-0">
