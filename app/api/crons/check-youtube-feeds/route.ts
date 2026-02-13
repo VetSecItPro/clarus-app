@@ -2,7 +2,7 @@
  * @module api/crons/check-youtube-feeds
  * @description Cron job that checks subscribed YouTube channels for new videos.
  *
- * Runs every 6 hours via Vercel Cron. For each active subscription whose
+ * Runs daily via Vercel Cron (9:00 UTC). For each active subscription whose
  * last_checked_at is null or older than its check_frequency_hours, it:
  *   1. Fetches and parses the YouTube Atom feed
  *   2. Inserts any new videos into youtube_videos
@@ -24,7 +24,7 @@ export const maxDuration = 60
 
 /**
  * GET /api/crons/check-youtube-feeds
- * Called by Vercel Cron every 6 hours.
+ * Called by Vercel Cron daily at 9:00 UTC.
  */
 export async function GET(request: Request) {
   // Verify cron secret
@@ -67,7 +67,7 @@ export async function GET(request: Request) {
     if (!sub.last_checked_at) return true
     const lastChecked = new Date(sub.last_checked_at)
     const hoursElapsed = (now.getTime() - lastChecked.getTime()) / (1000 * 60 * 60)
-    return hoursElapsed >= (sub.check_frequency_hours ?? 6)
+    return hoursElapsed >= (sub.check_frequency_hours ?? 24)
   })
 
   if (dueSubscriptions.length === 0) {

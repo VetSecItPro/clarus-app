@@ -11,11 +11,11 @@
     },
     {
       "path": "/api/crons/check-podcast-feeds",
-      "schedule": "0 */6 * * *"
+      "schedule": "0 8 * * *"
     },
     {
       "path": "/api/crons/check-youtube-feeds",
-      "schedule": "30 */6 * * *"
+      "schedule": "0 9 * * *"
     }
   ],
   "headers": [
