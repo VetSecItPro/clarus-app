@@ -8,7 +8,8 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { uuidSchema } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { logger } from "@/lib/logger"
 
 export async function DELETE(
   request: Request,
@@ -19,7 +20,7 @@ export async function DELETE(
 
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`collection-items-remove:${clientIp}`, 60, 60000)
+    const rateLimit = await checkRateLimit(`collection-items-remove:${clientIp}`, 60, 60000)
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -62,7 +63,7 @@ export async function DELETE(
       .eq("content_id", contentIdResult.data)
 
     if (deleteError) {
-      console.error("Collection item delete error:", deleteError)
+      logger.error("Collection item delete error:", deleteError)
       return NextResponse.json(
         { success: false, error: "Failed to remove item from collection. Please try again." },
         { status: 500 }

@@ -124,7 +124,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
         className="text-center py-16 px-4"
       >
         <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
-          <Lock className="w-8 h-8 text-white/30" />
+          <Lock className="w-8 h-8 text-white/50" />
         </div>
         <h2 className="text-lg font-semibold text-white mb-2">
           Personalize Your Analysis
@@ -146,7 +146,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-16">
-        <Loader2 className="w-6 h-6 animate-spin text-white/40" />
+        <Loader2 className="w-6 h-6 animate-spin text-white/50" />
       </div>
     )
   }
@@ -160,10 +160,10 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
         className="flex items-center justify-between p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]"
       >
         <div className="flex items-center gap-3">
-          <Power className="w-5 h-5 text-white/40" />
+          <Power className="w-5 h-5 text-white/50" />
           <div>
             <p className="text-sm font-medium text-white">Use custom preferences</p>
-            <p className="text-xs text-white/40">When off, analysis uses default settings</p>
+            <p className="text-xs text-white/50">When off, analysis uses default settings</p>
           </div>
         </div>
         <button
@@ -213,7 +213,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
                   <Icon
                     className={cn(
                       "w-5 h-5 mt-0.5 shrink-0",
-                      isSelected ? "text-brand" : "text-white/30"
+                      isSelected ? "text-brand" : "text-white/50"
                     )}
                   />
                   <div>
@@ -223,7 +223,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
                     )}>
                       {mode.label}
                     </p>
-                    <p className="text-xs text-white/40 mt-0.5">{mode.description}</p>
+                    <p className="text-xs text-white/50 mt-0.5">{mode.description}</p>
                   </div>
                   {isSelected && (
                     <Check className="w-4 h-4 text-brand ml-auto mt-0.5 shrink-0" />
@@ -261,7 +261,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
                   {isSelected && <Check className="w-3.5 h-3.5 text-brand" />}
                   <div className="text-left">
                     <span className="font-medium">{opt.label}</span>
-                    <span className="text-white/30 ml-1.5 hidden sm:inline">— {opt.description}</span>
+                    <span className="text-white/50 ml-1.5 hidden sm:inline">— {opt.description}</span>
                   </div>
                 </button>
               )
@@ -280,7 +280,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
             <h3 className="text-sm font-semibold text-white/70 uppercase tracking-wider">
               What Matters Most
             </h3>
-            <span className="text-xs text-white/30">
+            <span className="text-xs text-white/50">
               {prefs.focus_areas.length}/3 selected
             </span>
           </div>
@@ -298,7 +298,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
                     isSelected
                       ? "border-brand/40 bg-brand/10 text-brand"
                       : isDisabled
-                      ? "border-white/[0.04] bg-white/[0.01] text-white/20 cursor-not-allowed"
+                      ? "border-white/[0.04] bg-white/[0.01] text-white/50 cursor-not-allowed"
                       : "border-white/[0.08] bg-white/[0.02] text-white/50 hover:bg-white/[0.04]"
                   )}
                   title={opt.description}
@@ -325,7 +325,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
             "w-full sm:w-auto px-6 py-2.5 rounded-xl text-sm font-medium transition-all",
             dirty
               ? "bg-brand hover:bg-brand-hover text-white"
-              : "bg-white/[0.06] text-white/30 cursor-not-allowed"
+              : "bg-white/[0.06] text-white/50 cursor-not-allowed"
           )}
         >
           {saving ? (
@@ -338,7 +338,7 @@ export function PreferencesTab({ hasAccess }: PreferencesTabProps) {
           )}
         </button>
         {!dirty && (
-          <p className="text-xs text-white/30 mt-2">
+          <p className="text-xs text-white/50 mt-2">
             Make changes above, then save.
           </p>
         )}

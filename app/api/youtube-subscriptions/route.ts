@@ -8,11 +8,12 @@
 
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { getUserTier } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
 import { parseBody, addYouTubeSubscriptionSchema } from "@/lib/schemas"
 import { resolveYouTubeChannel } from "@/lib/youtube-resolver"
+import { logger } from "@/lib/logger"
 
 /**
  * GET /api/youtube-subscriptions
@@ -31,7 +32,7 @@ export async function GET() {
     .limit(100)
 
   if (error) {
-    console.error("[youtube-subscriptions] Failed to fetch subscriptions:", error.message)
+    logger.error("[youtube-subscriptions] Failed to fetch subscriptions:", error.message)
     return AuthErrors.serverError()
   }
 
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
   const { user, supabase } = auth
 
   // Rate limit: 10 requests per minute
-  const rateCheck = checkRateLimit(`yt-sub:${user.id}`, 10, 60_000)
+  const rateCheck = await checkRateLimit(`yt-sub:${user.id}`, 10, 60_000)
   if (!rateCheck.allowed) {
     return AuthErrors.rateLimit(rateCheck.resetIn)
   }
@@ -120,7 +121,7 @@ export async function POST(request: Request) {
   }
 
   if (countResult.error) {
-    console.error("[youtube-subscriptions] Failed to count subscriptions:", countResult.error.message)
+    logger.error("[youtube-subscriptions] Failed to count subscriptions:", countResult.error.message)
     return AuthErrors.serverError()
   }
 
@@ -150,14 +151,14 @@ export async function POST(request: Request) {
       channel_image_url: channelInfo.channelImageUrl,
       feed_url: channelInfo.feedUrl,
     })
-    .select()
+    .select("id, channel_id, channel_name, channel_image_url, feed_url, created_at")
     .single()
 
   if (insertError) {
     if (insertError.code === "23505") {
       return AuthErrors.badRequest("You're already subscribed to this YouTube channel")
     }
-    console.error("[youtube-subscriptions] Failed to insert subscription:", insertError.message)
+    logger.error("[youtube-subscriptions] Failed to insert subscription:", insertError.message)
     return AuthErrors.serverError()
   }
 

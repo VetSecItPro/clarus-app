@@ -5,6 +5,7 @@ import { sendWeeklyDigestEmail } from "@/lib/email"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { parseAiResponseOrThrow } from "@/lib/ai-response-parser"
 import type { TriageData, TruthCheckData, WeeklyInsights, Json } from "@/types/database.types"
+import { logger } from "@/lib/logger"
 
 export const maxDuration = 120
 
@@ -26,7 +27,7 @@ export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET
 
   if (!cronSecret) {
-    console.error("CRON_SECRET not configured")
+    logger.error("CRON_SECRET not configured")
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 })
   }
 
@@ -51,7 +52,7 @@ export async function GET(request: Request) {
     .limit(500)
 
   if (usersError) {
-    console.error("Failed to fetch users:", usersError)
+    logger.error("Failed to fetch users:", usersError)
     return NextResponse.json({ error: "Failed to fetch users" }, { status: 500 })
   }
 
@@ -173,11 +174,11 @@ export async function GET(request: Request) {
           .eq("id", user.id)
         sent++
       } else {
-        console.error(`Failed to send digest to ${user.email}:`, result.error)
+        logger.error(`Failed to send digest to ${user.email}:`, result.error)
         skipped++
       }
     } catch (err) {
-      console.error(`Error processing digest for user ${user.id}:`, err)
+      logger.error(`Error processing digest for user ${user.id}:`, err)
       skipped++
     }
   })
@@ -227,7 +228,7 @@ async function generateWeeklyInsights(
   claims: ClaimRecord[],
 ): Promise<WeeklyInsights | null> {
   if (!OPENROUTER_API_KEY) {
-    console.warn(`[weekly-digest] OpenRouter API key not configured, skipping insights for user ${userId}`)
+    logger.warn(`[weekly-digest] OpenRouter API key not configured, skipping insights for user ${userId}`)
     return null
   }
 
@@ -327,7 +328,7 @@ Rules:
 
     if (!response.ok) {
       const errorBody = await response.text()
-      console.error(`[weekly-digest] OpenRouter API error (${response.status}): ${errorBody}`)
+      logger.error(`[weekly-digest] OpenRouter API error (${response.status}): ${errorBody}`)
       return null
     }
 
@@ -337,7 +338,7 @@ Rules:
     const rawContent = result.choices?.[0]?.message?.content
 
     if (!rawContent) {
-      console.error("[weekly-digest] OpenRouter response missing message content")
+      logger.error("[weekly-digest] OpenRouter response missing message content")
       return null
     }
 
@@ -354,7 +355,7 @@ Rules:
 
     return insights
   } catch (err) {
-    console.error(`[weekly-digest] Failed to generate AI insights for user ${userId}:`, err)
+    logger.error(`[weekly-digest] Failed to generate AI insights for user ${userId}:`, err)
     return null
   }
 }

@@ -2,11 +2,12 @@ import { NextResponse } from "next/server"
 import type { Json } from "@/types/database.types"
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { uuidSchema, translateContentSchema, parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { logApiUsage } from "@/lib/api-usage"
 import { isValidLanguage, getLanguageConfig, type AnalysisLanguage } from "@/lib/languages"
 import { normalizeTier, TIER_FEATURES } from "@/lib/tier-limits"
 import { sanitizeForPrompt, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
+import { logger } from "@/lib/logger"
 
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 const AI_CALL_TIMEOUT_MS = 60000 // 60 seconds — translations are faster than full analysis
@@ -295,7 +296,7 @@ Return ONLY valid JSON. No markdown code blocks, no explanation.`
 
       if (!response.ok) {
         const errorBody = await response.text()
-        console.error(`Translation API error (${model}, ${response.status}):`, errorBody)
+        logger.error(`Translation API error (${model}, ${response.status}):`, errorBody)
         await logApiUsage({
           userId,
           contentId,
@@ -313,7 +314,7 @@ Return ONLY valid JSON. No markdown code blocks, no explanation.`
       const rawContent = result.choices?.[0]?.message?.content
 
       if (!rawContent) {
-        console.error(`Translation empty response (${model})`)
+        logger.error(`Translation empty response (${model})`)
         continue
       }
 
@@ -332,7 +333,7 @@ Return ONLY valid JSON. No markdown code blocks, no explanation.`
           parsed = JSON.parse(rawContent)
         }
       } catch {
-        console.error(`Translation JSON parse failed (${model}):`, rawContent.slice(0, 500))
+        logger.error(`Translation JSON parse failed (${model}):`, rawContent.slice(0, 500))
         await logApiUsage({
           userId,
           contentId,
@@ -366,7 +367,7 @@ Return ONLY valid JSON. No markdown code blocks, no explanation.`
     } catch (err: unknown) {
       clearTimeout(timeoutId)
       const isTimeout = err instanceof Error && err.name === "AbortError"
-      console.error(`Translation failed (${model}):`, isTimeout ? "timeout" : err)
+      logger.error(`Translation failed (${model}):`, isTimeout ? "timeout" : err)
       await logApiUsage({
         userId,
         contentId,
@@ -393,7 +394,7 @@ export async function POST(
 
     // 1. Rate limit
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`translate:${clientIp}`, 20, 60000)
+    const rateLimit = await checkRateLimit(`translate:${clientIp}`, 20, 60000)
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -509,7 +510,7 @@ export async function POST(
       })
 
     if (upsertError) {
-      console.error("Failed to create translation placeholder:", upsertError)
+      logger.error("Failed to create translation placeholder:", upsertError)
       return AuthErrors.serverError()
     }
 
@@ -540,7 +541,7 @@ export async function POST(
         .eq("content_id", idResult.data)
         .eq("language", targetLang)
 
-      console.error("Translation failed:", err)
+      logger.error("Translation failed:", err)
       return NextResponse.json(
         { error: "Translation failed. Please try again." },
         { status: 500 }
@@ -580,7 +581,7 @@ export async function POST(
       .single()
 
     if (updateError || !updatedSummary) {
-      console.error("Failed to save translation:", updateError)
+      logger.error("Failed to save translation:", updateError)
       return AuthErrors.serverError()
     }
 
@@ -592,7 +593,7 @@ export async function POST(
 
     return NextResponse.json(updatedSummary)
   } catch (err) {
-    console.error("Translate route error:", err)
+    logger.error("Translate route error:", err)
     return AuthErrors.serverError()
   }
 }

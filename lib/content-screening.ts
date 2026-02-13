@@ -18,6 +18,7 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database.types"
 import { createHash } from "crypto"
+import { logger } from "@/lib/logger"
 
 // ============================================
 // Types
@@ -346,12 +347,12 @@ export async function persistFlag(params: {
       status: "pending",
     })
 
-    console.log(
+    logger.info(
       `MODERATION: Content flagged [${params.flag.severity}] — ${params.flag.source}: ${params.flag.reason} — URL: ${params.url}`
     )
   } catch (error) {
     // Never fail silently on moderation logging — but also don't crash the request
-    console.error("MODERATION: Failed to persist flag:", error)
+    logger.error("MODERATION: Failed to persist flag:", error)
   }
 }
 

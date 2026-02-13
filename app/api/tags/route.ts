@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { authenticateRequest } from "@/lib/auth"
+import { logger } from "@/lib/logger"
 
 // GET all unique tags for the authenticated user's content
 export async function GET(request: Request) {
   try {
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`tags-list:${clientIp}`, 30, 60000) // 30 requests per minute
+    const rateLimit = await checkRateLimit(`tags-list:${clientIp}`, 30, 60000) // 30 requests per minute
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { success: false, error: "Too many requests. Please try again later." },
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
       .limit(500)
 
     if (contentError) {
-      console.error("Tags fetch error:", contentError)
+      logger.error("Tags fetch error:", contentError)
       return NextResponse.json({ success: false, error: "Failed to fetch tags. Please try again." }, { status: 500 })
     }
 

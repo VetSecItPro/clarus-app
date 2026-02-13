@@ -47,7 +47,7 @@ export function ArticlePageClient({
       {/* Back link */}
       <Link
         href="/articles"
-        className="inline-flex items-center gap-1.5 text-sm text-white/40 hover:text-white/70 transition-colors mb-8"
+        className="inline-flex items-center gap-1.5 text-sm text-white/50 hover:text-white/70 transition-colors mb-8"
       >
         <ArrowLeft className="w-3.5 h-3.5" />
         All Articles
@@ -59,7 +59,7 @@ export function ArticlePageClient({
           <div className={`inline-flex p-1.5 rounded-lg ${config.bg}`}>
             <Icon className={`w-3.5 h-3.5 ${config.color}`} />
           </div>
-          <span className="text-xs text-white/40">{config.label}</span>
+          <span className="text-xs text-white/50">{config.label}</span>
         </div>
 
         <h1 className="text-2xl sm:text-3xl font-bold text-white mb-4 leading-tight">
@@ -71,7 +71,7 @@ export function ArticlePageClient({
         </p>
 
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 text-xs text-white/30">
+          <div className="flex items-center gap-3 text-xs text-white/50">
             <span>{article.author}</span>
             <span>&middot;</span>
             <span>{publishedDate}</span>
@@ -80,7 +80,7 @@ export function ArticlePageClient({
           </div>
           <button
             onClick={handleShare}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs text-white/40 hover:text-white/70 bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.1] transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs text-white/50 hover:text-white/70 bg-white/[0.03] border border-white/[0.06] hover:border-white/[0.1] transition-all"
           >
             {copied ? (
               <>
@@ -164,14 +164,14 @@ export function ArticlePageClient({
                         className={`w-3 h-3 ${relConfig.color}`}
                       />
                     </div>
-                    <span className="text-[0.6875rem] text-white/30">
+                    <span className="text-[0.6875rem] text-white/50">
                       {relConfig.label}
                     </span>
                   </div>
                   <h3 className="text-sm font-medium text-white group-hover:text-brand transition-colors line-clamp-2 mb-1">
                     {related.title}
                   </h3>
-                  <span className="text-[0.6875rem] text-white/30">
+                  <span className="text-[0.6875rem] text-white/50">
                     {related.readingTime}
                   </span>
                 </Link>
@@ -197,9 +197,9 @@ function FaqItem({ question, answer }: { question: string; answer: string }) {
           {question}
         </span>
         {open ? (
-          <ChevronUp className="w-4 h-4 text-white/30 shrink-0" />
+          <ChevronUp className="w-4 h-4 text-white/50 shrink-0" />
         ) : (
-          <ChevronDown className="w-4 h-4 text-white/30 shrink-0" />
+          <ChevronDown className="w-4 h-4 text-white/50 shrink-0" />
         )}
       </button>
       {open && (

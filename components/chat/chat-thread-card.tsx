@@ -2,7 +2,6 @@
 
 import { memo, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
 import { prefetchContent } from "@/lib/prefetch"
 import {
   Youtube,
@@ -97,10 +96,8 @@ export const ChatThreadCard = memo(function ChatThreadCard({
   }, [router, id])
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="group relative"
+    <div
+      className="group relative animate-fade-in-up"
       onMouseEnter={handleMouseEnter}
     >
       <div
@@ -138,7 +135,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
             </h3>
 
             {/* Meta row */}
-            <div className="flex items-center gap-2 text-[0.6875rem] text-white/40 mb-1.5">
+            <div className="flex items-center gap-2 text-[0.6875rem] text-white/50 mb-1.5">
               {getTypeIcon(type)}
               <span className="truncate">{domain}</span>
               <span>•</span>
@@ -206,7 +203,7 @@ export const ChatThreadCard = memo(function ChatThreadCard({
 
             {/* Message count */}
             {message_count > 0 && (
-              <div className="flex items-center gap-1 text-[0.625rem] text-white/40">
+              <div className="flex items-center gap-1 text-[0.625rem] text-white/50">
                 <MessageSquare className="w-3 h-3" />
                 <span>{message_count}</span>
               </div>
@@ -215,6 +212,6 @@ export const ChatThreadCard = memo(function ChatThreadCard({
         </div>
       </div>
 
-    </motion.div>
+    </div>
   )
 })

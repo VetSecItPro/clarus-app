@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { digestPreferencesSchema, parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 /**
  * GET /api/user/digest-preferences
@@ -10,7 +10,7 @@ import { checkRateLimit } from "@/lib/validation"
 export async function GET(request: Request) {
   // Rate limiting — 30 req/min per IP
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-  const rateLimit = checkRateLimit(`digest-prefs:${clientIp}`, 30, 60000)
+  const rateLimit = await checkRateLimit(`digest-prefs:${clientIp}`, 30, 60000)
   if (!rateLimit.allowed) {
     return AuthErrors.rateLimit(rateLimit.resetIn)
   }
@@ -43,7 +43,7 @@ export async function GET(request: Request) {
 export async function PATCH(request: Request) {
   // Rate limiting — 10 writes/min per IP
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-  const rateLimit = checkRateLimit(`digest-prefs-write:${clientIp}`, 10, 60000)
+  const rateLimit = await checkRateLimit(`digest-prefs-write:${clientIp}`, 10, 60000)
   if (!rateLimit.allowed) {
     return AuthErrors.rateLimit(rateLimit.resetIn)
   }

@@ -338,7 +338,7 @@ export function ChatInputBar({
                 <button
                   onClick={clearInput}
                   aria-label="Clear URL preview"
-                  className="text-white/40 hover:text-white/60"
+                  className="text-white/50 hover:text-white/60"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -367,7 +367,7 @@ export function ChatInputBar({
                 <button
                   onClick={clearInput}
                   aria-label="Clear file selection"
-                  className="text-white/40 hover:text-white/60"
+                  className="text-white/50 hover:text-white/60"
                 >
                   <X className="w-3 h-3" />
                 </button>
@@ -406,7 +406,7 @@ export function ChatInputBar({
               <Link2
                 className={cn(
                   "w-4 h-4 transition-colors",
-                  isFocused ? "text-brand" : "text-white/30"
+                  isFocused ? "text-brand" : "text-white/50"
                 )}
               />
             )}
@@ -476,7 +476,7 @@ export function ChatInputBar({
             <button
               onClick={clearInput}
               aria-label="Clear input"
-              className="flex-shrink-0 text-white/30 hover:text-white/60"
+              className="flex-shrink-0 text-white/50 hover:text-white/60"
             >
               <X className="w-4 h-4" />
             </button>
@@ -495,7 +495,7 @@ export function ChatInputBar({
                     "h-8 w-8 rounded-lg flex items-center justify-center transition-all flex-shrink-0",
                     selectedFile
                       ? "bg-orange-500/20 text-orange-400"
-                      : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+                      : "text-white/50 hover:text-white/70 hover:bg-white/[0.06]"
                   )}
                   aria-label="Upload file"
                 >
@@ -529,7 +529,7 @@ export function ChatInputBar({
                     "h-8 w-8 rounded-lg flex items-center justify-center transition-all relative",
                     isListening
                       ? "bg-red-500 hover:bg-red-600 text-white"
-                      : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+                      : "text-white/50 hover:text-white/70 hover:bg-white/[0.06]"
                   )}
                   aria-label={isListening ? "Stop recording" : "Start voice input"}
                 >
@@ -555,7 +555,7 @@ export function ChatInputBar({
                   "h-8 w-8 rounded-lg flex items-center justify-center transition-all",
                   canSubmit
                     ? "bg-brand hover:bg-brand-hover text-white"
-                    : "text-white/30"
+                    : "text-white/50"
                 )}
               >
                 {isProcessing ? (
@@ -580,7 +580,7 @@ export function ChatInputBar({
                   "flex items-center gap-1.5 h-7 px-2.5 rounded-full transition-all",
                   selectedFile
                     ? "bg-orange-500/20 text-orange-400"
-                    : "text-white/40 hover:text-white/70 hover:bg-white/[0.06]"
+                    : "text-white/50 hover:text-white/70 hover:bg-white/[0.06]"
                 )}
                 aria-label="Upload file"
               >
@@ -603,7 +603,7 @@ export function ChatInputBar({
 
         {/* Helper text and character count */}
         <div className="flex items-center justify-between mt-2 px-1">
-          <p className="text-[0.625rem] text-white/30">
+          <p className="text-[0.625rem] text-white/50">
             Supports PDF, Word, Excel, PowerPoint, TXT, and CSV. Max 20MB. AI may make mistakes.
           </p>
           {isNearLimit && (

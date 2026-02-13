@@ -316,7 +316,7 @@ function DesktopHighlight({ segment, onClick }: { segment: TextSegment; onClick:
               </div>
             </div>
           )}
-          <p className="text-white/40 text-[0.625rem]">Click for full details</p>
+          <p className="text-white/50 text-[0.625rem]">Click for full details</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
@@ -398,7 +398,7 @@ function ClaimDetailSheet({
 
             {/* Claim text */}
             <div className="mb-4">
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Claim</p>
+              <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Claim</p>
               <p className={`text-base text-white/90 font-medium p-3 rounded-xl ${colors.bg} border border-white/10`}>
                 "{claim.exact_text}"
               </p>
@@ -406,7 +406,7 @@ function ClaimDetailSheet({
 
             {/* Explanation */}
             <div className="mb-4">
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Assessment</p>
+              <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Assessment</p>
               <p className="text-sm text-white/80 leading-relaxed">
                 {claim.explanation}
               </p>
@@ -415,7 +415,7 @@ function ClaimDetailSheet({
             {/* Severity */}
             {claim.severity && (
               <div className="mb-4">
-                <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Severity</p>
+                <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Severity</p>
                 <span className={`inline-block px-2 py-0.5 rounded text-xs capitalize ${
                   claim.severity === "high" ? "bg-red-500/20 text-red-300" :
                   claim.severity === "medium" ? "bg-amber-500/20 text-amber-300" :
@@ -429,7 +429,7 @@ function ClaimDetailSheet({
             {/* Timestamp */}
             {claim.timestamp && (
               <div className="mb-4">
-                <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Timestamp</p>
+                <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Timestamp</p>
                 <div className="flex items-center gap-2 text-sm text-brand">
                   <Clock className="w-4 h-4" />
                   <span>{claim.timestamp}</span>
@@ -440,7 +440,7 @@ function ClaimDetailSheet({
             {/* Sources */}
             {claim.sources && claim.sources.length > 0 && (
               <div>
-                <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Sources</p>
+                <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Sources</p>
                 <div className="space-y-2">
                   {claim.sources.map((source, i) => (
                     <a
@@ -511,7 +511,7 @@ function ClaimDetailModal({
 
             {/* Claim text */}
             <div className="mb-4">
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Claim</p>
+              <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Claim</p>
               <p className={`text-sm text-white/90 font-medium p-3 rounded-xl ${colors.bg} border border-white/10`}>
                 "{claim.exact_text}"
               </p>
@@ -519,7 +519,7 @@ function ClaimDetailModal({
 
             {/* Explanation */}
             <div className="mb-4">
-              <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Assessment</p>
+              <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Assessment</p>
               <p className="text-sm text-white/80 leading-relaxed">
                 {claim.explanation}
               </p>
@@ -529,7 +529,7 @@ function ClaimDetailModal({
             <div className="flex items-center gap-4 mb-4">
               {claim.severity && (
                 <div>
-                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Severity</p>
+                  <p className="text-xs text-white/50 uppercase tracking-wider mb-1">Severity</p>
                   <span className={`inline-block px-2 py-0.5 rounded text-xs capitalize ${
                     claim.severity === "high" ? "bg-red-500/20 text-red-300" :
                     claim.severity === "medium" ? "bg-amber-500/20 text-amber-300" :
@@ -541,7 +541,7 @@ function ClaimDetailModal({
               )}
               {claim.timestamp && (
                 <div>
-                  <p className="text-xs text-white/40 uppercase tracking-wider mb-1">Timestamp</p>
+                  <p className="text-xs text-white/50 uppercase tracking-wider mb-1">Timestamp</p>
                   <div className="flex items-center gap-1.5 text-sm text-brand">
                     <Clock className="w-3.5 h-3.5" />
                     <span>{claim.timestamp}</span>
@@ -553,7 +553,7 @@ function ClaimDetailModal({
             {/* Sources */}
             {claim.sources && claim.sources.length > 0 && (
               <div>
-                <p className="text-xs text-white/40 uppercase tracking-wider mb-2">Sources</p>
+                <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Sources</p>
                 <div className="space-y-2">
                   {claim.sources.map((source, i) => (
                     <a
@@ -601,7 +601,7 @@ function ClaimsLegend({ claims }: { claims: ClaimHighlight[] }) {
 
   return (
     <div className="flex flex-wrap items-center gap-2 mb-4 p-3 rounded-xl bg-white/[0.02] border border-white/[0.06]">
-      <span className="text-xs text-white/40 mr-1">Legend:</span>
+      <span className="text-xs text-white/50 mr-1">Legend:</span>
       {activeStatuses.map(([status, count]) => {
         const colors = getStatusColors(status as ClaimHighlight["status"])
         const Icon = colors.icon
@@ -609,7 +609,7 @@ function ClaimsLegend({ claims }: { claims: ClaimHighlight[] }) {
           <div key={status} className={`flex items-center gap-1.5 px-2 py-1 rounded-lg ${colors.bg}`}>
             <Icon className={`w-3 h-3 ${colors.text}`} />
             <span className={`text-xs ${colors.text}`}>{colors.label}</span>
-            <span className="text-xs text-white/40">({count})</span>
+            <span className="text-xs text-white/50">({count})</span>
           </div>
         )
       })}

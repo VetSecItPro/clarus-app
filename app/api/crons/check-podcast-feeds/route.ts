@@ -18,6 +18,7 @@ import { timingSafeEqual } from "crypto"
 import { getAdminClient } from "@/lib/auth"
 import { fetchAndParseFeed, type PodcastEpisode } from "@/lib/rss-parser"
 import { sendNewEpisodeEmail } from "@/lib/email"
+import { logger } from "@/lib/logger"
 
 export const maxDuration = 60
 
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
   const cronSecret = process.env.CRON_SECRET
 
   if (!cronSecret) {
-    console.error("CRON_SECRET not configured")
+    logger.error("CRON_SECRET not configured")
     return NextResponse.json({ error: "Server misconfigured" }, { status: 500 })
   }
 
@@ -70,7 +71,7 @@ export async function GET(request: Request) {
     .limit(200)
 
   if (subError) {
-    console.error("[check-podcast-feeds] Failed to fetch subscriptions:", subError.message)
+    logger.error("[check-podcast-feeds] Failed to fetch subscriptions:", subError.message)
     return NextResponse.json({ error: "Failed to fetch subscriptions" }, { status: 500 })
   }
 
@@ -155,7 +156,7 @@ export async function GET(request: Request) {
         .select("id, episode_title, episode_date, duration_seconds")
 
       if (insertError) {
-        console.error(`[check-podcast-feeds] Failed to insert episodes for ${sub.podcast_name}:`, insertError.message)
+        logger.error(`[check-podcast-feeds] Failed to insert episodes for ${sub.podcast_name}:`, insertError.message)
         return
       }
 
@@ -210,7 +211,7 @@ export async function GET(request: Request) {
         })
         .eq("id", sub.id)
     } catch (err) {
-      console.error(`[check-podcast-feeds] Error processing ${sub.podcast_name} (${sub.feed_url}):`, err)
+      logger.error(`[check-podcast-feeds] Error processing ${sub.podcast_name} (${sub.feed_url}):`, err)
       // Still update last_checked_at to avoid hammering a broken feed
       await supabase
         .from("podcast_subscriptions")
@@ -252,10 +253,10 @@ export async function GET(request: Request) {
           if (result.success) {
             emailsSent++
           } else {
-            console.error(`[check-podcast-feeds] Failed to send email to user ${userId}:`, result.error)
+            logger.error(`[check-podcast-feeds] Failed to send email to user ${userId}:`, result.error)
           }
         } catch (err) {
-          console.error(`[check-podcast-feeds] Error sending email to user ${userId}:`, err)
+          logger.error(`[check-podcast-feeds] Error sending email to user ${userId}:`, err)
         }
       })()
     )

@@ -14,6 +14,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
+import { logger } from "@/lib/logger"
 
 // Server-side Supabase client with service role for logging
 const supabaseAdmin = createClient(
@@ -199,7 +200,7 @@ export async function logApiUsage(params: LogApiUsageParams): Promise<void> {
     })
   } catch (error) {
     // Don't throw - logging should never break the main flow
-    console.error("Failed to log API usage:", error)
+    logger.error("Failed to log API usage:", error)
   }
 }
 
@@ -240,7 +241,7 @@ export async function logProcessingMetrics(params: {
       error_message: params.errorMessage || null,
     })
   } catch (error) {
-    console.error("Failed to log processing metrics:", error)
+    logger.error("Failed to log processing metrics:", error)
   }
 }
 

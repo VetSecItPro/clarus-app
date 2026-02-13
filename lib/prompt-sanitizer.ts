@@ -16,6 +16,8 @@
  * @see {@link lib/content-screening.ts} for content moderation (different concern)
  */
 
+import { logger } from "@/lib/logger"
+
 // ============================================
 // Constants
 // ============================================
@@ -142,7 +144,7 @@ export function sanitizeForPrompt(input: string, options: SanitizeOptions = {}):
   }
 
   if (detections.length > 0 && logDetections) {
-    console.warn(
+    logger.warn(
       `PROMPT_SAFETY: Injection patterns detected in ${context}: [${detections.join(", ")}]`
     )
   }
@@ -250,7 +252,7 @@ export function detectOutputLeakage(
   }
 
   if (detections.length > 0) {
-    console.warn(
+    logger.warn(
       `PROMPT_SAFETY: Possible injection leakage in ${sectionType} output: [${detections.join(", ")}]`
     )
   }

@@ -148,7 +148,7 @@ const FAQS = [
 function PricingToggle({ interval, onChange }: { interval: BillingInterval; onChange: (v: BillingInterval) => void }) {
   return (
     <div className="flex items-center justify-center gap-3">
-      <span className={`text-sm transition-colors ${interval === "monthly" ? "text-white" : "text-white/40"}`}>
+      <span className={`text-sm transition-colors ${interval === "monthly" ? "text-white" : "text-white/50"}`}>
         Monthly
       </span>
       <button
@@ -162,7 +162,7 @@ function PricingToggle({ interval, onChange }: { interval: BillingInterval; onCh
           transition={{ type: "spring", stiffness: 500, damping: 30 }}
         />
       </button>
-      <span className={`text-sm transition-colors ${interval === "annual" ? "text-white" : "text-white/40"}`}>
+      <span className={`text-sm transition-colors ${interval === "annual" ? "text-white" : "text-white/50"}`}>
         Annual
       </span>
       <span
@@ -223,9 +223,9 @@ function PlanCard({
               <span className="text-4xl font-bold text-white">
                 ${interval === "monthly" ? price : monthlyEquivalent}
               </span>
-              <span className="text-white/40 text-sm">/month</span>
+              <span className="text-white/50 text-sm">/month</span>
             </div>
-            <div className={`text-xs mt-1 transition-opacity duration-200 ${interval === "annual" ? "text-white/40 opacity-100" : "opacity-0"}`}>
+            <div className={`text-xs mt-1 transition-opacity duration-200 ${interval === "annual" ? "text-white/50 opacity-100" : "opacity-0"}`}>
               ${plan.annualPrice}/year &middot; billed annually
             </div>
           </>
@@ -249,9 +249,9 @@ function PlanCard({
                 plan.color === "blue" ? "text-brand" : plan.color === "purple" ? "text-purple-400" : "text-emerald-400"
               }`} />
             ) : (
-              <X className="w-4 h-4 mt-0.5 flex-shrink-0 text-white/40" />
+              <X className="w-4 h-4 mt-0.5 flex-shrink-0 text-white/50" />
             )}
-            <span className={`text-sm ${feature.included ? "text-white/70" : "text-white/40"}`}>
+            <span className={`text-sm ${feature.included ? "text-white/70" : "text-white/50"}`}>
               {feature.text}
             </span>
           </li>
@@ -280,7 +280,7 @@ function FAQSection() {
               className="w-full flex items-center justify-between px-5 py-4 text-left text-sm font-medium text-white/80 hover:text-white transition-colors"
             >
               {faq.q}
-              <span className={`text-white/40 transition-transform duration-200 ${openIndex === i ? "rotate-45" : ""}`}>
+              <span className={`text-white/50 transition-transform duration-200 ${openIndex === i ? "rotate-45" : ""}`}>
                 +
               </span>
             </button>
@@ -308,7 +308,7 @@ export default function PricingPageClient() {
     <div className="min-h-screen bg-black flex flex-col">
       <LandingHeader />
 
-      <main className="pt-14 flex-1">
+      <main id="main-content" className="pt-14 flex-1">
         {/* Background orbs */}
         <div className="fixed inset-0 -z-10 overflow-hidden pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-brand/[0.06] rounded-full blur-[120px]" />
@@ -402,7 +402,7 @@ export default function PricingPageClient() {
                 <div className="flex flex-col items-center gap-3 sm:min-w-[160px]">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-white">$10</div>
-                    <div className="text-xs text-white/40">one-time payment</div>
+                    <div className="text-xs text-white/50">one-time payment</div>
                   </div>
                   <Link
                     href="/signup"
@@ -410,7 +410,7 @@ export default function PricingPageClient() {
                   >
                     Get Day Pass
                   </Link>
-                  <p className="text-[0.625rem] text-white/40 text-center">
+                  <p className="text-[0.625rem] text-white/50 text-center">
                     Expires 24 hours after purchase
                   </p>
                 </div>
@@ -429,7 +429,7 @@ export default function PricingPageClient() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/[0.08]">
-                    <th className="text-left px-6 py-4 text-white/40 font-medium">Feature</th>
+                    <th className="text-left px-6 py-4 text-white/50 font-medium">Feature</th>
                     <th className="px-6 py-4 text-white/60 font-semibold text-center">Free</th>
                     <th className="px-6 py-4 text-brand font-semibold text-center">Starter</th>
                     <th className="px-6 py-4 text-purple-400 font-semibold text-center">Pro</th>

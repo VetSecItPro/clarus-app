@@ -68,14 +68,14 @@ export function AnalysisModeSelector({ selectedMode, onModeChange, isLocked }: A
           isLocked && "opacity-40 cursor-not-allowed"
         )}
       >
-        <span className="text-white/40">Mode:</span>
+        <span className="text-white/50">Mode:</span>
         {isLocked ? (
           <Lock className="w-3 h-3 text-brand" />
         ) : (
           <activeOption.icon className="w-3 h-3 text-brand" />
         )}
         <span className="text-brand">{activeOption.label}</span>
-        <ChevronDown className="w-3 h-3 text-white/30" />
+        <ChevronDown className="w-3 h-3 text-white/50" />
       </button>
 
       {/* Mobile bottom sheet */}

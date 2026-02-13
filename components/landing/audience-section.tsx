@@ -85,7 +85,7 @@ export const AudienceSection = memo(function AudienceSection() {
               <ul className="text-white/60 text-sm leading-relaxed space-y-1 text-left">
                 {persona.bullets.map((bullet) => (
                   <li key={bullet} className="flex gap-2">
-                    <span className="text-white/40 shrink-0">&bull;</span>
+                    <span className="text-white/50 shrink-0">&bull;</span>
                     <span>{bullet}</span>
                   </li>
                 ))}

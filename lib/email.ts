@@ -20,6 +20,7 @@
 
 import { Resend } from "resend"
 import { render } from "@react-email/components"
+import { logger } from "@/lib/logger"
 
 // Email templates (only those actively used)
 import { SubscriptionStartedEmail } from "@/emails/subscription-started"
@@ -73,13 +74,13 @@ async function sendEmail(
     })
 
     if (error) {
-      console.error("Failed to send email:", error)
+      logger.error("Failed to send email:", error)
       return { success: false, error: error.message }
     }
 
     return { success: true, messageId: data?.id }
   } catch (err) {
-    console.error("Email send error:", err)
+    logger.error("Email send error:", err)
     return { success: false, error: String(err) }
   }
 }

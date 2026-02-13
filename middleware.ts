@@ -158,8 +158,8 @@ function setSecurityHeaders(response: NextResponse) {
   // Prevent MIME type sniffing
   response.headers.set("X-Content-Type-Options", "nosniff")
 
-  // XSS protection (legacy, but still useful for older browsers)
-  response.headers.set("X-XSS-Protection", "1; mode=block")
+  // XSS protection — disabled per OWASP; CSP handles XSS prevention
+  response.headers.set("X-XSS-Protection", "0")
 
   // Referrer policy - don't leak URLs to third parties
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")

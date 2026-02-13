@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { authenticateAdmin, getAdminClient } from "@/lib/auth"
-import { checkRateLimit } from "@/lib/admin/rate-limit"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { logger } from "@/lib/logger"
 
 // Real pricing — must match Polar product configuration
 const PRICING = {
@@ -36,11 +37,11 @@ export async function GET() {
     }
 
     // Rate limit: 20 requests per minute (MRR data changes slowly)
-    const rl = checkRateLimit(`admin-mrr:${auth.user.id}`, { maxRequests: 20, windowMs: 60_000 })
-    if (rl.limited) {
+    const rl = await checkRateLimit(`admin-mrr:${auth.user.id}`, 20, 60_000)
+    if (!rl.allowed) {
       return NextResponse.json(
         { error: "Too many requests" },
-        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.retryAfterMs / 1000)) } }
+        { status: 429, headers: { "Retry-After": String(Math.ceil(rl.resetIn / 1000)) } }
       )
     }
 
@@ -152,7 +153,7 @@ export async function GET() {
       headers: { "Cache-Control": "private, max-age=300, stale-while-revalidate=600" },
     })
   } catch (error: unknown) {
-    console.error("Error fetching MRR data:", error)
+    logger.error("Error fetching MRR data:", error)
     return NextResponse.json(
       { error: "Failed to fetch MRR data. Please try again later." },
       { status: 500 }

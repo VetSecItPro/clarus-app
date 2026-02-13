@@ -56,13 +56,13 @@ export function ArticlesPageClient({
 
       {/* Search */}
       <div className="relative max-w-md mx-auto mb-8">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
         <input
           type="text"
           placeholder="Search articles..."
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          className="w-full pl-10 pr-4 py-2.5 bg-white/[0.03] border border-white/[0.06] rounded-full text-sm text-white placeholder:text-white/30 focus:outline-none focus:border-brand/40 transition-colors"
+          className="w-full pl-10 pr-4 py-2.5 bg-white/[0.03] border border-white/[0.06] rounded-full text-sm text-white placeholder:text-white/50 focus:outline-none focus:border-brand/40 transition-colors"
         />
       </div>
 
@@ -118,7 +118,7 @@ export function ArticlesPageClient({
           </h2>
         )}
         {filtered.length === 0 ? (
-          <p className="text-center text-white/40 py-12">
+          <p className="text-center text-white/50 py-12">
             No articles found. Try a different search term.
           </p>
         ) : (
@@ -166,15 +166,15 @@ function FeaturedCard({ article }: { article: BlogArticle }) {
         <div className={`inline-flex p-1.5 rounded-lg ${config.bg}`}>
           <Icon className={`w-3.5 h-3.5 ${config.color}`} />
         </div>
-        <span className="text-xs text-white/40">{config.label}</span>
+        <span className="text-xs text-white/50">{config.label}</span>
       </div>
       <h3 className="text-base font-semibold text-white group-hover:text-brand transition-colors mb-2 line-clamp-2">
         {article.title}
       </h3>
-      <p className="text-sm text-white/40 leading-relaxed line-clamp-3 mb-3">
+      <p className="text-sm text-white/50 leading-relaxed line-clamp-3 mb-3">
         {article.description}
       </p>
-      <div className="flex items-center justify-between text-xs text-white/30">
+      <div className="flex items-center justify-between text-xs text-white/50">
         <span>{article.readingTime}</span>
         <span>{formatDate(article.publishedAt)}</span>
       </div>
@@ -195,15 +195,15 @@ function ArticleCard({ article }: { article: BlogArticle }) {
         <div className={`inline-flex p-1.5 rounded-lg ${config.bg}`}>
           <Icon className={`w-3.5 h-3.5 ${config.color}`} />
         </div>
-        <span className="text-xs text-white/40">{config.label}</span>
+        <span className="text-xs text-white/50">{config.label}</span>
       </div>
       <h3 className="text-base font-semibold text-white group-hover:text-brand transition-colors mb-2 line-clamp-2">
         {article.title}
       </h3>
-      <p className="text-sm text-white/40 leading-relaxed line-clamp-3 mb-3">
+      <p className="text-sm text-white/50 leading-relaxed line-clamp-3 mb-3">
         {article.description}
       </p>
-      <div className="flex items-center justify-between text-xs text-white/30">
+      <div className="flex items-center justify-between text-xs text-white/50">
         <span>{article.readingTime}</span>
         <span>{formatDate(article.publishedAt)}</span>
       </div>

@@ -117,7 +117,7 @@ export function CollectionSidebar({
           <button
             onClick={() => setShowCreateDialog(true)}
             aria-label="Create new collection"
-            className="w-7 h-7 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] flex items-center justify-center text-white/40 hover:text-white transition-all"
+            className="w-7 h-7 rounded-lg bg-white/[0.06] hover:bg-white/[0.1] flex items-center justify-center text-white/50 hover:text-white transition-all"
           >
             <FolderPlus className="w-3.5 h-3.5" />
           </button>
@@ -136,7 +136,7 @@ export function CollectionSidebar({
           <Library className="w-4 h-4 shrink-0" />
           <span className="flex-1 text-left truncate">All Items</span>
           {totalItems > 0 && (
-            <span className="text-[0.625rem] text-white/40 tabular-nums">
+            <span className="text-[0.625rem] text-white/50 tabular-nums">
               {totalItems}
             </span>
           )}
@@ -145,11 +145,11 @@ export function CollectionSidebar({
         {/* Collections list */}
         {isLoading ? (
           <div className="flex items-center justify-center py-6">
-            <Loader2 className="w-4 h-4 text-white/30 animate-spin" />
+            <Loader2 className="w-4 h-4 text-white/50 animate-spin" />
           </div>
         ) : collections.length === 0 ? (
           <div className="py-4 text-center">
-            <p className="text-xs text-white/30 mb-2">No collections yet</p>
+            <p className="text-xs text-white/50 mb-2">No collections yet</p>
             <button
               onClick={() => setShowCreateDialog(true)}
               className="text-xs text-brand hover:text-brand-hover transition-colors"
@@ -185,7 +185,7 @@ export function CollectionSidebar({
                     <span className="flex-1 text-left truncate">
                       {collection.name}
                     </span>
-                    <span className="text-[0.625rem] text-white/40 tabular-nums group-hover:hidden">
+                    <span className="text-[0.625rem] text-white/50 tabular-nums group-hover:hidden">
                       {collection.item_count}
                     </span>
 
@@ -197,7 +197,7 @@ export function CollectionSidebar({
                           handleEdit(collection)
                         }}
                         aria-label={`Edit ${collection.name}`}
-                        className="w-6 h-6 rounded-md hover:bg-white/[0.1] flex items-center justify-center text-white/40 hover:text-white transition-all"
+                        className="w-6 h-6 rounded-md hover:bg-white/[0.1] flex items-center justify-center text-white/50 hover:text-white transition-all"
                       >
                         <Pencil className="w-3 h-3" />
                       </button>
@@ -208,7 +208,7 @@ export function CollectionSidebar({
                         }}
                         disabled={deletingId === collection.id}
                         aria-label={`Delete ${collection.name}`}
-                        className="w-6 h-6 rounded-md hover:bg-red-500/20 flex items-center justify-center text-white/40 hover:text-red-400 transition-all"
+                        className="w-6 h-6 rounded-md hover:bg-red-500/20 flex items-center justify-center text-white/50 hover:text-red-400 transition-all"
                       >
                         {deletingId === collection.id ? (
                           <Loader2 className="w-3 h-3 animate-spin" />
@@ -267,17 +267,17 @@ function SelectedCollectionDetail({
       className="mt-4 p-3 bg-white/[0.03] border border-white/[0.06] rounded-xl"
     >
       <div className="flex items-center gap-2 mb-2">
-        <FolderOpen className="w-3.5 h-3.5 text-white/40" />
+        <FolderOpen className="w-3.5 h-3.5 text-white/50" />
         <span className="text-xs font-medium text-white truncate">
           {collection.name}
         </span>
       </div>
       {collection.description && (
-        <p className="text-[0.6875rem] text-white/40 line-clamp-2 mb-2">
+        <p className="text-[0.6875rem] text-white/50 line-clamp-2 mb-2">
           {collection.description}
         </p>
       )}
-      <div className="flex items-center gap-1 text-[0.625rem] text-white/30">
+      <div className="flex items-center gap-1 text-[0.625rem] text-white/50">
         <span>{collection.item_count} items</span>
         <ChevronRight className="w-3 h-3" />
       </div>

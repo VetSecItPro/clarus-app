@@ -82,7 +82,7 @@ function TierCard({ tier, isRecommended }: { tier: "starter" | "pro"; isRecommen
       <div className="flex items-center gap-2 mb-3">
         <span className={colors.text}>{TIER_ICONS[tier]}</span>
         <span className="text-white font-semibold capitalize">{tier}</span>
-        <span className="text-white/40 text-sm ml-auto">{price}</span>
+        <span className="text-white/50 text-sm ml-auto">{price}</span>
       </div>
       <ul className="space-y-1.5 text-xs text-white/60">
         <li>{limits.analyses} analyses/mo</li>
@@ -222,7 +222,7 @@ export function UpgradeModal({
                 <button
                   onClick={onClose}
                   aria-label="Close upgrade dialog"
-                  className="p-2.5 rounded-lg hover:bg-white/[0.08] text-white/40 hover:text-white/80 transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 active:scale-95"
+                  className="p-2.5 rounded-lg hover:bg-white/[0.08] text-white/50 hover:text-white/80 transition-colors focus-visible:ring-2 focus-visible:ring-brand/50 active:scale-95"
                 >
                   <X className="w-4 h-4" />
                 </button>
@@ -235,7 +235,7 @@ export function UpgradeModal({
                   {isLimitBased ? (
                     <>
                       You&apos;ve reached your monthly limit for <span className="text-white font-medium">{feature}</span>.
-                      <span className="block text-white/40 text-xs mt-1">
+                      <span className="block text-white/50 text-xs mt-1">
                         Used {currentCount} of {limit} this month.
                       </span>
                     </>
@@ -266,7 +266,7 @@ export function UpgradeModal({
                 </div>
 
                 {/* Current plan note */}
-                <div className="text-center text-xs text-white/30">
+                <div className="text-center text-xs text-white/50">
                   Currently on the <span className="capitalize">{currentTier}</span> plan
                 </div>
               </div>

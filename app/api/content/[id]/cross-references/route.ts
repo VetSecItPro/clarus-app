@@ -3,7 +3,7 @@ import { authenticateRequest, verifyContentOwnership } from "@/lib/auth"
 import { uuidSchema } from "@/lib/schemas"
 import { getUserTier } from "@/lib/usage"
 import { TIER_FEATURES } from "@/lib/tier-limits"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 export interface CrossReference {
   claimText: string
@@ -29,8 +29,8 @@ export async function GET(
 
   // Rate limiting - expensive RPC calls
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-  const rateLimit = checkRateLimit(`crossref:${auth.user.id}`, 20, 60000) // 20 per minute per user
-  const ipRateLimit = checkRateLimit(`crossref:ip:${clientIp}`, 30, 60000) // 30 per minute per IP
+  const rateLimit = await checkRateLimit(`crossref:${auth.user.id}`, 20, 60000) // 20 per minute per user
+  const ipRateLimit = await checkRateLimit(`crossref:ip:${clientIp}`, 30, 60000) // 30 per minute per IP
   if (!rateLimit.allowed || !ipRateLimit.allowed) {
     return NextResponse.json(
       { error: "Too many requests. Please try again later." },

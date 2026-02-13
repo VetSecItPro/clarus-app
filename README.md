@@ -2,6 +2,8 @@
 
 AI-powered content analysis for clarity and understanding.
 
+**Live:** [clarusapp.io](https://clarusapp.io)
+
 ## Tech Stack
 
 | Layer | Technology |

@@ -2,12 +2,13 @@ import { NextResponse } from "next/server"
 import { polar } from "@/lib/polar"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { logger } from "@/lib/logger"
 
 export async function POST(request: Request) {
   // Rate limiting
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-  const rateLimit = checkRateLimit(`portal:${clientIp}`, 10, 60000) // 10 requests per minute
+  const rateLimit = await checkRateLimit(`portal:${clientIp}`, 10, 60000) // 10 requests per minute
   if (!rateLimit.allowed) {
     return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
   }
@@ -55,7 +56,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: session.customerPortalUrl })
   } catch (error: unknown) {
-    console.error("Portal error:", error)
+    logger.error("Portal error:", error)
     return NextResponse.json({ error: "Failed to access billing portal. Please try again later." }, { status: 500 })
   }
 }

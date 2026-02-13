@@ -405,7 +405,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                     style={{ backgroundColor: c.color || "var(--brand)" }}
                   />
                   {c.name}
-                  <span className="text-white/30">{c.item_count}</span>
+                  <span className="text-white/50">{c.item_count}</span>
                 </button>
               ))}
             </div>
@@ -415,7 +415,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
         <div className="mb-4 sm:mb-6 space-y-2 sm:space-y-3">
           {/* Search */}
           <div className="relative">
-            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+            <Search className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
             <input
               type="text"
               placeholder="Search..."
@@ -497,7 +497,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                           )}
                         >
                           <span className="capitalize">{tag}</span>
-                          <span className="text-xs text-white/40">{count}</span>
+                          <span className="text-xs text-white/50">{count}</span>
                         </button>
                       ))}
                     </div>

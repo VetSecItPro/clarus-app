@@ -5,6 +5,7 @@ import type { Database } from "@/types/database.types"
 import { formatTranscript, type AssemblyAIWebhookPayload } from "@/lib/assemblyai"
 import { logApiUsage } from "@/lib/api-usage"
 import { processContent, ProcessContentError } from "@/lib/process-content"
+import { logger } from "@/lib/logger"
 
 // PERF: FIX-213 — set maxDuration for serverless function (webhook + retry loop needs time)
 export const maxDuration = 60
@@ -22,13 +23,13 @@ const webhookToken = process.env.ASSEMBLYAI_WEBHOOK_TOKEN
  */
 export async function POST(req: NextRequest) {
   if (!supabaseUrl || !supabaseKey) {
-    console.error("WEBHOOK: Supabase not configured")
+    logger.error("WEBHOOK: Supabase not configured")
     return NextResponse.json({ error: "Server configuration error" }, { status: 500 })
   }
 
   // Require webhook token in production
   if (!webhookToken) {
-    console.error("WEBHOOK: CRITICAL: ASSEMBLYAI_WEBHOOK_TOKEN not configured")
+    logger.error("WEBHOOK: CRITICAL: ASSEMBLYAI_WEBHOOK_TOKEN not configured")
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 })
   }
 
@@ -37,7 +38,7 @@ export async function POST(req: NextRequest) {
   const tokenBuffer = Buffer.from(urlToken)
   const expectedBuffer = Buffer.from(webhookToken)
   if (tokenBuffer.length !== expectedBuffer.length || !timingSafeEqual(tokenBuffer, expectedBuffer)) {
-    console.error("WEBHOOK: Invalid webhook token")
+    logger.error("WEBHOOK: Invalid webhook token")
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   }
 
@@ -65,19 +66,19 @@ export async function POST(req: NextRequest) {
     .single()
 
   if (fetchError || !content) {
-    console.error(`WEBHOOK: No content found for transcript_id ${transcript_id}`)
+    logger.error(`WEBHOOK: No content found for transcript_id ${transcript_id}`)
     return NextResponse.json({ error: "Unknown transcript_id" }, { status: 404 })
   }
 
   // Verify this content is actually a podcast in transcribing state
   if (content.type !== "podcast") {
-    console.error(`WEBHOOK: Content ${content.id} is not a podcast (type: ${content.type})`)
+    logger.error(`WEBHOOK: Content ${content.id} is not a podcast (type: ${content.type})`)
     return NextResponse.json({ error: "Content is not a podcast" }, { status: 400 })
   }
 
   // Handle transcription failure
   if (status === "error") {
-    console.error(`WEBHOOK: Raw AssemblyAI error for ${content.id}:`, payload.error)
+    logger.error(`WEBHOOK: Raw AssemblyAI error for ${content.id}:`, payload.error)
 
     await supabase
       .from("content")
@@ -104,7 +105,7 @@ export async function POST(req: NextRequest) {
   const { full_text, duration_seconds, speaker_count } = formatTranscript(payload)
 
   if (!full_text) {
-    console.error(`WEBHOOK: Empty transcript for content ${content.id}`)
+    logger.error(`WEBHOOK: Empty transcript for content ${content.id}`)
 
     await supabase
       .from("content")
@@ -160,9 +161,9 @@ export async function POST(req: NextRequest) {
       break
     } catch (error) {
       if (error instanceof ProcessContentError) {
-        console.error(`WEBHOOK: AI analysis failed for ${content.id} (attempt ${attempt}): ${error.message}`)
+        logger.error(`WEBHOOK: AI analysis failed for ${content.id} (attempt ${attempt}): ${error.message}`)
       } else {
-        console.error(`WEBHOOK: AI analysis failed for ${content.id} (attempt ${attempt}):`, error)
+        logger.error(`WEBHOOK: AI analysis failed for ${content.id} (attempt ${attempt}):`, error)
       }
 
       // Wait before retry: 1s, 2s, 3s (exponential backoff)
@@ -174,7 +175,7 @@ export async function POST(req: NextRequest) {
 
   // If all retries failed, mark content as needing attention
   if (!analysisTriggered) {
-    console.error(`WEBHOOK: All retry attempts failed for content ${content.id}. Marking as error.`)
+    logger.error(`WEBHOOK: All retry attempts failed for content ${content.id}. Marking as error.`)
     await supabase
       .from("summaries")
       .upsert(

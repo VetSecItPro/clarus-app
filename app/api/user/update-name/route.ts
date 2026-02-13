@@ -1,13 +1,14 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, getAdminClient, AuthErrors } from "@/lib/auth"
 import { updateNameSchema, parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { logger } from "@/lib/logger"
 
 export async function POST(request: Request) {
   try {
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`update-name:${clientIp}`, 10, 60000) // 10 requests per minute
+    const rateLimit = await checkRateLimit(`update-name:${clientIp}`, 10, 60000) // 10 requests per minute
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -51,7 +52,7 @@ export async function POST(request: Request) {
       .eq("id", userId)
 
     if (error) {
-      console.error("Update name error:", error)
+      logger.error("Update name error:", error)
       return NextResponse.json({ success: false, error: "Failed to update name. Please try again." }, { status: 500 })
     }
 

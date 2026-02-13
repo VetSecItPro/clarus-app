@@ -99,7 +99,7 @@ export function LanguageSelector({
           dropdownDirection === "up" ? "bottom-full mb-2" : "top-full mt-2"
         )}>
           <div className="px-3 py-2 border-b border-white/[0.06]">
-            <p className="text-[0.6875rem] font-medium text-white/40 uppercase tracking-wider">
+            <p className="text-[0.6875rem] font-medium text-white/50 uppercase tracking-wider">
               Translate Analysis
             </p>
           </div>
@@ -125,7 +125,7 @@ export function LanguageSelector({
                   <span className="text-base leading-none">{lang.flag}</span>
                   <span className="flex-1 text-sm">{lang.nativeName}</span>
                   {isLocked && (
-                    <Lock className="w-3 h-3 text-white/20" />
+                    <Lock className="w-3 h-3 text-white/50" />
                   )}
                   {isSelected && (
                     <div className="w-1.5 h-1.5 rounded-full bg-brand" />
@@ -136,7 +136,7 @@ export function LanguageSelector({
           </div>
           {!multiLanguageEnabled && (
             <div className="px-3 py-2 border-t border-white/[0.06] bg-white/[0.02]">
-              <p className="text-[0.625rem] text-white/30">
+              <p className="text-[0.625rem] text-white/50">
                 Multi-language requires Starter plan or higher.
               </p>
             </div>

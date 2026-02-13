@@ -195,7 +195,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                 "flex items-center gap-2 px-4 py-2.5 text-sm font-medium transition-colors relative focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:ring-offset-1 focus-visible:ring-offset-black focus-visible:outline-none active:opacity-80",
                 activeTab === tab.id
                   ? "text-white"
-                  : "text-white/40 hover:text-white/70"
+                  : "text-white/50 hover:text-white/70"
               )}
             >
               <tab.icon className="w-4 h-4" />
@@ -203,7 +203,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
               {tab.count > 0 && (
                 <span className={cn(
                   "ml-1 text-xs px-1.5 py-0.5 rounded-full",
-                  activeTab === tab.id ? "bg-white/10" : "bg-white/5 text-white/30"
+                  activeTab === tab.id ? "bg-white/10" : "bg-white/5 text-white/50"
                 )}>
                   {tab.count}
                 </span>
@@ -223,7 +223,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
           <>
             {/* Tier limit indicator */}
             {hasPodcastAccess && (
-              <div className="mb-6 flex items-center gap-2 text-xs text-white/40">
+              <div className="mb-6 flex items-center gap-2 text-xs text-white/50">
                 <span>{podcastSubs.length} / {podcastLimit} subscriptions used</span>
                 <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden max-w-[120px]">
                   <div
@@ -298,7 +298,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
           <>
             {/* Tier limit indicator */}
             {hasYoutubeAccess && (
-              <div className="mb-6 flex items-center gap-2 text-xs text-white/40">
+              <div className="mb-6 flex items-center gap-2 text-xs text-white/50">
                 <span>{youtubeSubs.length} / {youtubeLimit} subscriptions used</span>
                 <div className="flex-1 h-1 bg-white/5 rounded-full overflow-hidden max-w-[120px]">
                   <div
@@ -377,7 +377,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
 function LoadingSpinner() {
   return (
     <div role="status" className="flex items-center justify-center py-16">
-      <Loader2 className="w-6 h-6 animate-spin text-white/40" />
+      <Loader2 className="w-6 h-6 animate-spin text-white/50" />
       <span className="sr-only">Loading</span>
     </div>
   )
@@ -391,7 +391,7 @@ function NoAccessState({ icon: Icon, title, description }: { icon: typeof Podcas
       className="text-center py-16 px-4"
     >
       <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
-        <Icon className="w-8 h-8 text-white/30" />
+        <Icon className="w-8 h-8 text-white/50" />
       </div>
       <h2 className="text-lg font-semibold text-white mb-2">{title}</h2>
       <p className="text-white/50 text-sm max-w-md mx-auto mb-6">{description}</p>
@@ -413,7 +413,7 @@ function EmptyState({ icon: Icon, title, description, children }: { icon: typeof
       className="text-center py-16 px-4"
     >
       <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
-        <Icon className="w-8 h-8 text-white/30" />
+        <Icon className="w-8 h-8 text-white/50" />
       </div>
       <h2 className="text-lg font-semibold text-white mb-2">{title}</h2>
       <p className="text-white/50 text-sm max-w-md mx-auto mb-6">{description}</p>
@@ -477,19 +477,19 @@ function SubscriptionCard({
           />
         ) : (
           <div className="w-14 h-14 rounded-xl bg-white/5 flex items-center justify-center shrink-0">
-            <Icon className="w-6 h-6 text-white/30" />
+            <Icon className="w-6 h-6 text-white/50" />
           </div>
         )}
 
         <div className="flex-1 min-w-0">
           <h3 className="text-white font-medium truncate">{name}</h3>
           {latestTitle ? (
-            <p className="text-white/40 text-sm truncate mt-0.5">Latest: {latestTitle}</p>
+            <p className="text-white/50 text-sm truncate mt-0.5">Latest: {latestTitle}</p>
           ) : (
-            <p className="text-white/30 text-sm mt-0.5">No content found yet</p>
+            <p className="text-white/50 text-sm mt-0.5">No content found yet</p>
           )}
           {latestDate && (
-            <p className="text-white/30 text-xs mt-0.5">
+            <p className="text-white/50 text-xs mt-0.5">
               {new Date(latestDate).toLocaleDateString("en-US", {
                 month: "short", day: "numeric", year: "numeric",
               })}
@@ -502,7 +502,7 @@ function SubscriptionCard({
             href={feedUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-2 rounded-lg text-white/30 hover:text-white/60 hover:bg-white/5 transition-colors"
+            className="p-2 rounded-lg text-white/50 hover:text-white/60 hover:bg-white/5 transition-colors"
             aria-label={`Open feed for ${name}`}
           >
             <ExternalLink className="w-4 h-4" />
@@ -510,7 +510,7 @@ function SubscriptionCard({
           <button
             onClick={onDelete}
             disabled={isDeleting}
-            className="p-2 rounded-lg text-white/30 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
+            className="p-2 rounded-lg text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-colors disabled:opacity-50"
             aria-label={`Unsubscribe from ${name}`}
           >
             {isDeleting ? (

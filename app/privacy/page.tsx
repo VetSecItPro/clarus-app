@@ -179,6 +179,8 @@ export default function PrivacyPage() {
                 <li><strong className="text-white">Tavily:</strong> Web search for contextual information during analysis</li>
                 <li><strong className="text-white">Resend:</strong> Transactional email delivery</li>
                 <li><strong className="text-white">Polar:</strong> Payment processing and subscription management</li>
+                <li><strong className="text-white">Sentry:</strong> Error monitoring and performance tracking (processes error reports and page performance data)</li>
+                <li><strong className="text-white">AssemblyAI:</strong> Audio transcription for podcast analysis (processes podcast audio for speaker-identified transcripts)</li>
               </ul>
               <p className="leading-relaxed mt-4">
                 Each of these services maintains their own privacy policies. We select providers that maintain appropriate data protection standards.

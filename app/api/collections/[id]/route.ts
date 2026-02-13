@@ -9,7 +9,8 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { uuidSchema, updateCollectionSchema, parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { logger } from "@/lib/logger"
 
 export async function PATCH(
   request: Request,
@@ -20,7 +21,7 @@ export async function PATCH(
 
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`collections-update:${clientIp}`, 30, 60000)
+    const rateLimit = await checkRateLimit(`collections-update:${clientIp}`, 30, 60000)
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -81,7 +82,7 @@ export async function PATCH(
       if (updateError.code === "23505") {
         return AuthErrors.badRequest("A collection with this name already exists")
       }
-      console.error("Collection update error:", updateError)
+      logger.error("Collection update error:", updateError)
       return NextResponse.json(
         { success: false, error: "Failed to update collection. Please try again." },
         { status: 500 }
@@ -106,7 +107,7 @@ export async function DELETE(
 
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`collections-delete:${clientIp}`, 10, 60000)
+    const rateLimit = await checkRateLimit(`collections-delete:${clientIp}`, 10, 60000)
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -143,7 +144,7 @@ export async function DELETE(
       .eq("id", idResult.data)
 
     if (deleteError) {
-      console.error("Collection delete error:", deleteError)
+      logger.error("Collection delete error:", deleteError)
       return NextResponse.json(
         { success: false, error: "Failed to delete collection. Please try again." },
         { status: 500 }

@@ -1,12 +1,13 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database.types"
 import { type NextRequest, NextResponse } from "next/server"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { authenticateRequest } from "@/lib/auth"
 import { getUserTier } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 import type { AnalysisLanguage } from "@/lib/languages"
+import { logger } from "@/lib/logger"
 
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
@@ -18,7 +19,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const ocrApiKey = process.env.OCR_SPACE_API_KEY || "helloworld"
 
 if (!supabaseUrl || !supabaseKey) {
-  console.warn("PDF API: Supabase credentials not set")
+  logger.warn("PDF API: Supabase credentials not set")
 }
 
 // Allowed file MIME types for upload
@@ -76,14 +77,14 @@ async function extractTextWithOCR(buffer: Buffer, filename: string): Promise<str
 
   if (!response.ok) {
     const errorText = await response.text()
-    console.error("OCR API error:", errorText)
+    logger.error("OCR API error:", errorText)
     throw new Error("OCR service temporarily unavailable")
   }
 
   const result = await response.json()
 
   if (result.IsErroredOnProcessing) {
-    console.error("OCR processing error details:", result.ErrorMessage)
+    logger.error("OCR processing error details:", result.ErrorMessage)
     throw new Error("Failed to process PDF with OCR")
   }
 
@@ -107,7 +108,7 @@ export async function POST(req: NextRequest) {
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "unknown"
 
   // Rate limit
-  const rateLimit = checkRateLimit(`pdf:${clientIp}`, LIMITS.MAX_UPLOADS_PER_HOUR, 3600000)
+  const rateLimit = await checkRateLimit(`pdf:${clientIp}`, LIMITS.MAX_UPLOADS_PER_HOUR, 3600000)
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Too many uploads. Please try again later." },
@@ -205,7 +206,7 @@ export async function POST(req: NextRequest) {
       pdfText = textResult.text || textResult.pages.map((p: { text: string }) => p.text).join("\n\n")
       await parser.destroy()
     } catch (pdfError) {
-      console.error("pdf-parse failed:", pdfError)
+      logger.error("pdf-parse failed:", pdfError)
       // Will try OCR below
     }
 
@@ -215,7 +216,7 @@ export async function POST(req: NextRequest) {
         pdfText = await extractTextWithOCR(buffer, file.name)
         usedOCR = true
       } catch (ocrError) {
-        console.error("OCR failed:", ocrError)
+        logger.error("OCR failed:", ocrError)
         const errorMessage = ocrError instanceof Error ? ocrError.message : "OCR processing failed"
         return NextResponse.json(
           { error: errorMessage, isScannedPdf: true },
@@ -259,7 +260,7 @@ export async function POST(req: NextRequest) {
       .single()
 
     if (contentError || !contentData) {
-      console.error("Error creating content:", contentError)
+      logger.error("Error creating content:", contentError)
       return NextResponse.json(
         { error: "Failed to save PDF" },
         { status: 500 }
@@ -278,9 +279,9 @@ export async function POST(req: NextRequest) {
       })
     } catch (error) {
       if (error instanceof ProcessContentError) {
-        console.error("Failed to trigger processing:", error.message)
+        logger.error("Failed to trigger processing:", error.message)
       } else {
-        console.error("Failed to trigger processing:", error)
+        logger.error("Failed to trigger processing:", error)
       }
       // Don't fail - the content is saved, processing can be retried
     }
@@ -296,7 +297,7 @@ export async function POST(req: NextRequest) {
     })
 
   } catch (error) {
-    console.error("PDF upload error:", error)
+    logger.error("PDF upload error:", error)
     return NextResponse.json(
       { error: "Failed to process PDF" },
       { status: 500 }

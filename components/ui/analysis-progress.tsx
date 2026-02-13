@@ -124,9 +124,9 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
                       transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
                     />
                   </div>
-                  <span className="text-sm text-white/70 font-medium">Transcribing audio...</span>
+                  <span className="text-sm text-white/70 font-medium" aria-live="polite">Transcribing audio...</span>
                 </div>
-                <div className="flex items-center gap-1.5 text-xs text-white/40">
+                <div className="flex items-center gap-1.5 text-xs text-white/50">
                   <Clock className="w-3 h-3" />
                   <span>{Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, "0")}</span>
                 </div>
@@ -138,7 +138,7 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
                   transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
                 />
               </div>
-              <p className="text-[0.6875rem] text-white/30">Typically takes 2-5 minutes depending on episode length</p>
+              <p className="text-[0.6875rem] text-white/50">Typically takes 2-5 minutes depending on episode length</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -190,7 +190,7 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
                   </span>
                 </div>
                 {!showComplete && completedCount > 0 && completedCount < 6 && (
-                  <span className="text-xs text-white/40">
+                  <span className="text-xs text-white/50">
                     {SEGMENTS[activeIndex]?.label ?? ""}
                   </span>
                 )}

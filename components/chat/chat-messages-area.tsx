@@ -50,7 +50,7 @@ export function ChatMessagesArea({
 
   return (
     <ScrollArea className={className}>
-      <div className="p-4 space-y-4">
+      <div className="p-4 space-y-4" aria-live="polite" aria-relevant="additions">
         {/* Empty state */}
         {messages.length === 0 && !isLoading && emptyState}
 

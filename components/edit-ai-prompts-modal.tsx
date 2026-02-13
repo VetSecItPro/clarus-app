@@ -220,7 +220,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
                     className={cn(inputClassName, "min-h-[100px] resize-y")}
                     placeholder="Template with {{CONTENT}} placeholder..."
                   />
-                  <p className="text-xs text-white/40">
+                  <p className="text-xs text-white/50">
                     Variables: <code className="bg-white/10 px-1 rounded">{"{{CONTENT}}"}</code> for content, <code className="bg-white/10 px-1 rounded">{"{{TYPE}}"}</code> for type
                   </p>
                 </div>
@@ -283,7 +283,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
                     <Globe className="w-4 h-4 text-brand" />
                     <div>
                       <Label className="text-sm text-white/90 font-medium">Web Search</Label>
-                      <p className="text-xs text-white/40">Enable Tavily web search for fact-checking</p>
+                      <p className="text-xs text-white/50">Enable Tavily web search for fact-checking</p>
                     </div>
                   </div>
                   <Switch
@@ -297,7 +297,7 @@ export function EditAIPromptsModal({ isOpen, onOpenChange }: EditAIPromptsModalP
 
             {/* Footer */}
             <div className="px-6 py-4 border-t border-white/[0.06] bg-black/20 flex items-center justify-between">
-              <div className="text-sm text-white/40">
+              <div className="text-sm text-white/50">
                 {hasChanges && "• Unsaved changes"}
               </div>
               <div className="flex gap-3">

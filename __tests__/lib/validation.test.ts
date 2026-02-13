@@ -1,5 +1,6 @@
-import { describe, it, expect, beforeEach } from "vitest"
-import { validateUrl, validateUUID, validateContentId, validateChatMessage, checkRateLimit } from "@/lib/validation"
+import { describe, it, expect } from "vitest"
+import { validateUrl, validateUUID, validateContentId, validateChatMessage } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 // =============================================================================
 // validateUrl
@@ -311,54 +312,54 @@ describe("checkRateLimit", () => {
   // Use unique identifiers per test to avoid cross-test contamination
   // since the rate limit map is module-level state
 
-  it("allows the first request", () => {
+  it("allows the first request", async () => {
     const id = `test-first-${Date.now()}-${Math.random()}`
-    const result = checkRateLimit(id, 5, 60000)
+    const result = await checkRateLimit(id, 5, 60000)
     expect(result.allowed).toBe(true)
     expect(result.remaining).toBe(4)
   })
 
-  it("allows requests within the limit", () => {
+  it("allows requests within the limit", async () => {
     const id = `test-within-${Date.now()}-${Math.random()}`
     for (let i = 0; i < 4; i++) {
-      const result = checkRateLimit(id, 5, 60000)
+      const result = await checkRateLimit(id, 5, 60000)
       expect(result.allowed).toBe(true)
     }
   })
 
-  it("blocks requests when limit is exceeded", () => {
+  it("blocks requests when limit is exceeded", async () => {
     const id = `test-exceed-${Date.now()}-${Math.random()}`
     // Use up all 3 allowed requests
     for (let i = 0; i < 3; i++) {
-      checkRateLimit(id, 3, 60000)
+      await checkRateLimit(id, 3, 60000)
     }
     // 4th request should be blocked
-    const result = checkRateLimit(id, 3, 60000)
+    const result = await checkRateLimit(id, 3, 60000)
     expect(result.allowed).toBe(false)
     expect(result.remaining).toBe(0)
     expect(result.resetIn).toBeGreaterThan(0)
   })
 
-  it("tracks remaining count correctly", () => {
+  it("tracks remaining count correctly", async () => {
     const id = `test-remaining-${Date.now()}-${Math.random()}`
-    const r1 = checkRateLimit(id, 5, 60000)
+    const r1 = await checkRateLimit(id, 5, 60000)
     expect(r1.remaining).toBe(4)
-    const r2 = checkRateLimit(id, 5, 60000)
+    const r2 = await checkRateLimit(id, 5, 60000)
     expect(r2.remaining).toBe(3)
-    const r3 = checkRateLimit(id, 5, 60000)
+    const r3 = await checkRateLimit(id, 5, 60000)
     expect(r3.remaining).toBe(2)
   })
 
-  it("provides resetIn in milliseconds", () => {
+  it("provides resetIn in milliseconds", async () => {
     const id = `test-reset-${Date.now()}-${Math.random()}`
-    const result = checkRateLimit(id, 5, 30000)
+    const result = await checkRateLimit(id, 5, 30000)
     expect(result.resetIn).toBeLessThanOrEqual(30000)
     expect(result.resetIn).toBeGreaterThan(0)
   })
 
-  it("uses default values (100 requests, 60s window)", () => {
+  it("uses default values (100 requests, 60s window)", async () => {
     const id = `test-defaults-${Date.now()}-${Math.random()}`
-    const result = checkRateLimit(id)
+    const result = await checkRateLimit(id)
     expect(result.allowed).toBe(true)
     expect(result.remaining).toBe(99)
   })

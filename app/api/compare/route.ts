@@ -13,12 +13,13 @@
 
 import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, getAdminClient } from "@/lib/auth"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { parseAiResponseOrThrow } from "@/lib/ai-response-parser"
 import { logApiUsage, createTimer } from "@/lib/api-usage"
 import { compareContentSchema, parseBody } from "@/lib/schemas"
 import type { UserTier } from "@/types/database.types"
+import { logger } from "@/lib/logger"
 
 export const maxDuration = 120
 
@@ -59,7 +60,7 @@ export async function POST(request: NextRequest) {
     const { user, supabase } = auth
 
     // 2. Rate limit: 10 per minute
-    const rateLimit = checkRateLimit(`compare:${user.id}`, 10, 60_000)
+    const rateLimit = await checkRateLimit(`compare:${user.id}`, 10, 60_000)
     if (!rateLimit.allowed) {
       return NextResponse.json(
         { error: "Too many requests. Please try again later." },
@@ -259,7 +260,7 @@ Analyze these sources and provide a comprehensive comparison in the required JSO
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text().catch(() => "Unknown error")
-      console.error(`API: [compare] OpenRouter HTTP ${aiResponse.status}: ${errorText}`)
+      logger.error(`API: [compare] OpenRouter HTTP ${aiResponse.status}: ${errorText}`)
 
       logApiUsage({
         userId: user.id,
@@ -338,7 +339,7 @@ Analyze these sources and provide a comprehensive comparison in the required JSO
       )
     }
 
-    console.error("API: [compare] Unhandled error:", message)
+    logger.error("API: [compare] Unhandled error:", message)
     return NextResponse.json(
       { error: "Something went wrong. Please try again." },
       { status: 500 }

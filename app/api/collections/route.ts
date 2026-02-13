@@ -9,15 +9,16 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { createCollectionSchema, parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { getUserTier } from "@/lib/usage"
 import { TIER_LIMITS } from "@/lib/tier-limits"
+import { logger } from "@/lib/logger"
 
 export async function GET(request: Request) {
   try {
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`collections-list:${clientIp}`, 30, 60000)
+    const rateLimit = await checkRateLimit(`collections-list:${clientIp}`, 30, 60000)
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -35,7 +36,7 @@ export async function GET(request: Request) {
       .limit(200)
 
     if (error) {
-      console.error("Collections fetch error:", error)
+      logger.error("Collections fetch error:", error)
       return NextResponse.json(
         { success: false, error: "Failed to fetch collections. Please try again." },
         { status: 500 }
@@ -58,7 +59,7 @@ export async function POST(request: Request) {
   try {
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`collections-create:${clientIp}`, 10, 60000)
+    const rateLimit = await checkRateLimit(`collections-create:${clientIp}`, 10, 60000)
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -86,7 +87,7 @@ export async function POST(request: Request) {
     const collectionsLimit = TIER_LIMITS[tier].collections
 
     if (countResult.error) {
-      console.error("Collections count error:", countResult.error)
+      logger.error("Collections count error:", countResult.error)
       return AuthErrors.serverError()
     }
 
@@ -121,7 +122,7 @@ export async function POST(request: Request) {
       if (insertError.code === "23505") {
         return AuthErrors.badRequest("A collection with this name already exists")
       }
-      console.error("Collection insert error:", insertError)
+      logger.error("Collection insert error:", insertError)
       return NextResponse.json(
         { success: false, error: "Failed to create collection. Please try again." },
         { status: 500 }

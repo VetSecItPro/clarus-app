@@ -27,12 +27,12 @@ export default function CookieConsent() {
   if (!showBanner) return null
 
   return (
-    <div role="alert" className="fixed bottom-20 sm:bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-[100]">
+    <div role="region" aria-label="Cookie consent" className="fixed bottom-20 sm:bottom-4 left-4 right-4 sm:left-auto sm:right-4 sm:max-w-sm z-[100]">
       <div className="bg-neutral-900/95 backdrop-blur-xl border border-white/[0.1] rounded-full shadow-2xl px-4 py-2.5">
         <div className="flex items-center gap-3">
-          <Cookie className="w-4 h-4 text-white/40 flex-shrink-0" />
+          <Cookie className="w-4 h-4 text-white/50 flex-shrink-0" />
           <p className="text-white/60 text-xs flex-1">
-            Essential cookies + anonymous analytics.{" "}
+            Essential cookies only.{" "}
             <Link href="/privacy" className="text-brand hover:underline">
               Privacy
             </Link>

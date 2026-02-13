@@ -22,7 +22,7 @@ export function LandingFooter() {
                 Clarus
               </span>
             </div>
-            <p className="text-xs text-white/30">
+            <p className="text-xs text-white/50">
               &copy; {new Date().getFullYear()} Clarus. Veteran-Owned &amp; Operated.
             </p>
           </div>

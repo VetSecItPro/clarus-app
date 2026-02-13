@@ -33,7 +33,7 @@ function ActionItem({ item, index }: { item: ActionItemData; index: number }) {
       <div className="flex items-center gap-1.5">
         <button
           onClick={() => setIsChecked(!isChecked)}
-          className="flex-shrink-0 text-white/40 hover:text-brand transition-colors"
+          className="flex-shrink-0 text-white/50 hover:text-brand transition-colors"
         >
           {isChecked ? (
             <CheckCircle2 className="w-4 h-4 text-brand" />
@@ -46,7 +46,7 @@ function ActionItem({ item, index }: { item: ActionItemData; index: number }) {
         </span>
         <button
           onClick={handleCopy}
-          className="flex-shrink-0 p-1 rounded text-white/40 hover:text-white/70 hover:bg-white/10 transition-all"
+          className="flex-shrink-0 p-1 rounded text-white/50 hover:text-white/70 hover:bg-white/10 transition-all"
           title="Copy action item"
         >
           {copied ? (
@@ -61,7 +61,7 @@ function ActionItem({ item, index }: { item: ActionItemData; index: number }) {
         {item.description}
       </div>
       {/* Priority and category */}
-      <div className="text-xs text-white/30 mt-1 capitalize">
+      <div className="text-xs text-white/50 mt-1 capitalize">
         {item.priority} priority{item.category ? ` · ${item.category}` : ""}
       </div>
     </motion.div>
@@ -71,7 +71,7 @@ function ActionItem({ item, index }: { item: ActionItemData; index: number }) {
 export function ActionItemsCard({ actionItems }: ActionItemsCardProps) {
   if (!actionItems || actionItems.length === 0) {
     return (
-      <div className="text-sm text-white/40">
+      <div className="text-sm text-white/50">
         No action items extracted from this content.
       </div>
     )

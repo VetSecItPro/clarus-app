@@ -1,7 +1,6 @@
 "use client"
 
 import { useCallback, useMemo } from "react"
-import { motion } from "framer-motion"
 import { cn } from "@/lib/utils"
 
 interface TimelineIssue {
@@ -76,11 +75,9 @@ export function ClaimTimeline({ duration, issues, onMarkerClick, highlightedInde
   if (markers.length === 0) return null
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: -4 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: 0.2 }}
-      className="relative"
+    <div
+      className="relative animate-fade-in-up"
+      style={{ animationDelay: "0.2s" }}
     >
       {/* Track */}
       <div className="relative h-6 flex items-center group">
@@ -115,28 +112,28 @@ export function ClaimTimeline({ duration, issues, onMarkerClick, highlightedInde
       <div className="flex items-center justify-between mt-1">
         <div className="flex items-center gap-3">
           {markers.some((m) => m.severity === "high") && (
-            <span className="flex items-center gap-1 text-[0.625rem] text-white/40">
+            <span className="flex items-center gap-1 text-[0.625rem] text-white/50">
               <span className="w-2 h-2 rounded-full bg-red-500" />
               High
             </span>
           )}
           {markers.some((m) => m.severity === "medium") && (
-            <span className="flex items-center gap-1 text-[0.625rem] text-white/40">
+            <span className="flex items-center gap-1 text-[0.625rem] text-white/50">
               <span className="w-2 h-2 rounded-full bg-amber-500" />
               Medium
             </span>
           )}
           {markers.some((m) => m.severity === "low") && (
-            <span className="flex items-center gap-1 text-[0.625rem] text-white/40">
+            <span className="flex items-center gap-1 text-[0.625rem] text-white/50">
               <span className="w-2 h-2 rounded-full bg-emerald-500" />
               Low
             </span>
           )}
         </div>
-        <span className="text-[0.625rem] text-white/30">
+        <span className="text-[0.625rem] text-white/50">
           {markers.length} issue{markers.length !== 1 ? "s" : ""} found
         </span>
       </div>
-    </motion.div>
+    </div>
   )
 }

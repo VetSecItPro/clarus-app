@@ -76,7 +76,7 @@ function PasswordStrengthIndicator({ password }: { password: string }) {
               )}
             </div>
             <span className={`text-xs transition-colors duration-200 ${
-              req.met ? "text-green-400" : "text-white/40"
+              req.met ? "text-green-400" : "text-white/50"
             }`}>
               {req.label}
             </span>
@@ -291,7 +291,7 @@ export default function SignUpPage() {
                   Full name
                 </label>
                 <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
                   <input
                     id="name"
                     type="text"
@@ -311,7 +311,7 @@ export default function SignUpPage() {
                   Email address
                 </label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
                   <input
                     id="email"
                     type="email"
@@ -331,7 +331,7 @@ export default function SignUpPage() {
                   Password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
                   <input
                     id="password"
                     type={showPassword ? "text" : "password"}
@@ -345,7 +345,7 @@ export default function SignUpPage() {
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/60 transition-colors"
                     aria-label={showPassword ? "Hide password" : "Show password"}
                   >
                     {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -360,7 +360,7 @@ export default function SignUpPage() {
                   Confirm password
                 </label>
                 <div className="relative">
-                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/40" />
+                  <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/50" />
                   <input
                     id="confirm-password"
                     type={showConfirmPassword ? "text" : "password"}
@@ -374,7 +374,7 @@ export default function SignUpPage() {
                   <button
                     type="button"
                     onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/40 hover:text-white/60 transition-colors"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-white/50 hover:text-white/60 transition-colors"
                     aria-label={showConfirmPassword ? "Hide confirm password" : "Show confirm password"}
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -432,7 +432,7 @@ export default function SignUpPage() {
                 </button>
               </div>
               {!agreeToTerms && !isLoading && (
-                <p className="text-[0.625rem] text-white/40 text-center">
+                <p className="text-[0.625rem] text-white/50 text-center">
                   Please agree to the Terms of Service to continue
                 </p>
               )}

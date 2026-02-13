@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "@/types/database.types"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { contactFormSchema, parseBody } from "@/lib/schemas"
 import { sendContactFormEmail } from "@/lib/email"
+import { logger } from "@/lib/logger"
 
 let _client: ReturnType<typeof createClient<Database, "clarus">> | null = null
 function getClient() {
@@ -20,7 +21,7 @@ function getClient() {
 export async function POST(request: Request) {
   // Rate limit: 5 submissions per hour per IP
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-  const rateLimit = checkRateLimit(`contact:${clientIp}`, 5, 3600000)
+  const rateLimit = await checkRateLimit(`contact:${clientIp}`, 5, 3600000)
   if (!rateLimit.allowed) {
     return NextResponse.json(
       { error: "Too many submissions. Please try again later." },
@@ -61,7 +62,7 @@ export async function POST(request: Request) {
     .single()
 
   if (insertError) {
-    console.error("Failed to log contact submission:", insertError)
+    logger.error("Failed to log contact submission:", insertError)
     return NextResponse.json({ error: "Failed to process submission" }, { status: 500 })
   }
 

@@ -423,7 +423,7 @@ export function InlineChat({ contentId, session, contentType, contentCategory }:
 
       {/* Messages area - fixed max height with own scroll */}
       <div className="h-[400px] lg:h-[360px] overflow-y-auto subtle-scrollbar">
-        <div className="p-3 space-y-2.5">
+        <div className="p-3 space-y-2.5" aria-live="polite" aria-relevant="additions">
           {messages.length === 0 && !isLoading && (
             <div className="flex flex-col items-center justify-center text-center text-gray-500 py-4">
               <MessageSquare className="w-8 h-8 mb-2 text-gray-600" />

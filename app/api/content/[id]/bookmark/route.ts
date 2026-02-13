@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { uuidSchema, bookmarkUpdateSchema, parseBody } from "@/lib/schemas"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { enforceAndIncrementUsage } from "@/lib/usage"
+import { logger } from "@/lib/logger"
 
 export async function PATCH(
   request: Request,
@@ -13,7 +14,7 @@ export async function PATCH(
 
     // Rate limiting
     const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-    const rateLimit = checkRateLimit(`bookmark:${clientIp}`, 30, 60000) // 30 requests per minute
+    const rateLimit = await checkRateLimit(`bookmark:${clientIp}`, 30, 60000) // 30 requests per minute
     if (!rateLimit.allowed) {
       return AuthErrors.rateLimit(rateLimit.resetIn)
     }
@@ -63,7 +64,7 @@ export async function PATCH(
       .single()
 
     if (error) {
-      console.error("Bookmark update error:", error)
+      logger.error("Bookmark update error:", error)
       return NextResponse.json({ success: false, error: "Failed to update bookmark. Please try again." }, { status: 500 })
     }
 

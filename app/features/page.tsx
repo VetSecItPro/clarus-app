@@ -133,7 +133,7 @@ export default function FeaturesIndexPage() {
               <h2 className="text-base font-semibold text-white group-hover:text-brand transition-colors mb-2">
                 {feature.title}
               </h2>
-              <p className="text-sm text-white/40 leading-relaxed">
+              <p className="text-sm text-white/50 leading-relaxed">
                 {feature.description}
               </p>
             </Link>

@@ -32,6 +32,8 @@ next-env.d.ts
 /playwright-report/
 /blob-report/
 /playwright/.cache/
+tests/e2e/.auth/
+.test-suggestions/
 
 # misc
 .DS_Store
@@ -72,6 +74,8 @@ docs/security/
 # Performance
 .perf-reports/
 .perf-audit.json
+# Launch readiness
+.launch-reports/
 # Generic skill output pattern
 *.skill-output.md
 

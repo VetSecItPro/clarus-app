@@ -137,7 +137,7 @@ jobs:
           key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
 
       - run: pnpm exec playwright install chromium --with-deps
-      - run: pnpm test
+      - run: pnpm test:e2e
 
       - name: Upload failure artifacts
         uses: actions/upload-artifact@v4

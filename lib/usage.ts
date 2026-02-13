@@ -20,6 +20,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database, UserTier } from "@/types/database.types"
 import { getCurrentPeriod, getLimitForField, normalizeTier } from "./tier-limits"
 import type { UsageField } from "./tier-limits"
+import { logger } from "@/lib/logger"
 
 interface UsageCounts {
   analyses_count: number
@@ -154,7 +155,7 @@ export async function incrementUsage(
   })
 
   if (error) {
-    console.error("[usage] Failed to increment usage:", error.message)
+    logger.error("[usage] Failed to increment usage:", error.message)
     return null
   }
 
@@ -330,7 +331,7 @@ export async function enforceAndIncrementUsage(
   // Atomic RPC unavailable — graceful fallback to 2-step (check + increment).
   // Slightly less safe (TOCTOU window of ~1 request under heavy concurrency)
   // but functional. Remove this fallback once migration 216 is applied.
-  console.warn("[usage] Atomic enforcement unavailable, falling back to 2-step:", error.message)
+  logger.warn("[usage] Atomic enforcement unavailable, falling back to 2-step:", error.message)
 
   const counts = await getUsageCounts(supabase, userId)
   const currentCount = counts[field]

@@ -99,7 +99,7 @@ export function FeaturePage({
               <h3 className="text-sm font-semibold text-white group-hover:text-brand transition-colors mb-1">
                 {feature.title}
               </h3>
-              <p className="text-xs text-white/40">{feature.description}</p>
+              <p className="text-xs text-white/50">{feature.description}</p>
             </Link>
           ))}
         </div>

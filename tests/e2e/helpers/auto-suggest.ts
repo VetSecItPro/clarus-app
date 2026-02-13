@@ -9,7 +9,7 @@ import path from 'path';
 interface TestIdSuggestion {
   timestamp: string;
   testId: string;
-  context: any;
+  context: Record<string, unknown>;
   priority: 'low' | 'medium' | 'high' | 'critical';
   suggestedFix: string;
   file?: string;
@@ -21,7 +21,7 @@ interface FallbackLog {
   timestamp: string;
   testId: string;
   strategyUsed: string;
-  context: any;
+  context: Record<string, unknown>;
   severity: 'INFO' | 'WARNING' | 'BRITTLE' | 'ERROR';
 }
 
@@ -44,7 +44,7 @@ function ensureSuggestionsDir(): void {
 export async function logFallbackUsage(
   strategy: string,
   testId: string,
-  context: any,
+  context: Record<string, unknown>,
   severity: FallbackLog['severity'] = 'WARNING'
 ): Promise<void> {
   ensureSuggestionsDir();
@@ -77,7 +77,7 @@ export async function logFallbackUsage(
  */
 export async function createTestIdSuggestion(
   testId: string,
-  context: any,
+  context: Record<string, unknown>,
   priority: TestIdSuggestion['priority'] = 'medium'
 ): Promise<void> {
   ensureSuggestionsDir();
@@ -103,7 +103,7 @@ export async function createTestIdSuggestion(
   if (fs.existsSync(SUGGESTIONS_FILE)) {
     try {
       suggestions = JSON.parse(fs.readFileSync(SUGGESTIONS_FILE, 'utf-8'));
-    } catch (error) {
+    } catch {
       suggestions = [];
     }
   }
@@ -130,8 +130,8 @@ export async function createTestIdSuggestion(
 /**
  * Generate suggested fix based on context
  */
-function generateSuggestedFix(testId: string, context: any): string {
-  const { role, text, type, placeholder, customFallback } = context;
+function generateSuggestedFix(testId: string, context: Record<string, unknown>): string {
+  const { role, text, type, placeholder, customFallback } = context as { role?: string; text?: string; type?: string; placeholder?: string; customFallback?: boolean };
 
   if (customFallback) {
     return `Add data-testid="${testId}" to the component (custom fallback used)`;
@@ -272,7 +272,7 @@ export function getAllSuggestions(): TestIdSuggestion[] {
 
   try {
     return JSON.parse(fs.readFileSync(SUGGESTIONS_FILE, 'utf-8'));
-  } catch (error) {
+  } catch {
     return [];
   }
 }

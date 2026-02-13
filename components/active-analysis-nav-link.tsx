@@ -40,7 +40,7 @@ export function ActiveAnalysisNavLink({ variant }: ActiveAnalysisNavLinkProps) {
                 isActive
                   ? "text-brand"
                   : isComplete
-                    ? "text-white/40 group-active:text-white/70"
+                    ? "text-white/50 group-active:text-white/70"
                     : "text-brand"
               )}
             >

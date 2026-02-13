@@ -140,12 +140,12 @@ function AnalysisInitialMessage({ message }: { message: ChatMessageData }) {
           <div className="p-4 border-b border-white/[0.06]">
             <div className="flex items-center justify-between gap-4 flex-wrap">
               <div className="flex items-center gap-3">
-                <div className="text-xs text-white/40 uppercase tracking-wider">
+                <div className="text-xs text-white/50 uppercase tracking-wider">
                   Quality
                 </div>
                 <div className="text-2xl font-bold text-white">
                   {triage.quality_score}
-                  <span className="text-base text-white/40">/10</span>
+                  <span className="text-base text-white/50">/10</span>
                 </div>
               </div>
               {triage.signal_noise_score !== undefined && (
@@ -166,7 +166,7 @@ function AnalysisInitialMessage({ message }: { message: ChatMessageData }) {
 
         {/* TL;DR Content */}
         <div className="p-4">
-          <div className="text-xs text-white/40 uppercase tracking-wider mb-2">
+          <div className="text-xs text-white/50 uppercase tracking-wider mb-2">
             TL;DR
           </div>
           <p className="text-sm text-white/90 leading-relaxed">{content}</p>
@@ -224,7 +224,7 @@ function AnalysisExecutiveMessage({ message }: { message: ChatMessageData }) {
         animate={{ opacity: 1, y: 0 }}
         className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4"
       >
-        <div className="text-xs text-white/40 uppercase tracking-wider mb-3">
+        <div className="text-xs text-white/50 uppercase tracking-wider mb-3">
           Executive Summary
         </div>
         <MarkdownRenderer className="text-sm [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:my-2 [&_ol]:my-2 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mt-3 [&_h2]:mb-1.5 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-white/90 [&_h3]:mt-2 [&_h3]:mb-1 [&_li]:text-sm [&_strong]:text-white">
@@ -244,7 +244,7 @@ function AnalysisFullMessage({ message }: { message: ChatMessageData }) {
         animate={{ opacity: 1, y: 0 }}
         className="rounded-2xl bg-white/[0.04] border border-white/[0.08] p-4"
       >
-        <div className="text-xs text-white/40 uppercase tracking-wider mb-3">
+        <div className="text-xs text-white/50 uppercase tracking-wider mb-3">
           Full Analysis
         </div>
         <MarkdownRenderer className="text-sm [&_p]:mb-2 [&_p:last-child]:mb-0 [&_ul]:my-2 [&_ol]:my-2 [&_h2]:text-sm [&_h2]:font-semibold [&_h2]:text-white [&_h2]:mt-3 [&_h2]:mb-1.5 [&_h3]:text-sm [&_h3]:font-medium [&_h3]:text-white/90 [&_h3]:mt-2 [&_h3]:mb-1 [&_li]:text-sm [&_strong]:text-white">
@@ -319,7 +319,7 @@ export const ChatMessage = memo(function ChatMessage({
       {showTimestamp && message.timestamp && (
         <div
           className={cn(
-            "text-[0.625rem] text-white/30 mt-1",
+            "text-[0.625rem] text-white/50 mt-1",
             message.type === "user" || message.type === "user-url"
               ? "text-right mr-9"
               : "ml-9"

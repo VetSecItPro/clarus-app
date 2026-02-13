@@ -2,13 +2,14 @@ import { NextResponse } from "next/server"
 import { polar, PRODUCTS } from "@/lib/polar"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
-import { checkRateLimit } from "@/lib/validation"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { polarCheckoutSchema, parseBody } from "@/lib/schemas"
+import { logger } from "@/lib/logger"
 
 export async function POST(request: Request) {
   // Rate limiting - prevent checkout spam
   const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
-  const rateLimit = checkRateLimit(`checkout:${clientIp}`, 5, 60000) // 5 checkout attempts per minute
+  const rateLimit = await checkRateLimit(`checkout:${clientIp}`, 5, 60000) // 5 checkout attempts per minute
   if (!rateLimit.allowed) {
     return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
   }
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ url: checkout.url })
   } catch (error: unknown) {
-    console.error("Checkout error:", error)
+    logger.error("Checkout error:", error)
     return NextResponse.json({ error: "Checkout failed. Please try again later." }, { status: 500 })
   }
 }

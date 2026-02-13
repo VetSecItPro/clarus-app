@@ -12,6 +12,7 @@ import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
 import { checkUsageLimit } from "@/lib/usage"
 import { processContent, ProcessContentError } from "@/lib/process-content"
+import { logger } from "@/lib/logger"
 
 /**
  * POST /api/podcast-subscriptions/[id]/episodes/[episodeId]/analyze
@@ -101,7 +102,7 @@ export async function POST(
     .single()
 
   if (contentError) {
-    console.error("[podcast-analyze] Failed to create content entry:", contentError.message)
+    logger.error("[podcast-analyze] Failed to create content entry:", contentError.message)
     return AuthErrors.serverError()
   }
 
@@ -112,7 +113,7 @@ export async function POST(
     .eq("id", episode.id)
 
   if (linkError) {
-    console.error("[podcast-analyze] Failed to link episode to content:", linkError.message)
+    logger.error("[podcast-analyze] Failed to link episode to content:", linkError.message)
     // Non-fatal: the content entry was created, we just couldn't link it
   }
 
@@ -126,9 +127,9 @@ export async function POST(
     })
   } catch (err) {
     if (err instanceof ProcessContentError) {
-      console.error("[podcast-analyze] Process-content failed:", err.message)
+      logger.error("[podcast-analyze] Process-content failed:", err.message)
     } else {
-      console.error("[podcast-analyze] Failed to trigger process-content:", err)
+      logger.error("[podcast-analyze] Failed to trigger process-content:", err)
     }
     // Non-fatal: content was created, processing can be retried
   }
