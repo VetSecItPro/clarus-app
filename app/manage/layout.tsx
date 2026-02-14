@@ -66,7 +66,7 @@ export default function ManageLayout({ children }: { children: React.ReactNode }
         </header>
 
         {/* Page content */}
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <main id="main-content" className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           {children}
         </main>
       </div>

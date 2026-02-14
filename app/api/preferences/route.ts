@@ -38,10 +38,10 @@ export async function GET() {
     return NextResponse.json({ error: "Failed to fetch preferences" }, { status: 500 })
   }
 
-  return NextResponse.json({
-    preferences: data ?? DEFAULT_PREFERENCES,
-    hasCustomPreferences: !!data,
-  })
+  return NextResponse.json(
+    { preferences: data ?? DEFAULT_PREFERENCES, hasCustomPreferences: !!data },
+    { headers: { "Cache-Control": "private, max-age=60, stale-while-revalidate=120" } }
+  )
 }
 
 export async function PUT(request: Request) {

@@ -39,7 +39,7 @@ export function LandingPage() {
     <div className="min-h-screen bg-black flex flex-col">
       <LandingHeader />
 
-      <main className="pt-16 pb-20 md:pb-0 flex-1">
+      <main id="main-content" className="pt-16 pb-20 md:pb-0 flex-1">
         <HeroSection />
         <ProductPreview />
         <SocialProofBar />

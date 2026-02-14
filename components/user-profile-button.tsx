@@ -71,7 +71,7 @@ export default function UserProfileButton() {
   if (loading && !user) {
     // Show loader only if user is not yet determined
     return (
-      <Button variant="ghost" size="icon" className="rounded-full p-2 hover:bg-gray-800" disabled>
+      <Button variant="ghost" size="icon" className="rounded-full p-2 hover:bg-gray-800" disabled aria-label="Loading user profile">
         <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
       </Button>
     )

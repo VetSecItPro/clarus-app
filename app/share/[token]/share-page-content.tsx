@@ -2,16 +2,19 @@
 
 import Link from "next/link"
 import Image from "next/image"
+import dynamic from "next/dynamic"
 import { Eye, Sparkles, Shield, Lightbulb, Target, BookOpen, ChevronDown, FileText, Play, ArrowRight } from "lucide-react"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard } from "@/components/ui/section-card"
-import { TriageCard } from "@/components/ui/triage-card"
-import { TruthCheckCard } from "@/components/ui/truth-check-card"
-import { ActionItemsCard } from "@/components/ui/action-items-card"
-import { MarkdownRenderer } from "@/components/markdown-renderer"
 import { formatDuration, getDomainFromUrl } from "@/lib/utils"
 import type { TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
+
+// PERF: Dynamic imports — reduce initial bundle for share page (public/SEO-facing route)
+const TriageCard = dynamic(() => import("@/components/ui/triage-card").then(m => ({ default: m.TriageCard })), { ssr: false })
+const TruthCheckCard = dynamic(() => import("@/components/ui/truth-check-card").then(m => ({ default: m.TruthCheckCard })), { ssr: false })
+const ActionItemsCard = dynamic(() => import("@/components/ui/action-items-card").then(m => ({ default: m.ActionItemsCard })), { ssr: false })
+const MarkdownRenderer = dynamic(() => import("@/components/markdown-renderer").then(m => ({ default: m.MarkdownRenderer })), { ssr: false })
 
 interface SharePageContentProps {
   content: {

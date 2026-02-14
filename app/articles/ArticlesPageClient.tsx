@@ -42,7 +42,7 @@ export function ArticlesPageClient({
   const showFeatured = !search.trim() && !activeCategory
 
   return (
-    <main className="max-w-5xl mx-auto px-4 lg:px-6 py-16">
+    <main id="main-content" className="max-w-5xl mx-auto px-4 lg:px-6 py-16">
       {/* Hero */}
       <div className="text-center mb-12">
         <h1 className="text-3xl sm:text-4xl font-bold text-white mb-4">
