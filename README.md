@@ -43,6 +43,11 @@ Copy `.env.example` to `.env.local` and fill in the values. See `.env.example` f
 | `pnpm build` | Build for production |
 | `pnpm typecheck` | Run TypeScript type-checking |
 | `pnpm lint` | Run ESLint |
+| `pnpm test` | Run unit tests (Vitest) |
+| `pnpm test:watch` | Run tests in watch mode |
+| `pnpm test:coverage` | Run tests with coverage report |
+| `pnpm test:e2e` | Run end-to-end tests (Playwright) |
+| `pnpm ci` | Run full CI pipeline (lint + typecheck + build) |
 
 ## Project Structure
 
@@ -52,7 +57,7 @@ components/     Shared React components
 lib/            Utilities, hooks, data access
 public/         Static assets
 scripts/        Database migration SQL files
-supabase/       Supabase configuration and migrations
+docs/           Architecture decisions, API reference, financial model
 ```
 
 ## Database
@@ -68,7 +73,13 @@ Run these in order for initial setup:
 3. `scripts/023-add-fulltext-search.sql` -- Full-text search indexes
 4. Additional numbered migration scripts as needed
 
-Ongoing migrations are managed in `supabase/migrations/`.
+Additional numbered migration scripts in `scripts/` are applied as needed.
+
+## Documentation
+
+- [API Reference](docs/api.md) -- Endpoint schemas, auth, rate limits, and usage quotas
+- [Architecture Decision Records](docs/architecture/decisions.md) -- Key technical decisions and rationale
+- [Financial Model](docs/financial-model.md) -- Unit economics and pricing analysis
 
 ## License
 

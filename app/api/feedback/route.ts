@@ -95,5 +95,8 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Failed to fetch feedback" }, { status: 500 })
   }
 
-  return NextResponse.json({ feedback: data ?? [] })
+  return NextResponse.json(
+    { feedback: data ?? [] },
+    { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } }
+  )
 }

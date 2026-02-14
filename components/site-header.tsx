@@ -91,7 +91,7 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
 
           {/* Navigation - absolutely centered */}
           {showNav && (
-            <nav className="absolute left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-1 select-none">
+            <nav aria-label="Main navigation" className="absolute left-1/2 -translate-x-1/2 hidden sm:flex items-center gap-1 select-none">
               {navItems.map((item, index) => {
                 const isActive = pathname === item.href || (item.href !== "/" && pathname?.startsWith(item.href))
                 const Icon = item.icon

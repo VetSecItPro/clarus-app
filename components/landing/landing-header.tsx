@@ -58,6 +58,7 @@ export function LandingHeader() {
             onClick={() => setMobileOpen(!mobileOpen)}
             className="sm:hidden flex items-center justify-center w-10 h-10 rounded-lg text-white/70 hover:text-white hover:bg-white/[0.06] transition-colors"
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileOpen}
           >
             {mobileOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
           </button>

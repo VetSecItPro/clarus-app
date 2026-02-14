@@ -70,9 +70,11 @@ docs/security/
 .design-audit.json
 # Accessibility
 .a11y/
+.a11y-reports/
 .a11y-audit.json
 # Compliance
 .compliance/
+.compliance-reports/
 .compliance-audit.json
 # Performance
 .perf-reports/
@@ -123,3 +125,4 @@ dashboard-*.png
 library-*.png
 .admin-dashboard/
 landing-full.png
+.cleancode/

@@ -10,9 +10,12 @@ import {
   Loader2,
   Plus,
 } from "lucide-react"
+import dynamic from "next/dynamic"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
-import { CompareSelector } from "@/components/compare/compare-selector"
-import { CompareResults } from "@/components/compare/compare-results"
+
+// PERF: Dynamic imports — reduce initial bundle (heavy components loaded on interaction)
+const CompareSelector = dynamic(() => import("@/components/compare/compare-selector").then(m => ({ default: m.CompareSelector })), { ssr: false })
+const CompareResults = dynamic(() => import("@/components/compare/compare-results").then(m => ({ default: m.CompareResults })), { ssr: false })
 
 interface ComparisonSource {
   id: string

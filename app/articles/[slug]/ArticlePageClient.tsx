@@ -43,7 +43,7 @@ export function ArticlePageClient({
   )
 
   return (
-    <main className="max-w-3xl mx-auto px-4 lg:px-6 py-12">
+    <main id="main-content" className="max-w-3xl mx-auto px-4 lg:px-6 py-12">
       {/* Back link */}
       <Link
         href="/articles"
