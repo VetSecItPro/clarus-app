@@ -333,7 +333,7 @@ function MobileHighlight({ segment, onClick }: { segment: TextSegment; onClick: 
     <span
       role="button"
       tabIndex={0}
-      className={`rounded px-0.5 -mx-0.5 active:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:outline-none ${colors.bg} ${colors.border}`}
+      className={`cursor-pointer rounded px-0.5 -mx-0.5 active:opacity-80 transition-opacity focus-visible:ring-2 focus-visible:ring-brand/50 focus-visible:outline-none ${colors.bg} ${colors.border}`}
       onClick={onClick}
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onClick() } }}
       aria-label={`Claim: ${segment.claim?.exact_text?.slice(0, 50) ?? "View claim details"}`}

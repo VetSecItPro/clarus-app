@@ -27,6 +27,7 @@ type ContentItem = Database["clarus"]["Tables"]["content"]["Row"]
 type SummaryData = {
   brief_overview: string | null
   mid_length_summary: string | null
+  processing_status: string | null
   triage: {
     quality_score?: number
     signal_noise_score?: number
@@ -120,6 +121,7 @@ const searchFetcher = async (
     summaries: {
       brief_overview: result.brief_overview,
       mid_length_summary: null,
+      processing_status: null,
       triage: result.triage,
       truth_check: null,
     },
@@ -168,7 +170,7 @@ const browseFetcher = async (
 
   let query = supabase
     .from("content")
-    .select(`*, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, triage, truth_check), tags`)
+    .select(`*, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, processing_status, triage, truth_check), tags`)
     .eq("user_id", options.userId)
 
   if (options.filterType && options.filterType !== "all") {

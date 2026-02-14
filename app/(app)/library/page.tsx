@@ -19,6 +19,7 @@ import {
   GitCompareArrows,
   PanelLeftOpen,
   PanelLeftClose,
+  FolderOpen,
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -48,6 +49,8 @@ import type { TriageData } from "@/types/database.types"
 import { TIER_FEATURES } from "@/lib/tier-limits"
 // PERF: use shared SWR hook instead of independent Supabase query for tier data
 import { useUserTier } from "@/lib/hooks/use-user-tier"
+import { useConfirmDialog } from "@/components/ui/confirm-dialog"
+import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
 
 type HistoryItem = LibraryItem
 type LibraryPageProps = WithAuthInjectedProps
@@ -164,6 +167,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
   const { collections } = useCollections()
   // PERF: shared SWR hook eliminates duplicate tier query (was independent useEffect+fetch)
   const { tier: userTier } = useUserTier(session?.user?.id ?? null)
+  const { isComplete: analysisJustCompleted } = useActiveAnalysis()
 
   const canCompare = TIER_FEATURES[userTier].comparativeAnalysis
 
@@ -200,6 +204,11 @@ function LibraryPageContent({ session }: LibraryPageProps) {
       ? SCORE_FILTER_OPTIONS.find((opt) => opt.value === scoreFilter) ?? null
       : null,
   })
+
+  // Auto-refresh library when a background analysis completes
+  useEffect(() => {
+    if (analysisJustCompleted) refresh()
+  }, [analysisJustCompleted, refresh])
 
   // Fetch collection item content IDs for filtering
   const { contentIds: collectionContentIds } = useCollectionItems(selectedCollectionId)
@@ -242,21 +251,24 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     }
   }, [refresh])
 
-  const handleDelete = useCallback(async (itemId: string) => {
-    if (!window.confirm("Delete this item? This cannot be undone.")) return
-
-    setLocalItems((prev) => prev.filter((item) => item.id !== itemId))
-
-    try {
-      const { error } = await supabase.from("content").delete().eq("id", itemId)
-      if (error) throw error
-      toast.success("Item deleted")
-      refresh()
-    } catch {
-      toast.error("Failed to delete item")
-      refresh()
-    }
-  }, [refresh])
+  const [deleteDialog, confirmDelete] = useConfirmDialog<{ id: string; title: string }>({
+    title: "Delete item",
+    description: (item) => `Delete "${item.title}"? This cannot be undone.`,
+    confirmLabel: "Delete",
+    variant: "danger",
+    onConfirm: async (item) => {
+      setLocalItems((prev) => prev.filter((i) => i.id !== item.id))
+      try {
+        const { error } = await supabase.from("content").delete().eq("id", item.id)
+        if (error) throw error
+        toast.success("Item deleted")
+        refresh()
+      } catch {
+        toast.error("Failed to delete item")
+        refresh()
+      }
+    },
+  })
 
   const handleToggleBookmark = useCallback(async (item: HistoryItem) => {
     const newValue = !item.is_bookmarked
@@ -621,23 +633,45 @@ function LibraryPageContent({ session }: LibraryPageProps) {
           </div>
         ) : items.length === 0 ? (
           <div className="text-center py-20">
-            <div className="w-20 h-20 bg-gradient-to-br from-brand/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="w-10 h-10 text-brand" />
-            </div>
-            <h3 className="text-white text-lg font-medium mb-2">
-              No content yet
-            </h3>
-            <p className="text-white/50 text-sm mb-6 max-w-xs mx-auto">
-              Start by pasting a URL on the home page to analyze your first
-              piece of content.
-            </p>
-            <Link
-              href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-full transition-colors text-sm font-medium"
-            >
-              <Clock className="w-4 h-4" />
-              Analyze something
-            </Link>
+            {selectedCollection ? (
+              <>
+                <div className="w-20 h-20 bg-white/[0.04] rounded-full flex items-center justify-center mx-auto mb-6">
+                  <FolderOpen className="w-10 h-10 text-white/30" />
+                </div>
+                <h3 className="text-white text-lg font-medium mb-2">
+                  &ldquo;{selectedCollection.name}&rdquo; is empty
+                </h3>
+                <p className="text-white/50 text-sm mb-6 max-w-xs mx-auto">
+                  Add items to this collection from any analysis page using the collection button.
+                </p>
+                <button
+                  onClick={() => setSelectedCollectionId(null)}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-white/[0.06] hover:bg-white/[0.1] text-white/70 hover:text-white rounded-full transition-colors text-sm font-medium"
+                >
+                  View all items
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="w-20 h-20 bg-gradient-to-br from-brand/20 to-purple-500/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                  <Sparkles className="w-10 h-10 text-brand" />
+                </div>
+                <h3 className="text-white text-lg font-medium mb-2">
+                  No content yet
+                </h3>
+                <p className="text-white/50 text-sm mb-6 max-w-xs mx-auto">
+                  Start by pasting a URL on the home page to analyze your first
+                  piece of content.
+                </p>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-full transition-colors text-sm font-medium"
+                >
+                  <Clock className="w-4 h-4" />
+                  Analyze something
+                </Link>
+              </>
+            )}
           </div>
         ) : (
           <div className="space-y-6">
@@ -659,11 +693,13 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                           thumbnail_url={item.thumbnail_url}
                           brief_overview={summary?.brief_overview}
                           triage={summary?.triage as TriageData | null | undefined}
+                          processingStatus={summary?.processing_status ?? null}
+                          contentFailed={Boolean(item.full_text?.startsWith("PROCESSING_FAILED::"))}
                           date_added={item.date_added || new Date().toISOString()}
                           is_bookmarked={item.is_bookmarked}
                           onClick={() => handleItemClick(item.id)}
                           onBookmark={() => handleToggleBookmark(item)}
-                          onDelete={() => handleDelete(item.id)}
+                          onDelete={() => confirmDelete({ id: item.id, title: item.title || "Untitled" })}
                           extraActions={
                             <AddToCollectionButton
                               contentId={item.id}
@@ -703,6 +739,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
         </main>
       </div>
 
+      {deleteDialog}
     </div>
   )
 }

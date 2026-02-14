@@ -15,6 +15,7 @@ import { cn } from "@/lib/utils"
 import { toast } from "sonner"
 import { useCollections, type Collection } from "@/lib/hooks/use-collections"
 import { CreateCollectionDialog } from "./create-collection-dialog"
+import { useConfirmDialog } from "@/components/ui/confirm-dialog"
 
 interface CollectionSidebarProps {
   /** Currently selected collection ID (null = show all) */
@@ -67,16 +68,12 @@ export function CollectionSidebar({
   const [editingCollection, setEditingCollection] = useState<Collection | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const handleDelete = useCallback(
-    async (collection: Collection) => {
-      if (
-        !window.confirm(
-          `Delete "${collection.name}"? Items will remain in your library.`
-        )
-      ) {
-        return
-      }
-
+  const [deleteDialog, confirmDeleteCollection] = useConfirmDialog<Collection>({
+    title: "Delete collection",
+    description: (c) => `Delete "${c.name}"? Items will remain in your library.`,
+    confirmLabel: "Delete",
+    variant: "danger",
+    onConfirm: async (collection) => {
       setDeletingId(collection.id)
       try {
         await deleteCollection(collection.id)
@@ -91,8 +88,7 @@ export function CollectionSidebar({
         setDeletingId(null)
       }
     },
-    [deleteCollection, selectedCollectionId, onSelectCollection]
-  )
+  })
 
   const handleEdit = useCallback((collection: Collection) => {
     setEditingCollection(collection)
@@ -204,7 +200,7 @@ export function CollectionSidebar({
                       <button
                         onClick={(e) => {
                           e.stopPropagation()
-                          handleDelete(collection)
+                          confirmDeleteCollection(collection)
                         }}
                         disabled={deletingId === collection.id}
                         aria-label={`Delete ${collection.name}`}
@@ -249,6 +245,8 @@ export function CollectionSidebar({
         editingCollection={editingCollection}
         onUpdate={updateCollection}
       />
+
+      {deleteDialog}
     </>
   )
 }

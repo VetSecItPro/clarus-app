@@ -1,7 +1,7 @@
 "use client"
 
 import { motion, AnimatePresence } from "framer-motion"
-import { Check, Mic, Clock } from "lucide-react"
+import { Check, Mic, Clock, AlertTriangle, RefreshCw } from "lucide-react"
 import { useState, useEffect, useRef } from "react"
 
 interface AnalysisProgressProps {
@@ -14,6 +14,10 @@ interface AnalysisProgressProps {
   detailedSummary: string | null
   contentType: string | null
   isPolling: boolean
+  /** When the content was created — used to detect stale transcription on page load */
+  contentDateAdded?: string | null
+  /** Callback to retry processing (re-submit to AssemblyAI) */
+  onRetry?: () => void
 }
 
 const SEGMENTS = [
@@ -43,6 +47,8 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
     processingStatus,
     contentType,
     isPolling,
+    contentDateAdded,
+    onRetry,
   } = props
 
   const [showComplete, setShowComplete] = useState(false)
@@ -56,6 +62,17 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
   const isTranscribing = processingStatus === "transcribing"
   const isComplete = processingStatus === "complete" || completedCount === 6
   const isError = processingStatus === "error" || processingStatus === "refused"
+
+  // Calculate how long ago the content was created (for detecting stale transcription on load)
+  const contentAgeSeconds = contentDateAdded
+    ? Math.floor((Date.now() - new Date(contentDateAdded).getTime()) / 1000)
+    : 0
+  // Total effective elapsed = local timer + age at load (if already stale)
+  const totalTranscriptionSeconds = isTranscribing
+    ? Math.max(elapsedSeconds, contentAgeSeconds)
+    : elapsedSeconds
+  const isTranscriptionSlow = totalTranscriptionSeconds >= 300 // 5 minutes
+  const isTranscriptionStuck = totalTranscriptionSeconds >= 600 // 10 minutes
 
   // Track if we were ever polling (to show exit animation)
   useEffect(() => {
@@ -117,28 +134,61 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <div className="relative">
-                    <Mic className="w-4 h-4 text-blue-400" />
-                    <motion.div
-                      className="absolute inset-0 rounded-full bg-blue-400/30"
-                      animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0, 0.5] }}
-                      transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                    />
+                    {isTranscriptionStuck ? (
+                      <AlertTriangle className="w-4 h-4 text-amber-400" />
+                    ) : (
+                      <>
+                        <Mic className="w-4 h-4 text-blue-400" />
+                        <motion.div
+                          className="absolute inset-0 rounded-full bg-blue-400/30"
+                          animate={{ scale: [1, 1.6, 1], opacity: [0.5, 0, 0.5] }}
+                          transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+                        />
+                      </>
+                    )}
                   </div>
-                  <span className="text-sm text-white/70 font-medium" aria-live="polite">Transcribing audio...</span>
+                  <span className={`text-sm font-medium ${isTranscriptionStuck ? "text-amber-300/80" : "text-white/70"}`} aria-live="polite">
+                    {isTranscriptionStuck
+                      ? "Transcription appears stuck"
+                      : isTranscriptionSlow
+                        ? "Still transcribing — longer episodes take more time"
+                        : "Transcribing audio..."}
+                  </span>
                 </div>
                 <div className="flex items-center gap-1.5 text-xs text-white/50">
                   <Clock className="w-3 h-3" />
-                  <span>{Math.floor(elapsedSeconds / 60)}:{String(elapsedSeconds % 60).padStart(2, "0")}</span>
+                  <span>{Math.floor(totalTranscriptionSeconds / 60)}:{String(totalTranscriptionSeconds % 60).padStart(2, "0")}</span>
                 </div>
               </div>
-              <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                <motion.div
-                  className="h-full w-1/3 bg-gradient-to-r from-blue-500/80 to-blue-400/40 rounded-full"
-                  animate={{ x: ["-100%", "400%"] }}
-                  transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-                />
-              </div>
-              <p className="text-[0.6875rem] text-white/50">Typically takes 2-5 minutes depending on episode length</p>
+              {!isTranscriptionStuck && (
+                <div className="h-2 rounded-full bg-white/[0.06] overflow-hidden">
+                  <motion.div
+                    className="h-full w-1/3 bg-gradient-to-r from-blue-500/80 to-blue-400/40 rounded-full"
+                    animate={{ x: ["-100%", "400%"] }}
+                    transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                  />
+                </div>
+              )}
+              {isTranscriptionStuck ? (
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-[0.6875rem] text-amber-300/60">
+                    The transcription service may have encountered an issue. You can retry to re-submit the audio.
+                  </p>
+                  {onRetry && (
+                    <button
+                      onClick={onRetry}
+                      className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/20 border border-amber-500/30 text-amber-300 hover:bg-amber-500/30 transition-all text-xs whitespace-nowrap"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Retry
+                    </button>
+                  )}
+                </div>
+              ) : isTranscriptionSlow ? (
+                <p className="text-[0.6875rem] text-white/50">Long episodes (1hr+) can take 5-10 minutes to transcribe</p>
+              ) : (
+                <p className="text-[0.6875rem] text-white/50">Typically takes 2-5 minutes depending on episode length</p>
+              )}
             </div>
           ) : (
             <div className="space-y-3">

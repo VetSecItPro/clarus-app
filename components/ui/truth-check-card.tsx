@@ -237,6 +237,7 @@ function ReferenceList({ references }: { references: CitationSource[] }) {
                 href={ref.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                title={ref.url}
                 className="text-xs text-white/60 hover:text-brand transition-colors flex items-center gap-1 min-w-0"
               >
                 <span className="truncate">

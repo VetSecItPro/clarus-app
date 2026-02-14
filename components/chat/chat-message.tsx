@@ -68,7 +68,7 @@ function UserUrlMessage({ message }: { message: ChatMessageData }) {
                   }}
                 />
               )}
-              <span className="text-xs text-white/80 truncate flex-1">
+              <span className="text-xs text-white/80 truncate flex-1" title={urlMeta.domain}>
                 {urlMeta.domain}
               </span>
               <a
@@ -82,7 +82,7 @@ function UserUrlMessage({ message }: { message: ChatMessageData }) {
             </div>
           )}
           {!urlMeta && url && (
-            <p className="text-xs text-white/80 truncate">{url}</p>
+            <p className="text-xs text-white/80 truncate" title={url}>{url}</p>
           )}
         </div>
       </div>

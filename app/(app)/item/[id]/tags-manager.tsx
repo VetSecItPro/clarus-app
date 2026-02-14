@@ -103,7 +103,8 @@ export function TagsManager({
                 <button
                   key={tag}
                   onClick={() => handleAddTag(tag)}
-                  className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-white/[0.06] transition-colors"
+                  disabled={isAddingTag}
+                  className="w-full flex items-center justify-between px-3 py-2 text-sm text-left hover:bg-white/[0.06] transition-colors disabled:opacity-50 disabled:pointer-events-none"
                 >
                   <span className="text-white/80 capitalize">{tag}</span>
                   <span className="text-xs text-white/50">{count}</span>
@@ -129,6 +130,7 @@ export function TagsManager({
                     <TooltipTrigger asChild>
                       <button
                         onClick={() => handleRemoveTag(tag)}
+                        aria-label={`Remove tag ${tag}`}
                         className="opacity-50 hover:opacity-100 transition-opacity"
                       >
                         <X className="w-3 h-3" />
@@ -148,6 +150,7 @@ export function TagsManager({
                 <span className="capitalize">{tag}</span>
                 <button
                   onClick={() => handleRemoveTag(tag)}
+                  aria-label={`Remove tag ${tag}`}
                   className="opacity-50 hover:opacity-100 transition-opacity"
                 >
                   <X className="w-3 h-3" />

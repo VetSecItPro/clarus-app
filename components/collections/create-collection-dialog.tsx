@@ -221,6 +221,7 @@ export function CreateCollectionDialog({
                         key={color}
                         type="button"
                         onClick={() => setSelectedColor(color)}
+                        disabled={isSubmitting}
                         aria-label={`Select color ${color}`}
                         className={cn(
                           "w-8 h-8 rounded-full transition-all border-2",
@@ -245,6 +246,7 @@ export function CreateCollectionDialog({
                         key={icon}
                         type="button"
                         onClick={() => setSelectedIcon(icon)}
+                        disabled={isSubmitting}
                         className={cn(
                           "px-3 py-1.5 rounded-lg text-xs capitalize transition-all border",
                           selectedIcon === icon

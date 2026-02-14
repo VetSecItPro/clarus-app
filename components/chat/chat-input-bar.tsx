@@ -6,6 +6,7 @@ import {
   Send,
   Link2,
   CheckCircle2,
+  AlertCircle,
   X,
   Mic,
   Square,
@@ -96,6 +97,7 @@ export function ChatInputBar({
 }: ChatInputBarProps) {
   const [inputValue, setInputValue] = useState("")
   const [urlPreview, setUrlPreview] = useState<UrlPreview | null>(null)
+  const [urlError, setUrlError] = useState<string | null>(null)
   const [isFocused, setIsFocused] = useState(false)
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -127,15 +129,20 @@ export function ChatInputBar({
     const trimmed = value.trim()
     if (!trimmed) {
       setUrlPreview(null)
+      setUrlError(null)
       return
     }
 
     const validation = validateUrl(trimmed)
     if (!validation.isValid || !validation.sanitized) {
       setUrlPreview(null)
+      // Only show error if input looks like a URL attempt
+      const looksLikeUrl = /^(https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,})/i.test(trimmed)
+      setUrlError(looksLikeUrl ? (validation.error ?? "Invalid URL") : null)
       return
     }
 
+    setUrlError(null)
     const validUrl = validation.sanitized
     const domain = getDomainFromUrl(validUrl)
 
@@ -226,6 +233,7 @@ export function ChatInputBar({
   const clearInput = () => {
     setInputValue("")
     setUrlPreview(null)
+    setUrlError(null)
     setSelectedFile(null)
     if (fileInputRef.current) {
       fileInputRef.current.value = ""
@@ -347,6 +355,23 @@ export function ChatInputBar({
           )}
         </AnimatePresence>
 
+        {/* URL Error */}
+        <AnimatePresence>
+          {urlError && !urlPreview && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              className="mb-2 overflow-hidden"
+            >
+              <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/10 border border-red-500/20">
+                <AlertCircle className="w-4 h-4 text-red-400 shrink-0" />
+                <span className="text-xs text-red-400">{urlError}</span>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* File Preview */}
         <AnimatePresence>
           {isFileMode && (
@@ -402,6 +427,8 @@ export function ChatInputBar({
               <FileUp className="w-4 h-4 text-orange-400" />
             ) : isUrlMode ? (
               <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+            ) : urlError ? (
+              <AlertCircle className="w-4 h-4 text-red-400" />
             ) : (
               <Link2
                 className={cn(

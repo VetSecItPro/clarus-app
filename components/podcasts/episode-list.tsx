@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useCallback } from "react"
-import { Loader2, Play, CheckCircle2, Clock, ChevronDown, ChevronUp } from "lucide-react"
+import { Loader2, Play, CheckCircle2, Clock, ChevronDown, ChevronUp, Podcast } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
@@ -113,9 +113,12 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
 
   if (episodes.length === 0) {
     return (
-      <p className="text-white/50 text-sm py-4 text-center">
-        No episodes found yet. Episodes will appear after the next feed check.
-      </p>
+      <div className="flex flex-col items-center gap-2 py-6 text-center">
+        <Podcast className="w-6 h-6 text-white/30" />
+        <p className="text-white/50 text-sm">
+          No episodes found yet. Episodes will appear after the next feed check.
+        </p>
+      </div>
     )
   }
 
@@ -135,7 +138,7 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
           >
             {/* Episode info */}
             <div className="flex-1 min-w-0">
-              <p className="text-white/90 text-sm font-medium truncate">
+              <p className="text-white/90 text-sm font-medium truncate" title={episode.episode_title}>
                 {episode.episode_title}
               </p>
               <div className="flex items-center gap-2 mt-1 text-xs text-white/50">

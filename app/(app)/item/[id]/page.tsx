@@ -258,6 +258,8 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       return
     }
     setIsRegenerating(true)
+    // Snapshot for rollback on failure
+    const prevItem = item
     setItem(prev => prev ? { ...prev, summary: null, regeneration_count: (prev.regeneration_count ?? 0) + 1 } : null)
 
     // Increment regeneration_count in the database
@@ -279,6 +281,8 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       })
       .catch(() => {
         toast.error("Failed to regenerate content")
+        // Restore previous state so the old analysis is still visible
+        setItem(prevItem)
       })
       .finally(() => {
         setIsRegenerating(false)
@@ -527,6 +531,12 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
         clearInterval(pollingIntervalRef.current)
         pollingIntervalRef.current = null
         setIsPolling(false)
+        // Show a user-facing message instead of silently stopping
+        if (isPodcast || isTranscribing) {
+          toast.info("Transcription is still processing. Refresh the page later or click Retry.", { duration: 8000 })
+        } else {
+          toast.info("Analysis is taking longer than expected. Refresh the page to check progress.", { duration: 6000 })
+        }
       }
     }, maxTimeout)
 
@@ -844,6 +854,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       youtubePlayerRef={youtubePlayerRef}
       hasFullText={Boolean(item?.full_text)}
       fullTextFailed={Boolean(item?.full_text?.startsWith("PROCESSING_FAILED::"))}
+      contentDateAdded={item?.date_added ?? null}
       onRegenerate={handleRegenerate}
       onToggleDetailedExpanded={() => setIsDetailedExpanded(!isDetailedExpanded)}
       onFlagClaim={handleFlagClaim}
@@ -875,16 +886,15 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
               <TooltipProvider delayDuration={300}>
                 <Tooltip>
                   <TooltipTrigger asChild>
-                    {/* FE: FIX-FE-001 — replaced nested Link>Button with Link styled as button */}
-                    <Link
-                      href="/"
+                    <button
+                      onClick={() => itemRouter.back()}
                       className="h-10 w-10 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white border border-white/[0.08] inline-flex items-center justify-center focus-visible:ring-2 focus-visible:ring-brand/50 active:scale-95 transition-all"
-                      aria-label="Back to home"
+                      aria-label="Go back"
                     >
                       <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
-                    </Link>
+                    </button>
                   </TooltipTrigger>
-                  <TooltipContent>Back to Library</TooltipContent>
+                  <TooltipContent>Go back</TooltipContent>
                 </Tooltip>
               </TooltipProvider>
 
