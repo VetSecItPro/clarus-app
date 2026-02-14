@@ -10,9 +10,10 @@ import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { getUserTier } from "@/lib/usage"
-import { TIER_LIMITS } from "@/lib/tier-limits"
+import { TIER_LIMITS, TIER_FEATURES } from "@/lib/tier-limits"
 import { parseBody, addPodcastSubscriptionSchema } from "@/lib/schemas"
 import { fetchAndParseFeed } from "@/lib/rss-parser"
+import { encryptFeedCredential } from "@/lib/feed-encryption"
 import { logger } from "@/lib/logger"
 
 /**
@@ -63,10 +64,22 @@ export async function GET() {
     }
   }
 
-  const enriched = (subscriptions ?? []).map((sub) => ({
-    ...sub,
-    latest_episode: latestEpisodes[sub.id] ?? null,
-  }))
+  const enriched = (subscriptions ?? []).map((sub) => {
+    // Strip encrypted credentials — never send to client
+    const { feed_auth_header_encrypted, credentials_updated_at, ...rest } = sub
+    const hasCredentials = !!feed_auth_header_encrypted
+    // Credentials older than 90 days are considered stale
+    const CREDENTIAL_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000
+    const credentialsStale = hasCredentials && credentials_updated_at
+      ? Date.now() - new Date(credentials_updated_at).getTime() > CREDENTIAL_MAX_AGE_MS
+      : false
+    return {
+      ...rest,
+      has_credentials: hasCredentials,
+      credentials_stale: credentialsStale,
+      latest_episode: latestEpisodes[sub.id] ?? null,
+    }
+  })
 
   // PERF: Cache personalized subscription list for 30s to reduce DB hits on repeated loads
   return NextResponse.json(
@@ -105,6 +118,10 @@ export async function POST(request: Request) {
 
   const { feed_url } = parsed.data
 
+  // Extract optional auth_header from raw body (not in Zod schema to keep it flexible)
+  const rawBody = body as Record<string, unknown>
+  const authHeaderValue = typeof rawBody.auth_header === "string" ? rawBody.auth_header.trim() : undefined
+
   // PERF: Parallelize tier check and subscription count instead of sequential queries
   const [tier, countResult] = await Promise.all([
     getUserTier(supabase, user.id),
@@ -136,10 +153,18 @@ export async function POST(request: Request) {
     )
   }
 
-  // Fetch and validate the RSS feed
+  // Gate private feed credentials to Pro tier
+  if (authHeaderValue && !TIER_FEATURES[tier].privateFeedCredentials) {
+    return NextResponse.json(
+      { error: "Private feed authentication requires a Pro plan." },
+      { status: 403 }
+    )
+  }
+
+  // Fetch and validate the RSS feed (pass auth header if provided)
   let feedData: Awaited<ReturnType<typeof fetchAndParseFeed>>
   try {
-    feedData = await fetchAndParseFeed(feed_url)
+    feedData = await fetchAndParseFeed(feed_url, authHeaderValue ? { authHeader: authHeaderValue } : undefined)
   } catch (err) {
     const message = err instanceof Error ? err.message : "Failed to parse feed"
     return AuthErrors.badRequest(`Invalid podcast feed: ${message}`)
@@ -147,6 +172,20 @@ export async function POST(request: Request) {
 
   if (!feedData.feed.title) {
     return AuthErrors.badRequest("Could not extract podcast title from feed")
+  }
+
+  // Encrypt credentials if provided
+  let encryptedAuthHeader: string | null = null
+  if (authHeaderValue) {
+    try {
+      encryptedAuthHeader = encryptFeedCredential(authHeaderValue)
+    } catch (err) {
+      logger.error("[podcast-subscriptions] Failed to encrypt auth header:", err)
+      return NextResponse.json(
+        { error: "Failed to securely store feed credentials. Please try again." },
+        { status: 500 }
+      )
+    }
   }
 
   // Insert the subscription
@@ -157,6 +196,10 @@ export async function POST(request: Request) {
       feed_url,
       podcast_name: feedData.feed.title,
       podcast_image_url: feedData.feed.imageUrl,
+      ...(encryptedAuthHeader ? {
+        feed_auth_header_encrypted: encryptedAuthHeader,
+        credentials_updated_at: new Date().toISOString(),
+      } : {}),
     })
     .select("id, feed_url, podcast_name, podcast_image_url, created_at")
     .single()

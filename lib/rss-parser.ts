@@ -13,6 +13,57 @@
  * @see {@link app/api/crons/check-podcast-feeds/route.ts} for episode polling
  */
 
+/** Error thrown when a feed returns 401/403, indicating authentication is required. */
+export class FeedAuthError extends Error {
+  readonly statusCode: number
+
+  constructor(statusCode: number, feedUrl: string) {
+    super(`Feed requires authentication (HTTP ${statusCode}): ${feedUrl}`)
+    this.name = "FeedAuthError"
+    this.statusCode = statusCode
+  }
+}
+
+/**
+ * Classifies a feed error into a user-friendly string for display in the UI.
+ */
+export function classifyFeedError(err: unknown): string {
+  if (err instanceof FeedAuthError) {
+    return "Feed requires authentication"
+  }
+
+  if (err instanceof Error) {
+    const msg = err.message.toLowerCase()
+
+    if (msg.includes("401") || msg.includes("403") || msg.includes("authentication")) {
+      return "Feed requires authentication"
+    }
+    if (msg.includes("abort") || msg.includes("timeout")) {
+      return "Feed timed out"
+    }
+    if (msg.includes("404") || msg.includes("not found")) {
+      return "Feed not found"
+    }
+    if (err.name === "TypeError" && msg.includes("fetch")) {
+      return "Feed unreachable"
+    }
+    if (msg.includes("not a valid") || msg.includes("unrecognized feed")) {
+      return "Feed format changed"
+    }
+    if (msg.includes("enotfound") || msg.includes("econnrefused") || msg.includes("dns")) {
+      return "Feed unreachable"
+    }
+  }
+
+  return "Feed check failed"
+}
+
+/** Options for fetchAndParseFeed. */
+export interface FetchFeedOptions {
+  /** Authorization header value for private/premium feeds. */
+  authHeader?: string
+}
+
 /** Metadata extracted from a podcast feed's channel/feed element. */
 export interface PodcastFeedInfo {
   title: string
@@ -253,21 +304,33 @@ function parseAtom(xml: string, feedUrl: string): ParsedFeed {
  * Fetches and parses a podcast RSS or Atom feed.
  *
  * @param feedUrl - The URL of the podcast RSS feed
+ * @param options - Optional settings including auth header for private feeds
  * @returns The parsed feed with podcast metadata and episodes
+ * @throws FeedAuthError if the feed returns 401/403
  * @throws Error if the feed cannot be fetched or is not a valid podcast feed
  */
-export async function fetchAndParseFeed(feedUrl: string): Promise<ParsedFeed> {
+export async function fetchAndParseFeed(feedUrl: string, options?: FetchFeedOptions): Promise<ParsedFeed> {
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
 
   try {
+    const headers: Record<string, string> = {
+      "User-Agent": "Clarus/1.0 (Podcast Feed Reader)",
+      Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml",
+    }
+
+    if (options?.authHeader) {
+      headers["Authorization"] = options.authHeader
+    }
+
     const response = await fetch(feedUrl, {
       signal: controller.signal,
-      headers: {
-        "User-Agent": "Clarus/1.0 (Podcast Feed Reader)",
-        Accept: "application/rss+xml, application/atom+xml, application/xml, text/xml",
-      },
+      headers,
     })
+
+    if (response.status === 401 || response.status === 403) {
+      throw new FeedAuthError(response.status, feedUrl)
+    }
 
     if (!response.ok) {
       throw new Error(`Failed to fetch feed: HTTP ${response.status}`)

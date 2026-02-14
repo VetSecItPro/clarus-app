@@ -933,6 +933,10 @@ export interface Database {
           last_episode_date: string | null
           check_frequency_hours: number
           is_active: boolean
+          consecutive_failures: number
+          last_error: string | null
+          feed_auth_header_encrypted: string | null
+          credentials_updated_at: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -946,6 +950,10 @@ export interface Database {
           last_episode_date?: string | null
           check_frequency_hours?: number
           is_active?: boolean
+          consecutive_failures?: number
+          last_error?: string | null
+          feed_auth_header_encrypted?: string | null
+          credentials_updated_at?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -959,6 +967,10 @@ export interface Database {
           last_episode_date?: string | null
           check_frequency_hours?: number
           is_active?: boolean
+          consecutive_failures?: number
+          last_error?: string | null
+          feed_auth_header_encrypted?: string | null
+          credentials_updated_at?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -1035,6 +1047,8 @@ export interface Database {
           last_video_date: string | null
           check_frequency_hours: number
           is_active: boolean
+          consecutive_failures: number
+          last_error: string | null
           created_at: string | null
           updated_at: string | null
         }
@@ -1049,6 +1063,8 @@ export interface Database {
           last_video_date?: string | null
           check_frequency_hours?: number
           is_active?: boolean
+          consecutive_failures?: number
+          last_error?: string | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -1063,6 +1079,8 @@ export interface Database {
           last_video_date?: string | null
           check_frequency_hours?: number
           is_active?: boolean
+          consecutive_failures?: number
+          last_error?: string | null
           created_at?: string | null
           updated_at?: string | null
         }

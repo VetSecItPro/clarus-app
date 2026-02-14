@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import Image from "next/image"
-import { Loader2, Rss, AlertCircle } from "lucide-react"
+import { Loader2, Rss, AlertCircle, ChevronDown, Lock } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
   Dialog,
@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/dialog"
 import { cn } from "@/lib/utils"
 import { motion, AnimatePresence } from "framer-motion"
+import type { UserTier } from "@/types/database.types"
+import { TIER_FEATURES } from "@/lib/tier-limits"
 
 interface FeedPreview {
   podcast_name: string
@@ -25,19 +27,25 @@ interface AddPodcastDialogProps {
   currentCount: number
   limit: number
   onSubscribed: () => void
+  userTier?: UserTier
 }
 
-export function AddPodcastDialog({ currentCount, limit, onSubscribed }: AddPodcastDialogProps) {
+export function AddPodcastDialog({ currentCount, limit, onSubscribed, userTier = "free" }: AddPodcastDialogProps) {
   const [open, setOpen] = useState(false)
   const [feedUrl, setFeedUrl] = useState("")
+  const [authHeader, setAuthHeader] = useState("")
+  const [showAuth, setShowAuth] = useState(false)
   const [preview, setPreview] = useState<FeedPreview | null>(null)
   const [isValidating, setIsValidating] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
+  const canUsePrivateFeeds = TIER_FEATURES[userTier].privateFeedCredentials
   const atLimit = currentCount >= limit
 
   const resetState = () => {
     setFeedUrl("")
+    setAuthHeader("")
+    setShowAuth(false)
     setPreview(null)
     setError(null)
     setIsValidating(false)
@@ -62,7 +70,10 @@ export function AddPodcastDialog({ currentCount, limit, onSubscribed }: AddPodca
       const response = await fetch("/api/podcast-subscriptions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ feed_url: feedUrl.trim() }),
+        body: JSON.stringify({
+          feed_url: feedUrl.trim(),
+          ...(authHeader.trim() ? { auth_header: authHeader.trim() } : {}),
+        }),
       })
 
       const data = await response.json()
@@ -105,7 +116,7 @@ export function AddPodcastDialog({ currentCount, limit, onSubscribed }: AddPodca
         <DialogHeader>
           <DialogTitle className="text-white">Add Podcast Feed</DialogTitle>
           <DialogDescription className="text-white/50">
-            Enter the RSS feed URL for the podcast you want to monitor.
+            Paste the RSS feed URL — works with both public and private feeds.
           </DialogDescription>
         </DialogHeader>
 
@@ -147,6 +158,44 @@ export function AddPodcastDialog({ currentCount, limit, onSubscribed }: AddPodca
               )}
             />
           </div>
+
+          {/* Private feed authentication (Pro only) */}
+          {canUsePrivateFeeds && !preview && (
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => setShowAuth(!showAuth)}
+                className="flex items-center gap-1.5 text-xs text-white/40 hover:text-white/60 transition-colors"
+                disabled={isValidating}
+              >
+                <Lock className="w-3 h-3" />
+                <span>Custom authentication header</span>
+                <ChevronDown className={cn("w-3 h-3 transition-transform", showAuth && "rotate-180")} />
+              </button>
+              <AnimatePresence>
+                {showAuth && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <input
+                      type="password"
+                      placeholder="Authorization header value"
+                      value={authHeader}
+                      onChange={(e) => setAuthHeader(e.target.value)}
+                      disabled={isValidating}
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/30 disabled:opacity-50 transition-colors"
+                    />
+                    <p className="text-[11px] text-white/30 mt-1.5">
+                      Only needed for feeds behind HTTP auth. Patreon, Supercast, etc. work with just the URL. Stored encrypted.
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
 
           {/* Error */}
           <AnimatePresence mode="wait">

@@ -16,9 +16,13 @@
 import { NextResponse } from "next/server"
 import { timingSafeEqual } from "crypto"
 import { getAdminClient } from "@/lib/auth"
-import { fetchAndParseFeed, type PodcastEpisode } from "@/lib/rss-parser"
+import { fetchAndParseFeed, classifyFeedError, type PodcastEpisode } from "@/lib/rss-parser"
+import { decryptFeedCredential } from "@/lib/feed-encryption"
 import { sendNewEpisodeEmail } from "@/lib/email"
 import { logger } from "@/lib/logger"
+
+/** Number of consecutive failures before auto-deactivating a subscription. */
+const MAX_CONSECUTIVE_FAILURES = 7
 
 export const maxDuration = 60
 
@@ -66,7 +70,7 @@ export async function GET(request: Request) {
   // Fetch all active subscriptions (we still need to filter by check_frequency_hours in JS due to variable hours)
   const { data: subscriptions, error: subError } = await supabase
     .from("podcast_subscriptions")
-    .select("id, user_id, feed_url, podcast_name, last_checked_at, check_frequency_hours, last_episode_date")
+    .select("id, user_id, feed_url, podcast_name, last_checked_at, check_frequency_hours, last_episode_date, consecutive_failures, feed_auth_header_encrypted")
     .eq("is_active", true)
     .limit(200)
 
@@ -110,8 +114,26 @@ export async function GET(request: Request) {
   // Process each subscription
   const processPromises = dueSubscriptions.map(async (sub) => {
     try {
-      const feedData = await fetchAndParseFeed(sub.feed_url)
+      // Decrypt credentials for private feeds
+      let authHeader: string | undefined
+      if (sub.feed_auth_header_encrypted) {
+        try {
+          authHeader = decryptFeedCredential(sub.feed_auth_header_encrypted)
+        } catch (decryptErr) {
+          logger.error(`[check-podcast-feeds] Failed to decrypt credentials for ${sub.podcast_name}:`, decryptErr)
+        }
+      }
+
+      const feedData = await fetchAndParseFeed(sub.feed_url, authHeader ? { authHeader } : undefined)
       checked++
+
+      // Reset failure counter on success
+      if (sub.consecutive_failures > 0) {
+        await supabase
+          .from("podcast_subscriptions")
+          .update({ consecutive_failures: 0, last_error: null, updated_at: now.toISOString() })
+          .eq("id", sub.id)
+      }
 
       // Find episodes that are new (not already in the database)
       // We check by episode_url uniqueness (UNIQUE constraint on subscription_id + episode_url)
@@ -211,12 +233,27 @@ export async function GET(request: Request) {
         })
         .eq("id", sub.id)
     } catch (err) {
-      logger.error(`[check-podcast-feeds] Error processing ${sub.podcast_name} (${sub.feed_url}):`, err)
-      // Still update last_checked_at to avoid hammering a broken feed
+      const errorMessage = classifyFeedError(err)
+      const newFailureCount = (sub.consecutive_failures ?? 0) + 1
+      logger.error(`[check-podcast-feeds] Error processing ${sub.podcast_name} (failure #${newFailureCount}): ${errorMessage}`)
+
+      // Auto-deactivate after MAX_CONSECUTIVE_FAILURES
+      const shouldDeactivate = newFailureCount >= MAX_CONSECUTIVE_FAILURES
+
       await supabase
         .from("podcast_subscriptions")
-        .update({ last_checked_at: now.toISOString(), updated_at: now.toISOString() })
+        .update({
+          last_checked_at: now.toISOString(),
+          updated_at: now.toISOString(),
+          consecutive_failures: newFailureCount,
+          last_error: errorMessage,
+          ...(shouldDeactivate ? { is_active: false } : {}),
+        })
         .eq("id", sub.id)
+
+      if (shouldDeactivate) {
+        logger.warn(`[check-podcast-feeds] Auto-deactivated "${sub.podcast_name}" after ${newFailureCount} consecutive failures`)
+      }
     }
   })
 

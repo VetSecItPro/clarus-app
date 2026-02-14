@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
-import { Rss, Trash2, Loader2, Podcast, Youtube, ExternalLink } from "lucide-react"
+import { Rss, Trash2, Loader2, Podcast, Youtube, ExternalLink, AlertTriangle, Lock, HelpCircle } from "lucide-react"
 import Image from "next/image"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -27,6 +27,10 @@ interface PodcastSubscription {
   last_checked_at: string | null
   last_episode_date: string | null
   is_active: boolean
+  consecutive_failures: number
+  last_error: string | null
+  has_credentials: boolean
+  credentials_stale: boolean
   created_at: string | null
   latest_episode: {
     episode_title: string
@@ -43,6 +47,8 @@ interface YouTubeSubscription {
   last_checked_at: string | null
   last_video_date: string | null
   is_active: boolean
+  consecutive_failures: number
+  last_error: string | null
   created_at: string | null
   latest_video: {
     video_title: string
@@ -164,7 +170,11 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
               Feeds
             </h1>
             <p className="text-white/50 text-sm mt-1">
-              Subscribe to channels and never miss new content.
+              Subscribe to channels and never miss new content.{" "}
+              <Link href="/feeds/guide" className="inline-flex items-center gap-1 text-white/40 hover:text-white/60 transition-colors">
+                <HelpCircle className="w-3 h-3" />
+                <span className="underline underline-offset-2">How to find feed URLs</span>
+              </Link>
             </p>
           </div>
 
@@ -174,6 +184,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
               currentCount={podcastSubs.length}
               limit={podcastLimit}
               onSubscribed={fetchPodcastSubs}
+              userTier={userTier}
             />
           )}
           {activeTab === "youtube" && hasYoutubeAccess && (
@@ -262,6 +273,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                   currentCount={0}
                   limit={podcastLimit}
                   onSubscribed={fetchPodcastSubs}
+                  userTier={userTier}
                 />
               </EmptyState>
             )}
@@ -282,6 +294,10 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                     icon={Podcast}
                     isExpanded={expandedId === sub.id}
                     isDeleting={deletingId === sub.id}
+                    consecutiveFailures={sub.consecutive_failures}
+                    lastError={sub.last_error}
+                    hasCredentials={sub.has_credentials}
+                    credentialsStale={sub.credentials_stale}
                     onToggle={() => handleToggleExpanded(sub.id)}
                     onDelete={() => handleDeletePodcast(sub.id, sub.podcast_name)}
                   >
@@ -357,6 +373,8 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                     icon={Youtube}
                     isExpanded={expandedId === sub.id}
                     isDeleting={deletingId === sub.id}
+                    consecutiveFailures={sub.consecutive_failures}
+                    lastError={sub.last_error}
                     onToggle={() => handleToggleExpanded(sub.id)}
                     onDelete={() => handleDeleteYouTube(sub.id, sub.channel_name)}
                   >
@@ -443,6 +461,10 @@ interface SubscriptionCardProps {
   icon: typeof Podcast
   isExpanded: boolean
   isDeleting: boolean
+  consecutiveFailures?: number
+  lastError?: string | null
+  hasCredentials?: boolean
+  credentialsStale?: boolean
   onToggle: () => void
   onDelete: () => void
   children: React.ReactNode
@@ -450,15 +472,21 @@ interface SubscriptionCardProps {
 
 function SubscriptionCard({
   index, name, imageUrl, feedUrl, latestTitle, latestDate,
-  icon: Icon, isExpanded, isDeleting, onToggle, onDelete, children,
+  icon: Icon, isExpanded, isDeleting, consecutiveFailures = 0, lastError, hasCredentials, credentialsStale,
+  onToggle, onDelete, children,
 }: SubscriptionCardProps) {
+  const hasWarning = consecutiveFailures > 0
+  const isCritical = consecutiveFailures >= 5
   return (
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, y: -12 }}
       transition={{ delay: index * 0.05 }}
-      className="rounded-2xl bg-white/[0.03] border border-white/[0.06] overflow-hidden"
+      className={cn(
+        "rounded-2xl bg-white/[0.03] border overflow-hidden",
+        isCritical ? "border-red-500/30" : hasWarning ? "border-amber-500/20" : "border-white/[0.06]"
+      )}
     >
       <button
         onClick={onToggle}
@@ -482,7 +510,26 @@ function SubscriptionCard({
         )}
 
         <div className="flex-1 min-w-0">
-          <h3 className="text-white font-medium truncate">{name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-white font-medium truncate">{name}</h3>
+            {hasCredentials && (
+              <Lock className={cn("w-3 h-3 shrink-0", credentialsStale ? "text-amber-400" : "text-blue-400")} aria-label={credentialsStale ? "Credentials need refresh" : "Private feed"} />
+            )}
+            {credentialsStale && (
+              <span className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full shrink-0 bg-amber-500/15 text-amber-400">
+                Credentials expired — re-enter
+              </span>
+            )}
+            {hasWarning && (
+              <span className={cn(
+                "inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full shrink-0",
+                isCritical ? "bg-red-500/15 text-red-400" : "bg-amber-500/15 text-amber-400"
+              )}>
+                <AlertTriangle className="w-2.5 h-2.5" />
+                {lastError ?? "Feed error"}
+              </span>
+            )}
+          </div>
           {latestTitle ? (
             <p className="text-white/50 text-sm truncate mt-0.5">Latest: {latestTitle}</p>
           ) : (

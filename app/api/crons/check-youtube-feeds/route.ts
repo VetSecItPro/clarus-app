@@ -15,10 +15,13 @@
 import { NextResponse } from "next/server"
 import { timingSafeEqual } from "crypto"
 import { getAdminClient } from "@/lib/auth"
-import { fetchAndParseFeed } from "@/lib/rss-parser"
+import { fetchAndParseFeed, classifyFeedError } from "@/lib/rss-parser"
 import { sendNewVideoEmail } from "@/lib/email"
 import { extractYouTubeVideoId } from "@/lib/youtube-resolver"
 import { logger } from "@/lib/logger"
+
+/** Number of consecutive failures before auto-deactivating a subscription. */
+const MAX_CONSECUTIVE_FAILURES = 7
 
 export const maxDuration = 60
 
@@ -49,7 +52,7 @@ export async function GET(request: Request) {
   // Fetch all active YouTube subscriptions
   const { data: subscriptions, error: subError } = await supabase
     .from("youtube_subscriptions")
-    .select("id, user_id, feed_url, channel_name, last_checked_at, check_frequency_hours, last_video_date")
+    .select("id, user_id, feed_url, channel_name, last_checked_at, check_frequency_hours, last_video_date, consecutive_failures")
     .eq("is_active", true)
     .limit(200)
 
@@ -90,6 +93,14 @@ export async function GET(request: Request) {
     try {
       const feedData = await fetchAndParseFeed(sub.feed_url)
       checked++
+
+      // Reset failure counter on success
+      if (sub.consecutive_failures > 0) {
+        await supabase
+          .from("youtube_subscriptions")
+          .update({ consecutive_failures: 0, last_error: null, updated_at: now.toISOString() })
+          .eq("id", sub.id)
+      }
 
       // Find videos that are new (newer than last_video_date)
       const newVideos = feedData.episodes.filter((episode) => {
@@ -189,12 +200,26 @@ export async function GET(request: Request) {
         })
         .eq("id", sub.id)
     } catch (err) {
-      logger.error(`[check-youtube-feeds] Error processing ${sub.channel_name} (${sub.feed_url}):`, err)
-      // Still update last_checked_at to avoid hammering a broken feed
+      const errorMessage = classifyFeedError(err)
+      const newFailureCount = (sub.consecutive_failures ?? 0) + 1
+      logger.error(`[check-youtube-feeds] Error processing ${sub.channel_name} (failure #${newFailureCount}): ${errorMessage}`)
+
+      const shouldDeactivate = newFailureCount >= MAX_CONSECUTIVE_FAILURES
+
       await supabase
         .from("youtube_subscriptions")
-        .update({ last_checked_at: now.toISOString(), updated_at: now.toISOString() })
+        .update({
+          last_checked_at: now.toISOString(),
+          updated_at: now.toISOString(),
+          consecutive_failures: newFailureCount,
+          last_error: errorMessage,
+          ...(shouldDeactivate ? { is_active: false } : {}),
+        })
         .eq("id", sub.id)
+
+      if (shouldDeactivate) {
+        logger.warn(`[check-youtube-feeds] Auto-deactivated "${sub.channel_name}" after ${newFailureCount} consecutive failures`)
+      }
     }
   })
 

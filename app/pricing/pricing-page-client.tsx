@@ -65,10 +65,13 @@ const PLANS = [
       { text: "50 tags", included: true },
       { text: "All content types", included: true },
       { text: "10 podcast analyses/month", included: true },
+      { text: "3 podcast feed subscriptions", included: true },
+      { text: "Public podcasts only", included: true },
       { text: "10 shareable links/month", included: true },
       { text: "50 exports (Markdown)", included: true },
       { text: "Weekly digest email", included: true },
       { text: "Claim tracking", included: false },
+      { text: "Private podcast feeds", included: false },
     ],
     cta: "Get Started",
     ctaHref: "/signup",
@@ -96,6 +99,8 @@ const PLANS = [
       { text: "100 tags", included: true },
       { text: "All content types", included: true },
       { text: "30 podcast analyses/month", included: true },
+      { text: "10 podcast feed subscriptions", included: true },
+      { text: "Public + private podcast feeds", included: true },
       { text: "100 shareable links/month", included: true },
       { text: "100 exports (PDF + Markdown)", included: true },
       { text: "Weekly digest email", included: true },
@@ -137,7 +142,7 @@ const FAQS = [
   },
   {
     q: "What is podcast analysis?",
-    a: "Podcast analysis transcribes audio content with speaker identification, then runs the same 6-section AI analysis as articles and videos. It supports direct audio files (.mp3, .m4a, etc.) and podcast hosting platforms. Podcast analyses have their own monthly quota, separate from regular content analyses.",
+    a: "Podcast analysis transcribes audio content with speaker identification, then runs the same 6-section AI analysis as articles and videos. Starter supports public podcast feeds. Pro adds private feed support for premium podcasts (Patreon, Supercast, etc.) — your credentials are stored encrypted and audio is securely proxied for transcription. Podcast analyses have their own monthly quota, separate from regular content analyses.",
   },
   {
     q: "How does the Day Pass work?",
@@ -383,7 +388,7 @@ export default function PricingPageClient() {
                     <div className="flex flex-wrap gap-x-5 gap-y-1">
                       {[
                         "15 analyses",
-                        "3 podcast analyses",
+                        "3 podcast analyses (public feeds)",
                         "100 chat messages",
                         "Exports",
                         "Claim tracking",
@@ -435,6 +440,7 @@ export default function PricingPageClient() {
                   {[
                     ["Analyses per month", "5", "50", "150"],
                     ["Podcast analyses", false, "10/month", "30/month"],
+                    ["Podcast feed subscriptions", false, "3 (public)", "10 (public + private)"],
                     ["Chat messages/content", "10", "25", "50"],
                     ["Chat messages/month", "50", "300", "1,000"],
                     ["Library storage", "25 items", "500 items", "5,000 items"],

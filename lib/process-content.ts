@@ -98,6 +98,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
     language = "en",
     forceRegenerate = false,
     skipScraping = false,
+    feedAuthHeader,
   } = options
 
   // Validate environment
@@ -321,6 +322,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
             content.url,
             webhookUrl,
             assemblyAiApiKey,
+            feedAuthHeader ? { feedAuthHeader } : undefined,
           )
 
           await supabase
