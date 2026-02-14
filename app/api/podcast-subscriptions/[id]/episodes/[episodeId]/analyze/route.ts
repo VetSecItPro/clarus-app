@@ -12,6 +12,7 @@ import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
 import { checkUsageLimit } from "@/lib/usage"
 import { processContent, ProcessContentError } from "@/lib/process-content"
+import { decryptFeedCredential } from "@/lib/feed-encryption"
 import { logger } from "@/lib/logger"
 
 /**
@@ -43,7 +44,7 @@ export async function POST(
   const [subResult, epResult] = await Promise.all([
     supabase
       .from("podcast_subscriptions")
-      .select("id, user_id")
+      .select("id, user_id, feed_auth_header_encrypted")
       .eq("id", subIdCheck.sanitized!)
       .eq("user_id", user.id)
       .single(),
@@ -119,11 +120,23 @@ export async function POST(
 
   // Usage increment handled atomically by processContent() — no separate increment here
 
+  // Decrypt private feed credentials if present
+  let feedAuthHeader: string | undefined
+  if (subscription.feed_auth_header_encrypted) {
+    try {
+      feedAuthHeader = decryptFeedCredential(subscription.feed_auth_header_encrypted)
+    } catch (err) {
+      logger.error("[podcast-analyze] Failed to decrypt feed credentials:", err)
+      // Continue without auth — will fail at transcription if audio is gated
+    }
+  }
+
   // PERF: Direct function call instead of HTTP fetch — saves 50-200ms
   try {
     await processContent({
       contentId: content.id,
       userId: user.id,
+      feedAuthHeader,
     })
   } catch (err) {
     if (err instanceof ProcessContentError) {

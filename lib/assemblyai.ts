@@ -15,9 +15,16 @@
  */
 
 const ASSEMBLYAI_API_URL = "https://api.assemblyai.com/v2/transcript"
+const ASSEMBLYAI_UPLOAD_URL = "https://api.assemblyai.com/v2/upload"
 
 interface SubmitTranscriptionResult {
   transcript_id: string
+}
+
+/** Options for podcast transcription submission. */
+export interface TranscriptionOptions {
+  /** Decrypted Authorization header for private/premium podcast audio. */
+  feedAuthHeader?: string
 }
 
 /** A single speaker utterance from AssemblyAI's diarization output. */
@@ -47,33 +54,106 @@ interface FormattedTranscript {
 }
 
 /**
+ * Downloads audio from an authenticated URL and uploads it to AssemblyAI's
+ * upload endpoint, returning a temporary public URL that AssemblyAI can access.
+ *
+ * This is necessary for private/premium podcast feeds where the audio URL
+ * requires an Authorization header — AssemblyAI can't send custom headers
+ * when fetching audio_url directly.
+ *
+ * The audio is streamed (piped) to avoid buffering entire podcast files
+ * (often 50-200MB) in memory.
+ *
+ * @param audioUrl - The private audio URL requiring authentication
+ * @param authHeader - The Authorization header value (e.g., "Bearer xxx")
+ * @param apiKey - The AssemblyAI API key
+ * @returns A temporary AssemblyAI-hosted URL for the uploaded audio
+ */
+async function uploadAudioForTranscription(
+  audioUrl: string,
+  authHeader: string,
+  apiKey: string,
+): Promise<string> {
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 min for large audio files
+
+  try {
+    // Download the audio with credentials
+    const audioResponse = await fetch(audioUrl, {
+      signal: controller.signal,
+      headers: {
+        Authorization: authHeader,
+        "User-Agent": "Clarus/1.0 (Podcast Transcription)",
+      },
+    })
+
+    if (!audioResponse.ok) {
+      throw new Error(
+        `Failed to download private audio (HTTP ${audioResponse.status}): ${audioUrl}`,
+      )
+    }
+
+    if (!audioResponse.body) {
+      throw new Error("Audio response has no body to stream")
+    }
+
+    // Upload to AssemblyAI's upload endpoint, streaming the body directly
+    const uploadResponse = await fetch(ASSEMBLYAI_UPLOAD_URL, {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        Authorization: apiKey,
+        "Content-Type": "application/octet-stream",
+        "Transfer-Encoding": "chunked",
+      },
+      body: audioResponse.body,
+      // @ts-expect-error -- Node fetch supports duplex for streaming request bodies
+      duplex: "half",
+    })
+
+    if (!uploadResponse.ok) {
+      const errorText = await uploadResponse.text()
+      throw new Error(
+        `AssemblyAI upload failed (${uploadResponse.status}): ${errorText}`,
+      )
+    }
+
+    const data = await uploadResponse.json() as { upload_url: string }
+    return data.upload_url
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+/**
  * Submits an audio URL to AssemblyAI for asynchronous transcription.
  *
  * The transcription runs asynchronously on AssemblyAI's servers. When
  * complete, AssemblyAI sends the result to the provided webhook URL.
  * Speaker diarization and language detection are enabled by default.
  *
- * @param audioUrl - The publicly accessible URL of the audio file
+ * For private/premium feeds: when `options.feedAuthHeader` is provided,
+ * the audio is first downloaded with credentials and uploaded to AssemblyAI's
+ * upload endpoint, then the temporary hosted URL is used for transcription.
+ *
+ * @param audioUrl - The URL of the audio file
  * @param webhookUrl - The URL AssemblyAI should POST the result to when complete
  * @param apiKey - The AssemblyAI API key
+ * @param options - Optional settings for private feed authentication
  * @returns An object containing the `transcript_id` for tracking
  * @throws Error if the AssemblyAI API returns a non-200 response
- *
- * @example
- * ```ts
- * const { transcript_id } = await submitPodcastTranscription(
- *   audioUrl,
- *   `${process.env.NEXT_PUBLIC_APP_URL}/api/assemblyai-webhook`,
- *   process.env.ASSEMBLYAI_API_KEY!
- * )
- * // Store transcript_id for matching when webhook arrives
- * ```
  */
 export async function submitPodcastTranscription(
   audioUrl: string,
   webhookUrl: string,
   apiKey: string,
+  options?: TranscriptionOptions,
 ): Promise<SubmitTranscriptionResult> {
+  // For private feeds, proxy through AssemblyAI's upload endpoint
+  const resolvedAudioUrl = options?.feedAuthHeader
+    ? await uploadAudioForTranscription(audioUrl, options.feedAuthHeader, apiKey)
+    : audioUrl
+
   const response = await fetch(ASSEMBLYAI_API_URL, {
     method: "POST",
     headers: {
@@ -81,7 +161,7 @@ export async function submitPodcastTranscription(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      audio_url: audioUrl,
+      audio_url: resolvedAudioUrl,
       speaker_labels: true,
       language_detection: true,
       webhook_url: webhookUrl,

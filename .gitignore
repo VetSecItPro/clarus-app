@@ -126,3 +126,7 @@ library-*.png
 .admin-dashboard/
 landing-full.png
 .cleancode/
+
+# Screenshots
+pricing-*.png
+.perf/
