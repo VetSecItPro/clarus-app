@@ -54,7 +54,7 @@ import { getClaimSearchContext } from "./pipeline/claim-search"
 import type { ClaimSearchContext } from "./pipeline/web-search"
 import { detectContentTone, NEUTRAL_TONE_LABEL } from "./pipeline/tone-detection"
 import type { ToneDetectionResult } from "./pipeline/tone-detection"
-import { getYouTubeMetadata, getYouTubeTranscript } from "./pipeline/youtube"
+import { getYouTubeMetadata, getYouTubeTranscript, detectMusicContent } from "./pipeline/youtube"
 import { scrapeArticle } from "./pipeline/article-scraper"
 import type { ScrapedArticleData } from "./pipeline/article-scraper"
 import {
@@ -289,6 +289,38 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
             if (updateMetaError) logger.error("API: Error updating YouTube metadata in DB:", updateMetaError)
             else Object.assign(content, updatePayload)
           }
+        }
+
+        // Early music content gate — reject before expensive transcript fetch
+        // Use content (which includes freshly fetched metadata via Object.assign)
+        const musicCheckMetadata = {
+          title: content.title,
+          author: content.author,
+          duration: content.duration,
+          thumbnail_url: content.thumbnail_url,
+          description: content.description,
+          upload_date: content.upload_date,
+          view_count: content.view_count,
+          like_count: content.like_count,
+          channel_id: content.channel_id,
+          transcript_languages: content.transcript_languages,
+          raw_youtube_metadata: content.raw_youtube_metadata,
+        }
+        if (detectMusicContent(musicCheckMetadata)) {
+          logger.info(`API: Music content detected for ${content.url} — skipping analysis`)
+          await supabase.from("content").update({
+            full_text: "PROCESSING_FAILED::YOUTUBE::MUSIC_CONTENT",
+          }).eq("id", content.id)
+
+          await updateSummarySection(supabase, content.id, content.user_id!, {
+            processing_status: "refused",
+            brief_overview: "This appears to be primarily music content (music video, concert, album, etc.). Clarus is designed to analyze spoken and written content like interviews, podcasts, news, and educational videos. Music content doesn't have enough spoken dialogue for meaningful analysis.",
+          }, language)
+
+          throw new ProcessContentError(
+            "This video appears to be primarily music content. Clarus analyzes spoken and written content — music videos, concerts, and albums don't have enough dialogue to analyze.",
+            200,
+          )
         }
 
         const shouldFetchYouTubeText = !content.full_text || forceRegenerate

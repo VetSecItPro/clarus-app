@@ -160,6 +160,105 @@ export function formatTimestamp(ms: number): string {
   return `${minutes}:${seconds.toString().padStart(2, '0')}`
 }
 
+// ============================================
+// MUSIC CONTENT DETECTION
+// ============================================
+
+/**
+ * Pre-screen YouTube metadata to detect music content BEFORE transcript fetch.
+ *
+ * This prevents the pipeline from wasting 60s+ trying to fetch a transcript
+ * for a music video or concert that has no meaningful spoken content.
+ * Detection uses title, description, tags, and channel signals.
+ *
+ * @returns true if the content is primarily music (should be rejected early)
+ */
+
+const MUSIC_TITLE_PATTERNS = [
+  /\bofficial\s+(music\s+)?video\b/i,
+  /\bofficial\s+audio\b/i,
+  /\bofficial\s+lyric\s+video\b/i,
+  /\blyrics?\s+video\b/i,
+  /\blive\s+(concert|performance|session|show)\b/i,
+  /\bfull\s+(album|concert|set)\b/i,
+  /\bmix\s*(?:tape|set)\b/i,
+  /\b(?:dj|lo-?fi|chill)\s+mix\b/i,
+  /\bmusic\s+video\b/i,
+  /\bvisualizer\b/i,
+  /\baudio\s*(?:only)?\b.*\b(?:ft|feat)\b/i,
+  /\b(?:ft|feat)\.?\s+/i,  // "feat." or "ft." — common in music titles
+  /\[\s*(?:official|lyrics?|audio|mv|m\/v)\s*\]/i,
+  /\(\s*(?:official|lyrics?|audio|mv|m\/v)\s*\)/i,
+]
+
+const MUSIC_TAG_KEYWORDS = new Set([
+  "music", "music video", "official video", "official music video",
+  "official audio", "lyrics", "lyric video", "concert", "live concert",
+  "live performance", "live music", "album", "full album", "mixtape",
+  "hip hop", "rap", "r&b", "pop music", "rock music", "jazz",
+  "electronic music", "edm", "classical music", "country music",
+  "reggae", "gospel", "k-pop", "latin music",
+])
+
+const MUSIC_DESCRIPTION_PATTERNS = [
+  /\bofficial\s+(music\s+)?video\b/i,
+  /\bstream\s+(\/\s*)?download\b/i,
+  /\bavailable\s+(?:now\s+)?on\s+(?:spotify|apple\s+music|itunes|tidal|deezer|amazon\s+music)\b/i,
+  /\b(?:℗|©)\s*\d{4}\b/,  // ℗ 2024 or © 2024 — record label copyright
+  /\brecords?\b.*\b(?:distributed|released)\b/i,
+  /\bproduced\s+by\b/i,
+  /\bwritten\s+by\b.*\bcomposed\s+by\b/i,
+]
+
+const MUSIC_CHANNEL_KEYWORDS = [
+  "vevo", "records", "music", "entertainment",
+]
+
+export function detectMusicContent(metadata: ProcessedYouTubeMetadata): boolean {
+  const title = metadata.title ?? ""
+  const description = metadata.description ?? ""
+  const rawMeta = metadata.raw_youtube_metadata as SupadataYouTubeResponse | null
+  const tags = rawMeta?.tags ?? []
+  const channelName = metadata.author ?? ""
+
+  let signals = 0
+
+  // Title pattern match (strong signal — 2 points)
+  if (MUSIC_TITLE_PATTERNS.some(p => p.test(title))) {
+    signals += 2
+  }
+
+  // YouTube tags (strong signal — check for music-related tags)
+  const lowerTags = tags.map(t => t.toLowerCase())
+  const musicTagCount = lowerTags.filter(t => MUSIC_TAG_KEYWORDS.has(t)).length
+  if (musicTagCount >= 2) signals += 2
+  else if (musicTagCount >= 1) signals += 1
+
+  // Description patterns (medium signal)
+  const descriptionHits = MUSIC_DESCRIPTION_PATTERNS.filter(p => p.test(description)).length
+  if (descriptionHits >= 2) signals += 2
+  else if (descriptionHits >= 1) signals += 1
+
+  // Channel name contains music keywords (weak signal)
+  const lowerChannel = channelName.toLowerCase()
+  if (MUSIC_CHANNEL_KEYWORDS.some(kw => lowerChannel.includes(kw))) {
+    signals += 1
+  }
+
+  // "feat." or "ft." in title is a strong music indicator when combined with any other signal
+  if (/\b(?:ft|feat)\.?\s+/i.test(title) && signals >= 1) {
+    signals += 1
+  }
+
+  // Threshold: need at least 3 signal points to classify as music
+  // This avoids false positives on videos that merely mention music
+  return signals >= 3
+}
+
+// ============================================
+// TRANSCRIPT EXTRACTION
+// ============================================
+
 export async function getYouTubeTranscript(url: string, apiKey: string, userId?: string | null, contentId?: string | null): Promise<{ full_text: string | null }> {
   const endpoint = `https://api.supadata.ai/v1/youtube/transcript?url=${encodeURIComponent(url)}`
   const retries = 3
