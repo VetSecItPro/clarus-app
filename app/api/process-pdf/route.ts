@@ -3,8 +3,8 @@ import type { Database } from "@/types/database.types"
 import { type NextRequest, NextResponse } from "next/server"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { authenticateRequest } from "@/lib/auth"
-import { getUserTier } from "@/lib/usage"
-import { TIER_LIMITS } from "@/lib/tier-limits"
+import { getUserTierAndAdmin } from "@/lib/usage"
+import { getEffectiveLimits } from "@/lib/tier-limits"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 import type { AnalysisLanguage } from "@/lib/languages"
 import { logger } from "@/lib/logger"
@@ -130,9 +130,9 @@ export async function POST(req: NextRequest) {
   const userId = auth.user.id
 
   try {
-    // Enforce library size limit
-    const tier = await getUserTier(auth.supabase, userId)
-    const libraryLimit = TIER_LIMITS[tier].library
+    // Enforce library size limit (admin users bypass all limits)
+    const { tier, isAdmin } = await getUserTierAndAdmin(auth.supabase, userId)
+    const libraryLimit = getEffectiveLimits(tier, isAdmin).library
 
     const { count: libraryCount } = await auth.supabase
       .from("content")

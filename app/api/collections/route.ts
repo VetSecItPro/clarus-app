@@ -10,8 +10,8 @@ import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { createCollectionSchema, parseBody } from "@/lib/schemas"
 import { checkRateLimit } from "@/lib/rate-limit"
-import { getUserTier } from "@/lib/usage"
-import { TIER_LIMITS } from "@/lib/tier-limits"
+import { getUserTierAndAdmin } from "@/lib/usage"
+import { getEffectiveLimits } from "@/lib/tier-limits"
 import { logger } from "@/lib/logger"
 
 export async function GET(request: Request) {
@@ -76,15 +76,15 @@ export async function POST(request: Request) {
     }
 
     // PERF: Parallelize tier check and collection count instead of sequential queries
-    const [tier, countResult] = await Promise.all([
-      getUserTier(auth.supabase, auth.user.id),
+    const [{ tier, isAdmin }, countResult] = await Promise.all([
+      getUserTierAndAdmin(auth.supabase, auth.user.id),
       auth.supabase
         .from("collections")
         .select("id", { count: "exact", head: true })
         .eq("user_id", auth.user.id),
     ])
 
-    const collectionsLimit = TIER_LIMITS[tier].collections
+    const collectionsLimit = getEffectiveLimits(tier, isAdmin).collections
 
     if (countResult.error) {
       logger.error("Collections count error:", countResult.error)

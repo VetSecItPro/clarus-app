@@ -8,16 +8,16 @@
 
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
-import { getUserTier, getUsageCounts } from "@/lib/usage"
-import { TIER_LIMITS, getCurrentPeriod } from "@/lib/tier-limits"
+import { getUserTierAndAdmin, getUsageCounts } from "@/lib/usage"
+import { getEffectiveLimits, getCurrentPeriod } from "@/lib/tier-limits"
 
 export async function GET() {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user, supabase } = auth
 
-  const [tier, counts, libraryResult, bookmarkResult] = await Promise.all([
-    getUserTier(supabase, user.id),
+  const [tierData, counts, libraryResult, bookmarkResult] = await Promise.all([
+    getUserTierAndAdmin(supabase, user.id),
     getUsageCounts(supabase, user.id),
     supabase
       .from("content")
@@ -30,7 +30,8 @@ export async function GET() {
       .eq("is_bookmarked", true),
   ])
 
-  const limits = TIER_LIMITS[tier]
+  const { tier, isAdmin } = tierData
+  const limits = getEffectiveLimits(tier, isAdmin)
   const period = getCurrentPeriod()
 
   // Calculate reset date (first day of next month, UTC)

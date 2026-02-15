@@ -2,8 +2,8 @@ import { NextResponse } from "next/server"
 import { authenticateRequest, verifyContentOwnership, AuthErrors } from "@/lib/auth"
 import { uuidSchema, parseBody } from "@/lib/schemas"
 import { checkRateLimit } from "@/lib/rate-limit"
-import { getUserTier } from "@/lib/usage"
-import { TIER_LIMITS } from "@/lib/tier-limits"
+import { getUserTierAndAdmin } from "@/lib/usage"
+import { getEffectiveLimits } from "@/lib/tier-limits"
 import { z } from "zod"
 import { logger } from "@/lib/logger"
 
@@ -123,8 +123,8 @@ export async function PATCH(
 
     // Enforce tier-based unique tag limit across entire library
     if (actionData.action === "add") {
-      const tier = await getUserTier(auth.supabase, auth.user.id)
-      const tagLimit = TIER_LIMITS[tier].tags
+      const { tier, isAdmin } = await getUserTierAndAdmin(auth.supabase, auth.user.id)
+      const tagLimit = getEffectiveLimits(tier, isAdmin).tags
 
       // PERF: FIX-209 — filter out empty tags and limit to prevent unbounded fetch
       const { data: allContent } = await auth.supabase

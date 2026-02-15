@@ -7,7 +7,7 @@ import { validateContentId, validateChatMessage } from "@/lib/validation"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { z } from "zod"
 import { enforceAndIncrementUsage } from "@/lib/usage"
-import { TIER_LIMITS } from "@/lib/tier-limits"
+import { getEffectiveLimits } from "@/lib/tier-limits"
 import { authenticateRequest } from "@/lib/auth"
 import { sanitizeForPrompt, sanitizeChatMessage, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
 import { logger } from "@/lib/logger"
@@ -269,7 +269,13 @@ export async function POST(req: NextRequest) {
       .eq("user_id", auth.user.id)
       .maybeSingle()
 
-    const perContentLimit = TIER_LIMITS[usageCheck.tier].chatMessagesPerContent
+    // Check admin status for per-content limit bypass
+    const { data: adminCheck } = await supabaseAdmin
+      .from("users")
+      .select("is_admin")
+      .eq("id", auth.user.id)
+      .single()
+    const perContentLimit = getEffectiveLimits(usageCheck.tier, adminCheck?.is_admin === true).chatMessagesPerContent
     if (thread) {
       const { count: dbMessageCount } = await supabaseAdmin
         .from("chat_messages")
