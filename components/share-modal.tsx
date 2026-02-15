@@ -56,11 +56,15 @@ export function ShareModal({
   }
 
   const handleCopyLink = async () => {
-    if (!shareUrl) return
-    await navigator.clipboard.writeText(shareUrl)
-    setLinkCopied(true)
-    toast.success("Link copied to clipboard")
-    setTimeout(() => setLinkCopied(false), 2000)
+    if (!shareUrl || linkCopied) return
+    try {
+      await navigator.clipboard.writeText(shareUrl)
+      setLinkCopied(true)
+      toast.success("Link copied to clipboard")
+      setTimeout(() => setLinkCopied(false), 2000)
+    } catch {
+      toast.error("Failed to copy — try selecting the URL manually")
+    }
   }
 
   const handleSend = async () => {
@@ -262,7 +266,7 @@ export function ShareModal({
                 {/* Content preview */}
                 <div className="p-3 rounded-xl bg-white/[0.04] border border-white/[0.08]">
                   <p className="text-white/80 text-sm font-medium line-clamp-2">{contentTitle}</p>
-                  <p className="text-white/50 text-xs mt-1 truncate">{contentUrl}</p>
+                  <p className="text-white/50 text-xs mt-1 truncate" title={contentUrl}>{contentUrl}</p>
                 </div>
 
                 {activeTab === "link" && contentId ? (

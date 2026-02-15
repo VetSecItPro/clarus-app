@@ -24,19 +24,12 @@ const PLANS = [
       button: "bg-white/[0.06] hover:bg-white/[0.1] text-white/80 border border-white/[0.1]",
     },
     features: [
-      { text: "5 analyses per month", included: true },
-      { text: "All 6 analysis sections", included: true },
-      { text: "10 chat messages per content", included: true },
+      { text: "5 analyses per month (articles, YouTube, X)", included: true },
+      { text: "Articles + YouTube only", included: true },
       { text: "50 chat messages per month", included: true },
       { text: "25 items in library", included: true },
-      { text: "5 bookmarks", included: true },
-      { text: "3 tags max", included: true },
-      { text: "Articles + YouTube", included: true },
       { text: "Podcast analysis", included: false },
-      { text: "Shareable links", included: false },
-      { text: "Export (Markdown/PDF)", included: false },
-      { text: "Weekly digest email", included: false },
-      { text: "Claim tracking", included: false },
+      { text: "Exports & sharing", included: false },
     ],
     cta: "Get Started",
     ctaHref: "/signup",
@@ -56,21 +49,10 @@ const PLANS = [
       button: "bg-brand hover:bg-brand-hover text-white shadow-lg shadow-brand/25 hover:shadow-brand/40",
     },
     features: [
-      { text: "50 analyses per month", included: true },
-      { text: "All 6 analysis sections", included: true },
-      { text: "25 chat messages per content", included: true },
-      { text: "300 chat messages per month", included: true },
-      { text: "500 items in library", included: true },
-      { text: "50 bookmarks", included: true },
-      { text: "50 tags", included: true },
-      { text: "All content types", included: true },
-      { text: "10 podcast analyses/month", included: true },
-      { text: "3 podcast feed subscriptions", included: true },
-      { text: "Public podcasts only", included: true },
-      { text: "10 shareable links/month", included: true },
-      { text: "50 exports (Markdown)", included: true },
+      { text: "50 analyses per month (articles, YouTube, X)", included: true },
+      { text: "10 podcast analyses (public feeds)", included: true },
+      { text: "Exports & shareable links", included: true },
       { text: "Weekly digest email", included: true },
-      { text: "Claim tracking", included: false },
       { text: "Private podcast feeds", included: false },
     ],
     cta: "Get Started",
@@ -90,21 +72,12 @@ const PLANS = [
       button: "bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40",
     },
     features: [
-      { text: "150 analyses per month", included: true },
-      { text: "All 6 analysis sections", included: true },
-      { text: "50 chat messages per content", included: true },
-      { text: "1,000 chat messages per month", included: true },
-      { text: "5,000 items in library", included: true },
-      { text: "500 bookmarks", included: true },
-      { text: "100 tags", included: true },
-      { text: "All content types", included: true },
-      { text: "30 podcast analyses/month", included: true },
-      { text: "10 podcast feed subscriptions", included: true },
-      { text: "Public + private podcast feeds", included: true },
-      { text: "100 shareable links/month", included: true },
-      { text: "100 exports (PDF + Markdown)", included: true },
-      { text: "Weekly digest email", included: true },
+      { text: "150 analyses per month (articles, YouTube, X)", included: true },
+      { text: "30 podcast analyses (public + private)", included: true },
       { text: "Cross-content claim tracking", included: true },
+      { text: "Priority processing", included: true },
+      { text: "PDF + Markdown exports", included: true },
+      { text: "Everything in Starter", included: true },
     ],
     cta: "Go Pro",
     ctaHref: "/signup",
@@ -114,23 +87,23 @@ const PLANS = [
 const FAQS = [
   {
     q: "What counts as an analysis?",
-    a: "One analysis = one piece of content processed. A YouTube video, article, PDF, or any supported content type. Re-viewing the same content does not count against your limit.",
+    a: "One analysis = one piece of content processed. Articles, YouTube videos, and X posts all share the same monthly quota (5/50/150). Podcast analyses have their own separate quota (0/10/30) because audio transcription is more resource-intensive. Viewing content you've already analyzed does not count again — only new analyses are counted.",
   },
   {
     q: "What happens if I hit my limit?",
-    a: "You can still access your library and chat with existing content. You just can't analyze new content until your limit resets on the 1st of each month, or you upgrade.",
+    a: "You can still access your library, read existing analyses, and chat with previously analyzed content. You just can't analyze new content until your quota resets at the start of each calendar month (UTC), or you upgrade.",
   },
   {
     q: "Can I switch plans?",
-    a: "Yes. Upgrade anytime and get immediate access. Downgrade takes effect at your next billing cycle. No penalties.",
+    a: "Yes. Upgrade anytime and get immediate access to the higher tier's limits. Downgrade or cancel anytime — your current plan stays active until the end of your billing period.",
   },
   {
     q: "Is the Free plan really free?",
-    a: "Yes, forever. 5 analyses per month, no credit card required, no time limit. Upgrade only when you need more.",
+    a: "Yes, forever. 5 analyses per month for articles, YouTube, and X posts. No credit card required, no time limit, no trial period. Upgrade only when you need more.",
   },
   {
     q: "Do you use my content to train AI?",
-    a: "No. Your content is processed, analyzed, and stored for you. We never use it to train models. We never sell it. You can delete everything anytime.",
+    a: "No. Your content is processed, analyzed, and stored for you. Our AI provider (Google Gemini via Vertex AI) does not use your data for model training and does not retain prompts. We never sell your data. You can delete everything anytime.",
   },
   {
     q: "What's claim tracking?",
@@ -138,15 +111,15 @@ const FAQS = [
   },
   {
     q: "How does annual billing work?",
-    a: "Annual plans are billed once per year at a significant discount — up to 33% off monthly pricing. Starter saves $72/year, Pro saves $69/year.",
+    a: "Annual plans are billed once per year at a discount. Starter: $144/year ($12/month, saves $72 vs monthly). Pro: $279/year ($23.25/month, saves $69 vs monthly).",
   },
   {
     q: "What is podcast analysis?",
-    a: "Podcast analysis transcribes audio content with speaker identification, then runs the same 6-section AI analysis as articles and videos. Starter supports public podcast feeds. Pro adds private feed support for premium podcasts (Patreon, Supercast, etc.) — your credentials are stored encrypted and audio is securely proxied for transcription. Podcast analyses have their own monthly quota, separate from regular content analyses.",
+    a: "Podcast analysis transcribes audio with speaker identification, then runs the same 6-section AI analysis as articles and videos. Starter supports public podcast feeds. Pro adds private feed support for premium podcasts (Patreon, Supercast, etc.) — credentials are stored encrypted and audio is securely proxied for transcription. Podcast analyses have their own monthly quota, separate from regular content analyses.",
   },
   {
     q: "How does the Day Pass work?",
-    a: "The Day Pass gives you 24 hours of premium access for a one-time $10 payment. You get 15 analyses, 3 podcast analyses, 100 chat messages, shareable links, exports, and claim tracking. After 24 hours, you revert to the free plan. Content you analyzed during the pass stays in your library. You can't stack day passes or buy one while on an active subscription.",
+    a: "The Day Pass gives you 24 hours of paid-tier access for a one-time $10 payment. You get 15 analyses, 3 podcast analyses (public feeds), 100 chat messages, shareable links, and exports. After 24 hours, you return to the Free plan. Content you analyzed during the pass stays in your library forever. You can't stack day passes or buy one while on an active subscription.",
   },
 ]
 
@@ -262,6 +235,14 @@ function PlanCard({
           </li>
         ))}
       </ul>
+
+      {/* Link to comparison table */}
+      <a
+        href="#compare"
+        className="block mt-4 text-xs text-white/30 hover:text-white/50 transition-colors text-center"
+      >
+        See full comparison &darr;
+      </a>
     </motion.div>
   )
 }
@@ -383,7 +364,7 @@ export default function PricingPageClient() {
                       </span>
                     </div>
                     <p className="text-sm text-white/50 mb-3">
-                      Full premium features for 24 hours — 15 analyses, 100 chat messages, exports, and claim tracking.
+                      Full premium features for 24 hours — 15 analyses, 100 chat messages, exports, and shareable links.
                     </p>
                     <div className="flex flex-wrap gap-x-5 gap-y-1">
                       {[
@@ -391,7 +372,6 @@ export default function PricingPageClient() {
                         "3 podcast analyses (public feeds)",
                         "100 chat messages",
                         "Exports",
-                        "Claim tracking",
                       ].map((feature) => (
                         <div key={feature} className="flex items-center gap-1.5">
                           <Check className="w-3.5 h-3.5 text-amber-400 flex-shrink-0" />
@@ -421,7 +401,7 @@ export default function PricingPageClient() {
         </section>
 
         {/* Comparison table (desktop) */}
-        <section className="pb-20 px-4 hidden lg:block">
+        <section id="compare" className="pb-20 px-4 hidden lg:block scroll-mt-20">
           <div className="max-w-4xl mx-auto">
             <h2 className="text-2xl font-bold text-white text-center mb-8">
               Compare Plans
@@ -438,12 +418,15 @@ export default function PricingPageClient() {
                 </thead>
                 <tbody className="divide-y divide-white/[0.04]">
                   {[
-                    ["Analyses per month", "5", "50", "150"],
+                    ["Analyses per month (articles, YouTube, X)", "5", "50", "150"],
                     ["Podcast analyses", false, "10/month", "30/month"],
                     ["Podcast feed subscriptions", false, "3 (public)", "10 (public + private)"],
+                    ["YouTube feed subscriptions", false, "3", "10"],
+                    ["Private podcast feeds", false, false, true],
                     ["Chat messages/content", "10", "25", "50"],
                     ["Chat messages/month", "50", "300", "1,000"],
                     ["Library storage", "25 items", "500 items", "5,000 items"],
+                    ["Collections", "3", "50", "100"],
                     ["Bookmarks", "5", "50", "500"],
                     ["Tags", "3 max", "50", "100"],
                     ["Shareable links", false, "10/month", "100/month"],
@@ -451,9 +434,10 @@ export default function PricingPageClient() {
                     ["PDF export", false, false, true],
                     ["Weekly digest email", false, true, true],
                     ["Claim tracking", false, false, true],
+                    ["Comparative analysis", false, false, true],
+                    ["Analysis preferences", false, true, true],
                     ["Content types", "Articles, YouTube", "All types", "All types"],
                     ["Processing speed", "Standard", "Standard", "Priority"],
-                    ["Support", "Community", "Email", "Priority email"],
                   ].map(([feature, free, starter, pro]) => (
                     <tr key={feature as string} className="hover:bg-white/[0.02] transition-colors">
                       <td className="px-6 py-3.5 text-white/60">{feature}</td>

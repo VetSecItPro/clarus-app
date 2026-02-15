@@ -43,6 +43,7 @@ interface ItemAnalysisProps {
   youtubePlayerRef: React.RefObject<YouTubePlayerRef | null>
   hasFullText: boolean
   fullTextFailed: boolean
+  contentDateAdded: string | null
   onRegenerate: () => void
   onToggleDetailedExpanded: () => void
   onFlagClaim: (claimIndex: number) => void
@@ -71,6 +72,7 @@ export function ItemAnalysis({
   youtubePlayerRef,
   hasFullText,
   fullTextFailed,
+  contentDateAdded,
   onRegenerate,
   onToggleDetailedExpanded,
   onFlagClaim,
@@ -99,6 +101,8 @@ export function ItemAnalysis({
         detailedSummary={summary?.detailed_summary ?? null}
         contentType={contentType}
         isPolling={isPolling}
+        contentDateAdded={contentDateAdded}
+        onRetry={onRegenerate}
       />
       {paywallWarning && !processingError && (
         <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 flex gap-3 items-start">

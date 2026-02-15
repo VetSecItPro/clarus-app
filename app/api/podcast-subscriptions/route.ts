@@ -212,5 +212,50 @@ export async function POST(request: Request) {
     return AuthErrors.serverError()
   }
 
-  return NextResponse.json({ subscription }, { status: 201 })
+  // Insert initial episodes from the feed so the user sees content immediately
+  // (instead of waiting up to 24h for the cron to discover them)
+  let episodesInserted = 0
+  if (feedData.episodes.length > 0) {
+    const episodeRows = feedData.episodes.slice(0, 50).map((ep) => ({
+      subscription_id: subscription.id,
+      episode_title: ep.title,
+      episode_url: ep.url,
+      episode_date: ep.pubDate?.toISOString() ?? null,
+      duration_seconds: ep.durationSeconds,
+      description: ep.description,
+      is_notified: true, // Don't send email for initial batch
+    }))
+
+    const { data: inserted, error: epError } = await supabase
+      .from("podcast_episodes")
+      .upsert(episodeRows, {
+        onConflict: "subscription_id,episode_url",
+        ignoreDuplicates: true,
+      })
+      .select("id")
+
+    if (epError) {
+      // Non-fatal: subscription was created, episodes will be picked up by cron
+      logger.error("[podcast-subscriptions] Failed to insert initial episodes:", epError.message)
+    } else {
+      episodesInserted = inserted?.length ?? 0
+
+      // Set last_episode_date so the cron doesn't re-insert these
+      const latestDate = feedData.episodes
+        .filter((ep) => ep.pubDate)
+        .sort((a, b) => (b.pubDate?.getTime() ?? 0) - (a.pubDate?.getTime() ?? 0))[0]?.pubDate
+
+      if (latestDate) {
+        await supabase
+          .from("podcast_subscriptions")
+          .update({
+            last_episode_date: latestDate.toISOString(),
+            last_checked_at: new Date().toISOString(),
+          })
+          .eq("id", subscription.id)
+      }
+    }
+  }
+
+  return NextResponse.json({ subscription, episodes_inserted: episodesInserted }, { status: 201 })
 }

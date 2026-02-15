@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { useSearchParams } from "next/navigation"
 import dynamic from "next/dynamic"
 import { Rss, Trash2, Loader2, Podcast, Youtube, ExternalLink, AlertTriangle, Lock, HelpCircle } from "lucide-react"
+import { useConfirmDialog } from "@/components/ui/confirm-dialog"
 import Image from "next/image"
 import Link from "next/link"
 import { toast } from "sonner"
@@ -100,45 +101,38 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
     fetchYoutubeSubs()
   }, [fetchPodcastSubs, fetchYoutubeSubs])
 
-  const handleDeletePodcast = useCallback(async (id: string, name: string) => {
-    if (deletingId) return
-    setDeletingId(id)
-    try {
-      const response = await fetch(`/api/podcast-subscriptions/${id}`, { method: "DELETE" })
-      if (!response.ok) {
-        const data = await response.json()
-        toast.error(data.error ?? "Failed to remove subscription")
-        return
+  const [unsubscribeDialog, confirmUnsubscribe] = useConfirmDialog<{ id: string; name: string; type: FeedTab }>({
+    title: "Unsubscribe from feed",
+    description: (item) =>
+      `Unsubscribe from "${item.name}"? You won't receive new episode notifications, but previously analyzed content will remain in your library.`,
+    confirmLabel: "Unsubscribe",
+    variant: "danger",
+    onConfirm: async ({ id, name, type }) => {
+      setDeletingId(id)
+      try {
+        const endpoint = type === "podcasts"
+          ? `/api/podcast-subscriptions/${id}`
+          : `/api/youtube-subscriptions/${id}`
+        const response = await fetch(endpoint, { method: "DELETE" })
+        if (!response.ok) {
+          const data = await response.json()
+          toast.error(data.error ?? "Failed to remove subscription")
+          return
+        }
+        if (type === "podcasts") {
+          setPodcastSubs((prev) => prev.filter((s) => s.id !== id))
+        } else {
+          setYoutubeSubs((prev) => prev.filter((s) => s.id !== id))
+        }
+        if (expandedId === id) setExpandedId(null)
+        toast.success(`Unsubscribed from ${name}`)
+      } catch {
+        toast.error("Network error. Please try again.")
+      } finally {
+        setDeletingId(null)
       }
-      setPodcastSubs((prev) => prev.filter((s) => s.id !== id))
-      if (expandedId === id) setExpandedId(null)
-      toast.success(`Unsubscribed from ${name}`)
-    } catch {
-      toast.error("Network error. Please try again.")
-    } finally {
-      setDeletingId(null)
-    }
-  }, [deletingId, expandedId])
-
-  const handleDeleteYouTube = useCallback(async (id: string, name: string) => {
-    if (deletingId) return
-    setDeletingId(id)
-    try {
-      const response = await fetch(`/api/youtube-subscriptions/${id}`, { method: "DELETE" })
-      if (!response.ok) {
-        const data = await response.json()
-        toast.error(data.error ?? "Failed to remove subscription")
-        return
-      }
-      setYoutubeSubs((prev) => prev.filter((s) => s.id !== id))
-      if (expandedId === id) setExpandedId(null)
-      toast.success(`Unsubscribed from ${name}`)
-    } catch {
-      toast.error("Network error. Please try again.")
-    } finally {
-      setDeletingId(null)
-    }
-  }, [deletingId, expandedId])
+    },
+  })
 
   const handleTabChange = useCallback((tab: FeedTab) => {
     setActiveTab(tab)
@@ -299,7 +293,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                     hasCredentials={sub.has_credentials}
                     credentialsStale={sub.credentials_stale}
                     onToggle={() => handleToggleExpanded(sub.id)}
-                    onDelete={() => handleDeletePodcast(sub.id, sub.podcast_name)}
+                    onDelete={() => confirmUnsubscribe({ id: sub.id, name: sub.podcast_name, type: "podcasts" })}
                   >
                     <EpisodeList subscriptionId={sub.id} podcastName={sub.podcast_name} />
                   </SubscriptionCard>
@@ -376,7 +370,7 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                     consecutiveFailures={sub.consecutive_failures}
                     lastError={sub.last_error}
                     onToggle={() => handleToggleExpanded(sub.id)}
-                    onDelete={() => handleDeleteYouTube(sub.id, sub.channel_name)}
+                    onDelete={() => confirmUnsubscribe({ id: sub.id, name: sub.channel_name, type: "youtube" })}
                   >
                     <VideoList subscriptionId={sub.id} channelName={sub.channel_name} />
                   </SubscriptionCard>
@@ -386,6 +380,8 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
           </>
         )}
       </main>
+
+      {unsubscribeDialog}
     </div>
   )
 }

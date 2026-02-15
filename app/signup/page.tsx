@@ -369,7 +369,11 @@ export default function SignUpPage() {
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     required
                     autoComplete="new-password"
-                    className="w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border border-white/[0.08] rounded-lg text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
+                    className={`w-full h-10 pl-10 pr-10 text-sm bg-white/[0.04] border rounded-lg text-white placeholder-white/30 transition-all outline-none ${
+                      confirmPassword && password !== confirmPassword
+                        ? "border-red-500/50 focus:border-red-500 focus:ring-1 focus:ring-red-500/30"
+                        : "border-white/[0.08] focus:border-brand focus:ring-1 focus:ring-brand"
+                    }`}
                   />
                   <button
                     type="button"

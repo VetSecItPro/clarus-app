@@ -226,9 +226,13 @@ describe("TIER_FEATURES", () => {
     expect(features.multiLanguageAnalysis).toBe(true)
   })
 
-  it("day_pass has claim tracking but no weekly digest", () => {
-    expect(TIER_FEATURES.day_pass.claimTracking).toBe(true)
+  it("day_pass has no claim tracking and no weekly digest", () => {
+    expect(TIER_FEATURES.day_pass.claimTracking).toBe(false)
     expect(TIER_FEATURES.day_pass.weeklyDigest).toBe(false)
+  })
+
+  it("starter tier has no claim tracking", () => {
+    expect(TIER_FEATURES.starter.claimTracking).toBe(false)
   })
 
   it("day_pass has no priority processing", () => {

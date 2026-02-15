@@ -52,7 +52,7 @@ export async function GET(
 
   if (!TIER_FEATURES[tier].claimTracking) {
     return NextResponse.json(
-      { error: "Claim tracking requires a Starter or Pro subscription.", upgrade: true },
+      { error: "Claim tracking requires a Pro subscription.", upgrade: true },
       { status: 403 }
     )
   }

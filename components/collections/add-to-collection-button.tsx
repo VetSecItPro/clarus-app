@@ -49,7 +49,7 @@ export function AddToCollectionButton({
   const dropdownRef = useRef<HTMLDivElement>(null)
   const buttonRef = useRef<HTMLButtonElement>(null)
 
-  // Close dropdown on click outside
+  // Close dropdown on click outside or Escape
   useEffect(() => {
     if (!isOpen) return
 
@@ -66,8 +66,21 @@ export function AddToCollectionButton({
       }
     }
 
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        setIsOpen(false)
+        setShowQuickCreate(false)
+        setQuickCreateName("")
+        buttonRef.current?.focus()
+      }
+    }
+
     document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
+    document.addEventListener("keydown", handleKeyDown)
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside)
+      document.removeEventListener("keydown", handleKeyDown)
+    }
   }, [isOpen])
 
   const handleToggle = useCallback(

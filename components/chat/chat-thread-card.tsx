@@ -12,6 +12,9 @@ import {
   Bookmark,
   BookmarkCheck,
   Trash2,
+  Loader2,
+  AlertCircle,
+  Mic,
 } from "lucide-react"
 import Image from "next/image"
 import { formatDistanceToNow } from "date-fns"
@@ -28,6 +31,10 @@ interface ChatThreadCardProps {
   date_added: string
   message_count?: number
   is_bookmarked?: boolean
+  /** Processing status from the summary record (null = no summary yet) */
+  processingStatus?: string | null
+  /** Whether the content's full_text starts with PROCESSING_FAILED */
+  contentFailed?: boolean
   onClick: () => void
   onBookmark?: () => void
   onDelete?: () => void
@@ -75,6 +82,8 @@ export const ChatThreadCard = memo(function ChatThreadCard({
   date_added,
   message_count = 0,
   is_bookmarked = false,
+  processingStatus,
+  contentFailed = false,
   onClick,
   onBookmark,
   onDelete,
@@ -130,14 +139,14 @@ export const ChatThreadCard = memo(function ChatThreadCard({
           {/* Content */}
           <div className="flex-1 min-w-0">
             {/* Title */}
-            <h3 className="text-sm font-medium text-white line-clamp-2 mb-1 group-hover:text-brand transition-colors">
+            <h3 className="text-sm font-medium text-white line-clamp-2 mb-1 group-hover:text-brand transition-colors" title={title}>
               {title}
             </h3>
 
             {/* Meta row */}
             <div className="flex items-center gap-2 text-[0.6875rem] text-white/50 mb-1.5">
               {getTypeIcon(type)}
-              <span className="truncate">{domain}</span>
+              <span className="truncate" title={domain}>{domain}</span>
               <span>•</span>
               <span>{timeAgo}</span>
             </div>
@@ -185,15 +194,38 @@ export const ChatThreadCard = memo(function ChatThreadCard({
               )}
             </div>
 
+            {/* Processing status badge */}
+            {contentFailed ? (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-[0.625rem] font-medium text-red-400">
+                <AlertCircle className="w-3 h-3" />
+                Failed
+              </div>
+            ) : processingStatus === "transcribing" ? (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-500/20 text-[0.625rem] font-medium text-blue-400">
+                <Mic className="w-3 h-3" />
+                Transcribing
+              </div>
+            ) : processingStatus && processingStatus !== "complete" && processingStatus !== "error" && processingStatus !== "refused" ? (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-brand/20 text-[0.625rem] font-medium text-brand">
+                <Loader2 className="w-3 h-3 animate-spin" />
+                Analyzing
+              </div>
+            ) : processingStatus === "error" || processingStatus === "refused" ? (
+              <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-500/20 text-[0.625rem] font-medium text-red-400">
+                <AlertCircle className="w-3 h-3" />
+                Failed
+              </div>
+            ) : null}
+
             {/* Quality score */}
-            {triage && (
+            {triage && !contentFailed && (
               <div className="px-2 py-0.5 rounded-full bg-brand/20 text-[0.625rem] font-semibold text-brand">
                 {triage.quality_score}/10
               </div>
             )}
 
             {/* Recommendation */}
-            {recommendation && (
+            {recommendation && !contentFailed && (
               <div
                 className={`px-2 py-0.5 rounded-full ${recommendation.bg} text-[0.625rem] font-medium ${recommendation.color}`}
               >

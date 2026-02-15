@@ -19,6 +19,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
 
   const accountExists = searchParams.get("message") === "account_exists"
+  const returnTo = searchParams.get("returnTo")
 
   useEffect(() => {
     // Check session in background - don't block rendering
@@ -27,11 +28,11 @@ export default function LoginPage() {
         data: { session },
       } = await supabase.auth.getSession()
       if (session) {
-        router.replace("/")
+        router.replace(returnTo && returnTo.startsWith("/") ? returnTo : "/")
       }
     }
     checkSession()
-  }, [router])
+  }, [router, returnTo])
 
   const handleLogin = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault()
@@ -68,7 +69,9 @@ export default function LoginPage() {
       toast.success("Login successful!")
       // Use replace instead of push to prevent back-button returning to login
       // Don't call router.refresh() — it races with navigation and can block redirect
-      router.replace("/")
+      // Redirect to returnTo path if provided (e.g., user was on /item/123 before auth redirect)
+      const destination = returnTo && returnTo.startsWith("/") ? returnTo : "/"
+      router.replace(destination)
     } else {
       // Edge case: login succeeded but no session returned
       setError("Login succeeded but session not established. Please try again.")
