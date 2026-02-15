@@ -51,6 +51,7 @@ export type ErrorCategory =
   | "CONTENT_UNAVAILABLE"
   | "TIMEOUT"
   | "CONTENT_POLICY_VIOLATION"
+  | "MUSIC_CONTENT"
   | "UNKNOWN"
 
 /**
@@ -86,6 +87,11 @@ export function classifyError(rawMessage: string): ErrorCategory {
   // Content unavailable (403/404)
   if (msg.includes("unavailable") || msg.includes("not found") || msg.includes("private") || msg.includes("restricted")) {
     return "CONTENT_UNAVAILABLE"
+  }
+
+  // Music content rejection
+  if (msg.includes("music content") || msg.includes("music_content")) {
+    return "MUSIC_CONTENT"
   }
 
   // Firecrawl / scraping
@@ -157,6 +163,7 @@ export function getUserFriendlyError(contentType: string, errorCategory: string)
     TIMEOUT: `Processing took too long. Please try again.`,
     CONTENT_UNAVAILABLE: `This ${label} appears to be unavailable or restricted.`,
     CONTENT_POLICY_VIOLATION: `This content could not be processed due to our content policy.`,
+    MUSIC_CONTENT: `This appears to be primarily music content. Clarus analyzes spoken and written content — music videos, concerts, and albums don't have enough dialogue to analyze.`,
   }
 
   return messages[errorCategory] || `Something went wrong processing this ${label}. Please try again.`
