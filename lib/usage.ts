@@ -62,6 +62,51 @@ export async function getUserTier(
 }
 
 /**
+ * Fetches the user's effective tier AND admin status in a single query.
+ *
+ * Use this in API routes that need both values to avoid two separate
+ * database round-trips.
+ */
+export async function getUserTierAndAdmin(
+  supabase: SupabaseClient<Database>,
+  userId: string
+): Promise<{ tier: UserTier; isAdmin: boolean }> {
+  const { data } = await supabase
+    .from("users")
+    .select("tier, day_pass_expires_at, is_admin")
+    .eq("id", userId)
+    .single()
+
+  return {
+    tier: normalizeTier(data?.tier, data?.day_pass_expires_at),
+    isAdmin: data?.is_admin === true,
+  }
+}
+
+/**
+ * Checks whether a user has the admin flag set in the database.
+ *
+ * Admin users bypass all usage limits. This is a lightweight query
+ * that only fetches the `is_admin` boolean.
+ *
+ * @param supabase - An authenticated Supabase client
+ * @param userId - The user ID to check
+ * @returns `true` if the user is an admin
+ */
+async function isUserAdmin(
+  supabase: SupabaseClient<Database>,
+  userId: string
+): Promise<boolean> {
+  const { data } = await supabase
+    .from("users")
+    .select("is_admin")
+    .eq("id", userId)
+    .single()
+
+  return data?.is_admin === true
+}
+
+/**
  * Fetches the user's usage counters for the current (or specified) billing period.
  *
  * Returns zero for all fields if no `usage_tracking` row exists yet
@@ -261,6 +306,12 @@ export async function enforceUsageLimit(
   userId: string,
   field: UsageField
 ): Promise<{ allowed: true; tier: UserTier } | { allowed: false; tier: UserTier; limit: number; currentCount: number }> {
+  // Admin bypass: admin users have no usage limits
+  if (await isUserAdmin(supabase, userId)) {
+    const tier = await getUserTier(supabase, userId)
+    return { allowed: true, tier }
+  }
+
   const result = await checkUsageLimit(supabase, userId, field)
 
   if (result.allowed) {
@@ -303,8 +354,10 @@ export async function enforceAndIncrementUsage(
   | { allowed: true; tier: UserTier; newCount: number; limit: number }
   | { allowed: false; tier: UserTier; limit: number }
 > {
+  // Admin bypass: admin users have no usage limits (still increment for tracking)
+  const adminUser = await isUserAdmin(supabase, userId)
   const tier = await getUserTier(supabase, userId)
-  const limit = getLimitForField(tier, field)
+  const limit = adminUser ? Number.MAX_SAFE_INTEGER : getLimitForField(tier, field)
   const period = getCurrentPeriod()
 
   // Try atomic path first (migration 216: increment_usage_if_allowed).

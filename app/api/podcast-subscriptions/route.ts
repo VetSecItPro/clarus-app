@@ -9,8 +9,8 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { checkRateLimit } from "@/lib/rate-limit"
-import { getUserTier } from "@/lib/usage"
-import { TIER_LIMITS, TIER_FEATURES } from "@/lib/tier-limits"
+import { getUserTierAndAdmin } from "@/lib/usage"
+import { getEffectiveLimits, TIER_FEATURES } from "@/lib/tier-limits"
 import { parseBody, addPodcastSubscriptionSchema } from "@/lib/schemas"
 import { fetchAndParseFeed } from "@/lib/rss-parser"
 import { encryptFeedCredential } from "@/lib/feed-encryption"
@@ -123,8 +123,8 @@ export async function POST(request: Request) {
   const authHeaderValue = typeof rawBody.auth_header === "string" ? rawBody.auth_header.trim() : undefined
 
   // PERF: Parallelize tier check and subscription count instead of sequential queries
-  const [tier, countResult] = await Promise.all([
-    getUserTier(supabase, user.id),
+  const [{ tier, isAdmin }, countResult] = await Promise.all([
+    getUserTierAndAdmin(supabase, user.id),
     supabase
       .from("podcast_subscriptions")
       .select("id", { count: "exact", head: true })
@@ -132,7 +132,7 @@ export async function POST(request: Request) {
       .eq("is_active", true),
   ])
 
-  const podcastSubLimit = TIER_LIMITS[tier].podcastSubscriptions
+  const podcastSubLimit = getEffectiveLimits(tier, isAdmin).podcastSubscriptions
 
   if (podcastSubLimit === 0) {
     return NextResponse.json(

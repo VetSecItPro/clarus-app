@@ -9,8 +9,8 @@
 import { NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { checkRateLimit } from "@/lib/rate-limit"
-import { getUserTier } from "@/lib/usage"
-import { TIER_LIMITS } from "@/lib/tier-limits"
+import { getUserTierAndAdmin } from "@/lib/usage"
+import { getEffectiveLimits } from "@/lib/tier-limits"
 import { parseBody, addYouTubeSubscriptionSchema } from "@/lib/schemas"
 import { resolveYouTubeChannel } from "@/lib/youtube-resolver"
 import { logger } from "@/lib/logger"
@@ -102,8 +102,8 @@ export async function POST(request: Request) {
   const { channel_url } = parsed.data
 
   // Parallelize tier check and subscription count
-  const [tier, countResult] = await Promise.all([
-    getUserTier(supabase, user.id),
+  const [{ tier, isAdmin }, countResult] = await Promise.all([
+    getUserTierAndAdmin(supabase, user.id),
     supabase
       .from("youtube_subscriptions")
       .select("id", { count: "exact", head: true })
@@ -111,7 +111,7 @@ export async function POST(request: Request) {
       .eq("is_active", true),
   ])
 
-  const ytSubLimit = TIER_LIMITS[tier].youtubeSubscriptions
+  const ytSubLimit = getEffectiveLimits(tier, isAdmin).youtubeSubscriptions
 
   if (ytSubLimit === 0) {
     return NextResponse.json(

@@ -131,6 +131,37 @@ export function getLimitForField(tier: UserTier, field: UsageField): number {
 }
 
 /**
+ * Returns the effective limit for a tier, with admin bypass.
+ *
+ * Admin users get `Number.MAX_SAFE_INTEGER` for all limits,
+ * effectively removing all caps. Use this instead of accessing
+ * `TIER_LIMITS[tier]` directly when the caller has admin status.
+ *
+ * @param tier - The user's current subscription tier
+ * @param isAdmin - Whether the user has admin privileges
+ * @returns A {@link TierLimits} object (with all caps removed for admins)
+ */
+export function getEffectiveLimits(tier: UserTier, isAdmin: boolean): TierLimits {
+  if (!isAdmin) return TIER_LIMITS[tier]
+
+  const max = Number.MAX_SAFE_INTEGER
+  return {
+    analyses: max,
+    chatMessagesMonthly: max,
+    chatMessagesPerContent: max,
+    shareLinks: max,
+    exports: max,
+    bookmarks: max,
+    tags: max,
+    library: max,
+    podcastAnalyses: max,
+    podcastSubscriptions: max,
+    youtubeSubscriptions: max,
+    collections: max,
+  }
+}
+
+/**
  * Checks whether a usage count has reached or exceeded the tier limit.
  *
  * @param tier - The user's current subscription tier

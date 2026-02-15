@@ -65,12 +65,21 @@ export function useUserTier(userId: string | null | undefined) {
     }
   )
 
+  const isAdmin = data?.isAdmin ?? false
+
+  // Admin users get all features enabled regardless of tier
+  const features = isAdmin
+    ? Object.fromEntries(
+        Object.keys(TIER_FEATURES.pro).map((key) => [key, true])
+      ) as typeof TIER_FEATURES["pro"]
+    : TIER_FEATURES[data?.tier ?? "free"]
+
   return {
     tier: data?.tier ?? "free" as UserTier,
     name: data?.name ?? null,
-    isAdmin: data?.isAdmin ?? false,
+    isAdmin,
     subscriptionStatus: data?.subscriptionStatus ?? null,
-    features: TIER_FEATURES[data?.tier ?? "free"],
+    features,
     isLoading,
     error,
     refresh: mutate,
