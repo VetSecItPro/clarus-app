@@ -11,11 +11,11 @@ import type { Database } from "@/types/database.types"
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get("code")
-  let next = searchParams.get("next") ?? "/library"
+  let next = searchParams.get("next") ?? "/"
 
   // Ensure next is always a relative path (prevent open redirect)
   if (!next.startsWith("/")) {
-    next = "/library"
+    next = "/"
   }
 
   if (code) {
