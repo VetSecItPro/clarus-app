@@ -1,31 +1,78 @@
 "use client"
 
 import type React from "react"
-
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import type { TablesInsert, UserTier } from "@/types/database.types"
 import { TIER_LIMITS } from "@/lib/tier-limits"
+import { validateUrl } from "@/lib/validation"
+import { getYouTubeVideoId, isXUrl, isPodcastUrl, getDomainFromUrl } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertTriangle, CheckCircle, Loader2 } from "lucide-react"
+import {
+  AlertTriangle,
+  CheckCircle,
+  Loader2,
+  Youtube,
+  FileText,
+  Twitter,
+  Headphones,
+  Globe,
+  Link2,
+} from "lucide-react"
 
-// This component assumes it's rendered within an authenticated context
+type ContentType = "youtube" | "article" | "x_post" | "podcast"
 
-const CONTENT_TYPES = ["Article", "Video", "Podcast", "Link", "Other"]
+function detectContentType(url: string): ContentType {
+  if (getYouTubeVideoId(url)) return "youtube"
+  if (isXUrl(url)) return "x_post"
+  if (isPodcastUrl(url)) return "podcast"
+  return "article"
+}
+
+function getTypeIcon(type: ContentType) {
+  switch (type) {
+    case "youtube": return <Youtube className="w-4 h-4 text-red-400" />
+    case "x_post": return <Twitter className="w-4 h-4 text-white/70" />
+    case "podcast": return <Headphones className="w-4 h-4 text-purple-400" />
+    default: return <FileText className="w-4 h-4 text-brand" />
+  }
+}
+
+function getTypeLabel(type: ContentType) {
+  switch (type) {
+    case "youtube": return "YouTube Video"
+    case "x_post": return "X Post"
+    case "podcast": return "Podcast"
+    default: return "Article"
+  }
+}
+
+// Map detected types to DB-compatible values
+function toDbType(type: ContentType): string {
+  switch (type) {
+    case "youtube": return "Video"
+    case "x_post": return "Article"
+    case "podcast": return "Podcast"
+    default: return "Article"
+  }
+}
 
 export default function AddContentPage() {
   const router = useRouter()
-  const [title, setTitle] = useState("")
   const [url, setUrl] = useState("")
-  const [type, setType] = useState("")
+  const [title, setTitle] = useState("")
+  const [detectedType, setDetectedType] = useState<ContentType | null>(null)
+  const [domain, setDomain] = useState<string | null>(null)
+  const [favicon, setFavicon] = useState<string | null>(null)
+  const [isFetchingTitle, setIsFetchingTitle] = useState(false)
   const [fullText, setFullText] = useState("")
+  const [showFullText, setShowFullText] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [urlError, setUrlError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [libraryCount, setLibraryCount] = useState<number | null>(null)
   const [libraryLimit, setLibraryLimit] = useState<number | null>(null)
@@ -62,7 +109,67 @@ export default function AddContentPage() {
     checkLibrary()
   }, [])
 
+  // Auto-detect URL type and fetch title
+  const handleUrlChange = useCallback((value: string) => {
+    setUrl(value)
+    setError(null)
+    setUrlError(null)
+
+    const trimmed = value.trim()
+    if (!trimmed) {
+      setDetectedType(null)
+      setDomain(null)
+      setFavicon(null)
+      setTitle("")
+      return
+    }
+
+    const validation = validateUrl(trimmed)
+    if (!validation.isValid || !validation.sanitized) {
+      const looksLikeUrl = /^(https?:\/\/|www\.|[a-z0-9-]+\.[a-z]{2,})/i.test(trimmed)
+      if (looksLikeUrl) setUrlError(validation.error ?? "Invalid URL")
+      setDetectedType(null)
+      setDomain(null)
+      setFavicon(null)
+      return
+    }
+
+    const validUrl = validation.sanitized
+    const type = detectContentType(validUrl)
+    const urlDomain = getDomainFromUrl(validUrl)
+
+    setDetectedType(type)
+    setDomain(urlDomain)
+    setFavicon(`https://www.google.com/s2/favicons?domain=${urlDomain}&sz=32`)
+
+    // Auto-fetch title
+    setIsFetchingTitle(true)
+    fetch("/api/fetch-title", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ url: validUrl }),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.title) setTitle(data.title)
+        setIsFetchingTitle(false)
+      })
+      .catch(() => setIsFetchingTitle(false))
+  }, [])
+
+  // Debounce URL detection
+  const [debouncedUrl, setDebouncedUrl] = useState("")
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedUrl(url), 400)
+    return () => clearTimeout(timer)
+  }, [url])
+
+  useEffect(() => {
+    if (debouncedUrl) handleUrlChange(debouncedUrl)
+  }, [debouncedUrl, handleUrlChange])
+
   const isAtLibraryLimit = libraryCount !== null && libraryLimit !== null && libraryCount >= libraryLimit
+  const isValidUrl = detectedType !== null && !urlError
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault()
@@ -79,7 +186,7 @@ export default function AddContentPage() {
       return
     }
 
-    // Re-check library limit server-side
+    // Re-check library limit
     const { count: currentCount } = await supabase
       .from("content")
       .select("id", { count: "exact", head: true })
@@ -91,28 +198,48 @@ export default function AddContentPage() {
       return
     }
 
+    const validation = validateUrl(url.trim())
+    if (!validation.isValid || !validation.sanitized) {
+      setError("Please enter a valid URL.")
+      setIsLoading(false)
+      return
+    }
+
+    const type = detectedType ? toDbType(detectedType) : "Article"
+
     const newContent: TablesInsert<"content"> = {
-      title,
-      url,
+      title: title || url.trim(),
+      url: validation.sanitized,
       type,
       full_text: fullText || null,
       user_id: user.id,
     }
 
-    const { error: insertError } = await supabase.from("content").insert(newContent)
+    const { data: insertData, error: insertError } = await supabase
+      .from("content")
+      .insert(newContent)
+      .select("id")
+      .single()
 
-    setIsLoading(false)
     if (insertError) {
-      console.error("Error adding content:", insertError)
-      setError(`Failed to add content: ${insertError.message}. Check RLS policies and table constraints.`)
-    } else {
-      setSuccess("Content added successfully! Redirecting to dashboard...")
-      setTitle("")
-      setUrl("")
-      setType("")
-      setFullText("")
-      setTimeout(() => router.push("/dashboard"), 2000)
+      setError(`Failed to add content. Please try again.`)
+      setIsLoading(false)
+      return
     }
+
+    // Trigger analysis
+    try {
+      await fetch("/api/process-content", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content_id: insertData.id }),
+      })
+    } catch {
+      // Non-fatal — content was created, analysis can be retried
+    }
+
+    setSuccess("Analysis started! Redirecting...")
+    setTimeout(() => router.push(`/item/${insertData.id}`), 1500)
   }
 
   return (
@@ -120,58 +247,98 @@ export default function AddContentPage() {
       <main id="main-content" className="mx-auto max-w-lg px-4 py-8 pb-24 sm:pb-8">
         <div className="rounded-2xl bg-white/[0.03] border border-white/[0.06] p-6">
           <div className="mb-6">
-            <h1 className="text-xl font-semibold text-white">Add New Content</h1>
-            <p className="text-sm text-white/50 mt-1">Save an article, video, or podcast for analysis.</p>
+            <h1 className="text-xl font-semibold text-white">Add Content</h1>
+            <p className="text-sm text-white/50 mt-1">Paste a URL and we&apos;ll handle the rest.</p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
-              <Label htmlFor="title" className="text-white/70">Title</Label>
-              <Input
-                id="title"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                required
-                placeholder="e.g., The Future of AI in Healthcare"
-              />
-            </div>
+            {/* URL field — primary input */}
             <div>
               <Label htmlFor="url" className="text-white/70">URL</Label>
-              <Input
-                id="url"
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                required
-                placeholder="e.g., https://youtube.com/watch?v=..."
-              />
+              <div className="relative mt-1">
+                <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-white/30" />
+                <input
+                  id="url"
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  required
+                  placeholder="Paste any URL — YouTube, article, podcast..."
+                  autoFocus
+                  className="w-full h-10 pl-10 pr-4 text-sm bg-white/[0.04] border border-white/[0.08] rounded-xl text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
+                />
+              </div>
+              {urlError && (
+                <p className="text-xs text-red-400 mt-1.5">{urlError}</p>
+              )}
             </div>
-            <div>
-              <Label htmlFor="type" className="text-white/70">Type</Label>
-              <Select onValueChange={setType} value={type} required>
-                <SelectTrigger id="type">
-                  <SelectValue placeholder="Select content type" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CONTENT_TYPES.map((contentType) => (
-                    <SelectItem key={contentType} value={contentType}>
-                      {contentType}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="fullText" className="text-white/70">Full Text (Optional)</Label>
-              <textarea
-                id="fullText"
-                value={fullText}
-                onChange={(e) => setFullText(e.target.value)}
-                rows={4}
-                className="mt-1 block w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-transparent text-sm"
-                placeholder="Paste full text here if the URL isn't scrapable..."
-              />
-            </div>
+
+            {/* URL preview card — shows when URL is valid */}
+            {isValidUrl && detectedType && (
+              <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] animate-[fadeIn_0.2s_ease-out]">
+                {favicon && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={favicon} alt="" className="w-5 h-5 rounded" />
+                )}
+                <div className="flex-1 min-w-0">
+                  {isFetchingTitle ? (
+                    <div className="flex items-center gap-2">
+                      <Loader2 className="w-3 h-3 animate-spin text-white/40" />
+                      <span className="text-xs text-white/40">Fetching title...</span>
+                    </div>
+                  ) : title ? (
+                    <p className="text-sm text-white truncate">{title}</p>
+                  ) : (
+                    <p className="text-sm text-white/50 truncate">{domain}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1.5 text-xs text-white/40 flex-shrink-0">
+                  {getTypeIcon(detectedType)}
+                  <span>{getTypeLabel(detectedType)}</span>
+                </div>
+              </div>
+            )}
+
+            {/* Title override — editable, auto-filled */}
+            {isValidUrl && (
+              <div>
+                <Label htmlFor="title" className="text-white/70">
+                  Title
+                  <span className="text-white/30 ml-1 font-normal">(auto-detected)</span>
+                </Label>
+                <input
+                  id="title"
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Page title will auto-fill..."
+                  className="mt-1 w-full h-10 px-3 text-sm bg-white/[0.04] border border-white/[0.08] rounded-xl text-white placeholder-white/30 focus:border-brand focus:ring-1 focus:ring-brand transition-all outline-none"
+                />
+              </div>
+            )}
+
+            {/* Optional full text toggle */}
+            {isValidUrl && (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowFullText(!showFullText)}
+                  className="text-xs text-white/40 hover:text-white/60 transition-colors flex items-center gap-1"
+                >
+                  <Globe className="w-3 h-3" />
+                  {showFullText ? "Hide full text field" : "Can't scrape the URL? Paste full text instead"}
+                </button>
+                {showFullText && (
+                  <textarea
+                    value={fullText}
+                    onChange={(e) => setFullText(e.target.value)}
+                    rows={4}
+                    className="mt-2 block w-full px-3 py-2 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white placeholder:text-white/30 focus:outline-none focus:ring-1 focus:ring-brand/50 focus:border-transparent text-sm"
+                    placeholder="Paste the full article text here..."
+                  />
+                )}
+              </div>
+            )}
+
             {isAtLibraryLimit && (
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
@@ -194,7 +361,7 @@ export default function AddContentPage() {
                 <span>{success}</span>
               </div>
             )}
-            <Button type="submit" disabled={isLoading || isAtLibraryLimit} className="w-full">
+            <Button type="submit" disabled={isLoading || isAtLibraryLimit || !isValidUrl} className="w-full">
               {isLoading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -207,6 +374,13 @@ export default function AddContentPage() {
           </form>
         </div>
       </main>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(-4px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+      `}</style>
     </div>
   )
 }

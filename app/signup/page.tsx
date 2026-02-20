@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation"
 import { supabase } from "@/lib/supabase"
 import { toast } from "sonner"
 import { AlertCircle, CheckCircle2, Mail, Lock, Eye, EyeOff, ArrowRight, User, Check } from "lucide-react"
+import { GoogleOAuthButton } from "@/components/google-oauth-button"
 
 function PasswordStrengthIndicator({ password }: { password: string }) {
   const requirements = useMemo(() => ({
@@ -281,6 +282,16 @@ export default function SignUpPage() {
                   Sign in
                 </Link>
               </p>
+            </div>
+
+            {/* Google OAuth */}
+            <GoogleOAuthButton label="Sign up with Google" />
+
+            {/* Divider */}
+            <div className="flex items-center gap-3 my-5">
+              <div className="flex-1 h-px bg-white/10" />
+              <span className="text-xs text-white/30">or</span>
+              <div className="flex-1 h-px bg-white/10" />
             </div>
 
             {/* Form */}

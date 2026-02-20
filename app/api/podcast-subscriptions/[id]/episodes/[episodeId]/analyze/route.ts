@@ -10,7 +10,9 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
-import { checkUsageLimit } from "@/lib/usage"
+import { checkUsageLimit, getUserTierAndAdmin } from "@/lib/usage"
+import { getEffectiveLimits } from "@/lib/tier-limits"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 import { decryptFeedCredential } from "@/lib/feed-encryption"
 import { logger } from "@/lib/logger"
@@ -26,6 +28,13 @@ export async function POST(
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user, supabase } = auth
+
+  // Rate limiting
+  const clientIp = _request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = await checkRateLimit(`podcast-analyze:${clientIp}`, 10, 60000) // 10 per minute
+  if (!rateLimit.allowed) {
+    return AuthErrors.rateLimit(rateLimit.resetIn)
+  }
 
   const { id, episodeId } = await params
 
@@ -85,6 +94,21 @@ export async function POST(
       {
         error: `You've used ${gate.currentCount}/${gate.limit} podcast analyses this month on the ${gate.tier} tier.`,
       },
+      { status: 403 }
+    )
+  }
+
+  // Enforce library items limit before creating content
+  const { tier, isAdmin } = await getUserTierAndAdmin(supabase, user.id)
+  const libraryLimit = getEffectiveLimits(tier, isAdmin).library
+  const { count: libraryCount } = await supabase
+    .from("content")
+    .select("id", { count: "exact", head: true })
+    .eq("user_id", user.id)
+
+  if ((libraryCount ?? 0) >= libraryLimit) {
+    return NextResponse.json(
+      { error: `Library limit reached (${libraryLimit} items on ${tier} tier). Upgrade for more.` },
       { status: 403 }
     )
   }
