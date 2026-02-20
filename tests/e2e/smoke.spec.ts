@@ -14,7 +14,7 @@ test.describe('Smoke Tests', () => {
     await expect(page.locator('input[type="password"]')).toBeVisible()
 
     // Check login button exists
-    await expect(page.locator('button:has-text("Sign in")')).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Sign in', exact: true })).toBeVisible()
   })
 
   test('signup page loads correctly', async ({ page }) => {
