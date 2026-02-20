@@ -29,6 +29,9 @@ export function LandingFooter() {
 
           {/* Links — wrap on mobile */}
           <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-5 gap-y-2 text-sm text-white/50">
+            <Link href="/about" className="hover:text-white/70 transition-colors">
+              About
+            </Link>
             <Link href="/articles" className="hover:text-white/70 transition-colors">
               Articles
             </Link>

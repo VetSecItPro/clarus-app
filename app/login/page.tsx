@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabase"
 import { setAuthCache } from "@/components/with-auth"
 import { toast } from "sonner"
 import { AlertCircle, Info, Mail, Lock, Eye, EyeOff, ArrowRight } from "lucide-react"
+import { GoogleOAuthButton } from "@/components/google-oauth-button"
 
 export default function LoginPage() {
   const [email, setEmail] = useState("")
@@ -154,6 +155,16 @@ export default function LoginPage() {
               <span>An account with that email already exists. Please log in with your existing password.</span>
             </div>
           )}
+
+          {/* Google OAuth */}
+          <GoogleOAuthButton label="Sign in with Google" returnTo={returnTo} />
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-white/10" />
+            <span className="text-xs text-white/30">or</span>
+            <div className="flex-1 h-px bg-white/10" />
+          </div>
 
           {/* Form */}
           <form onSubmit={handleLogin} className="space-y-4">

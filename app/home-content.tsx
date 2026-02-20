@@ -14,6 +14,7 @@ import { useChatSession } from "@/lib/hooks/use-chat-session"
 import { type AnalysisLanguage, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
 import { useUserTier } from "@/lib/hooks/use-user-tier"
+import { hasCompletedOnboarding, WelcomeOnboarding } from "@/components/welcome-onboarding"
 import type { AnalysisMode } from "@/lib/analysis-modes"
 
 // PERF: Dynamic imports for components only used in chat mode (authenticated + active chat)
@@ -110,6 +111,9 @@ export default function HomeContent({ session }: HomeContentProps) {
     }
   }, [modeSelectionEnabled])
 
+  // Onboarding — show welcome modal for first-time users
+  const [showOnboarding, setShowOnboarding] = useState(() => !hasCompletedOnboarding())
+
   // Track when we're navigating to /item/[id] to prevent chat view flash
   const [isNavigating, setIsNavigating] = useState(false)
 
@@ -188,6 +192,14 @@ export default function HomeContent({ session }: HomeContentProps) {
   return (
     <div className="min-h-screen bg-black flex flex-col">
       <SiteHeader />
+
+      {/* First-time user onboarding */}
+      {showOnboarding && (
+        <WelcomeOnboarding
+          username={username}
+          onComplete={() => setShowOnboarding(false)}
+        />
+      )}
 
       {/* App Name - mobile only */}
       <motion.div
