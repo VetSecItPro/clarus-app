@@ -27,7 +27,7 @@ export default function Error({
             Try again
           </button>
           <Link
-            href="/"
+            href="/home"
             className="px-5 py-2 rounded-full bg-white/[0.06] text-white/70 text-sm hover:bg-white/[0.1] transition-colors"
           >
             Go home

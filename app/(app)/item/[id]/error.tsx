@@ -11,7 +11,7 @@ export default function Error({ reset }: { error: Error; reset: () => void }) {
         <p className="text-white/50 text-sm mb-6">Something went wrong loading this content.</p>
         <div className="flex gap-3 justify-center">
           <button onClick={reset} className="px-5 py-2 rounded-full bg-brand text-white text-sm font-medium hover:bg-brand-hover transition-colors">Try again</button>
-          <Link href="/" className="px-5 py-2 rounded-full bg-white/[0.06] text-white/70 text-sm hover:bg-white/[0.1] transition-colors">Go home</Link>
+          <Link href="/home" className="px-5 py-2 rounded-full bg-white/[0.06] text-white/70 text-sm hover:bg-white/[0.1] transition-colors">Go home</Link>
         </div>
       </div>
     </div>

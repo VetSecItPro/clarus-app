@@ -202,7 +202,7 @@ export default function withAuth<P extends object>(
 
       // Redirect to login if not authenticated and not on public path
       if (!session && !isPublicPath) {
-        const returnTo = pathname !== "/" ? `?returnTo=${encodeURIComponent(pathname)}` : ""
+        const returnTo = pathname !== "/home" ? `?returnTo=${encodeURIComponent(pathname)}` : ""
         router.replace(`/login${returnTo}`)
         return
       }

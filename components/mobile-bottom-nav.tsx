@@ -13,7 +13,7 @@ import { TIER_FEATURES } from "@/lib/tier-limits"
 import { useUserTier } from "@/lib/hooks/use-user-tier"
 
 const baseNavItems = [
-  { href: "/", label: "Home", icon: Home },
+  { href: "/home", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Clock },
 ]
 

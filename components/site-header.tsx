@@ -15,7 +15,7 @@ import { useUserTier } from "@/lib/hooks/use-user-tier"
 import type { UserTier } from "@/types/database.types"
 
 const baseNavItems = [
-  { href: "/", label: "Home", icon: Home },
+  { href: "/home", label: "Home", icon: Home },
   { href: "/library", label: "Library", icon: Clock },
 ]
 
@@ -58,7 +58,7 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
       <div className="px-4 lg:px-6">
         <div className="relative flex items-center h-14">
           {/* Logo/Brand - pushed to left */}
-          <Link href="/" className="flex items-center gap-3 group">
+          <Link href="/home" className="flex items-center gap-3 group">
             <div className="relative">
               <Image
                 src="/clarus-logo.webp"

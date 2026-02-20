@@ -106,7 +106,7 @@ export default function AccountPage() {
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
           <Link
-            href="/"
+            href="/home"
             className="h-9 w-9 rounded-full bg-white/[0.04] hover:bg-white/[0.08] text-white/50 hover:text-white border border-white/[0.08] inline-flex items-center justify-center transition-all"
             aria-label="Back to home"
           >
