@@ -14,22 +14,32 @@ const LandingPage = dynamic(() => import("@/components/landing/landing-page").th
 const HomeContent = dynamic(() => import("./home-content"), { ssr: false })
 
 /**
- * Synchronous check for Supabase auth token in localStorage.
+ * Synchronous check for Supabase auth token in localStorage or cookies.
  * Returns true if a token exists (user might be authenticated).
  * Returns false if no token (user is definitely not authenticated).
  * This avoids the ~500ms async getSession() call for first-time visitors.
+ *
+ * Checks cookies in addition to localStorage because after an OAuth redirect,
+ * the auth callback sets session cookies server-side but localStorage hasn't
+ * been populated yet by the client-side Supabase SDK.
  */
 function hasLocalAuthToken(): boolean {
   if (typeof window === "undefined") return false
   try {
+    // Check localStorage (standard path for returning users)
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i)
       if (key && key.startsWith("sb-") && key.endsWith("-auth-token")) {
         return true
       }
     }
+    // Check cookies (OAuth redirect path — cookies exist before localStorage is populated)
+    const cookies = document.cookie
+    if (cookies.includes("sb-") && cookies.includes("-auth-token")) {
+      return true
+    }
   } catch {
-    // localStorage may be inaccessible (e.g. private browsing restrictions)
+    // localStorage/cookies may be inaccessible (e.g. private browsing restrictions)
   }
   return false
 }

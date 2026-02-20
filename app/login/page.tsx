@@ -20,6 +20,7 @@ export default function LoginPage() {
   const searchParams = useSearchParams()
 
   const accountExists = searchParams.get("message") === "account_exists"
+  const authCallbackFailed = searchParams.get("error") === "auth_callback_failed"
   const returnTo = searchParams.get("returnTo")
 
   useEffect(() => {
@@ -153,6 +154,13 @@ export default function LoginPage() {
             <div className="flex items-center p-3 text-xs text-blue-400 bg-blue-500/10 rounded-lg border border-blue-500/20 mb-4 animate-[fadeIn_0.3s_ease-out]">
               <Info className="w-4 h-4 mr-2 flex-shrink-0" />
               <span>An account with that email already exists. Please log in with your existing password.</span>
+            </div>
+          )}
+
+          {authCallbackFailed && (
+            <div className="flex items-center p-3 text-xs text-red-400 bg-red-500/10 rounded-lg border border-red-500/20 mb-4 animate-[fadeIn_0.3s_ease-out]">
+              <AlertCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+              <span>Sign-in failed. Please try again or use a different sign-in method.</span>
             </div>
           )}
 
