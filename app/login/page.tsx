@@ -30,7 +30,7 @@ export default function LoginPage() {
         data: { session },
       } = await supabase.auth.getSession()
       if (session) {
-        router.replace(returnTo && returnTo.startsWith("/") ? returnTo : "/")
+        router.replace(returnTo && returnTo.startsWith("/") ? returnTo : "/library")
       }
     }
     checkSession()
@@ -72,7 +72,7 @@ export default function LoginPage() {
       // Use replace instead of push to prevent back-button returning to login
       // Don't call router.refresh() — it races with navigation and can block redirect
       // Redirect to returnTo path if provided (e.g., user was on /item/123 before auth redirect)
-      const destination = returnTo && returnTo.startsWith("/") ? returnTo : "/"
+      const destination = returnTo && returnTo.startsWith("/") ? returnTo : "/library"
       router.replace(destination)
     } else {
       // Edge case: login succeeded but no session returned
