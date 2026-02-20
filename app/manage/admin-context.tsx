@@ -42,13 +42,13 @@ export function AdminProvider({ children }: { children: React.ReactNode }) {
           .single()
 
         if (!userData?.is_admin) {
-          router.replace("/")
+          router.replace("/home")
           return
         }
 
         setState({ status: "ready", userId: user.id })
       } catch {
-        router.replace("/")
+        router.replace("/home")
       }
     }
 

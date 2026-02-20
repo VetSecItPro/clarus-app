@@ -7,8 +7,6 @@ import Image from "next/image"
 import { MessageSquare, Youtube, FileText, FileUp, Twitter, Headphones } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
-import SiteHeader from "@/components/site-header"
-import MobileBottomNav from "@/components/mobile-bottom-nav"
 import { ChatInputBar, type SuggestionAction } from "@/components/chat"
 import { useChatSession } from "@/lib/hooks/use-chat-session"
 import { type AnalysisLanguage, LANGUAGE_STORAGE_KEY } from "@/lib/languages"
@@ -191,7 +189,6 @@ export default function HomeContent({ session }: HomeContentProps) {
 
   return (
     <div className="min-h-screen bg-black flex flex-col">
-      <SiteHeader />
 
       {/* First-time user onboarding */}
       {showOnboarding && (
@@ -365,7 +362,6 @@ export default function HomeContent({ session }: HomeContentProps) {
         )}
       </main>
 
-      <MobileBottomNav />
     </div>
   )
 }

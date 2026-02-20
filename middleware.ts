@@ -72,7 +72,23 @@ export async function middleware(request: NextRequest) {
     return response
   }
 
-  // Skip auth for public pages (landing, login, share, etc.)
+  // Root path: public for unauthenticated users, redirect to /home for authenticated
+  if (pathname === "/") {
+    const { supabase, response } = createMiddlewareClient(request)
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (user) {
+      return NextResponse.redirect(new URL("/home", request.url))
+    }
+
+    setCacheHeaders(response, pathname)
+    setSecurityHeaders(response)
+    return response
+  }
+
+  // Skip auth for public pages (login, signup, share, etc.)
   if (isPublicRoute(pathname)) {
     const response = NextResponse.next()
     setCacheHeaders(response, pathname)
@@ -98,7 +114,7 @@ export async function middleware(request: NextRequest) {
       .single()
 
     if (!userData?.is_admin) {
-      return NextResponse.redirect(new URL("/", request.url))
+      return NextResponse.redirect(new URL("/home", request.url))
     }
 
     setSecurityHeaders(response)

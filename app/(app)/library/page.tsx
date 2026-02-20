@@ -664,7 +664,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                   piece of content.
                 </p>
                 <Link
-                  href="/"
+                  href="/home"
                   className="inline-flex items-center gap-2 px-4 py-2 bg-brand hover:bg-brand-hover text-white rounded-full transition-colors text-sm font-medium"
                 >
                   <Clock className="w-4 h-4" />
