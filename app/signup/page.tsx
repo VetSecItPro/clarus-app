@@ -133,7 +133,7 @@ export default function SignUpPage() {
         data: { session },
       } = await supabase.auth.getSession()
       if (session) {
-        router.replace("/library")
+        router.replace("/")
       }
     }
     checkSession()
