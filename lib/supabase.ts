@@ -3,8 +3,8 @@
  * @description Browser-side Supabase client singleton.
  *
  * Creates a single shared Supabase client for all client components.
- * Configured against the `clarus` schema with session persistence,
- * automatic token refresh, and OAuth redirect detection.
+ * Configured against the `clarus` schema. Uses default `@supabase/ssr`
+ * cookie-based auth storage to stay in sync with server-side session cookies.
  *
  * Uses the **anon key** (safe for client-side) -- never the service role key.
  * For server-side admin operations, use {@link lib/auth.ts} `getAdminClient`.
@@ -27,12 +27,6 @@ function getSupabaseClient() {
       {
         db: {
           schema: "clarus",
-        },
-        auth: {
-          persistSession: true,
-          autoRefreshToken: true,
-          detectSessionInUrl: true,
-          storage: typeof window !== "undefined" ? window.localStorage : undefined,
         },
       }
     )
