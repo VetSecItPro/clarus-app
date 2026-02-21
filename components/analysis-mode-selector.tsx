@@ -21,7 +21,8 @@ export function AnalysisModeSelector({ selectedMode, onModeChange, isLocked }: A
     <>
       {/* Desktop/Tablet: Horizontal pill row with tooltips */}
       <TooltipProvider delayDuration={200}>
-        <div className="hidden sm:flex items-center gap-1.5">
+        <div className="hidden sm:flex items-center gap-2">
+          <span className="text-[11px] text-white/40 mr-0.5">Analysis mode</span>
           {MODE_OPTIONS.map((mode) => {
             const Icon = mode.icon
             const isActive = mode.id === selectedMode
@@ -35,8 +36,8 @@ export function AnalysisModeSelector({ selectedMode, onModeChange, isLocked }: A
                       "flex items-center gap-1.5 px-2.5 py-1.5 rounded-full text-xs font-medium transition-all",
                       "border",
                       isActive
-                        ? "bg-brand/10 border-brand/30 text-brand"
-                        : "bg-white/[0.04] border-white/[0.08] text-white/50 hover:text-white/70 hover:bg-white/[0.06]",
+                        ? "bg-brand/15 border-brand/40 text-brand"
+                        : "bg-transparent border-white/[0.15] text-white/50 hover:text-white/90 hover:bg-white/[0.08] hover:border-white/[0.25]",
                       isLocked && "opacity-40 cursor-not-allowed"
                     )}
                   >

@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import dynamic from "next/dynamic"
 import Image from "next/image"
-import { MessageSquare, Youtube, FileText, FileUp, Twitter, Headphones } from "lucide-react"
+import { MessageSquare } from "lucide-react"
 import type { Session } from "@supabase/supabase-js"
 import { motion } from "framer-motion"
 import { ChatInputBar, type SuggestionAction } from "@/components/chat"
@@ -276,26 +276,6 @@ export default function HomeContent({ session }: HomeContentProps) {
               />
             </motion.div>
 
-            {/* Content type hints */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              className="flex items-center justify-center gap-5 sm:gap-6 mt-5"
-            >
-              {[
-                { icon: Youtube, label: "YouTube" },
-                { icon: FileText, label: "Articles" },
-                { icon: Headphones, label: "Podcasts" },
-                { icon: FileUp, label: "PDF" },
-                { icon: Twitter, label: "X Posts" },
-              ].map(({ icon: Icon, label }) => (
-                <div key={label} className="flex items-center gap-1.5 text-white/25">
-                  <Icon className="w-3.5 h-3.5" />
-                  <span className="text-xs">{label}</span>
-                </div>
-              ))}
-            </motion.div>
 
           </div>
         ) : (
