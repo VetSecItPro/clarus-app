@@ -32,7 +32,7 @@ export function formatCount(count: number): string {
 
 /**
  * Counts unique speakers in a podcast transcript.
- * Looks for AssemblyAI diarization format: "[MM:SS] Speaker A:" patterns.
+ * Looks for diarization format: "[MM:SS] Speaker A:" patterns.
  */
 export function countSpeakers(transcript: string): number {
   const speakerPattern = /\bSpeaker ([A-Z])\b/g

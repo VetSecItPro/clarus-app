@@ -3,7 +3,7 @@
  * @description API usage tracking and cost estimation for all external services.
  *
  * Logs every external API call (OpenRouter, Firecrawl, Supadata, Tavily,
- * AssemblyAI) to the `api_usage` and `processing_metrics` tables for
+ * Deepgram) to the `api_usage` and `processing_metrics` tables for
  * cost monitoring and debugging. Cost estimates are calculated from
  * per-model token pricing or per-request flat rates.
  *
@@ -59,13 +59,13 @@ export const API_PRICING = {
   tavily: {
     search: 0.01, // ~$0.01 per search
   },
-  assemblyai: {
-    transcribe: 0.0000472, // $0.17/hr ($0.15 transcription + $0.02 speaker diarization)
+  deepgram: {
+    transcribe: 0.0001278, // $0.46/hr (Nova-3 with diarization)
   },
 }
 
 /** Identifier for the external service being called. */
-export type ApiName = "openrouter" | "supadata" | "firecrawl" | "tavily" | "polar" | "supabase" | "vercel" | "assemblyai"
+export type ApiName = "openrouter" | "supadata" | "firecrawl" | "tavily" | "polar" | "supabase" | "vercel" | "deepgram"
 
 /** Specific operation within a service (for granular cost tracking). */
 export type ApiOperation =
@@ -73,7 +73,7 @@ export type ApiOperation =
   | "transcript" | "metadata"          // supadata
   | "scrape"                           // firecrawl
   | "search"                           // tavily
-  | "transcribe"                       // assemblyai
+  | "transcribe"                       // deepgram
   | "mrr_fetch" | "checkout" | "webhook"  // polar
   | "query" | "insert" | "update" | "auth"  // supabase
   | "deploy" | "status"                // vercel
@@ -98,7 +98,7 @@ interface LogApiUsageParams {
  *
  * For OpenRouter, cost is computed from per-model input/output token
  * pricing. For other services, a flat per-request rate is used.
- * For AssemblyAI, `tokensInput` is repurposed to pass audio duration
+ * For Deepgram, `tokensInput` is repurposed to pass audio duration
  * in seconds.
  *
  * @param params - The API call details needed for cost calculation
@@ -136,9 +136,9 @@ export function calculateCost(params: {
     return API_PRICING.tavily.search
   }
 
-  if (apiName === "assemblyai") {
+  if (apiName === "deepgram") {
     // Cost is per second of audio; tokensInput is used to pass audio_duration_seconds
-    return (tokensInput || 0) * API_PRICING.assemblyai.transcribe
+    return (tokensInput || 0) * API_PRICING.deepgram.transcribe
   }
 
   return 0

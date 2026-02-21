@@ -59,7 +59,7 @@ const TITLE_STOP_WORDS = new Set([
  * Corrects speech-to-text transcription errors by cross-referencing the
  * title and description against the transcript text.
  *
- * Speech-to-text engines (YouTube auto-captions, AssemblyAI) frequently
+ * Speech-to-text engines (YouTube auto-captions, Deepgram) frequently
  * misspell proper nouns, product names, and technical terms because they
  * optimize for common dictionary words. For example:
  * - "Claude Code" → "Cloud Code" (homophone)

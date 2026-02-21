@@ -22,7 +22,7 @@ const SERVICE_COLORS: Record<string, string> = {
   supadata: COLORS.cyan,
   firecrawl: COLORS.orange,
   tavily: COLORS.green,
-  assemblyai: COLORS.purple,
+  deepgram: COLORS.purple,
   polar: COLORS.yellow,
   supabase: COLORS.red,
   vercel: COLORS.blue,
