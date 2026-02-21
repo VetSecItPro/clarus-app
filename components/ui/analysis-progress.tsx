@@ -16,7 +16,7 @@ interface AnalysisProgressProps {
   isPolling: boolean
   /** When the content was created — used to detect stale transcription on page load */
   contentDateAdded?: string | null
-  /** Callback to retry processing (re-submit to AssemblyAI) */
+  /** Callback to retry processing (re-submit to Deepgram) */
   onRetry?: () => void
 }
 

@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js"
 import { NextResponse, type NextRequest } from "next/server"
 import { timingSafeEqual } from "crypto"
 import type { Database } from "@/types/database.types"
-import { formatTranscript, type AssemblyAIWebhookPayload } from "@/lib/assemblyai"
+import { formatTranscript, type DeepgramCallbackPayload } from "@/lib/deepgram"
 import { logApiUsage } from "@/lib/api-usage"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 import { logger } from "@/lib/logger"
@@ -13,13 +13,13 @@ export const maxDuration = 60
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
-// Shared webhook token to verify requests come from our AssemblyAI submissions
-const webhookToken = process.env.ASSEMBLYAI_WEBHOOK_TOKEN
+// Shared webhook token to verify requests come from our Deepgram submissions
+const webhookToken = process.env.DEEPGRAM_WEBHOOK_TOKEN
 
 /**
- * AssemblyAI webhook endpoint.
- * Called by AssemblyAI when podcast transcription completes.
- * Validated by: (1) mandatory shared token in query string, (2) transcript_id must match a pending podcast.
+ * Deepgram webhook endpoint.
+ * Called by Deepgram when podcast transcription completes.
+ * Validated by: (1) mandatory shared token in query string, (2) request_id must match a pending podcast.
  */
 export async function POST(req: NextRequest) {
   if (!supabaseUrl || !supabaseKey) {
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
 
   // Require webhook token in production
   if (!webhookToken) {
-    logger.error("WEBHOOK: CRITICAL: ASSEMBLYAI_WEBHOOK_TOKEN not configured")
+    logger.error("WEBHOOK: CRITICAL: DEEPGRAM_WEBHOOK_TOKEN not configured")
     return NextResponse.json({ error: "Webhook not configured" }, { status: 503 })
   }
 
@@ -46,28 +46,28 @@ export async function POST(req: NextRequest) {
     db: { schema: "clarus" },
   })
 
-  let payload: AssemblyAIWebhookPayload
+  let payload: DeepgramCallbackPayload
   try {
     payload = await req.json()
   } catch {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const { transcript_id, status } = payload
-  if (!transcript_id || typeof transcript_id !== "string" || transcript_id.length > 100) {
-    return NextResponse.json({ error: "Invalid transcript_id" }, { status: 400 })
+  const requestId = payload.request_id
+  if (!requestId || typeof requestId !== "string" || requestId.length > 100) {
+    return NextResponse.json({ error: "Invalid request_id" }, { status: 400 })
   }
 
   // Look up content by podcast_transcript_id
   const { data: content, error: fetchError } = await supabase
     .from("content")
     .select("id, user_id, url, type")
-    .eq("podcast_transcript_id", transcript_id)
+    .eq("podcast_transcript_id", requestId)
     .single()
 
   if (fetchError || !content) {
-    logger.error(`WEBHOOK: No content found for transcript_id ${transcript_id}`)
-    return NextResponse.json({ error: "Unknown transcript_id" }, { status: 404 })
+    logger.error(`WEBHOOK: No content found for request_id ${requestId}`)
+    return NextResponse.json({ error: "Unknown request_id" }, { status: 404 })
   }
 
   // Verify this content is actually a podcast in transcribing state
@@ -77,8 +77,8 @@ export async function POST(req: NextRequest) {
   }
 
   // Handle transcription failure
-  if (status === "error") {
-    logger.error(`WEBHOOK: Raw AssemblyAI error for ${content.id}:`, payload.error)
+  if (payload.err_code) {
+    logger.error(`WEBHOOK: Raw Deepgram error for ${content.id}: [${payload.err_code}] ${payload.err_msg}`)
 
     await supabase
       .from("content")
@@ -141,7 +141,7 @@ export async function POST(req: NextRequest) {
   await logApiUsage({
     userId: content.user_id,
     contentId: content.id,
-    apiName: "assemblyai",
+    apiName: "deepgram",
     operation: "transcribe",
     tokensInput: duration_seconds, // Used for cost calculation (per-second pricing)
     responseTimeMs: 0, // Not meaningful for async webhook

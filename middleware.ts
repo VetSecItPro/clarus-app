@@ -22,7 +22,7 @@ const PUBLIC_PREFIXES = [
   "/features/",
   "/articles/",
   "/api/polar/webhook",
-  "/api/assemblyai-webhook",
+  "/api/deepgram-webhook",
   "/api/crons/",
   "/api/contact",
 ]
@@ -199,7 +199,7 @@ function setSecurityHeaders(response: NextResponse) {
     "img-src 'self' data: blob: https: http:",
     "media-src 'self' https://www.youtube.com",
     "frame-src 'self' https://www.youtube.com https://youtube.com",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openrouter.ai https://api.tavily.com https://api.firecrawl.dev https://api.supadata.ai https://api.resend.com https://api.polar.sh https://api.assemblyai.com https://va.vercel-scripts.com",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openrouter.ai https://api.tavily.com https://api.firecrawl.dev https://api.supadata.ai https://api.resend.com https://api.polar.sh https://api.deepgram.com https://va.vercel-scripts.com",
     "object-src 'none'",
     "base-uri 'self'",
     "form-action 'self'",

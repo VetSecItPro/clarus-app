@@ -5,7 +5,7 @@
  * This module delegates to pipeline/* sub-modules for each stage:
  * - YouTube video metadata and transcript extraction (pipeline/youtube)
  * - Article scraping via Firecrawl (pipeline/article-scraper)
- * - Podcast transcription via AssemblyAI
+ * - Podcast transcription via Deepgram
  * - Web search context via Tavily (pipeline/web-search)
  * - Claim verification (pipeline/claim-search)
  * - Tone detection (pipeline/tone-detection)
@@ -27,7 +27,7 @@ import { logProcessingMetrics } from "@/lib/api-usage"
 import { enforceAndIncrementUsage } from "@/lib/usage"
 import { detectPaywallTruncation } from "@/lib/paywall-detection"
 import { screenContent, detectAiRefusal, persistFlag } from "@/lib/content-screening"
-import { submitPodcastTranscription } from "@/lib/assemblyai"
+import { submitPodcastTranscription } from "@/lib/deepgram"
 import { getLanguageDirective } from "@/lib/languages"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { classifyError, getUserFriendlyError } from "@/lib/error-sanitizer"
@@ -78,7 +78,7 @@ const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supadataApiKey = process.env.SUPADATA_API_KEY
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 const firecrawlApiKey = process.env.FIRECRAWL_API_KEY
-const assemblyAiApiKey = process.env.ASSEMBLYAI_API_KEY
+const deepgramApiKey = process.env.DEEPGRAM_API_KEY
 
 // ============================================
 // MAIN PROCESSING FUNCTION
@@ -338,22 +338,22 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
         }
       } else if (content.type === "podcast") {
         if (!content.full_text || forceRegenerate) {
-          if (!assemblyAiApiKey) {
-            logger.error("API: ASSEMBLYAI_API_KEY not configured")
+          if (!deepgramApiKey) {
+            logger.error("API: DEEPGRAM_API_KEY not configured")
             throw new ProcessContentError("Podcast transcription is not configured.", 500)
           }
 
           const appUrl = process.env.NEXT_PUBLIC_APP_URL
             || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "http://localhost:3000")
-          const tokenParam = process.env.ASSEMBLYAI_WEBHOOK_TOKEN
-            ? `?token=${process.env.ASSEMBLYAI_WEBHOOK_TOKEN}`
+          const tokenParam = process.env.DEEPGRAM_WEBHOOK_TOKEN
+            ? `?token=${process.env.DEEPGRAM_WEBHOOK_TOKEN}`
             : ""
-          const webhookUrl = `${appUrl}/api/assemblyai-webhook${tokenParam}`
+          const webhookUrl = `${appUrl}/api/deepgram-webhook${tokenParam}`
 
           const { transcript_id } = await submitPodcastTranscription(
             content.url,
             webhookUrl,
-            assemblyAiApiKey,
+            deepgramApiKey,
             feedAuthHeader ? { feedAuthHeader } : undefined,
           )
 

@@ -157,12 +157,12 @@ const PODCAST_HOSTNAMES = [
  *
  * Matches direct audio file links (by extension), Spotify episode URLs,
  * and known podcast hosting platforms. Used to route content through the
- * AssemblyAI transcription pipeline instead of the article scraper.
+ * Deepgram transcription pipeline instead of the article scraper.
  *
  * @param url - The URL to check
  * @returns `true` if the URL is recognized as audio/podcast content
  *
- * @see {@link lib/assemblyai.ts} for the transcription pipeline
+ * @see {@link lib/deepgram.ts} for the transcription pipeline
  */
 export function isPodcastUrl(url: string): boolean {
   if (!url) return false

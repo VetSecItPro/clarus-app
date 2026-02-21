@@ -109,7 +109,7 @@ export function classifyError(rawMessage: string): ErrorCategory {
     return "METADATA_FAILED"
   }
 
-  // AssemblyAI transcription
+  // Deepgram transcription
   if (msg.includes("transcription")) {
     return "TRANSCRIPTION_FAILED"
   }

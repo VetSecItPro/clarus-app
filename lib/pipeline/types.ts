@@ -61,7 +61,7 @@ export interface ProcessContentOptions {
   forceRegenerate?: boolean
   /** If true, skip scraping (used when full_text is already populated, e.g., PDFs) */
   skipScraping?: boolean
-  /** Decrypted auth header for private podcast feeds (Pro tier only). Passed through to AssemblyAI upload proxy. */
+  /** Decrypted auth header for private podcast feeds (Pro tier only). Passed through to Deepgram for authenticated audio. */
   feedAuthHeader?: string
 }
 
