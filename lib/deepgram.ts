@@ -711,56 +711,60 @@ export async function submitPodcastTranscription(
 
   const apiUrl = `${DEEPGRAM_API_URL}?${queryParams.toString()}`
 
+  // Always download audio ourselves and stream to Deepgram.
+  // Many podcast CDNs (Buzzsprout, Podbean, etc.) block requests without a
+  // browser-like User-Agent, returning 403. By proxying the audio through our
+  // server we control the fetch headers and avoid silent Deepgram failures.
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 min for large audio files
+
   let response: Response
 
-  if (options?.feedAuthHeader) {
-    // Private feed: download audio with credentials, send raw bytes to Deepgram
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 300000) // 5 min for large audio files
-
-    try {
-      const audioResponse = await fetch(audioUrl, {
-        signal: controller.signal,
-        headers: {
-          Authorization: options.feedAuthHeader,
-          "User-Agent": "Clarus/1.0 (Podcast Transcription)",
-        },
-      })
-
-      if (!audioResponse.ok) {
-        throw new Error(
-          `Failed to download private audio (HTTP ${audioResponse.status}): ${audioUrl}`,
-        )
-      }
-
-      if (!audioResponse.body) {
-        throw new Error("Audio response has no body to stream")
-      }
-
-      response = await fetch(apiUrl, {
-        method: "POST",
-        signal: controller.signal,
-        headers: {
-          Authorization: `Token ${apiKey}`,
-          "Content-Type": "audio/mpeg",
-        },
-        body: audioResponse.body,
-        // @ts-expect-error -- Node fetch supports duplex for streaming request bodies
-        duplex: "half",
-      })
-    } finally {
-      clearTimeout(timeoutId)
+  try {
+    const fetchHeaders: Record<string, string> = {
+      "User-Agent": "Mozilla/5.0 (compatible; Clarus/1.0; +https://clarusapp.io)",
     }
-  } else {
-    // Public URL: send JSON body with the URL for Deepgram to fetch
+    if (options?.feedAuthHeader) {
+      fetchHeaders.Authorization = options.feedAuthHeader
+    }
+
+    const audioResponse = await fetch(audioUrl, {
+      signal: controller.signal,
+      headers: fetchHeaders,
+      redirect: "follow",
+    })
+
+    if (!audioResponse.ok) {
+      throw new ProcessContentError(
+        `Failed to download podcast audio (HTTP ${audioResponse.status}). The audio file may be unavailable or access-restricted.`,
+        400,
+      )
+    }
+
+    if (!audioResponse.body) {
+      throw new ProcessContentError(
+        "Audio download returned no data. The file may be empty or the server rejected the request.",
+        400,
+      )
+    }
+
+    // Detect content type from response (default to audio/mpeg)
+    const contentType = audioResponse.headers.get("content-type") || "audio/mpeg"
+    const deepgramContentType = contentType.startsWith("audio/") ? contentType : "audio/mpeg"
+
     response = await fetch(apiUrl, {
       method: "POST",
+      signal: controller.signal,
       headers: {
         Authorization: `Token ${apiKey}`,
-        "Content-Type": "application/json",
+        "Content-Type": deepgramContentType,
       },
-      body: JSON.stringify({ url: audioUrl }),
+      body: audioResponse.body,
+      // @ts-expect-error -- Node fetch supports duplex for streaming request bodies
+      duplex: "half",
     })
+  } finally {
+    clearTimeout(timeoutId)
   }
 
   if (!response.ok) {
