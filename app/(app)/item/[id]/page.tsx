@@ -274,10 +274,16 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ content_id: item.id, force_regenerate: true, language: analysisLanguage }),
     })
-      .then(response => {
+      .then(async response => {
         if (!response.ok) throw new Error("Failed to regenerate")
-        markAnalysisComplete(item.id, item.title || undefined)
-        toast.success("Analysis complete!")
+        const data = await response.json().catch(() => ({}))
+        // Podcasts return early after submitting transcription — don't show "complete" yet
+        if (data.transcriptId) {
+          toast.success("Transcription resubmitted — analysis will begin when audio processing completes.")
+        } else {
+          markAnalysisComplete(item.id, item.title || undefined)
+          toast.success("Analysis complete!")
+        }
       })
       .catch(() => {
         toast.error("Failed to regenerate content")

@@ -350,12 +350,16 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
             : ""
           const webhookUrl = `${appUrl}/api/deepgram-webhook${tokenParam}`
 
+          logger.info(`API: [podcast] Submitting to Deepgram — audio: ${content.url}, webhook: ${appUrl}/api/deepgram-webhook (token ${tokenParam ? "present" : "MISSING"})`)
+
           const { transcript_id } = await submitPodcastTranscription(
             content.url,
             webhookUrl,
             deepgramApiKey,
             feedAuthHeader ? { feedAuthHeader } : undefined,
           )
+
+          logger.info(`API: [podcast] Deepgram accepted — request_id: ${transcript_id}, content: ${content.id}`)
 
           await supabase
             .from("content")
