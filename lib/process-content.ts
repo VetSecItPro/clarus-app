@@ -453,6 +453,8 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
         }
       }
     } catch (error: unknown) {
+      // Preserve actionable error messages from audio resolver and other pipeline stages
+      if (error instanceof ProcessContentError) throw error
       const rawMsg = getErrorMessage(error)
       const contentTypeLabel = content.type?.toUpperCase() || "UNKNOWN"
       logger.error(`API: Text processing error for content ${content.id}:`, rawMsg)

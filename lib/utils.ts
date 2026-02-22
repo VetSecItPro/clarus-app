@@ -149,7 +149,13 @@ const PODCAST_HOSTNAMES = [
   "libsyn.com",
   "overcast.fm",
   "pocketcasts.com",
+  "pca.st",
   "podcasts.apple.com",
+  "spreaker.com",
+  "captivate.fm",
+  "redcircle.com",
+  "megaphone.fm",
+  "acast.com",
 ]
 
 /**
