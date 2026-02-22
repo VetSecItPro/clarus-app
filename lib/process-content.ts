@@ -73,7 +73,10 @@ import { findCachedAnalysis, buildMetadataCopyPayload, cloneCachedContent } from
 // ============================================
 // ENVIRONMENT VARIABLES
 // ============================================
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+// IMPORTANT: Always use NEXT_PUBLIC_SUPABASE_URL, NOT SUPABASE_URL.
+// The Vercel Supabase integration injects SUPABASE_URL pointing to a different
+// project (dxyfpehucygiughjmiek) than our actual project (srqmutgamvktxqmylied).
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const supadataApiKey = process.env.SUPADATA_API_KEY
 const openRouterApiKey = process.env.OPENROUTER_API_KEY

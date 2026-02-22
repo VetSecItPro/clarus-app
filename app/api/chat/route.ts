@@ -15,7 +15,7 @@ import { logger } from "@/lib/logger"
 export const dynamic = "force-dynamic"
 export const maxDuration = 60
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 const tavilyApiKey = process.env.TAVILY_API_KEY
