@@ -10,6 +10,11 @@ import { logger } from "@/lib/logger"
 // PERF: FIX-213 — set maxDuration for serverless function (webhook + retry loop needs time)
 export const maxDuration = 60
 
+/** Health-check for verifying the webhook endpoint is reachable. */
+export function GET() {
+  return NextResponse.json({ status: "ok", endpoint: "deepgram-webhook" })
+}
+
 const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
@@ -53,8 +58,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
   }
 
-  const requestId = payload.request_id
+  // Deepgram puts request_id inside metadata, not at the top level
+  const requestId = payload.metadata?.request_id
   if (!requestId || typeof requestId !== "string" || requestId.length > 100) {
+    logger.error("WEBHOOK: Invalid or missing request_id in callback payload", {
+      hasMetadata: !!payload.metadata,
+      requestId: requestId ?? "undefined",
+    })
     return NextResponse.json({ error: "Invalid request_id" }, { status: 400 })
   }
 

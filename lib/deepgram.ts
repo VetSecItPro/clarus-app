@@ -37,10 +37,14 @@ export interface DeepgramUtterance {
 /**
  * The payload received from Deepgram via webhook when transcription completes.
  * Also re-exported for use by the webhook API route handler.
+ *
+ * Note: `request_id` lives inside `metadata`, NOT at the top level.
+ * The top-level `request_id` only appears in the *initial submission* response.
+ * The callback payload uses `metadata.request_id` to identify the request.
  */
 export interface DeepgramCallbackPayload {
-  request_id: string
   metadata: {
+    request_id: string
     duration: number
     channels: number
     models: string[]
