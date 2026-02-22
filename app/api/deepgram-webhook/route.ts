@@ -7,8 +7,9 @@ import { logApiUsage } from "@/lib/api-usage"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 import { logger } from "@/lib/logger"
 
-// PERF: FIX-213 — set maxDuration for serverless function (webhook + retry loop needs time)
-export const maxDuration = 60
+// Webhook handler: transcript formatting + AI analysis with up to 3 retries (1s + 2s + 3s backoff)
+// needs more than 60s. Vercel Pro allows up to 300s.
+export const maxDuration = 120
 
 /** Health-check for verifying the webhook endpoint is reachable. */
 export function GET() {
@@ -54,8 +55,11 @@ export async function POST(req: NextRequest) {
   let payload: DeepgramCallbackPayload
   try {
     payload = await req.json()
-  } catch {
-    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  } catch (parseError) {
+    const errMsg = parseError instanceof Error ? parseError.message : "unknown"
+    logger.error(`WEBHOOK: Failed to parse JSON body: ${errMsg}`)
+    // Could be payload too large (>4.5MB on Vercel) or malformed JSON
+    return NextResponse.json({ error: "Invalid JSON body", detail: errMsg }, { status: 400 })
   }
 
   // Deepgram puts request_id inside metadata, not at the top level
@@ -68,14 +72,30 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid request_id" }, { status: 400 })
   }
 
-  // Look up content by podcast_transcript_id
-  const { data: content, error: fetchError } = await supabase
+  // Look up content by podcast_transcript_id (primary lookup)
+  let content: { id: string; user_id: string | null; url: string; type: string | null } | null = null
+
+  const { data: primaryMatch } = await supabase
     .from("content")
     .select("id, user_id, url, type")
     .eq("podcast_transcript_id", requestId)
     .single()
 
-  if (fetchError || !content) {
+  content = primaryMatch
+
+  // Fallback: use extra.content_id metadata if primary lookup failed
+  if (!content && payload.metadata?.extra?.content_id) {
+    const extraContentId = payload.metadata.extra.content_id
+    logger.warn(`WEBHOOK: Primary lookup failed for request_id ${requestId}, trying extra.content_id ${extraContentId}`)
+    const { data: fallbackMatch } = await supabase
+      .from("content")
+      .select("id, user_id, url, type")
+      .eq("id", extraContentId)
+      .single()
+    content = fallbackMatch
+  }
+
+  if (!content) {
     logger.error(`WEBHOOK: No content found for request_id ${requestId}`)
     return NextResponse.json({ error: "Unknown request_id" }, { status: 404 })
   }

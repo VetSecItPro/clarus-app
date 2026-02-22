@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation"
 import { createClient } from "@supabase/supabase-js"
-import type { Database, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
+import type { Database, TriageData, TruthCheckData, ActionItemsData, TopicSegmentData } from "@/types/database.types"
 import { SharePageContent } from "./share-page-content"
 
 export const revalidate = 3600
@@ -41,7 +41,7 @@ export default async function SharePage({ params }: PageProps) {
   // Fetch the latest summary
   const { data: summary } = await supabase
     .from("summaries")
-    .select("brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status")
+    .select("brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, topic_segments, processing_status")
     .eq("content_id", content.id)
     .eq("language", "en")
     .order("created_at", { ascending: false })
@@ -66,6 +66,7 @@ export default async function SharePage({ params }: PageProps) {
         actionItems: summary.action_items as unknown as ActionItemsData | null,
         midLengthSummary: summary.mid_length_summary,
         detailedSummary: summary.detailed_summary,
+        topicSegments: summary.topic_segments as unknown as TopicSegmentData[] | null,
         processingStatus: summary.processing_status,
       } : null}
     />

@@ -389,7 +389,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
     // PERF: FIX-219 — select explicit columns to avoid pulling in unexpected future columns
     const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language"
-    const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language"
+    const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, topic_segments, processing_status, language"
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select(contentColumns).eq("id", contentId).single(),
       supabase.from("summaries").select(summaryColumns).eq("content_id", contentId).eq("language", analysisLanguage).order("created_at", { ascending: false }).limit(1).maybeSingle()
@@ -423,7 +423,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
   const pollContentAndUpdate = useCallback(async (): Promise<boolean> => {
     // PERF: FIX-219 — select explicit columns for polling too
     const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language"
-    const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language"
+    const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, topic_segments, processing_status, language"
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select(contentColumns).eq("id", contentId).single(),
       supabase.from("summaries").select(summaryColumns).eq("content_id", contentId).eq("language", analysisLanguage).order("created_at", { ascending: false }).limit(1).maybeSingle(),
@@ -688,7 +688,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     // Check if a completed summary already exists for the target language
     const { data: existingSummary } = await supabase
       .from("summaries")
-      .select("id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language")
+      .select("id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, topic_segments, processing_status, language")
       .eq("content_id", item.id)
       .eq("language", newLang)
       .maybeSingle()

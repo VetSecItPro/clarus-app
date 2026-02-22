@@ -3,17 +3,18 @@
 import Link from "next/link"
 import Image from "next/image"
 import dynamic from "next/dynamic"
-import { Eye, Sparkles, Shield, Lightbulb, Target, BookOpen, ChevronDown, FileText, Play, ArrowRight } from "lucide-react"
+import { Eye, Sparkles, Shield, Lightbulb, Target, BookOpen, ChevronDown, FileText, Play, ArrowRight, LayoutList } from "lucide-react"
 import { useState } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard } from "@/components/ui/section-card"
 import { formatDuration, getDomainFromUrl } from "@/lib/utils"
-import type { TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
+import type { TriageData, TruthCheckData, ActionItemsData, TopicSegmentData } from "@/types/database.types"
 
 // PERF: Dynamic imports — reduce initial bundle for share page (public/SEO-facing route)
 const TriageCard = dynamic(() => import("@/components/ui/triage-card").then(m => ({ default: m.TriageCard })), { ssr: false })
 const TruthCheckCard = dynamic(() => import("@/components/ui/truth-check-card").then(m => ({ default: m.TruthCheckCard })), { ssr: false })
 const ActionItemsCard = dynamic(() => import("@/components/ui/action-items-card").then(m => ({ default: m.ActionItemsCard })), { ssr: false })
+const TopicSegmentsCard = dynamic(() => import("@/components/ui/topic-segments-card").then(m => ({ default: m.TopicSegmentsCard })), { ssr: false })
 const MarkdownRenderer = dynamic(() => import("@/components/markdown-renderer").then(m => ({ default: m.MarkdownRenderer })), { ssr: false })
 
 interface SharePageContentProps {
@@ -33,6 +34,7 @@ interface SharePageContentProps {
     actionItems: ActionItemsData | null
     midLengthSummary: string | null
     detailedSummary: string | null
+    topicSegments: TopicSegmentData[] | null
     processingStatus: string | null
   } | null
 }
@@ -166,6 +168,13 @@ export function SharePageContent({ content, summary }: SharePageContentProps) {
             {summary.actionItems && (
               <SectionCard title="Action Items" icon={<Target className="w-4 h-4" />} headerColor="orange">
                 <ActionItemsCard actionItems={summary.actionItems} />
+              </SectionCard>
+            )}
+
+            {/* Topic Segments (podcast/youtube only) */}
+            {summary.topicSegments && summary.topicSegments.length > 0 && (
+              <SectionCard title="Topic Segments" icon={<LayoutList className="w-4 h-4" />} headerColor="teal">
+                <TopicSegmentsCard segments={summary.topicSegments} />
               </SectionCard>
             )}
 

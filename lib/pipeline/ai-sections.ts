@@ -6,7 +6,7 @@
  */
 
 import { createClient } from "@supabase/supabase-js"
-import type { Database, TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
+import type { Database, TriageData, TruthCheckData, ActionItemsData, TopicSegmentData } from "@/types/database.types"
 import { logApiUsage, logProcessingMetrics, createTimer } from "@/lib/api-usage"
 import { sanitizeForPrompt, wrapUserContent, INSTRUCTION_ANCHOR, detectOutputLeakage } from "@/lib/prompt-sanitizer"
 import { parseAiResponseOrThrow } from "@/lib/ai-response-parser"
@@ -117,77 +117,88 @@ export async function getModelSummary(
   if (top_p !== null) requestBody.top_p = top_p
   if (max_tokens !== null) requestBody.max_tokens = max_tokens
 
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
+  const maxRetries = 3
+  let lastError = ""
 
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${openRouterApiKey}`,
-        "Content-Type": "application/json",
-        "HTTP-Referer": "https://clarusapp.io",
-        "X-Title": "Clarus",
-      },
-      body: JSON.stringify(requestBody),
-      signal: controller.signal,
-    })
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      const controller = new AbortController()
+      const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
 
-    clearTimeout(timeoutId)
+      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${openRouterApiKey}`,
+          "Content-Type": "application/json",
+          "HTTP-Referer": "https://clarusapp.io",
+          "X-Title": "Clarus",
+        },
+        body: JSON.stringify(requestBody),
+        signal: controller.signal,
+      })
 
-    if (!response.ok) {
-      const errorBody = await response.text()
-      const errorMessage = `OpenRouter API Error (${response.status}): ${errorBody}`
-      logger.error(errorMessage)
+      clearTimeout(timeoutId)
+
+      if (!response.ok) {
+        const errorBody = await response.text()
+        lastError = `OpenRouter API Error (${response.status}): ${errorBody.substring(0, 200)}`
+        logger.warn(`API: [summarizer] Attempt ${attempt}/${maxRetries} failed: ${lastError}`)
+        if (attempt < maxRetries) continue
+        return { error: true, modelName: openRouterModelId, reason: `APIError_${response.status}`, finalErrorMessage: lastError }
+      }
+
+      const result = await response.json()
+      const rawContent = result.choices[0]?.message?.content
+
+      if (!rawContent) {
+        lastError = "OpenRouter response missing message content."
+        logger.warn(`API: [summarizer] Attempt ${attempt}/${maxRetries}: ${lastError}`)
+        if (attempt < maxRetries) continue
+        return { error: true, modelName: openRouterModelId, reason: "InvalidResponse", finalErrorMessage: lastError }
+      }
+
+      if (typeof rawContent === "string") {
+        detectOutputLeakage(rawContent, "summarizer")
+      }
+
+      let parsedContent: ParsedModelSummaryResponse
+      try {
+        parsedContent = parseAiResponseOrThrow<ParsedModelSummaryResponse>(rawContent, "summarizer")
+      } catch (parseError: unknown) {
+        lastError = `Failed to parse JSON: ${getErrorMessage(parseError)}`
+        logger.warn(`API: [summarizer] Attempt ${attempt}/${maxRetries}: ${lastError}`)
+        if (attempt < maxRetries) continue
+        return { error: true, modelName: openRouterModelId, reason: "JSONParseFailed", finalErrorMessage: lastError }
+      }
+
+      const summary: ModelSummary = {
+        mid_length_summary: parsedContent.mid_length_summary || null,
+      }
+      if (shouldExtractTitle) {
+        summary.title = parsedContent.title || null
+      }
+
+      if (attempt > 1) {
+        logger.info(`API: [summarizer] Succeeded on attempt ${attempt}/${maxRetries}`)
+      }
+
+      return summary
+    } catch (error: unknown) {
+      const isTimeout = getErrorName(error) === "AbortError"
+      lastError = isTimeout ? "Request timed out" : getErrorMessage(error)
+      logger.warn(`API: [summarizer] Attempt ${attempt}/${maxRetries} ${isTimeout ? "timed out" : "failed"}: ${lastError}`)
+      if (attempt < maxRetries) continue
       return {
         error: true,
         modelName: openRouterModelId,
-        reason: `APIError_${response.status}`,
-        finalErrorMessage: errorMessage,
+        reason: isTimeout ? "Timeout" : "RequestFailed",
+        finalErrorMessage: lastError,
       }
     }
-
-    const result = await response.json()
-    const rawContent = result.choices[0]?.message?.content
-
-    if (!rawContent) {
-      const errorMessage = "OpenRouter response missing message content."
-      logger.error(errorMessage, result)
-      return { error: true, modelName: openRouterModelId, reason: "InvalidResponse", finalErrorMessage: errorMessage }
-    }
-
-    if (typeof rawContent === "string") {
-      detectOutputLeakage(rawContent, "summarizer")
-    }
-
-    let parsedContent: ParsedModelSummaryResponse
-    try {
-      parsedContent = parseAiResponseOrThrow<ParsedModelSummaryResponse>(rawContent, "summarizer")
-    } catch (parseError: unknown) {
-      const errorMessage = `Failed to parse JSON from model response. Error: ${getErrorMessage(parseError)}`
-      logger.error(errorMessage, "Raw content was:", rawContent)
-      return { error: true, modelName: openRouterModelId, reason: "JSONParseFailed", finalErrorMessage: errorMessage }
-    }
-
-    const summary: ModelSummary = {
-      mid_length_summary: parsedContent.mid_length_summary || null,
-    }
-    if (shouldExtractTitle) {
-      summary.title = parsedContent.title || null
-    }
-
-    return summary
-  } catch (error: unknown) {
-    const isTimeout = getErrorName(error) === "AbortError"
-    const msg = getErrorMessage(error)
-    logger.error(`Failed to process summary with OpenRouter: ${isTimeout ? "Request timed out" : msg}`)
-    return {
-      error: true,
-      modelName: openRouterModelId,
-      reason: isTimeout ? "Timeout" : "RequestFailed",
-      finalErrorMessage: isTimeout ? "Request timed out after 2 minutes" : msg,
-    }
   }
+
+  // Should never reach here, but TypeScript needs it
+  return { error: true, modelName: openRouterModelId, reason: "ExhaustedRetries", finalErrorMessage: lastError }
 }
 
 // ============================================
@@ -619,4 +630,51 @@ export async function generateAutoTags(
       .slice(0, 5)
   }
   return null
+}
+
+export async function generateTopicSegments(
+  fullText: string,
+  contentType: string,
+  userId?: string | null,
+  contentId?: string | null,
+  languageDirective?: string | null,
+  metadataBlock?: string | null,
+): Promise<TopicSegmentData[] | null> {
+  const result = await generateSectionWithAI(
+    fullText.substring(0, 30000),
+    "topic_segments",
+    contentType,
+    2,
+    userId,
+    contentId,
+    undefined,
+    undefined,
+    languageDirective,
+    undefined,
+    metadataBlock,
+    undefined,
+  )
+  if (result.error) {
+    logger.error(`API: Topic segments generation failed: ${result.error}`)
+    return null
+  }
+
+  const content = result.content as { segments?: TopicSegmentData[] } | TopicSegmentData[] | null
+  if (!content) return null
+
+  // Handle both { segments: [...] } and direct array shapes
+  const segments = Array.isArray(content) ? content : content.segments
+  if (!segments || !Array.isArray(segments)) return null
+
+  // Validate and clean each segment
+  return segments
+    .filter((s): s is TopicSegmentData =>
+      typeof s === "object" &&
+      s !== null &&
+      typeof s.title === "string" &&
+      typeof s.start_time === "string" &&
+      typeof s.end_time === "string" &&
+      typeof s.summary === "string"
+    )
+    .slice(0, 12) // Cap at 12 segments
 }

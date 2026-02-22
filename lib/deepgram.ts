@@ -637,6 +637,8 @@ interface SubmitTranscriptionResult {
 export interface TranscriptionOptions {
   /** Decrypted Authorization header for private/premium podcast audio. */
   feedAuthHeader?: string
+  /** Content ID to pass as extra metadata so the webhook can identify content even if request_id lookup fails. */
+  contentId?: string
 }
 
 /** A single speaker utterance from Deepgram's diarization output. */
@@ -661,6 +663,7 @@ export interface DeepgramCallbackPayload {
     duration: number
     channels: number
     models: string[]
+    extra?: Record<string, string>
   }
   results: {
     utterances?: DeepgramUtterance[]
@@ -709,6 +712,12 @@ export async function submitPodcastTranscription(
     callback: webhookUrl,
   })
 
+  // Pass content_id as extra metadata so the webhook can identify content
+  // even if the primary request_id → podcast_transcript_id lookup fails.
+  if (options?.contentId) {
+    queryParams.set("extra", `content_id:${options.contentId}`)
+  }
+
   const apiUrl = `${DEEPGRAM_API_URL}?${queryParams.toString()}`
 
   // Always download audio ourselves and stream to Deepgram.
@@ -722,10 +731,31 @@ export async function submitPodcastTranscription(
 
   try {
     const fetchHeaders: Record<string, string> = {
-      "User-Agent": "Mozilla/5.0 (compatible; Clarus/1.0; +https://clarusapp.io)",
+      "User-Agent": `Mozilla/5.0 (compatible; Clarus/1.0; +${process.env.NEXT_PUBLIC_APP_URL || "https://clarusapp.io"})`,
     }
     if (options?.feedAuthHeader) {
       fetchHeaders.Authorization = options.feedAuthHeader
+    }
+
+    // Pre-check audio file size to avoid downloading excessively large files
+    const MAX_AUDIO_BYTES = 500 * 1024 * 1024 // 500 MB
+    try {
+      const headResp = await fetch(audioUrl, {
+        method: "HEAD",
+        signal: AbortSignal.timeout(10000),
+        headers: fetchHeaders,
+        redirect: "follow",
+      })
+      const contentLength = headResp.headers.get("content-length")
+      if (contentLength && parseInt(contentLength, 10) > MAX_AUDIO_BYTES) {
+        throw new ProcessContentError(
+          `Audio file is too large (${Math.round(parseInt(contentLength, 10) / 1024 / 1024)}MB). Maximum supported size is 500MB.`,
+          400,
+        )
+      }
+    } catch (err) {
+      // HEAD request failures are non-fatal — some servers don't support HEAD
+      if (err instanceof ProcessContentError) throw err
     }
 
     const audioResponse = await fetch(audioUrl, {
@@ -808,6 +838,93 @@ export function formatTranscript(
     full_text: lines.join("\n\n"),
     duration_seconds: Math.round(payload.metadata.duration || 0),
     speaker_count: speakers.size,
+  }
+}
+
+// ============================================
+// POLLING FALLBACK (Management API)
+// ============================================
+
+/** Status returned when polling Deepgram for a transcription result. */
+export type TranscriptionPollResult =
+  | { status: "completed"; payload: DeepgramCallbackPayload }
+  | { status: "processing" }
+  | { status: "failed"; error: string }
+
+/**
+ * Poll Deepgram's Management API for a completed transcription.
+ *
+ * Used as a fallback when the webhook callback fails to arrive.
+ * Returns the transcript in the same `DeepgramCallbackPayload` shape
+ * that `formatTranscript()` expects, so the recovery path is identical
+ * to the normal webhook flow.
+ *
+ * @param requestId - The Deepgram request_id (stored as podcast_transcript_id)
+ * @param apiKey - The Deepgram API key
+ * @returns Poll result with status and optional payload
+ */
+export async function pollTranscriptionResult(
+  requestId: string,
+  apiKey: string,
+): Promise<TranscriptionPollResult> {
+  try {
+    const response = await fetch(
+      `https://api.deepgram.com/v1/listen/${requestId}`,
+      {
+        method: "GET",
+        headers: {
+          Authorization: `Token ${apiKey}`,
+        },
+        signal: AbortSignal.timeout(15000),
+      },
+    )
+
+    if (response.status === 404) {
+      return { status: "failed", error: "Request not found on Deepgram" }
+    }
+
+    if (!response.ok) {
+      return { status: "failed", error: `Deepgram API error: ${response.status}` }
+    }
+
+    const data = await response.json()
+
+    // Deepgram returns the full transcript response for completed requests.
+    // The response shape matches the callback payload when using pre-recorded.
+    // If there are results with utterances, the transcription is done.
+    if (data.results?.utterances && data.results.utterances.length > 0) {
+      const payload: DeepgramCallbackPayload = {
+        metadata: {
+          request_id: requestId,
+          duration: data.metadata?.duration ?? 0,
+          channels: data.metadata?.channels ?? 1,
+          models: data.metadata?.models ?? [],
+        },
+        results: {
+          utterances: data.results.utterances,
+        },
+      }
+
+      if (data.err_code) {
+        payload.err_code = data.err_code
+        payload.err_msg = data.err_msg
+      }
+
+      return { status: "completed", payload }
+    }
+
+    // If no utterances but no error, it may still be processing
+    // or it completed with empty results
+    if (data.err_code) {
+      return { status: "failed", error: `Deepgram error: [${data.err_code}] ${data.err_msg}` }
+    }
+
+    // No utterances and no error — likely still processing
+    return { status: "processing" }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    logger.warn(`[pollTranscriptionResult] Failed for ${requestId}: ${msg}`)
+    return { status: "failed", error: msg }
   }
 }
 

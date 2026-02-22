@@ -72,6 +72,15 @@ export interface ActionItemData {
 
 export type ActionItemsData = ActionItemData[]
 
+// Topic segment for podcast/youtube content — timestamp-based chapters
+export interface TopicSegmentData {
+  title: string // e.g., "Introduction & guest background"
+  start_time: string // e.g., "0:00" or "1:14:32"
+  end_time: string // e.g., "8:14"
+  summary: string // 1-2 sentence summary of this segment
+  speakers?: string[] // Speakers active in this segment (e.g., ["A", "B"])
+}
+
 // Processing status for summaries
 export type ProcessingStatus =
   | "pending"
@@ -531,6 +540,7 @@ export interface Database {
           action_items: Json | null // ActionItemsData
           mid_length_summary: string | null // Legacy, kept for compatibility
           detailed_summary: string | null
+          topic_segments: Json | null // TopicSegmentData[] — podcast/youtube only
           processing_status: string | null // ProcessingStatus
           language: string // ISO 639-1 code, default 'en'
         }
@@ -547,6 +557,7 @@ export interface Database {
           action_items?: Json | null
           mid_length_summary?: string | null
           detailed_summary?: string | null
+          topic_segments?: Json | null
           processing_status?: string | null
           language?: string
         }
@@ -563,6 +574,7 @@ export interface Database {
           action_items?: Json | null
           mid_length_summary?: string | null
           detailed_summary?: string | null
+          topic_segments?: Json | null
           processing_status?: string | null
           language?: string
         }

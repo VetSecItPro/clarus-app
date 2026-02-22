@@ -77,7 +77,7 @@ export async function findCachedAnalysis(
   const candidateIds = validCandidates.map((c) => c.id)
   const { data: summaries } = await supabase
     .from("summaries")
-    .select("id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, processing_status, language")
+    .select("id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, topic_segments, processing_status, language")
     .in("content_id", candidateIds)
     .eq("language", targetLanguage)
     .eq("processing_status", "complete")
@@ -155,6 +155,7 @@ export async function cloneCachedContent(
           action_items: source.summary.action_items,
           mid_length_summary: source.summary.mid_length_summary,
           detailed_summary: source.summary.detailed_summary,
+          topic_segments: source.summary.topic_segments,
           model_name: source.summary.model_name,
           processing_status: "complete",
           updated_at: new Date().toISOString(),

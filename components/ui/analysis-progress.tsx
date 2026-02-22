@@ -12,6 +12,7 @@ interface AnalysisProgressProps {
   truthCheck: unknown | null
   actionItems: unknown | null
   detailedSummary: string | null
+  topicSegments?: unknown | null
   contentType: string | null
   isPolling: boolean
   /** When the content was created — used to detect stale transcription on page load */
@@ -20,25 +21,40 @@ interface AnalysisProgressProps {
   onRetry?: () => void
 }
 
-const SEGMENTS = [
+interface SegmentDef {
+  key: string
+  label: string
+  color: string
+  glow: string
+}
+
+const BASE_SEGMENTS: SegmentDef[] = [
   { key: "briefOverview", label: "Overview", color: "bg-blue-500", glow: "shadow-blue-500/40" },
   { key: "triage", label: "Assessment", color: "bg-amber-500", glow: "shadow-amber-500/40" },
   { key: "midLengthSummary", label: "Takeaways", color: "bg-cyan-500", glow: "shadow-cyan-500/40" },
   { key: "truthCheck", label: "Accuracy", color: "bg-emerald-500", glow: "shadow-emerald-500/40" },
   { key: "actionItems", label: "Actions", color: "bg-orange-500", glow: "shadow-orange-500/40" },
   { key: "detailedSummary", label: "Deep Dive", color: "bg-violet-500", glow: "shadow-violet-500/40" },
-] as const
+]
 
-type SegmentKey = (typeof SEGMENTS)[number]["key"]
+const TOPIC_SEGMENT: SegmentDef = { key: "topicSegments", label: "Topics", color: "bg-teal-500", glow: "shadow-teal-500/40" }
 
-function getCompletedSegments(props: AnalysisProgressProps): Set<SegmentKey> {
-  const completed = new Set<SegmentKey>()
+function getSegments(contentType: string | null): SegmentDef[] {
+  if (contentType === "podcast" || contentType === "youtube") {
+    return [...BASE_SEGMENTS, TOPIC_SEGMENT]
+  }
+  return BASE_SEGMENTS
+}
+
+function getCompletedSegments(props: AnalysisProgressProps): Set<string> {
+  const completed = new Set<string>()
   if (props.briefOverview) completed.add("briefOverview")
   if (props.triage) completed.add("triage")
   if (props.midLengthSummary) completed.add("midLengthSummary")
   if (props.truthCheck) completed.add("truthCheck")
   if (props.actionItems) completed.add("actionItems")
   if (props.detailedSummary) completed.add("detailedSummary")
+  if (props.topicSegments) completed.add("topicSegments")
   return completed
 }
 
@@ -57,10 +73,12 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
   const wasPollingRef = useRef(false)
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
+  const segments = getSegments(contentType)
+  const totalSegments = segments.length
   const completed = getCompletedSegments(props)
   const completedCount = completed.size
   const isTranscribing = processingStatus === "transcribing"
-  const isComplete = processingStatus === "complete" || completedCount === 6
+  const isComplete = processingStatus === "complete" || completedCount >= totalSegments
   const isError = processingStatus === "error" || processingStatus === "refused"
 
   // Calculate how long ago the content was created (for detecting stale transcription on load)
@@ -116,7 +134,7 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
   if (!shouldRender) return null
 
   // Find the first incomplete segment (active segment)
-  const activeIndex = SEGMENTS.findIndex((seg) => !completed.has(seg.key))
+  const activeIndex = segments.findIndex((seg) => !completed.has(seg.key))
 
   return (
     <AnimatePresence>
@@ -194,7 +212,7 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
             <div className="space-y-3">
               {/* Segmented progress bar */}
               <div className="flex gap-[3px] h-2 rounded-full bg-white/[0.06] overflow-hidden">
-                {SEGMENTS.map((seg, i) => {
+                {segments.map((seg, i) => {
                   const isFilled = completed.has(seg.key)
                   const isActive = i === activeIndex && !isComplete
 
@@ -236,12 +254,12 @@ export function AnalysisProgress(props: AnalysisProgressProps) {
                   <span className="text-sm text-white/60" aria-live="polite">
                     {showComplete
                       ? "Analysis complete"
-                      : `Analyzing... ${completedCount} of 6 sections`}
+                      : `Analyzing... ${completedCount} of ${totalSegments} sections`}
                   </span>
                 </div>
-                {!showComplete && completedCount > 0 && completedCount < 6 && (
+                {!showComplete && completedCount > 0 && completedCount < totalSegments && (
                   <span className="text-xs text-white/50">
-                    {SEGMENTS[activeIndex]?.label ?? ""}
+                    {segments[activeIndex]?.label ?? ""}
                   </span>
                 )}
               </div>
