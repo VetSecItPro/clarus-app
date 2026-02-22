@@ -50,15 +50,6 @@ function getTypeLabel(type: ContentType) {
   }
 }
 
-// Map detected types to DB-compatible values
-function toDbType(type: ContentType): string {
-  switch (type) {
-    case "youtube": return "Video"
-    case "x_post": return "Article"
-    case "podcast": return "Podcast"
-    default: return "Article"
-  }
-}
 
 export default function AddContentPage() {
   const router = useRouter()
@@ -205,7 +196,7 @@ export default function AddContentPage() {
       return
     }
 
-    const type = detectedType ? toDbType(detectedType) : "Article"
+    const type = detectedType || "article"
 
     const newContent: TablesInsert<"content"> = {
       title: title || url.trim(),

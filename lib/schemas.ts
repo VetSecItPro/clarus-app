@@ -196,6 +196,7 @@ const htmlSafeSchema = z.string().transform((text) =>
 const contentTypeSchema = z.enum([
   "youtube",
   "article",
+  "podcast",
   "pdf",
   "document",
   "x_post",
