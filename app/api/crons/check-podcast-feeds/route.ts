@@ -17,6 +17,9 @@ import { NextResponse } from "next/server"
 import { timingSafeEqual } from "crypto"
 import { getAdminClient } from "@/lib/auth"
 import { fetchAndParseFeed, classifyFeedError, type PodcastEpisode } from "@/lib/rss-parser"
+import { pollTranscriptionResult, formatTranscript } from "@/lib/deepgram"
+import { processContent, ProcessContentError } from "@/lib/process-content"
+import { logApiUsage } from "@/lib/api-usage"
 import { decryptFeedCredential } from "@/lib/feed-encryption"
 import { sendNewEpisodeEmail } from "@/lib/email"
 import { logger } from "@/lib/logger"
@@ -301,10 +304,162 @@ export async function GET(request: Request) {
 
   await Promise.all(emailPromises)
 
+  // ── Stuck transcription recovery (polling fallback) ─────────────
+  // If a Deepgram webhook never fires, podcasts stay in "transcribing"
+  // state forever. Before marking as failed, poll Deepgram's API to
+  // check if the transcription actually completed — silent recovery.
+  //
+  // Two-tier window:
+  //   20 min – 2 hours: poll Deepgram, recover if completed
+  //   > 2 hours: permanently mark as failed (no recovery attempt)
+  let stuckTranscriptionsRecovered = 0
+  let stuckTranscriptionsCleaned = 0
+
+  const deepgramApiKey = process.env.DEEPGRAM_API_KEY
+
+  try {
+    const twentyMinAgo = new Date(Date.now() - 20 * 60 * 1000).toISOString()
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString()
+
+    const { data: stuckItems, error: stuckError } = await supabase
+      .from("content")
+      .select("id, user_id, podcast_transcript_id, date_added")
+      .eq("type", "podcast")
+      .not("podcast_transcript_id", "is", null)
+      .or("full_text.is.null,full_text.eq.")
+      .lt("date_added", twentyMinAgo)
+      .limit(10) // Cap to avoid cron timeout
+
+    if (stuckError) {
+      logger.error("[check-podcast-feeds] Failed to query stuck transcriptions:", stuckError.message)
+    } else if (stuckItems && stuckItems.length > 0) {
+      logger.warn(`[check-podcast-feeds] Found ${stuckItems.length} stuck transcription(s), attempting recovery...`)
+
+      // Process up to 5 in parallel to stay within cron timeout
+      const recoveryPromises = stuckItems.slice(0, 5).map(async (item) => {
+        const isExpired = item.date_added && item.date_added < twoHoursAgo
+
+        // If older than 2 hours, skip polling — mark as permanently failed
+        if (isExpired || !deepgramApiKey || !item.podcast_transcript_id) {
+          logger.warn(`[check-podcast-feeds] Marking ${item.id} as permanently failed (age: ${isExpired ? ">2hr" : "no API key/transcript_id"})`)
+          await markTranscriptionFailed(supabase, item.id, item.user_id!)
+          stuckTranscriptionsCleaned++
+          return
+        }
+
+        // Poll Deepgram to check if transcription completed
+        const pollResult = await pollTranscriptionResult(item.podcast_transcript_id, deepgramApiKey)
+
+        if (pollResult.status === "completed") {
+          // Silent recovery — save transcript and trigger AI analysis
+          logger.info(`[check-podcast-feeds] Recovered transcription for ${item.id} via polling`)
+
+          const { full_text, duration_seconds, speaker_count } = formatTranscript(pollResult.payload)
+
+          if (!full_text) {
+            await markTranscriptionFailed(supabase, item.id, item.user_id!, "Transcription completed but produced no text.")
+            stuckTranscriptionsCleaned++
+            return
+          }
+
+          // Save transcript — use WHERE full_text IS NULL to prevent double-processing
+          const { error: updateError } = await supabase
+            .from("content")
+            .update({ full_text, duration: duration_seconds })
+            .eq("id", item.id)
+            .is("full_text", null)
+
+          if (updateError) {
+            logger.warn(`[check-podcast-feeds] Failed to save recovered transcript for ${item.id}:`, updateError.message)
+            return
+          }
+
+          // Log transcription API usage
+          await logApiUsage({
+            userId: item.user_id,
+            contentId: item.id,
+            apiName: "deepgram",
+            operation: "transcribe",
+            tokensInput: duration_seconds,
+            responseTimeMs: 0,
+            status: "success",
+            metadata: { speaker_count, duration_seconds, recovered: true },
+          })
+
+          // Trigger AI analysis
+          try {
+            await processContent({
+              contentId: item.id,
+              userId: item.user_id,
+            })
+          } catch (err) {
+            if (err instanceof ProcessContentError) {
+              logger.error(`[check-podcast-feeds] AI analysis failed for recovered ${item.id}: ${err.message}`)
+            } else {
+              logger.error(`[check-podcast-feeds] AI analysis failed for recovered ${item.id}:`, err)
+            }
+          }
+
+          stuckTranscriptionsRecovered++
+        } else if (pollResult.status === "processing") {
+          // Still processing — leave it alone, check again next cron run
+          logger.info(`[check-podcast-feeds] Transcription ${item.id} still processing on Deepgram, will retry next run`)
+        } else {
+          // Failed on Deepgram's side
+          logger.warn(`[check-podcast-feeds] Deepgram reports failure for ${item.id}: ${pollResult.error}`)
+          await markTranscriptionFailed(supabase, item.id, item.user_id!, pollResult.error)
+          stuckTranscriptionsCleaned++
+        }
+      })
+
+      await Promise.allSettled(recoveryPromises)
+
+      // Handle remaining items (6-10) that weren't processed this run — just log
+      if (stuckItems.length > 5) {
+        logger.info(`[check-podcast-feeds] ${stuckItems.length - 5} additional stuck items will be processed next run`)
+      }
+
+      logger.info(`[check-podcast-feeds] Recovery complete: ${stuckTranscriptionsRecovered} recovered, ${stuckTranscriptionsCleaned} marked failed`)
+    }
+  } catch (cleanupErr) {
+    logger.error("[check-podcast-feeds] Error during stuck transcription recovery:", cleanupErr)
+  }
+
   return NextResponse.json({
     success: true,
     checked,
     newEpisodes: totalNewEpisodes,
     emailsSent,
+    stuckTranscriptionsRecovered,
+    stuckTranscriptionsCleaned,
   })
+}
+
+/** Mark a stuck transcription as permanently failed. */
+async function markTranscriptionFailed(
+  supabase: ReturnType<typeof getAdminClient>,
+  contentId: string,
+  userId: string,
+  detail?: string,
+) {
+  await supabase
+    .from("content")
+    .update({ full_text: "PROCESSING_FAILED::TRANSCRIPTION::TRANSCRIPTION_TIMEOUT" })
+    .eq("id", contentId)
+
+  await supabase
+    .from("summaries")
+    .upsert(
+      {
+        content_id: contentId,
+        user_id: userId,
+        language: "en",
+        processing_status: "error",
+        brief_overview: detail
+          ? `Transcription failed: ${detail}. Please try again.`
+          : "Transcription timed out. The audio may have been too large or the service was unavailable. Please try again.",
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: "content_id,language" },
+    )
 }

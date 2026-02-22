@@ -1,12 +1,13 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { Home, Clock, Rss, BarChart3, Shield } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
-import { getCachedSession } from "@/components/with-auth"
+import { supabase } from "@/lib/supabase"
 import { TIER_FEATURES } from "@/lib/tier-limits"
 import { InstantTooltip } from "@/components/ui/tooltip"
 import { ActiveAnalysisNavLink } from "@/components/active-analysis-nav-link"
@@ -37,9 +38,26 @@ interface SiteHeaderProps {
 
 export default function SiteHeader({ showNav = true, showSettings = true }: SiteHeaderProps) {
   const pathname = usePathname()
-  // PERF: shared SWR hook eliminates duplicate tier query (was independent useEffect+fetch)
-  const { session } = getCachedSession()
-  const { tier: userTier, isAdmin } = useUserTier(session?.user?.id ?? null)
+  // Track auth session reactively — SiteHeader lives in the layout (outside withAuth),
+  // so it needs its own subscription to re-render when auth initializes
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    // Check for existing session on mount
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null)
+    })
+
+    // Subscribe to auth changes so we re-render when the user logs in/out
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // PERF: shared SWR hook — deduplicates with other useUserTier consumers
+  const { tier: userTier, isAdmin } = useUserTier(userId)
 
   const badgeConfig = TIER_BADGE_CONFIG[userTier]
 

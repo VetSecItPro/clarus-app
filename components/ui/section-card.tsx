@@ -10,7 +10,7 @@ interface SectionCardProps {
   isLoading?: boolean
   delay?: number
   icon?: ReactNode
-  headerColor?: "blue" | "amber" | "emerald" | "yellow" | "orange" | "violet" | "cyan"
+  headerColor?: "blue" | "amber" | "emerald" | "yellow" | "orange" | "violet" | "cyan" | "teal"
   minContentHeight?: string // Ensures consistent card height during loading
   headerRight?: ReactNode // Optional slot for feedback buttons, badges, etc.
 }
@@ -57,6 +57,12 @@ const headerColorStyles: Record<string, { bg: string; border: string; text: stri
     border: "border-cyan-500/20",
     text: "text-cyan-300",
     icon: "text-cyan-400",
+  },
+  teal: {
+    bg: "bg-teal-500/15",
+    border: "border-teal-500/20",
+    text: "text-teal-300",
+    icon: "text-teal-400",
   },
 }
 

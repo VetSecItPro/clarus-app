@@ -139,7 +139,9 @@ export async function POST(
 
   if (linkError) {
     logger.error("[podcast-analyze] Failed to link episode to content:", linkError.message)
-    // Non-fatal: the content entry was created, we just couldn't link it
+    // Rollback: delete the orphaned content entry
+    await supabase.from("content").delete().eq("id", content.id)
+    return AuthErrors.serverError()
   }
 
   // Usage increment handled atomically by processContent() — no separate increment here

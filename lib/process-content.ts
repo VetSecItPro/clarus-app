@@ -65,6 +65,7 @@ import {
   generateActionItems,
   generateDetailedSummary,
   generateAutoTags,
+  generateTopicSegments,
 } from "./pipeline/ai-sections"
 import type { ModelSummary } from "./pipeline/ai-sections"
 import { updateSummarySection, isEntertainmentUrl, getDomainCredibility, updateDomainStats } from "./pipeline/domain-tracking"
@@ -232,7 +233,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
           contentId: content.id,
           sectionsGenerated: [
             "brief_overview", "triage", "truth_check",
-            "action_items", "mid_length_summary", "detailed_summary",
+            "action_items", "mid_length_summary", "detailed_summary", "topic_segments",
           ].filter((s) => {
             const key = s as keyof typeof cached.summary
             return cached.summary[key] != null
@@ -362,7 +363,7 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
             audioUrl,
             webhookUrl,
             deepgramApiKey,
-            feedAuthHeader ? { feedAuthHeader } : undefined,
+            { feedAuthHeader, contentId: content.id },
           )
 
           logger.info(`API: [podcast] Deepgram accepted — request_id: ${transcript_id}, content: ${content.id}`)
@@ -724,17 +725,32 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
     return result
   })()
 
+  // Topic segmentation — only for podcast and youtube (which have timestamps in transcript)
+  const hasTimestamps = contentType === "podcast" || contentType === "youtube"
+  const topicSegmentsPromise = hasTimestamps
+    ? (async () => {
+        const result = await generateTopicSegments(text30K, contentType, userId, contentIdVal, languageDirective, metadataBlock)
+        if (result) {
+          await updateSummarySection(supabase, contentIdVal, userId, { topic_segments: result as unknown as Json }, language)
+          sectionsGenerated.push("topic_segments")
+        } else {
+          logger.warn(`API: [7/7] Topic segments failed.`)
+        }
+        return result
+      })()
+    : Promise.resolve(null)
+
   // Promise.allSettled: one section crashing won't kill the others
   const phase2Results = await Promise.allSettled([
     overviewPromise, triagePromise, midSummaryPromise, detailedPromise, autoTagPromise,
-    truthCheckPromise, actionItemsPromise,
+    truthCheckPromise, actionItemsPromise, topicSegmentsPromise,
   ])
 
   // Extract values — rejected promises return null (IIFEs already handle their own errors,
   // so rejection here means an unexpected crash, which we log and treat as a section failure)
   const phase2Values = phase2Results.map((r, i) => {
     if (r.status === "fulfilled") return r.value
-    const sectionNames = ["brief_overview", "triage", "mid_length_summary", "detailed_summary", "auto_tags", "truth_check", "action_items"]
+    const sectionNames = ["brief_overview", "triage", "mid_length_summary", "detailed_summary", "auto_tags", "truth_check", "action_items", "topic_segments"]
     logger.error(`API: Phase 2 section ${sectionNames[i]} crashed unexpectedly:`, r.reason)
     if (!failedSections.includes(sectionNames[i])) failedSections.push(sectionNames[i])
     return null

@@ -6,8 +6,8 @@ import { Home, Clock, Rss } from "lucide-react"
 import { cn } from "@/lib/utils"
 import GlasmorphicSettingsButton from "@/components/glassmorphic-settings-button"
 import { ActiveAnalysisNavLink } from "@/components/active-analysis-nav-link"
-import { useState } from "react"
-import { getCachedSession } from "@/components/with-auth"
+import { useState, useEffect } from "react"
+import { supabase } from "@/lib/supabase"
 import { TIER_FEATURES } from "@/lib/tier-limits"
 // PERF: use shared SWR hook instead of independent Supabase query for tier data
 import { useUserTier } from "@/lib/hooks/use-user-tier"
@@ -22,9 +22,23 @@ const feedsNavItem = { href: "/feeds", label: "Feeds", icon: Rss }
 export default function MobileBottomNav() {
   const pathname = usePathname()
   const [settingsOpen, setSettingsOpen] = useState(false)
-  // PERF: shared SWR hook eliminates duplicate tier query (was independent useEffect+fetch)
-  const { session } = getCachedSession()
-  const { tier: userTier } = useUserTier(session?.user?.id ?? null)
+  // Track auth session reactively — MobileBottomNav lives in the layout (outside withAuth)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setUserId(session?.user?.id ?? null)
+    })
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUserId(session?.user?.id ?? null)
+    })
+
+    return () => subscription.unsubscribe()
+  }, [])
+
+  // PERF: shared SWR hook — deduplicates with other useUserTier consumers
+  const { tier: userTier } = useUserTier(userId)
 
   // Hide on auth pages
   if (pathname?.startsWith("/login") || pathname?.startsWith("/signup") || pathname?.startsWith("/forgot-password")) {

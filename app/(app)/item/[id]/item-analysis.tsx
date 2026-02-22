@@ -1,12 +1,12 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { Loader2, Eye, Sparkles, Lightbulb, Shield, Target, BookOpen, ChevronDown, RefreshCw } from "lucide-react"
+import { Loader2, Eye, Sparkles, Lightbulb, Shield, Target, BookOpen, ChevronDown, RefreshCw, LayoutList } from "lucide-react"
 import { motion, AnimatePresence } from "framer-motion"
 import { cn } from "@/lib/utils"
 import { SectionCard, SectionSkeleton } from "@/components/ui/section-card"
 import { SectionFeedback } from "@/components/ui/section-feedback"
-import type { TriageData, TruthCheckData, ActionItemsData } from "@/types/database.types"
+import type { TriageData, TruthCheckData, ActionItemsData, TopicSegmentData } from "@/types/database.types"
 import type { CrossReference } from "@/components/ui/truth-check-card"
 import type { YouTubePlayerRef } from "@/components/ui/youtube-player"
 import type { Tables } from "@/types/database.types"
@@ -15,6 +15,7 @@ const MarkdownRenderer = dynamic(() => import("@/components/markdown-renderer").
 const TriageCard = dynamic(() => import("@/components/ui/triage-card").then(m => ({ default: m.TriageCard })), { ssr: false })
 const TruthCheckCard = dynamic(() => import("@/components/ui/truth-check-card").then(m => ({ default: m.TruthCheckCard })), { ssr: false })
 const ActionItemsCard = dynamic(() => import("@/components/ui/action-items-card").then(m => ({ default: m.ActionItemsCard })), { ssr: false })
+const TopicSegmentsCard = dynamic(() => import("@/components/ui/topic-segments-card").then(m => ({ default: m.TopicSegmentsCard })), { ssr: false })
 const AnalysisProgress = dynamic(() => import("@/components/ui/analysis-progress").then(m => ({ default: m.AnalysisProgress })), { ssr: false })
 
 type ClaimFlagEntry = { claim_index: number; flag_reason: string | null }
@@ -99,6 +100,7 @@ export function ItemAnalysis({
         truthCheck={summary?.truth_check ?? null}
         actionItems={summary?.action_items ?? null}
         detailedSummary={summary?.detailed_summary ?? null}
+        topicSegments={summary?.topic_segments ?? null}
         contentType={contentType}
         isPolling={isPolling}
         contentDateAdded={contentDateAdded}
@@ -269,7 +271,23 @@ export function ItemAnalysis({
             )}
           </AnimatePresence>
 
-          {/* 4. ACCURACY ANALYSIS */}
+          {/* TOPIC SEGMENTS (podcast/youtube only) */}
+          <AnimatePresence mode="wait">
+            {summary?.topic_segments && (
+              <SectionCard
+                title="Topic Segments"
+                isLoading={false}
+                delay={0.17}
+                icon={<LayoutList className="w-4 h-4" />}
+                headerColor="teal"
+                minContentHeight="200px"
+              >
+                <TopicSegmentsCard segments={summary.topic_segments as unknown as TopicSegmentData[]} />
+              </SectionCard>
+            )}
+          </AnimatePresence>
+
+          {/* 5. ACCURACY ANALYSIS */}
           <AnimatePresence mode="wait">
             {(summary?.truth_check || isPolling) && (
               <SectionCard
@@ -332,7 +350,7 @@ export function ItemAnalysis({
             )}
           </AnimatePresence>
 
-          {/* 5. ACTION ITEMS */}
+          {/* 6. ACTION ITEMS */}
           <AnimatePresence mode="wait">
             {(summary?.action_items || isPolling) && (
               <SectionCard
@@ -375,7 +393,7 @@ export function ItemAnalysis({
             </motion.div>
           )}
 
-          {/* 6. DETAILED ANALYSIS */}
+          {/* 7. DETAILED ANALYSIS */}
           <AnimatePresence mode="wait">
             {(summary?.detailed_summary || isPolling) && (
               <motion.div
