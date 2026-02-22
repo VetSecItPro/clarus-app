@@ -15,144 +15,618 @@
  */
 
 import { logger } from "@/lib/logger"
+import { fetchAndParseFeed, type PodcastEpisode } from "@/lib/rss-parser"
+import { ProcessContentError } from "@/lib/pipeline/types"
 
 const DEEPGRAM_API_URL = "https://api.deepgram.com/v1/listen"
 
 /** Audio file extensions recognized as direct audio URLs (no resolution needed). */
 const AUDIO_EXTENSIONS = [".mp3", ".m4a", ".wav", ".ogg", ".aac", ".flac", ".opus", ".wma"]
 
+/** Total time budget for the entire resolveAudioUrl() waterfall. */
+const RESOLVE_TIMEOUT_MS = 30_000
+
+/** Per-resolver network request timeout. */
+const RESOLVER_FETCH_TIMEOUT_MS = 10_000
+
+// ============================================
+// HELPERS
+// ============================================
+
 /**
- * Platform-specific URL transformers that convert episode page URLs
- * into direct audio file URLs.
- *
- * Each transformer receives a parsed URL and returns the direct audio
- * URL string, or `null` if the URL doesn't match the expected pattern.
+ * Fetch with AbortController timeout and one retry on transient 5xx errors.
+ * Does NOT retry timeouts — only server errors with a 2s backoff.
  */
-const PLATFORM_RESOLVERS: Array<{
+async function fetchWithTimeout(
+  input: string,
+  init?: RequestInit & { timeout?: number },
+): Promise<Response> {
+  const timeoutMs = init?.timeout ?? RESOLVER_FETCH_TIMEOUT_MS
+  const controller = new AbortController()
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+  const doFetch = () =>
+    fetch(input, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        "User-Agent": "Clarus/1.0 (Podcast Audio Resolver)",
+        ...init?.headers,
+      },
+    })
+
+  try {
+    let response = await doFetch()
+    if (response.status >= 500 && response.status < 600) {
+      // One retry after 2s for transient server errors
+      await new Promise((r) => setTimeout(r, 2000))
+      response = await doFetch()
+    }
+    return response
+  } finally {
+    clearTimeout(timeoutId)
+  }
+}
+
+// ── RSS feed cache (module-level, 1hr TTL, 50-entry FIFO) ──
+
+interface CachedFeed {
+  episodes: PodcastEpisode[]
+  feedTitle: string
+  fetchedAt: number
+}
+
+const rssFeedCache = new Map<string, CachedFeed>()
+const RSS_CACHE_TTL_MS = 3600_000 // 1 hour
+const RSS_CACHE_MAX = 50
+
+async function fetchFeedCached(feedUrl: string): Promise<CachedFeed> {
+  const cached = rssFeedCache.get(feedUrl)
+  if (cached && Date.now() - cached.fetchedAt < RSS_CACHE_TTL_MS) {
+    return cached
+  }
+
+  const parsed = await fetchAndParseFeed(feedUrl)
+  const entry: CachedFeed = {
+    episodes: parsed.episodes,
+    feedTitle: parsed.feed.title,
+    fetchedAt: Date.now(),
+  }
+
+  // FIFO eviction
+  if (rssFeedCache.size >= RSS_CACHE_MAX) {
+    const firstKey = rssFeedCache.keys().next().value
+    if (firstKey !== undefined) rssFeedCache.delete(firstKey)
+  }
+  rssFeedCache.set(feedUrl, entry)
+  return entry
+}
+
+// ── Episode matching (fuzzy scoring) ──
+
+/** Normalize text for fuzzy comparison: lowercase, strip punctuation, collapse whitespace. */
+function normalizeForMatch(text: string): string {
+  return text
+    .toLowerCase()
+    .replace(/[^\w\s]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+}
+
+/**
+ * Fuzzy-match an episode from an RSS feed using title similarity, date, and duration.
+ *
+ * Scoring:
+ * - Exact normalized title match: +100
+ * - Substring match (either direction): +60
+ * - Word overlap (Jaccard-like): up to +50
+ * - Date within 24h: +20
+ * - Duration within 60s: +15
+ * - Minimum threshold: 30 points
+ */
+function matchEpisode(
+  episodes: PodcastEpisode[],
+  opts: { title?: string; date?: Date; durationSeconds?: number },
+): PodcastEpisode | null {
+  if (episodes.length === 0) return null
+
+  const normTitle = opts.title ? normalizeForMatch(opts.title) : ""
+  let bestScore = 0
+  let bestEp: PodcastEpisode | null = null
+
+  for (const ep of episodes) {
+    let score = 0
+    const epNorm = normalizeForMatch(ep.title)
+
+    // Title scoring
+    if (normTitle && epNorm) {
+      if (epNorm === normTitle) {
+        score += 100
+      } else if (epNorm.includes(normTitle) || normTitle.includes(epNorm)) {
+        score += 60
+      } else {
+        // Word overlap
+        const queryWords = new Set(normTitle.split(" "))
+        const epWords = new Set(epNorm.split(" "))
+        const intersection = [...queryWords].filter((w) => epWords.has(w)).length
+        const union = new Set([...queryWords, ...epWords]).size
+        if (union > 0) {
+          score += Math.round((intersection / union) * 50)
+        }
+      }
+    }
+
+    // Date proximity (within 24h)
+    if (opts.date && ep.pubDate) {
+      const diffMs = Math.abs(opts.date.getTime() - ep.pubDate.getTime())
+      if (diffMs < 86_400_000) score += 20
+    }
+
+    // Duration proximity (within 60s)
+    if (opts.durationSeconds != null && ep.durationSeconds != null) {
+      if (Math.abs(opts.durationSeconds - ep.durationSeconds) <= 60) score += 15
+    }
+
+    if (score > bestScore) {
+      bestScore = score
+      bestEp = ep
+    }
+  }
+
+  return bestScore >= 30 ? bestEp : null
+}
+
+// ============================================
+// AUDIO RESOLVERS (waterfall order)
+// ============================================
+
+interface AudioResolver {
   name: string
-  match: (url: URL) => boolean
-  resolve: (url: URL) => string | null
-}> = [
-  {
-    // Buzzsprout: /pod_id/episodes/ep_id-optional-slug → /pod_id/ep_id.mp3
-    name: "buzzsprout",
-    match: (url) => url.hostname.includes("buzzsprout.com"),
-    resolve: (url) => {
-      // Match: /2226656/episodes/16828065 or /2226656/episodes/16828065-the-slug
-      const match = url.pathname.match(/^\/(\d+)\/episodes\/(\d+)/)
-      if (match) {
-        return `https://www.buzzsprout.com/${match[1]}/${match[2]}.mp3`
+  canHandle: (url: URL) => boolean
+  resolve: (url: URL, originalUrl: string) => Promise<string | null>
+}
+
+/** 1. Buzzsprout: /POD_ID/episodes/EP_ID → /POD_ID/EP_ID.mp3 (no network) */
+const buzzsproutResolver: AudioResolver = {
+  name: "buzzsprout",
+  canHandle: (url) => url.hostname.includes("buzzsprout.com"),
+  resolve: async (url) => {
+    const m = url.pathname.match(/^\/(\d+)\/episodes\/(\d+)/)
+    if (m) return `https://www.buzzsprout.com/${m[1]}/${m[2]}.mp3`
+    if (/^\/\d+\/\d+\.mp3$/.test(url.pathname)) return url.href
+    return null
+  },
+}
+
+/** 2. Transistor: /episodes/slug → share.transistor.fm/s/slug.mp3 (no network) */
+const transistorResolver: AudioResolver = {
+  name: "transistor",
+  canHandle: (url) => url.hostname.includes("transistor.fm"),
+  resolve: async (url) => {
+    const m = url.pathname.match(/^\/episodes\/(.+?)(?:\/|$)/)
+    if (m) return `https://share.transistor.fm/s/${m[1]}.mp3`
+    return null
+  },
+}
+
+/** 3. Apple Podcasts: iTunes Lookup API → RSS feed → episode match → enclosure URL */
+const applePodcastsResolver: AudioResolver = {
+  name: "apple-podcasts",
+  canHandle: (url) => url.hostname === "podcasts.apple.com",
+  resolve: async (url) => {
+    // Extract podcast ID from URL: /podcast/name/id123456789
+    const idMatch = url.pathname.match(/\/id(\d+)/)
+    if (!idMatch) return null
+    const podcastId = idMatch[1]
+
+    // Extract episode name from URL for matching (e.g., /podcast/name/episode-slug/id...)
+    // Apple URLs look like: /us/podcast/show-name/id123?i=456
+    // The `i` param is the episode ID
+    const episodeParam = url.searchParams.get("i")
+
+    try {
+      // Step 1: iTunes Lookup API → get feedUrl
+      const lookupUrl = `https://itunes.apple.com/lookup?id=${podcastId}&entity=podcast`
+      const lookupResp = await fetchWithTimeout(lookupUrl)
+      if (!lookupResp.ok) return null
+
+      const lookupData = await lookupResp.json()
+      const feedUrl = lookupData?.results?.[0]?.feedUrl
+      if (!feedUrl) return null
+
+      // Step 2: Fetch and parse the RSS feed
+      const feed = await fetchFeedCached(feedUrl)
+      if (feed.episodes.length === 0) return null
+
+      // Step 3: If we have an episode param, try to match; otherwise return latest
+      if (episodeParam) {
+        // Apple episode IDs aren't in RSS — we need to match by title
+        // Try a secondary lookup for the specific episode
+        const epLookupUrl = `https://itunes.apple.com/lookup?id=${episodeParam}&entity=podcastEpisode`
+        const epResp = await fetchWithTimeout(epLookupUrl)
+        if (epResp.ok) {
+          const epData = await epResp.json()
+          const epInfo = epData?.results?.[0]
+          if (epInfo?.trackName) {
+            const matched = matchEpisode(feed.episodes, {
+              title: epInfo.trackName,
+              date: epInfo.releaseDate ? new Date(epInfo.releaseDate) : undefined,
+              durationSeconds: epInfo.trackTimeMillis
+                ? Math.round(epInfo.trackTimeMillis / 1000)
+                : undefined,
+            })
+            if (matched) return matched.url
+          }
+        }
       }
-      // Already a direct audio path like /2226656/16828065.mp3
-      if (/^\/\d+\/\d+\.mp3$/.test(url.pathname)) {
-        return url.href
+
+      // Fallback: return the most recent episode's audio URL
+      return feed.episodes[0]?.url ?? null
+    } catch (err) {
+      logger.warn(`[apple-podcasts] Resolution failed: ${err instanceof Error ? err.message : String(err)}`)
+      return null
+    }
+  },
+}
+
+/** 4. Overcast: scrape HTML for <audio> or <source> tag */
+const overcastResolver: AudioResolver = {
+  name: "overcast",
+  canHandle: (url) => url.hostname === "overcast.fm",
+  resolve: async (_url, originalUrl) => {
+    try {
+      const resp = await fetchWithTimeout(originalUrl)
+      if (!resp.ok) return null
+      const html = await resp.text()
+
+      // Look for <audio src="..."> or <source src="...">
+      const audioMatch =
+        html.match(/<audio[^>]+src=["']([^"']+)["']/i) ??
+        html.match(/<source[^>]+src=["']([^"']+)["']/i)
+      if (audioMatch) {
+        const src = audioMatch[1]
+        // Resolve relative URLs
+        return src.startsWith("http") ? src : new URL(src, originalUrl).href
       }
       return null
-    },
-  },
-  {
-    // Podbean: episode pages → .mp3 via their CDN pattern
-    name: "podbean",
-    match: (url) => url.hostname.includes("podbean.com"),
-    resolve: (_url) => {
-      // Podbean's audio CDN URLs are not derivable from page URLs;
-      // fall through to HEAD-request resolution
+    } catch {
       return null
-    },
+    }
   },
-  {
-    // Transistor.fm: episode pages → .mp3 via share URL
-    name: "transistor",
-    match: (url) => url.hostname.includes("transistor.fm"),
-    resolve: (url) => {
-      // Transistor share URLs: /episodes/slug → /s/slug.mp3
-      const episodeMatch = url.pathname.match(/^\/episodes\/(.+?)(?:\/|$)/)
-      if (episodeMatch) {
-        return `https://share.transistor.fm/s/${episodeMatch[1]}.mp3`
+}
+
+/** 5. Pocket Casts: scrape HTML for audio source or JSON audioUrl */
+const pocketCastsResolver: AudioResolver = {
+  name: "pocket-casts",
+  canHandle: (url) =>
+    url.hostname === "pocketcasts.com" ||
+    url.hostname === "www.pocketcasts.com" ||
+    url.hostname === "pca.st",
+  resolve: async (_url, originalUrl) => {
+    try {
+      const resp = await fetchWithTimeout(originalUrl)
+      if (!resp.ok) return null
+      const html = await resp.text()
+
+      // Check for <audio src="...">
+      const audioMatch =
+        html.match(/<audio[^>]+src=["']([^"']+)["']/i) ??
+        html.match(/<source[^>]+src=["']([^"']+)["']/i)
+      if (audioMatch) {
+        const src = audioMatch[1]
+        return src.startsWith("http") ? src : new URL(src, originalUrl).href
+      }
+
+      // Check for "audioUrl":"..." in embedded JSON
+      const jsonMatch = html.match(/"audioUrl"\s*:\s*"([^"]+)"/i)
+      if (jsonMatch) return jsonMatch[1]
+
+      return null
+    } catch {
+      return null
+    }
+  },
+}
+
+/** 6. Spotify: try to find show via iTunes, then match episode from RSS */
+const spotifyResolver: AudioResolver = {
+  name: "spotify",
+  canHandle: (url) => url.hostname === "open.spotify.com",
+  resolve: async (url) => {
+    if (!url.pathname.startsWith("/episode/")) return null
+
+    try {
+      // Try scraping the embed page for show name
+      const episodeId = url.pathname.split("/")[2]
+      const embedUrl = `https://open.spotify.com/embed/episode/${episodeId}`
+      const embedResp = await fetchWithTimeout(embedUrl)
+
+      let showName: string | null = null
+      let episodeTitle: string | null = null
+
+      if (embedResp.ok) {
+        const html = await embedResp.text()
+        // Look for show name and episode title in meta tags or JSON-LD
+        const showMatch =
+          html.match(/<meta[^>]+property="og:site_name"[^>]+content="([^"]+)"/i) ??
+          html.match(/"show"\s*:\s*\{[^}]*"name"\s*:\s*"([^"]+)"/i)
+        if (showMatch) showName = showMatch[1]
+
+        const titleMatch =
+          html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i) ??
+          html.match(/"name"\s*:\s*"([^"]+)"/i)
+        if (titleMatch) episodeTitle = titleMatch[1]
+      }
+
+      if (!showName) {
+        // Try the regular page
+        const pageResp = await fetchWithTimeout(url.href)
+        if (pageResp.ok) {
+          const html = await pageResp.text()
+          const titleMatch = html.match(/<meta[^>]+property="og:title"[^>]+content="([^"]+)"/i)
+          if (titleMatch) episodeTitle = titleMatch[1]
+          const descMatch = html.match(/<meta[^>]+property="og:description"[^>]+content="([^"]+)"/i)
+          if (descMatch && !showName) {
+            // Description often contains show name
+            showName = descMatch[1].split(" · ")[0]?.trim() || null
+          }
+        }
+      }
+
+      if (!showName && !episodeTitle) {
+        throw new ProcessContentError(
+          "This is a Spotify link. Spotify doesn't share audio files publicly. Try finding this podcast on Apple Podcasts or paste its RSS feed URL instead.",
+          200,
+        )
+      }
+
+      // Search iTunes for the podcast
+      const searchQuery = encodeURIComponent(showName || episodeTitle || "")
+      const searchUrl = `https://itunes.apple.com/search?term=${searchQuery}&entity=podcast&limit=5`
+      const searchResp = await fetchWithTimeout(searchUrl)
+      if (!searchResp.ok) {
+        throw new ProcessContentError(
+          `We found '${showName || episodeTitle}' on Spotify but couldn't locate its RSS feed. Try pasting an Apple Podcasts link or the direct RSS feed URL.`,
+          200,
+        )
+      }
+
+      const searchData = await searchResp.json()
+      const results = searchData?.results as Array<{ feedUrl?: string; collectionName?: string }> | undefined
+      if (!results || results.length === 0) {
+        throw new ProcessContentError(
+          `We found '${showName || episodeTitle}' on Spotify but couldn't locate its RSS feed. Try pasting an Apple Podcasts link or the direct RSS feed URL.`,
+          200,
+        )
+      }
+
+      // Try each matching podcast's RSS feed
+      for (const result of results) {
+        if (!result.feedUrl) continue
+        try {
+          const feed = await fetchFeedCached(result.feedUrl)
+          if (episodeTitle) {
+            const matched = matchEpisode(feed.episodes, { title: episodeTitle })
+            if (matched) return matched.url
+          }
+          // If no episode title, return the latest episode
+          if (feed.episodes.length > 0) return feed.episodes[0].url
+        } catch {
+          continue
+        }
+      }
+
+      throw new ProcessContentError(
+        `We found '${showName || episodeTitle}' on Spotify but couldn't locate its RSS feed. Try pasting an Apple Podcasts link or the direct RSS feed URL.`,
+        200,
+      )
+    } catch (err) {
+      if (err instanceof ProcessContentError) throw err
+      logger.warn(`[spotify] Resolution failed: ${err instanceof Error ? err.message : String(err)}`)
+      throw new ProcessContentError(
+        "This is a Spotify link. Spotify doesn't share audio files publicly. Try finding this podcast on Apple Podcasts or paste its RSS feed URL instead.",
+        200,
+      )
+    }
+  },
+}
+
+/** Known podcast hosting platforms where we can scrape for <audio> or RSS <link>. */
+const KNOWN_PODCAST_HOSTS = [
+  "podbean.com",
+  "libsyn.com",
+  "simplecast.com",
+  "anchor.fm",
+  "megaphone.fm",
+  "acast.com",
+  "spreaker.com",
+  "captivate.fm",
+  "redcircle.com",
+]
+
+/** 7. Known podcast host: scrape page for <audio> or RSS <link> → parse feed → match */
+const knownHostRssResolver: AudioResolver = {
+  name: "known-host-rss",
+  canHandle: (url) => {
+    const hostname = url.hostname.toLowerCase()
+    return KNOWN_PODCAST_HOSTS.some((h) => hostname === h || hostname.endsWith(`.${h}`))
+  },
+  resolve: async (_url, originalUrl) => {
+    try {
+      const resp = await fetchWithTimeout(originalUrl)
+      if (!resp.ok) return null
+      const html = await resp.text()
+
+      // Check for <audio> tag first (fastest path)
+      const audioMatch =
+        html.match(/<audio[^>]+src=["']([^"']+)["']/i) ??
+        html.match(/<source[^>]+src=["']([^"']+\.(?:mp3|m4a|ogg|wav|aac))[^"']*["']/i)
+      if (audioMatch) {
+        const src = audioMatch[1]
+        return src.startsWith("http") ? src : new URL(src, originalUrl).href
+      }
+
+      // Look for RSS <link> in <head>
+      const rssMatch = html.match(
+        /<link[^>]+type=["']application\/rss\+xml["'][^>]+href=["']([^"']+)["']/i,
+      )
+      if (rssMatch) {
+        const feedUrl = rssMatch[1].startsWith("http")
+          ? rssMatch[1]
+          : new URL(rssMatch[1], originalUrl).href
+        try {
+          const feed = await fetchFeedCached(feedUrl)
+          // Try to extract episode title from page for matching
+          const titleMatch = html.match(/<title>([^<]+)<\/title>/i)
+          const pageTitle = titleMatch ? titleMatch[1].trim() : ""
+          const matched = matchEpisode(feed.episodes, { title: pageTitle })
+          if (matched) return matched.url
+          // Fallback: latest episode
+          if (feed.episodes.length > 0) return feed.episodes[0].url
+        } catch {
+          // RSS fetch failed, fall through
+        }
+      }
+
+      return null
+    } catch {
+      return null
+    }
+  },
+}
+
+/** 8. Generic webpage: fetch and check for <audio> element or audio Content-Type */
+const genericWebpageResolver: AudioResolver = {
+  name: "generic-webpage",
+  canHandle: () => true,
+  resolve: async (_url, originalUrl) => {
+    try {
+      const resp = await fetchWithTimeout(originalUrl, { redirect: "follow" })
+
+      // If the final URL has an audio content-type, we followed a redirect to audio
+      const contentType = resp.headers.get("content-type") || ""
+      if (contentType.startsWith("audio/") || contentType === "application/octet-stream") {
+        return resp.url
+      }
+
+      // If it's HTML, look for <audio> tags
+      if (contentType.includes("text/html") || contentType.includes("application/xhtml")) {
+        const html = await resp.text()
+        const audioMatch =
+          html.match(/<audio[^>]+src=["']([^"']+)["']/i) ??
+          html.match(/<source[^>]+src=["']([^"']+\.(?:mp3|m4a|ogg|wav|aac))[^"']*["']/i)
+        if (audioMatch) {
+          const src = audioMatch[1]
+          return src.startsWith("http") ? src : new URL(src, originalUrl).href
+        }
+      }
+
+      return null
+    } catch {
+      return null
+    }
+  },
+}
+
+/** 9. HEAD request: follow redirects and check Content-Type for audio/* */
+const headRequestResolver: AudioResolver = {
+  name: "head-request",
+  canHandle: () => true,
+  resolve: async (_url, originalUrl) => {
+    try {
+      const resp = await fetchWithTimeout(originalUrl, {
+        method: "HEAD",
+        redirect: "follow",
+      })
+
+      const contentType = resp.headers.get("content-type") || ""
+      if (contentType.startsWith("audio/") || contentType === "application/octet-stream") {
+        return resp.url
       }
       return null
-    },
+    } catch {
+      return null
+    }
   },
+}
+
+/** Ordered list of resolvers — tried in sequence (waterfall pattern). */
+const AUDIO_RESOLVERS: AudioResolver[] = [
+  buzzsproutResolver,
+  transistorResolver,
+  applePodcastsResolver,
+  overcastResolver,
+  pocketCastsResolver,
+  spotifyResolver,
+  knownHostRssResolver,
+  genericWebpageResolver,
+  headRequestResolver,
 ]
 
 /**
  * Resolves a podcast URL to a direct audio file URL that Deepgram can fetch.
  *
- * Podcast hosting platforms serve HTML episode pages at their canonical URLs,
- * but Deepgram needs a direct audio file URL to transcribe. This function
- * applies platform-specific transformations for known hosts, then falls back
- * to a HEAD request to detect audio content-type via redirects.
- *
- * Resolution strategy (in order):
- * 1. If the URL already has an audio file extension → return as-is
- * 2. If a platform-specific resolver matches → transform the URL
- * 3. HEAD request to check Content-Type after following redirects
- * 4. If all else fails → return the original URL and let Deepgram try
+ * Uses a multi-strategy waterfall: platform-specific transformers (no network),
+ * RSS feed lookups via iTunes API, HTML scraping for <audio> tags, and HEAD
+ * requests as a final fallback. Throws ProcessContentError with an actionable
+ * user message if all strategies fail.
  *
  * @param url - The podcast episode URL (may be a page URL or direct audio)
  * @returns The resolved direct audio URL
+ * @throws ProcessContentError if the URL is invalid or no audio can be found
  */
 export async function resolveAudioUrl(url: string): Promise<string> {
-  // 1. Already a direct audio URL?
+  // Validate URL
+  let parsed: URL
   try {
-    const parsed = new URL(url)
-    const pathLower = parsed.pathname.toLowerCase()
-    if (AUDIO_EXTENSIONS.some((ext) => pathLower.endsWith(ext))) {
-      logger.info(`[resolveAudioUrl] Already a direct audio URL: ${url}`)
-      return url
-    }
-
-    // 2. Platform-specific resolver
-    for (const resolver of PLATFORM_RESOLVERS) {
-      if (resolver.match(parsed)) {
-        const resolved = resolver.resolve(parsed)
-        if (resolved) {
-          logger.info(`[resolveAudioUrl] ${resolver.name} resolved: ${url} → ${resolved}`)
-          return resolved
-        }
-        logger.info(`[resolveAudioUrl] ${resolver.name} matched but could not derive audio URL, trying HEAD request`)
-        break
-      }
-    }
+    parsed = new URL(url)
   } catch {
-    logger.warn(`[resolveAudioUrl] Failed to parse URL: ${url}`)
+    throw new ProcessContentError(
+      "The podcast URL is not valid. Please check the link and try again.",
+      200,
+    )
+  }
+
+  // Fast path: already a direct audio URL
+  const pathLower = parsed.pathname.toLowerCase()
+  if (AUDIO_EXTENSIONS.some((ext) => pathLower.endsWith(ext))) {
+    logger.info(`[resolveAudioUrl] Already a direct audio URL: ${url}`)
     return url
   }
 
-  // 3. HEAD request to follow redirects and check Content-Type
-  try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
+  // Waterfall through resolvers with total timeout
+  const deadline = Date.now() + RESOLVE_TIMEOUT_MS
+
+  for (const resolver of AUDIO_RESOLVERS) {
+    if (Date.now() >= deadline) {
+      logger.warn(`[resolveAudioUrl] Total timeout reached after ${RESOLVE_TIMEOUT_MS / 1000}s`)
+      break
+    }
+
+    if (!resolver.canHandle(parsed)) continue
 
     try {
-      const headResponse = await fetch(url, {
-        method: "HEAD",
-        signal: controller.signal,
-        redirect: "follow",
-        headers: {
-          "User-Agent": "Clarus/1.0 (Podcast Audio Resolver)",
-        },
-      })
-
-      const contentType = headResponse.headers.get("content-type") || ""
-      const finalUrl = headResponse.url // URL after redirects
-
-      if (contentType.startsWith("audio/") || contentType === "application/octet-stream") {
-        logger.info(`[resolveAudioUrl] HEAD confirmed audio (${contentType}): ${url} → ${finalUrl}`)
-        return finalUrl
+      logger.info(`[resolveAudioUrl] Trying ${resolver.name} for: ${url}`)
+      const result = await resolver.resolve(parsed, url)
+      if (result) {
+        logger.info(`[resolveAudioUrl] ${resolver.name} resolved: ${url} → ${result}`)
+        return result
       }
-
-      logger.warn(`[resolveAudioUrl] HEAD returned non-audio Content-Type (${contentType}) for: ${url}`)
-    } finally {
-      clearTimeout(timeoutId)
+      logger.info(`[resolveAudioUrl] ${resolver.name} returned null, trying next`)
+    } catch (err) {
+      // ProcessContentError from resolvers (e.g., Spotify) should propagate
+      if (err instanceof ProcessContentError) throw err
+      logger.warn(
+        `[resolveAudioUrl] ${resolver.name} failed: ${err instanceof Error ? err.message : String(err)}`,
+      )
     }
-  } catch (err) {
-    logger.warn(`[resolveAudioUrl] HEAD request failed for ${url}: ${err instanceof Error ? err.message : String(err)}`)
   }
 
-  // 4. Last resort: return original URL and let Deepgram try
-  logger.warn(`[resolveAudioUrl] Could not resolve audio URL, using original: ${url}`)
-  return url
+  // All resolvers failed
+  throw new ProcessContentError(
+    "We couldn't find the audio file for this podcast episode. Try pasting a direct audio URL (.mp3), an Apple Podcasts link, or the podcast's RSS feed URL.",
+    200,
+  )
 }
 
 interface SubmitTranscriptionResult {
