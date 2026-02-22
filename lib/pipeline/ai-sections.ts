@@ -20,7 +20,7 @@ import { NEUTRAL_TONE_DIRECTIVE } from "./tone-detection"
 // ENVIRONMENT VARIABLES
 // ============================================
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // ============================================

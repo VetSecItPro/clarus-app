@@ -12,7 +12,7 @@ import { logger } from "@/lib/logger"
 export const dynamic = "force-dynamic"
 export const maxDuration = 120
 
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 // OCR.space free tier: use "helloworld" demo key if no custom key provided
 // Limits: 500 req/day per IP, 1MB file size, 3 PDF pages

@@ -18,7 +18,7 @@ import { TAVILY_TIMEOUT_MS, EXTRACT_TOPICS_TIMEOUT_MS } from "./types"
 // ============================================
 const openRouterApiKey = process.env.OPENROUTER_API_KEY
 const tavilyApiKey = process.env.TAVILY_API_KEY
-const supabaseUrl = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 // ============================================
