@@ -14,7 +14,146 @@
  * @see {@link lib/api-usage.ts} for cost tracking (billed per second of audio)
  */
 
+import { logger } from "@/lib/logger"
+
 const DEEPGRAM_API_URL = "https://api.deepgram.com/v1/listen"
+
+/** Audio file extensions recognized as direct audio URLs (no resolution needed). */
+const AUDIO_EXTENSIONS = [".mp3", ".m4a", ".wav", ".ogg", ".aac", ".flac", ".opus", ".wma"]
+
+/**
+ * Platform-specific URL transformers that convert episode page URLs
+ * into direct audio file URLs.
+ *
+ * Each transformer receives a parsed URL and returns the direct audio
+ * URL string, or `null` if the URL doesn't match the expected pattern.
+ */
+const PLATFORM_RESOLVERS: Array<{
+  name: string
+  match: (url: URL) => boolean
+  resolve: (url: URL) => string | null
+}> = [
+  {
+    // Buzzsprout: /pod_id/episodes/ep_id-optional-slug → /pod_id/ep_id.mp3
+    name: "buzzsprout",
+    match: (url) => url.hostname.includes("buzzsprout.com"),
+    resolve: (url) => {
+      // Match: /2226656/episodes/16828065 or /2226656/episodes/16828065-the-slug
+      const match = url.pathname.match(/^\/(\d+)\/episodes\/(\d+)/)
+      if (match) {
+        return `https://www.buzzsprout.com/${match[1]}/${match[2]}.mp3`
+      }
+      // Already a direct audio path like /2226656/16828065.mp3
+      if (/^\/\d+\/\d+\.mp3$/.test(url.pathname)) {
+        return url.href
+      }
+      return null
+    },
+  },
+  {
+    // Podbean: episode pages → .mp3 via their CDN pattern
+    name: "podbean",
+    match: (url) => url.hostname.includes("podbean.com"),
+    resolve: (_url) => {
+      // Podbean's audio CDN URLs are not derivable from page URLs;
+      // fall through to HEAD-request resolution
+      return null
+    },
+  },
+  {
+    // Transistor.fm: episode pages → .mp3 via share URL
+    name: "transistor",
+    match: (url) => url.hostname.includes("transistor.fm"),
+    resolve: (url) => {
+      // Transistor share URLs: /episodes/slug → /s/slug.mp3
+      const episodeMatch = url.pathname.match(/^\/episodes\/(.+?)(?:\/|$)/)
+      if (episodeMatch) {
+        return `https://share.transistor.fm/s/${episodeMatch[1]}.mp3`
+      }
+      return null
+    },
+  },
+]
+
+/**
+ * Resolves a podcast URL to a direct audio file URL that Deepgram can fetch.
+ *
+ * Podcast hosting platforms serve HTML episode pages at their canonical URLs,
+ * but Deepgram needs a direct audio file URL to transcribe. This function
+ * applies platform-specific transformations for known hosts, then falls back
+ * to a HEAD request to detect audio content-type via redirects.
+ *
+ * Resolution strategy (in order):
+ * 1. If the URL already has an audio file extension → return as-is
+ * 2. If a platform-specific resolver matches → transform the URL
+ * 3. HEAD request to check Content-Type after following redirects
+ * 4. If all else fails → return the original URL and let Deepgram try
+ *
+ * @param url - The podcast episode URL (may be a page URL or direct audio)
+ * @returns The resolved direct audio URL
+ */
+export async function resolveAudioUrl(url: string): Promise<string> {
+  // 1. Already a direct audio URL?
+  try {
+    const parsed = new URL(url)
+    const pathLower = parsed.pathname.toLowerCase()
+    if (AUDIO_EXTENSIONS.some((ext) => pathLower.endsWith(ext))) {
+      logger.info(`[resolveAudioUrl] Already a direct audio URL: ${url}`)
+      return url
+    }
+
+    // 2. Platform-specific resolver
+    for (const resolver of PLATFORM_RESOLVERS) {
+      if (resolver.match(parsed)) {
+        const resolved = resolver.resolve(parsed)
+        if (resolved) {
+          logger.info(`[resolveAudioUrl] ${resolver.name} resolved: ${url} → ${resolved}`)
+          return resolved
+        }
+        logger.info(`[resolveAudioUrl] ${resolver.name} matched but could not derive audio URL, trying HEAD request`)
+        break
+      }
+    }
+  } catch {
+    logger.warn(`[resolveAudioUrl] Failed to parse URL: ${url}`)
+    return url
+  }
+
+  // 3. HEAD request to follow redirects and check Content-Type
+  try {
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), 10000) // 10s timeout
+
+    try {
+      const headResponse = await fetch(url, {
+        method: "HEAD",
+        signal: controller.signal,
+        redirect: "follow",
+        headers: {
+          "User-Agent": "Clarus/1.0 (Podcast Audio Resolver)",
+        },
+      })
+
+      const contentType = headResponse.headers.get("content-type") || ""
+      const finalUrl = headResponse.url // URL after redirects
+
+      if (contentType.startsWith("audio/") || contentType === "application/octet-stream") {
+        logger.info(`[resolveAudioUrl] HEAD confirmed audio (${contentType}): ${url} → ${finalUrl}`)
+        return finalUrl
+      }
+
+      logger.warn(`[resolveAudioUrl] HEAD returned non-audio Content-Type (${contentType}) for: ${url}`)
+    } finally {
+      clearTimeout(timeoutId)
+    }
+  } catch (err) {
+    logger.warn(`[resolveAudioUrl] HEAD request failed for ${url}: ${err instanceof Error ? err.message : String(err)}`)
+  }
+
+  // 4. Last resort: return original URL and let Deepgram try
+  logger.warn(`[resolveAudioUrl] Could not resolve audio URL, using original: ${url}`)
+  return url
+}
 
 interface SubmitTranscriptionResult {
   transcript_id: string

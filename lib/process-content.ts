@@ -27,7 +27,7 @@ import { logProcessingMetrics } from "@/lib/api-usage"
 import { enforceAndIncrementUsage } from "@/lib/usage"
 import { detectPaywallTruncation } from "@/lib/paywall-detection"
 import { screenContent, detectAiRefusal, persistFlag } from "@/lib/content-screening"
-import { submitPodcastTranscription } from "@/lib/deepgram"
+import { submitPodcastTranscription, resolveAudioUrl } from "@/lib/deepgram"
 import { getLanguageDirective } from "@/lib/languages"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { classifyError, getUserFriendlyError } from "@/lib/error-sanitizer"
@@ -350,10 +350,13 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
             : ""
           const webhookUrl = `${appUrl}/api/deepgram-webhook${tokenParam}`
 
-          logger.info(`API: [podcast] Submitting to Deepgram — audio: ${content.url}, webhook: ${appUrl}/api/deepgram-webhook (token ${tokenParam ? "present" : "MISSING"})`)
+          // Resolve episode page URLs to direct audio file URLs
+          const audioUrl = await resolveAudioUrl(content.url)
+
+          logger.info(`API: [podcast] Submitting to Deepgram — audio: ${audioUrl}${audioUrl !== content.url ? ` (resolved from ${content.url})` : ""}, webhook: ${appUrl}/api/deepgram-webhook (token ${tokenParam ? "present" : "MISSING"})`)
 
           const { transcript_id } = await submitPodcastTranscription(
-            content.url,
+            audioUrl,
             webhookUrl,
             deepgramApiKey,
             feedAuthHeader ? { feedAuthHeader } : undefined,
