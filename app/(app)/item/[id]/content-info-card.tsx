@@ -1,6 +1,6 @@
 "use client"
 
-import { Play, FileText } from "lucide-react"
+import { Play, FileText, Headphones, Twitter } from "lucide-react"
 import { getModeOption, type AnalysisMode } from "@/lib/analysis-modes"
 
 interface ContentInfoCardProps {
@@ -41,6 +41,16 @@ export function ContentInfoCard({
               <>
                 <Play className="w-3 h-3" />
                 {displayDuration}
+              </>
+            ) : type === "podcast" ? (
+              <>
+                <Headphones className="w-3 h-3" />
+                {displayDuration || "Podcast"}
+              </>
+            ) : type === "x_post" ? (
+              <>
+                <Twitter className="w-3 h-3" />
+                Post
               </>
             ) : (
               <>

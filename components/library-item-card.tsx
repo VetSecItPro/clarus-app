@@ -5,7 +5,7 @@ import Link from "next/link"
 import Image from "next/image"
 import { formatDistanceToNow } from "date-fns"
 import { cn, formatDuration } from "@/lib/utils"
-import { FileText, Play, Trash2, Loader2, Zap, Twitter, ChevronDown, ChevronUp, ArrowRight, Star, TrendingUp, Bookmark, ShieldCheck, AlertTriangle, Clock } from "lucide-react"
+import { FileText, Play, Trash2, Loader2, Zap, Twitter, ChevronDown, ChevronUp, ArrowRight, Star, TrendingUp, Bookmark, ShieldCheck, AlertTriangle, Clock, Headphones, FileUp } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import type { LibraryItem } from "@/lib/hooks/use-library"
 
@@ -45,6 +45,11 @@ const getTypeBadge = (type: string | null) => {
       return { icon: Play, label: "YouTube", color: "bg-red-500/20 text-red-400 border-red-500/30" }
     case "x_post":
       return { icon: Twitter, label: "X Post", color: "bg-white/10 text-white/80 border-white/20" }
+    case "podcast":
+      return { icon: Headphones, label: "Podcast", color: "bg-purple-500/20 text-purple-400 border-purple-500/30" }
+    case "pdf":
+    case "document":
+      return { icon: FileUp, label: type === "pdf" ? "PDF" : "Document", color: "bg-amber-500/20 text-amber-400 border-amber-500/30" }
     case "article":
     default:
       return { icon: FileText, label: "Article", color: "bg-blue-500/20 text-blue-400 border-blue-500/30" }
