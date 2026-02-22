@@ -93,16 +93,25 @@ export default function withAuth<P extends object>(
         }
 
         authCheckPromise = (async () => {
-          try {
-            // Add timeout to prevent infinite loading
+          const attemptGetSession = async (timeoutMs: number) => {
             const timeoutPromise = new Promise<never>((_, reject) => {
-              setTimeout(() => reject(new Error("Auth timeout")), 8000)
+              setTimeout(() => reject(new Error("Auth timeout")), timeoutMs)
             })
+            return Promise.race([supabase.auth.getSession(), timeoutPromise])
+          }
 
-            const { data: { session: initialSession }, error } = await Promise.race([
-              supabase.auth.getSession(),
-              timeoutPromise
-            ])
+          try {
+            // First attempt with 10s timeout
+            let sessionResult: Awaited<ReturnType<typeof supabase.auth.getSession>>
+            try {
+              sessionResult = await attemptGetSession(10000)
+            } catch {
+              // Retry once with a longer timeout (cold start recovery)
+              console.warn("Auth first attempt timed out, retrying...")
+              sessionResult = await attemptGetSession(10000)
+            }
+
+            const { data: { session: initialSession }, error } = sessionResult
 
             if (error) {
               console.warn("Auth session error:", error.message)
@@ -135,7 +144,7 @@ export default function withAuth<P extends object>(
 
             authInitialized = true
           } catch (err) {
-            console.warn("Auth initialization error or timeout:", err)
+            console.warn("Auth initialization failed after retry:", err)
             cachedSession = null
             cachedSubscriptionStatus = null
             authInitialized = true

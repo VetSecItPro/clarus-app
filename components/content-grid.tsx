@@ -3,7 +3,7 @@
 import type React from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { Play, FileText, ExternalLink, Loader2, PlusCircle } from "lucide-react"
+import { Play, FileText, ExternalLink, Loader2, PlusCircle, Headphones, Twitter, FileUp } from "lucide-react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import type { Database } from "@/types/database.types"
@@ -122,6 +122,21 @@ export default function ContentGrid({
                     <>
                       <Play className="w-3 h-3 mr-1.5" />
                       {item.displayDuration}
+                    </>
+                  ) : item.type === "podcast" ? (
+                    <>
+                      <Headphones className="w-3 h-3 mr-1.5" />
+                      {item.displayDuration || "Podcast"}
+                    </>
+                  ) : item.type === "x_post" ? (
+                    <>
+                      <Twitter className="w-3 h-3 mr-1.5" />
+                      Post
+                    </>
+                  ) : item.type === "pdf" || item.type === "document" ? (
+                    <>
+                      <FileUp className="w-3 h-3 mr-1.5" />
+                      {item.type === "pdf" ? "PDF" : "Document"}
                     </>
                   ) : (
                     <>
