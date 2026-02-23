@@ -91,7 +91,7 @@ export function SectionCard({ title, children, isLoading, delay = 0, icon, heade
       </div>
       <div
         className="px-4 sm:px-5 py-4 sm:py-5"
-        style={minContentHeight ? { minHeight: minContentHeight, display: 'flex', flexDirection: 'column' } : undefined}
+        style={minContentHeight ? { minHeight: minContentHeight, display: 'flex', flexDirection: 'column', transition: 'min-height 0.4s ease-out' } : undefined}
       >
         <div className="flex-1">
           {children}

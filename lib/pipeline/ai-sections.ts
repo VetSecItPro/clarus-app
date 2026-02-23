@@ -426,7 +426,8 @@ export async function generateSectionWithAI(
 // ============================================
 
 export async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 8000), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, undefined, metadataBlock, typeInstructions)
+  const maxChars = (contentType === "podcast" || contentType === "youtube") ? 12000 : 8000
+  const result = await generateSectionWithAI(fullText.substring(0, maxChars), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, undefined, metadataBlock, typeInstructions)
   if (result.error) {
     logger.error(`API: Brief overview generation failed: ${result.error}`)
     return null

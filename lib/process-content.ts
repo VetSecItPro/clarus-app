@@ -639,7 +639,8 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
 
   // All sections in parallel
   const overviewPromise = (async () => {
-    const result = await generateBriefOverview(text8K, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, metadataBlock, typeInstructions)
+    const overviewText = (contentType === "podcast" || contentType === "youtube") ? text15K : text8K
+    const result = await generateBriefOverview(overviewText, contentType, userId, contentIdVal, webContext, toneDirective, languageDirective, metadataBlock, typeInstructions)
     if (result) {
       await updateSummarySection(supabase, contentIdVal, userId, { brief_overview: result }, language)
       sectionsGenerated.push("brief_overview")
