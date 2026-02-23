@@ -32,7 +32,45 @@ function isPublicRoute(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((prefix) => pathname.startsWith(prefix))
 }
 
+// PERF: CSP string computed once at module load — avoids string concatenation on every request
+const isDev = process.env.NODE_ENV === "development"
+const CSP_DIRECTIVES = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com https://va.vercel-scripts.com`,
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  "img-src 'self' data: blob: https: http:",
+  "media-src 'self' https://www.youtube.com",
+  "frame-src 'self' https://www.youtube.com https://youtube.com",
+  "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openrouter.ai https://api.tavily.com https://api.firecrawl.dev https://api.supadata.ai https://api.resend.com https://api.polar.sh https://api.deepgram.com https://va.vercel-scripts.com",
+  "object-src 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'none'",
+  "upgrade-insecure-requests",
+].join("; ")
+
+// Bot blocking — return 403 before any serverless work (saves Supabase calls)
+const BLOCKED_BOTS = [
+  'GPTBot', 'ChatGPT-User', 'CCBot', 'ClaudeBot', 'anthropic-ai',
+  'PerplexityBot', 'Bytespider', 'meta-externalagent', 'FacebookBot',
+  'facebookexternalhit', 'AhrefsBot', 'SemrushBot', 'MJ12bot', 'DotBot',
+  'PetalBot', 'Amazonbot', 'YouBot', 'Applebot-Extended', 'cohere-ai',
+  'Google-Extended',
+]
+
+function isBlockedBot(ua: string): boolean {
+  const lower = ua.toLowerCase()
+  return BLOCKED_BOTS.some((bot) => lower.includes(bot.toLowerCase()))
+}
+
 export async function middleware(request: NextRequest) {
+  // Block aggressive bots before any processing
+  const userAgent = request.headers.get("user-agent") ?? ""
+  if (userAgent && isBlockedBot(userAgent)) {
+    return new NextResponse("Forbidden", { status: 403 })
+  }
+
   const origin = request.headers.get("origin")
   const pathname = request.nextUrl.pathname
 
@@ -187,31 +225,11 @@ function setSecurityHeaders(response: NextResponse) {
     "camera=(), microphone=(), geolocation=()"
   )
 
-  // Content Security Policy (enforcing)
-  // Note: 'unsafe-inline' needed for Next.js inline styles
-  // Note: 'unsafe-eval' needed for Next.js dev mode (HMR/webpack) — excluded in production
-  const isDev = process.env.NODE_ENV === "development"
-  const cspDirectives = [
-    "default-src 'self'",
-    `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com https://va.vercel-scripts.com`,
-    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-    "font-src 'self' https://fonts.gstatic.com",
-    "img-src 'self' data: blob: https: http:",
-    "media-src 'self' https://www.youtube.com",
-    "frame-src 'self' https://www.youtube.com https://youtube.com",
-    "connect-src 'self' https://*.supabase.co wss://*.supabase.co https://api.openrouter.ai https://api.tavily.com https://api.firecrawl.dev https://api.supadata.ai https://api.resend.com https://api.polar.sh https://api.deepgram.com https://va.vercel-scripts.com",
-    "object-src 'none'",
-    "base-uri 'self'",
-    "form-action 'self'",
-    "frame-ancestors 'none'",
-    "upgrade-insecure-requests",
-  ].join("; ")
-
-  response.headers.set("Content-Security-Policy", cspDirectives)
+  response.headers.set("Content-Security-Policy", CSP_DIRECTIVES)
 
   // Content Security Policy Report-Only (monitoring mode)
   // Same policy as enforcing mode — enables browser-side violation reporting without blocking
-  response.headers.set("Content-Security-Policy-Report-Only", cspDirectives)
+  response.headers.set("Content-Security-Policy-Report-Only", CSP_DIRECTIVES)
 
   // HSTS - enforce HTTPS (only in production)
   if (process.env.NODE_ENV === "production") {
