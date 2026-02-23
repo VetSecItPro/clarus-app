@@ -27,6 +27,18 @@ import { logger } from "@/lib/logger"
 /** Number of consecutive failures before auto-deactivating a subscription. */
 const MAX_CONSECUTIVE_FAILURES = 7
 
+interface DuePodcastSubscription {
+  id: string
+  user_id: string
+  feed_url: string
+  podcast_name: string
+  last_checked_at: string | null
+  check_frequency_hours: number | null
+  last_episode_date: string | null
+  consecutive_failures: number
+  feed_auth_header_encrypted: string | null
+}
+
 export const maxDuration = 60
 
 /** Format seconds into a human-readable duration string. */
@@ -63,40 +75,20 @@ export async function GET(request: Request) {
   const supabase = getAdminClient()
   const now = new Date()
 
-  // PERF: Push filtering to database instead of fetching all and filtering in JS
-  // Calculate the cutoff timestamp for check_frequency_hours
-  // We fetch only subscriptions that need checking (last_checked_at is null OR older than check_frequency_hours)
-  // NOTE: This requires a query that compares timestamps, which is more complex.
-  // For simplicity and correctness, we'll keep the JS filter but add a database-level filter for active subscriptions only.
-  // A fully optimized version would use a SQL function or computed column.
-
-  // Fetch all active subscriptions (we still need to filter by check_frequency_hours in JS due to variable hours)
-  const { data: subscriptions, error: subError } = await supabase
-    .from("podcast_subscriptions")
-    .select("id, user_id, feed_url, podcast_name, last_checked_at, check_frequency_hours, last_episode_date, consecutive_failures, feed_auth_header_encrypted")
-    .eq("is_active", true)
-    .limit(200)
+  // PERF: Use SQL RPC to filter due subscriptions server-side with dynamic interval comparison
+  const { data: dueSubscriptions, error: subError } = await (supabase.rpc as CallableFunction)(
+    "get_due_podcast_subscriptions",
+    { p_limit: 200 }
+  )
 
   if (subError) {
     logger.error("[check-podcast-feeds] Failed to fetch subscriptions:", subError.message)
     return NextResponse.json({ error: "Failed to fetch subscriptions" }, { status: 500 })
   }
 
-  if (!subscriptions || subscriptions.length === 0) {
+  if (!dueSubscriptions || dueSubscriptions.length === 0) {
     return NextResponse.json({ success: true, checked: 0, newEpisodes: 0, emailsSent: 0 })
   }
-
-  // Filter to subscriptions that need checking based on check_frequency_hours
-  // NOTE: Pushing this to SQL would require a WHERE clause like:
-  // WHERE last_checked_at IS NULL OR last_checked_at < NOW() - INTERVAL '1 hour' * check_frequency_hours
-  // However, Supabase query builder doesn't support dynamic intervals easily.
-  // For now, we filter in JS (the dataset is small — max 200 subscriptions).
-  const dueSubscriptions = subscriptions.filter((sub) => {
-    if (!sub.last_checked_at) return true
-    const lastChecked = new Date(sub.last_checked_at)
-    const hoursElapsed = (now.getTime() - lastChecked.getTime()) / (1000 * 60 * 60)
-    return hoursElapsed >= (sub.check_frequency_hours ?? 24)
-  })
 
   if (dueSubscriptions.length === 0) {
     return NextResponse.json({ success: true, checked: 0, newEpisodes: 0, emailsSent: 0 })
@@ -115,7 +107,7 @@ export async function GET(request: Request) {
   let checked = 0
 
   // Process each subscription
-  const processPromises = dueSubscriptions.map(async (sub) => {
+  const processPromises = (dueSubscriptions as DuePodcastSubscription[]).map(async (sub) => {
     try {
       // Decrypt credentials for private feeds
       let authHeader: string | undefined

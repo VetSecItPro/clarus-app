@@ -14,6 +14,9 @@ function getSupabaseAdmin() {
   return getAdminClient()
 }
 
+// PERF: Hoist date formatter — reused 5 times in trend data mapping
+const shortDateFmt = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" })
+
 // Types
 interface ApiCostBreakdown {
   api: string
@@ -207,11 +210,11 @@ export async function GET(request: NextRequest) {
     const signupTrendRaw = (raw.signup_trend as { date: string; count: number }[]) || []
     const contentTrendRaw = (raw.content_trend as { date: string; count: number }[]) || []
     const signupTrend = signupTrendRaw.map(d => ({
-      date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: shortDateFmt.format(new Date(d.date)),
       count: d.count,
     }))
     const contentTrend = contentTrendRaw.map(d => ({
-      date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: shortDateFmt.format(new Date(d.date)),
       count: d.count,
     }))
 
@@ -256,7 +259,7 @@ export async function GET(request: NextRequest) {
     // Cost trend (7 days)
     const costTrendRaw = (raw.cost_trend_7d as { date: string; cost: number }[]) || []
     const costTrend: CostTrendData[] = costTrendRaw.map(d => ({
-      date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: shortDateFmt.format(new Date(d.date)),
       cost: d.cost,
     }))
 
@@ -273,7 +276,7 @@ export async function GET(request: NextRequest) {
     // Error trend (7 days)
     const errorTrendRaw = (raw.error_trend_7d as { date: string; error_rate: number; error_count: number; total_count: number }[]) || []
     const errorTrend: ErrorTrendData[] = errorTrendRaw.map(d => ({
-      date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: shortDateFmt.format(new Date(d.date)),
       errorRate: d.error_rate,
       errorCount: d.error_count,
       totalCount: d.total_count,
@@ -291,7 +294,7 @@ export async function GET(request: NextRequest) {
     // Processing time trend (7 days)
     const processingTimeTrendRaw = (raw.processing_time_trend_7d as { date: string; avg_time: number; count: number }[]) || []
     const processingTimeTrend: ProcessingTimeTrendData[] = processingTimeTrendRaw.map(d => ({
-      date: new Date(d.date).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
+      date: shortDateFmt.format(new Date(d.date)),
       avgTime: d.avg_time,
       count: d.count,
     }))

@@ -2,7 +2,6 @@
 
 import { useState, useCallback } from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "framer-motion"
 import { toast } from "sonner"
 import {
   GitCompareArrows,
@@ -132,11 +131,9 @@ function ComparePageContent({ session }: ComparePageProps) {
 
         {/* Content */}
         {isComparing ? (
-          <motion.div
+          <div
             role="status"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="flex flex-col items-center justify-center py-20 gap-4"
+            className="flex flex-col items-center justify-center py-20 gap-4 animate-in fade-in duration-300"
           >
             <div className="w-16 h-16 rounded-full bg-brand/10 flex items-center justify-center">
               <Loader2 className="w-8 h-8 text-brand animate-spin" />
@@ -150,18 +147,15 @@ function ComparePageContent({ session }: ComparePageProps) {
                 This usually takes 15-30 seconds.
               </p>
             </div>
-          </motion.div>
+          </div>
         ) : result.comparison ? (
           <CompareResults
             comparison={result.comparison}
             sources={result.sources}
           />
         ) : (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4 }}
-            className="flex flex-col items-center justify-center py-20"
+          <div
+            className="flex flex-col items-center justify-center py-20 animate-in fade-in slide-in-from-bottom-4 duration-400"
           >
             <div className="w-20 h-20 bg-gradient-to-br from-brand/20 to-violet-500/20 rounded-full flex items-center justify-center mb-6">
               <GitCompareArrows className="w-10 h-10 text-brand" />
@@ -180,7 +174,7 @@ function ComparePageContent({ session }: ComparePageProps) {
               <GitCompareArrows className="w-4 h-4" />
               Select Content to Compare
             </button>
-          </motion.div>
+          </div>
         )}
       </main>
 

@@ -40,28 +40,15 @@ export async function DELETE(request: Request) {
     // Delete order matters — children before parents to avoid FK violations.
     // Some tables reference content.id, so we delete those first.
 
-    // 1. Get all user's content IDs for child-table cleanup
-    const { data: contentRows } = await admin
-      .from("content")
-      .select("id")
-      .eq("user_id", userId)
+    // PERF: All three ID-fetch queries are independent reads — run in parallel
+    const [{ data: contentRows }, { data: threadRows }, { data: collectionRows }] = await Promise.all([
+      admin.from("content").select("id").eq("user_id", userId),
+      admin.from("chat_threads").select("id").eq("user_id", userId),
+      admin.from("collections").select("id").eq("user_id", userId),
+    ])
 
     const contentIds = contentRows?.map(r => r.id) ?? []
-
-    // 2. Get all user's chat thread IDs
-    const { data: threadRows } = await admin
-      .from("chat_threads")
-      .select("id")
-      .eq("user_id", userId)
-
     const threadIds = threadRows?.map(r => r.id) ?? []
-
-    // 3. Get all user's collection IDs
-    const { data: collectionRows } = await admin
-      .from("collections")
-      .select("id")
-      .eq("user_id", userId)
-
     const collectionIds = collectionRows?.map(r => r.id) ?? []
 
     // 4. Delete child records that reference content/threads/collections

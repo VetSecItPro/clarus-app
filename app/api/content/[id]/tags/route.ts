@@ -126,24 +126,24 @@ export async function PATCH(
       const { tier, isAdmin } = await getUserTierAndAdmin(auth.supabase, auth.user.id)
       const tagLimit = getEffectiveLimits(tier, isAdmin).tags
 
-      // PERF: FIX-209 — filter out empty tags and limit to prevent unbounded fetch
-      const { data: allContent } = await auth.supabase
-        .from("content")
-        .select("tags")
-        .eq("user_id", auth.user.id)
-        .not("tags", "eq", "{}")
-        .limit(5000)
+      // PERF: Use SQL scalar RPC instead of fetching 5000 rows and counting in JS
+      const { data: currentTagCount, error: countError } = await (auth.supabase.rpc as CallableFunction)(
+        "count_unique_user_tags",
+        { p_user_id: auth.user.id }
+      )
 
-      const allUniqueTags = new Set<string>()
-      allContent?.forEach(c => {
-        const tags = c.tags as string[] | null
-        tags?.forEach(t => allUniqueTags.add(t))
-      })
-      // Add the new tag to check if it exceeds limit
+      if (countError) {
+        logger.error("Tag count error:", countError)
+        return NextResponse.json({ success: false, error: "Failed to check tag limits" }, { status: 500 })
+      }
+
+      // +1 for the tag we're about to add (if it's genuinely new)
+      const existingTags = currentTags
       const sanitizedTag = actionData.tag.toLowerCase()
-      allUniqueTags.add(sanitizedTag)
+      const isNewGlobalTag = !existingTags?.includes(sanitizedTag)
+      const projectedCount = (currentTagCount ?? 0) + (isNewGlobalTag ? 1 : 0)
 
-      if (allUniqueTags.size > tagLimit) {
+      if (projectedCount > tagLimit) {
         return NextResponse.json(
           { success: false, error: `Tag limit reached (${tagLimit} unique tags on ${tier} tier). Upgrade for more.` },
           { status: 403 }

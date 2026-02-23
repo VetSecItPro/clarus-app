@@ -48,10 +48,10 @@ export async function GET(
     return AuthErrors.notFound("Subscription")
   }
 
-  // Fetch episodes
+  // PERF: Select only columns needed by the episode list UI — avoids transferring description and other unused fields
   const { data: episodes, error: epError, count } = await supabase
     .from("podcast_episodes")
-    .select("*", { count: "exact" })
+    .select("id, subscription_id, episode_title, episode_date, episode_url, duration_seconds, content_id, is_analyzed", { count: "exact" })
     .eq("subscription_id", subscription.id)
     .order("episode_date", { ascending: false, nullsFirst: false })
     .range(offset, offset + limit - 1)
@@ -69,6 +69,6 @@ export async function GET(
       limit,
       offset,
     },
-    { headers: { "Cache-Control": "private, max-age=30, stale-while-revalidate=60" } }
+    { headers: { "Cache-Control": "private, max-age=120, stale-while-revalidate=300" } }
   )
 }

@@ -20,9 +20,6 @@
 import { useMemo, useCallback } from "react"
 import useSWRInfinite from "swr/infinite"
 import { supabase } from "@/lib/supabase"
-import type { Database } from "@/types/database.types"
-
-type ContentItem = Database["clarus"]["Tables"]["content"]["Row"]
 
 type SummaryData = {
   brief_overview: string | null
@@ -41,12 +38,20 @@ type SummaryData = {
   } | null
 }
 
-/** A content item enriched with ratings, summaries, and library metadata. */
-export type LibraryItem = ContentItem & {
+/** Narrowed content fields for library list view (excludes full_text, raw metadata, etc.) */
+export type LibraryItem = {
+  id: string
+  title: string | null
+  url: string
+  type: string | null
+  thumbnail_url: string | null
+  date_added: string | null
+  is_bookmarked: boolean
+  tags: string[] | null
+  fetch_failed: boolean
+  duration: number | null
   content_ratings: { signal_score: number | null }[]
   summaries: SummaryData | SummaryData[]
-  is_bookmarked?: boolean
-  tags?: string[]
   relevance?: number
 }
 
@@ -89,6 +94,14 @@ const searchFetcher = async (
     params.set("type", options.filterType)
   }
 
+  // PERF: Push bookmark and tag filters to the server instead of filtering client-side
+  if (options.bookmarkOnly) {
+    params.set("bookmark_only", "true")
+  }
+  if (options.selectedTags && options.selectedTags.length > 0) {
+    params.set("tags", options.selectedTags.join(","))
+  }
+
   const response = await fetch(`/api/search?${params}`)
   if (!response.ok) throw new Error("Search request failed")
 
@@ -117,6 +130,8 @@ const searchFetcher = async (
     date_added: result.date_added,
     is_bookmarked: result.is_bookmarked,
     tags: result.tags,
+    fetch_failed: false,
+    duration: null,
     content_ratings: [],
     summaries: {
       brief_overview: result.brief_overview,
@@ -128,23 +143,10 @@ const searchFetcher = async (
     relevance: result.relevance,
   }))
 
-  // Apply client-side bookmark filter
-  let filteredItems = options.bookmarkOnly
-    ? items.filter((item) => item.is_bookmarked)
-    : items
-
-  // Apply client-side tag filter
-  if (options.selectedTags && options.selectedTags.length > 0) {
-    filteredItems = filteredItems.filter((item) => {
-      const itemTags = item.tags || []
-      return options.selectedTags!.some((tag) => itemTags.includes(tag))
-    })
-  }
-
   const hasMoreItems = data.results.length > pageSize
 
   return {
-    items: hasMoreItems ? filteredItems.slice(0, pageSize) : filteredItems,
+    items: hasMoreItems ? items.slice(0, pageSize) : items,
     hasMore: hasMoreItems,
   }
 }
@@ -170,7 +172,7 @@ const browseFetcher = async (
 
   let query = supabase
     .from("content")
-    .select(`*, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, processing_status, triage, truth_check), tags`)
+    .select(`id, title, url, type, thumbnail_url, date_added, is_bookmarked, tags, fetch_failed, duration, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, processing_status, triage, truth_check)`)
     .eq("user_id", options.userId)
 
   if (options.filterType && options.filterType !== "all") {

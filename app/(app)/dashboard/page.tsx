@@ -2,7 +2,6 @@
 
 import { useSearchParams } from "next/navigation"
 import { useState, useEffect } from "react"
-import { motion } from "framer-motion"
 import dynamic from "next/dynamic"
 import {
   BarChart3, SlidersHorizontal, Zap, Mic, MessageSquare,
@@ -127,10 +126,8 @@ function DashboardPage({ session }: DashboardPageProps) {
         {activeTab === "usage" && (
           <div>
             {/* Period + Tier header */}
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-center justify-between mb-6"
+            <div
+              className="flex items-center justify-between mb-6 animate-in fade-in slide-in-from-bottom-2 duration-300"
             >
               <div>
                 <p className="text-lg font-semibold text-white">
@@ -150,7 +147,7 @@ function DashboardPage({ session }: DashboardPageProps) {
               <span className={cn("text-sm font-semibold", tierDisplay.color)}>
                 {tierDisplay.label}
               </span>
-            </motion.div>
+            </div>
 
             {/* Loading state */}
             {isLoading && (
@@ -162,19 +159,14 @@ function DashboardPage({ session }: DashboardPageProps) {
 
             {/* Usage bars */}
             {data && (
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                className="space-y-5"
-              >
+              <div className="space-y-5 animate-in fade-in duration-300">
                 {USAGE_ITEMS.map((item, index) => {
                   const entry = data.usage[item.key]
                   return (
-                    <motion.div
+                    <div
                       key={item.key}
-                      initial={{ opacity: 0, x: -12 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.05 }}
+                      className="animate-in fade-in slide-in-from-left-2 duration-300"
+                      style={{ animationDelay: `${index * 50}ms`, animationFillMode: "both" }}
                     >
                       <UsageBar
                         label={item.label}
@@ -182,19 +174,17 @@ function DashboardPage({ session }: DashboardPageProps) {
                         limit={entry.limit}
                         icon={item.icon}
                       />
-                    </motion.div>
+                    </div>
                   )
                 })}
-              </motion.div>
+              </div>
             )}
 
             {/* Upgrade CTA for non-Pro users */}
             {data && tier !== "pro" && (
-              <motion.div
-                initial={{ opacity: 0, y: 12 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-                className="mt-8 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06]"
+              <div
+                className="mt-8 p-4 rounded-xl bg-white/[0.02] border border-white/[0.06] animate-in fade-in slide-in-from-bottom-2 duration-300"
+                style={{ animationDelay: "400ms", animationFillMode: "both" }}
               >
                 <div className="flex items-center justify-between">
                   <div>
@@ -211,7 +201,7 @@ function DashboardPage({ session }: DashboardPageProps) {
                     <ArrowRight className="w-3.5 h-3.5" />
                   </Link>
                 </div>
-              </motion.div>
+              </div>
             )}
           </div>
         )}

@@ -77,7 +77,7 @@ export async function prefetchLibrary(userId: string): Promise<void> {
   try {
     const { data } = await supabase
       .from("content")
-      .select(`*, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, triage), tags`)
+      .select(`id, title, url, type, thumbnail_url, date_added, is_bookmarked, tags, fetch_failed, content_ratings(signal_score), summaries(brief_overview, mid_length_summary, triage)`)
       .eq("user_id", userId)
       .order("date_added", { ascending: false })
       .limit(20)

@@ -23,6 +23,17 @@ import { logger } from "@/lib/logger"
 /** Number of consecutive failures before auto-deactivating a subscription. */
 const MAX_CONSECUTIVE_FAILURES = 7
 
+interface DueYouTubeSubscription {
+  id: string
+  user_id: string
+  feed_url: string
+  channel_name: string
+  last_checked_at: string | null
+  check_frequency_hours: number | null
+  last_video_date: string | null
+  consecutive_failures: number
+}
+
 export const maxDuration = 60
 
 /**
@@ -49,31 +60,18 @@ export async function GET(request: Request) {
   const supabase = getAdminClient()
   const now = new Date()
 
-  // Fetch all active YouTube subscriptions
-  const { data: subscriptions, error: subError } = await supabase
-    .from("youtube_subscriptions")
-    .select("id, user_id, feed_url, channel_name, last_checked_at, check_frequency_hours, last_video_date, consecutive_failures")
-    .eq("is_active", true)
-    .limit(200)
+  // PERF: Use SQL RPC to filter due subscriptions server-side with dynamic interval comparison
+  const { data: dueSubscriptions, error: subError } = await (supabase.rpc as CallableFunction)(
+    "get_due_youtube_subscriptions",
+    { p_limit: 200 }
+  )
 
   if (subError) {
     logger.error("[check-youtube-feeds] Failed to fetch subscriptions:", subError.message)
     return NextResponse.json({ error: "Failed to fetch subscriptions" }, { status: 500 })
   }
 
-  if (!subscriptions || subscriptions.length === 0) {
-    return NextResponse.json({ success: true, checked: 0, newVideos: 0, emailsSent: 0 })
-  }
-
-  // Filter to subscriptions that need checking
-  const dueSubscriptions = subscriptions.filter((sub) => {
-    if (!sub.last_checked_at) return true
-    const lastChecked = new Date(sub.last_checked_at)
-    const hoursElapsed = (now.getTime() - lastChecked.getTime()) / (1000 * 60 * 60)
-    return hoursElapsed >= (sub.check_frequency_hours ?? 24)
-  })
-
-  if (dueSubscriptions.length === 0) {
+  if (!dueSubscriptions || dueSubscriptions.length === 0) {
     return NextResponse.json({ success: true, checked: 0, newVideos: 0, emailsSent: 0 })
   }
 
@@ -89,7 +87,7 @@ export async function GET(request: Request) {
   let checked = 0
 
   // Process each subscription
-  const processPromises = dueSubscriptions.map(async (sub) => {
+  const processPromises = (dueSubscriptions as DueYouTubeSubscription[]).map(async (sub) => {
     try {
       const feedData = await fetchAndParseFeed(sub.feed_url)
       checked++

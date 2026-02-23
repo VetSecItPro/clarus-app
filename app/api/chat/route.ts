@@ -95,10 +95,12 @@ const LIMITS = {
 export async function POST(req: NextRequest) {
   const clientIp = req.headers.get("x-forwarded-for")?.split(",")[0] || req.headers.get("x-real-ip") || "unknown"
 
-  // Multi-tier rate limiting
-  const minuteLimit = await checkRateLimit(`chat:minute:${clientIp}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000)
-  const hourLimit = await checkRateLimit(`chat:hour:${clientIp}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000)
-  const dayLimit = await checkRateLimit(`chat:day:${clientIp}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000)
+  // Multi-tier rate limiting — all three are independent reads, run in parallel
+  const [minuteLimit, hourLimit, dayLimit] = await Promise.all([
+    checkRateLimit(`chat:minute:${clientIp}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000),
+    checkRateLimit(`chat:hour:${clientIp}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000),
+    checkRateLimit(`chat:day:${clientIp}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000),
+  ])
 
   if (!minuteLimit.allowed) {
     return NextResponse.json(
@@ -123,10 +125,12 @@ export async function POST(req: NextRequest) {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
 
-  // Per-user rate limiting (prevents bypass via rotating IPs)
-  const userMinuteLimit = await checkRateLimit(`chat:minute:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000)
-  const userHourLimit = await checkRateLimit(`chat:hour:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000)
-  const userDayLimit = await checkRateLimit(`chat:day:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000)
+  // Per-user rate limiting (prevents bypass via rotating IPs) — independent reads, run in parallel
+  const [userMinuteLimit, userHourLimit, userDayLimit] = await Promise.all([
+    checkRateLimit(`chat:minute:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_MINUTE, 60000),
+    checkRateLimit(`chat:hour:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_HOUR, 3600000),
+    checkRateLimit(`chat:day:user:${auth.user.id}`, LIMITS.MAX_MESSAGES_PER_DAY, 86400000),
+  ])
   if (!userMinuteLimit.allowed || !userHourLimit.allowed || !userDayLimit.allowed) {
     return NextResponse.json(
       { error: "Rate limit reached. Please try again later." },
@@ -262,19 +266,20 @@ export async function POST(req: NextRequest) {
 
     // Per-content limit check: count from DB via chat_threads → chat_messages
     // (not client-supplied array which can be spoofed)
-    const { data: thread } = await supabaseAdmin
-      .from("chat_threads")
-      .select("id")
-      .eq("content_id", contentIdValidation.sanitized!)
-      .eq("user_id", auth.user.id)
-      .maybeSingle()
-
-    // Check admin status for per-content limit bypass
-    const { data: adminCheck } = await supabaseAdmin
-      .from("users")
-      .select("is_admin")
-      .eq("id", auth.user.id)
-      .single()
+    // PERF: Thread fetch + admin check are independent — run in parallel
+    const [{ data: thread }, { data: adminCheck }] = await Promise.all([
+      supabaseAdmin
+        .from("chat_threads")
+        .select("id")
+        .eq("content_id", contentIdValidation.sanitized!)
+        .eq("user_id", auth.user.id)
+        .maybeSingle(),
+      supabaseAdmin
+        .from("users")
+        .select("is_admin")
+        .eq("id", auth.user.id)
+        .single(),
+    ])
     const perContentLimit = getEffectiveLimits(usageCheck.tier, adminCheck?.is_admin === true).chatMessagesPerContent
     if (thread) {
       const { count: dbMessageCount } = await supabaseAdmin

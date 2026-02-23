@@ -87,16 +87,23 @@ export interface ParsedFeed {
   episodes: PodcastEpisode[]
 }
 
+// PERF: Cache compiled RegExp objects by tag/attribute name to avoid per-call compilation
+const tagRegexCache = new Map<string, RegExp[]>()
+const attrRegexCache = new Map<string, RegExp>()
+
 /**
  * Extracts the text content between an XML tag.
  * Handles CDATA sections and returns null if tag is not found.
  */
 function extractTag(xml: string, tagName: string): string | null {
-  // Try with namespace prefix first (e.g., itunes:duration)
-  const patterns = [
-    new RegExp(`<${tagName}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tagName}>`, "i"),
-    new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i"),
-  ]
+  let patterns = tagRegexCache.get(tagName)
+  if (!patterns) {
+    patterns = [
+      new RegExp(`<${tagName}[^>]*><!\\[CDATA\\[([\\s\\S]*?)\\]\\]></${tagName}>`, "i"),
+      new RegExp(`<${tagName}[^>]*>([\\s\\S]*?)</${tagName}>`, "i"),
+    ]
+    tagRegexCache.set(tagName, patterns)
+  }
 
   for (const pattern of patterns) {
     const match = xml.match(pattern)
@@ -112,7 +119,12 @@ function extractTag(xml: string, tagName: string): string | null {
  * Extracts an attribute value from a self-closing or opening XML tag.
  */
 function extractAttribute(xml: string, tagName: string, attrName: string): string | null {
-  const pattern = new RegExp(`<${tagName}[^>]*\\s${attrName}\\s*=\\s*["']([^"']*)["']`, "i")
+  const cacheKey = `${tagName}:${attrName}`
+  let pattern = attrRegexCache.get(cacheKey)
+  if (!pattern) {
+    pattern = new RegExp(`<${tagName}[^>]*\\s${attrName}\\s*=\\s*["']([^"']*)["']`, "i")
+    attrRegexCache.set(cacheKey, pattern)
+  }
   const match = xml.match(pattern)
   return match ? match[1].trim() : null
 }

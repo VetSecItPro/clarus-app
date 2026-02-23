@@ -224,6 +224,8 @@ export const searchSchema = z.object({
   content_type: contentTypeSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).optional().default(20),
   offset: z.coerce.number().int().min(0).optional().default(0),
+  bookmark_only: z.coerce.boolean().optional().default(false),
+  tags: z.string().optional(), // Comma-separated tag list
 })
 
 /**

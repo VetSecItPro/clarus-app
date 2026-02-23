@@ -46,7 +46,8 @@ export async function GET(request: NextRequest) {
     return AuthErrors.badRequest(validation.error)
   }
 
-  const { q: query, content_type: contentType, limit, offset } = validation.data
+  const { q: query, content_type: contentType, limit, offset, bookmark_only: bookmarkOnly, tags: tagsParam } = validation.data
+  const parsedTags = tagsParam ? tagsParam.split(",").map(t => t.trim()).filter(Boolean) : null
 
   try {
     // Use the authenticated user's ID - never trust query params for user identity
@@ -60,13 +61,15 @@ export async function GET(request: NextRequest) {
       p_content_type: contentType || null,
       p_limit: limit,
       p_offset: offset,
+      p_bookmark_only: bookmarkOnly,
+      p_tags: parsedTags,
     })
 
     if (error) {
       // If the function doesn't exist yet (migration not applied), fall back to ILIKE search
       if (error.message.includes("function") || error.code === "42883") {
         logger.warn("Full-text search function not available, using fallback ILIKE search")
-        return fallbackSearch(auth.supabase, userId, query, contentType || null, limit, offset)
+        return fallbackSearch(auth.supabase, userId, query, contentType || null, limit, offset, bookmarkOnly, parsedTags)
       }
       throw error
     }
@@ -99,7 +102,9 @@ async function fallbackSearch(
   query: string,
   contentType: string | null,
   limit: number,
-  offset: number
+  offset: number,
+  bookmarkOnly: boolean = false,
+  tags: string[] | null = null,
 ) {
   let dbQuery = supabase
     .from("content")
@@ -121,6 +126,14 @@ async function fallbackSearch(
 
   if (contentType && contentType !== "all") {
     dbQuery = dbQuery.eq("type", contentType)
+  }
+
+  if (bookmarkOnly) {
+    dbQuery = dbQuery.eq("is_bookmarked", true)
+  }
+
+  if (tags && tags.length > 0) {
+    dbQuery = dbQuery.overlaps("tags", tags)
   }
 
   const { data, error } = await dbQuery

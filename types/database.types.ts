@@ -260,6 +260,8 @@ export interface Database {
           date_added: string | null
           description: string | null
           duration: number | null
+          fetch_failed: boolean
+          fetch_failure_reason: string | null
           full_text: string | null
           id: string
           is_bookmarked: boolean | null
@@ -286,6 +288,8 @@ export interface Database {
           date_added?: string | null
           description?: string | null
           duration?: number | null
+          fetch_failed?: boolean
+          fetch_failure_reason?: string | null
           full_text?: string | null
           id?: string
           is_bookmarked?: boolean | null
@@ -312,6 +316,8 @@ export interface Database {
           date_added?: string | null
           description?: string | null
           duration?: number | null
+          fetch_failed?: boolean
+          fetch_failure_reason?: string | null
           full_text?: string | null
           id?: string
           is_bookmarked?: boolean | null

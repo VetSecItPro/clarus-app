@@ -6,12 +6,23 @@
  * Used by the /dashboard page to render usage progress bars.
  */
 
-import { NextResponse } from "next/server"
+import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { getUserTierAndAdmin, getUsageCounts } from "@/lib/usage"
 import { getEffectiveLimits, getCurrentPeriod } from "@/lib/tier-limits"
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  // PERF: Rate limit before auth to prevent hammering (60 req/min per IP)
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = await checkRateLimit(`usage:ip:${clientIp}`, 60, 60_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429 }
+    )
+  }
+
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user, supabase } = auth

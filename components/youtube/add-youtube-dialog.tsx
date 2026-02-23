@@ -178,7 +178,6 @@ export function AddYouTubeDialog({ currentCount, limit, onSubscribed }: AddYouTu
                     height={56}
                     sizes="56px"
                     className="w-14 h-14 rounded-lg object-cover"
-                    unoptimized
                   />
                 ) : (
                   <div className="w-14 h-14 rounded-lg bg-white/10 flex items-center justify-center">

@@ -77,16 +77,19 @@ export async function GET(request: Request) {
   const [contentResult, summariesResult, claimsResult] = await Promise.all([
     supabase
       .from("content")
-      .select("id, title, url, user_id, full_text, duration, tags, type")
+      .select("id, title, url, user_id, duration, tags, type")
       .in("user_id", userIds)
       .gte("date_added", sevenDaysAgo)
-      .order("date_added", { ascending: false }),
+      .order("date_added", { ascending: false })
+      .limit(5000),
     supabase
       .from("summaries")
       .select("content_id, triage, truth_check, user_id")
+      .in("user_id", userIds)
       .eq("processing_status", "complete")
       .eq("language", "en")
-      .gte("created_at", sevenDaysAgo),
+      .gte("created_at", sevenDaysAgo)
+      .limit(5000),
     supabase
       .from("claims")
       .select("content_id, claim_text, status, user_id")
@@ -102,6 +105,20 @@ export async function GET(request: Request) {
   // Index summaries by content_id for O(1) lookup
   const summaryMap = new Map(allSummaries.map(s => [s.content_id, s]))
 
+  // PERF: Pre-index content and claims by user_id — avoids O(users * items) filter per user
+  const contentByUser = new Map<string, typeof allContent>()
+  for (const c of allContent) {
+    const list = contentByUser.get(c.user_id!) ?? []
+    list.push(c)
+    contentByUser.set(c.user_id!, list)
+  }
+  const claimsByUser = new Map<string, typeof allClaims>()
+  for (const c of allClaims) {
+    const list = claimsByUser.get(c.user_id!) ?? []
+    list.push(c)
+    claimsByUser.set(c.user_id!, list)
+  }
+
   const weekStart = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
   const weekOf = weekStart.toLocaleDateString("en-US", {
     month: "long",
@@ -112,15 +129,16 @@ export async function GET(request: Request) {
   let sent = 0
   let skipped = 0
 
-  // Process each user using pre-fetched data
-  const sendPromises = eligibleUsers.map(async (user) => {
+  // PERF: Process users in batches of 10 to avoid exhausting maxDuration with concurrent AI calls
+  const BATCH_SIZE = 10
+  const processUser = async (user: typeof eligibleUsers[number]) => {
     if (!user.email) {
       skipped++
       return
     }
 
     try {
-      const recentContent = allContent.filter(c => c.user_id === user.id)
+      const recentContent = contentByUser.get(user.id) ?? []
       if (recentContent.length === 0) {
         skipped++
         return
@@ -154,7 +172,7 @@ export async function GET(request: Request) {
         user.id,
         recentContent,
         summaryMap,
-        allClaims.filter(c => c.user_id === user.id),
+        claimsByUser.get(user.id) ?? [],
       )
 
       const result = await sendWeeklyDigestEmail(
@@ -181,9 +199,13 @@ export async function GET(request: Request) {
       logger.error(`Error processing digest for user ${user.id}:`, err)
       skipped++
     }
-  })
+  }
 
-  await Promise.all(sendPromises)
+  // Process in batches to cap concurrent AI calls
+  for (let i = 0; i < eligibleUsers.length; i += BATCH_SIZE) {
+    const batch = eligibleUsers.slice(i, i + BATCH_SIZE)
+    await Promise.all(batch.map(processUser))
+  }
 
   return NextResponse.json({ success: true, sent, skipped })
 }
@@ -197,7 +219,6 @@ interface ContentRecord {
   title: string | null
   url: string
   user_id: string | null
-  full_text: string | null
   duration: number | null
   tags: string[] | null
   type: string | null
@@ -248,14 +269,17 @@ async function generateWeeklyInsights(
         content_category: triage?.content_category ?? null,
         target_audience: triage?.target_audience ?? [],
         truth_rating: truthCheck?.overall_rating ?? null,
-        word_count: c.full_text ? Math.round(c.full_text.length / 5) : null,
+        word_count: null, // full_text excluded from query to save bandwidth
         duration_seconds: c.duration ?? null,
       }
     })
 
+    // PERF: Build Map for O(1) content lookup instead of O(n) find per claim
+    const contentById = new Map(content.map(c => [c.id, c]))
+
     // Build claim pairs for contradiction detection
     const claimSummaries = claims.slice(0, 50).map(cl => {
-      const matchingContent = content.find(c => c.id === cl.content_id)
+      const matchingContent = contentById.get(cl.content_id)
       return {
         claim: cl.claim_text,
         status: cl.status,
@@ -264,11 +288,9 @@ async function generateWeeklyInsights(
       }
     })
 
-    // Estimate total reading/viewing time for the original content
-    const totalWordCount = content.reduce((sum, c) => {
-      if (c.full_text) return sum + Math.round(c.full_text.length / 5)
-      return sum
-    }, 0)
+    // Estimate total reading/viewing time (rough: ~1500 words per article, duration for audio/video)
+    const articleCount = content.filter(c => c.type === "article" || c.type === "x_post").length
+    const totalWordCount = articleCount * 1500 // Average article length estimate
     const totalDurationSeconds = content.reduce((sum, c) => sum + (c.duration ?? 0), 0)
 
     const systemPrompt = `You are an analytics assistant for Clarus, an AI-powered content analysis tool. Generate personalized weekly insights based on a user's content analysis activity. Be concise and insightful. Respond ONLY with valid JSON matching the exact schema provided.`

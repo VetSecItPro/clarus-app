@@ -23,13 +23,12 @@ interface VideoListProps {
   channelName?: string
 }
 
+// PERF: Hoist formatter to module scope — avoids creating a new Intl.DateTimeFormat per list item
+const shortDateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" })
+
 function formatDate(dateStr: string | null): string {
   if (!dateStr) return "Unknown date"
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
+  return shortDateFormatter.format(new Date(dateStr))
 }
 
 export function VideoList({ subscriptionId, channelName }: VideoListProps) {
@@ -144,7 +143,6 @@ export function VideoList({ subscriptionId, channelName }: VideoListProps) {
                   height={68}
                   sizes="120px"
                   className="w-[120px] h-[68px] rounded-lg object-cover"
-                  unoptimized
                 />
               </a>
             ) : (
