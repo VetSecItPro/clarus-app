@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { polar, PRODUCTS } from "@/lib/polar"
+import { getPolar, PRODUCTS } from "@/lib/polar"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { checkRateLimit } from "@/lib/rate-limit"
@@ -103,7 +103,7 @@ export async function POST(request: Request) {
     const origin = allowedOrigins.includes(rawOrigin) ? rawOrigin : "https://clarusapp.io"
 
     // Create Polar checkout session
-    const checkout = await polar.checkouts.create({
+    const checkout = await getPolar().checkouts.create({
       products: [productId],
       successUrl: `${origin}/?success=true`,
       customerEmail: user.email || userData?.email || undefined,

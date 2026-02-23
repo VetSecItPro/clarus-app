@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { polar } from "@/lib/polar"
+import { getPolar } from "@/lib/polar"
 import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { checkRateLimit } from "@/lib/rate-limit"
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     }
 
     // Create customer portal session
-    const session = await polar.customerSessions.create({
+    const session = await getPolar().customerSessions.create({
       customerId: userData.polar_customer_id,
     })
 

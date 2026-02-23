@@ -13,11 +13,11 @@ vi.mock("@/lib/rate-limit", () => ({
 // Polar SDK — mock the customerSessions.create method
 const mockCreatePortalSession = vi.fn()
 vi.mock("@/lib/polar", () => ({
-  polar: {
+  getPolar: () => ({
     customerSessions: {
       create: (...args: unknown[]) => mockCreatePortalSession(...args),
     },
-  },
+  }),
 }))
 
 // logger — silence noise
