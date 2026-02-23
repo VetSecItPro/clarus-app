@@ -170,12 +170,16 @@ export default function HomeContent({ session }: HomeContentProps) {
   }
 
   // Handle URL submission — set navigating flag to prevent chat view flash
-  const onSubmitUrl = (
+  const onSubmitUrl = async (
     url: string,
     urlMeta: { url: string; domain: string; type: "youtube" | "article" | "x_post" | "podcast"; favicon: string }
   ) => {
     setIsNavigating(true)
-    submitUrl(url, urlMeta)
+    try {
+      await submitUrl(url, urlMeta)
+    } catch {
+      setIsNavigating(false)
+    }
   }
 
   // Handle chat message

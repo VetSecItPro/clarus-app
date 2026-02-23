@@ -226,24 +226,38 @@ export function useChatSession({
       try {
         const normalizedUrlValue = normalizeUrl(url)
 
-        // Check if user already has this URL analyzed
-        const { data: existingContent } = await supabase
-          .from("content")
-          .select("id, full_text, title")
-          .eq("url", normalizedUrlValue)
-          .eq("user_id", userId)
-          .order("date_added", { ascending: false })
-          .limit(1)
-          .maybeSingle()
+        // Check if user already has this URL analyzed (5s timeout — if slow, treat as no match)
+        let existingContent: { id: string; full_text: string | null; title: string | null } | null = null
+        try {
+          const { data } = await supabase
+            .from("content")
+            .select("id, full_text, title")
+            .eq("url", normalizedUrlValue)
+            .eq("user_id", userId)
+            .order("date_added", { ascending: false })
+            .limit(1)
+            .abortSignal(AbortSignal.timeout(5000))
+            .maybeSingle()
+          existingContent = data
+        } catch {
+          // Timeout or error on dedup check — fall through to create new content
+        }
 
         // If existing content has full_text, check if a summary in this language already exists
         if (existingContent?.full_text) {
-          const { data: existingSummary } = await supabase
-            .from("summaries")
-            .select("processing_status")
-            .eq("content_id", existingContent.id)
-            .eq("language", analysisLanguage)
-            .maybeSingle()
+          let existingSummary: { processing_status: string | null } | null = null
+          try {
+            const { data } = await supabase
+              .from("summaries")
+              .select("processing_status")
+              .eq("content_id", existingContent.id)
+              .eq("language", analysisLanguage)
+              .abortSignal(AbortSignal.timeout(5000))
+              .maybeSingle()
+            existingSummary = data
+          } catch {
+            // Timeout on summary check — treat as no existing summary, trigger reprocessing
+          }
 
           if (existingSummary?.processing_status === "complete") {
             setContentId(existingContent.id)
@@ -253,10 +267,15 @@ export function useChatSession({
           }
 
           // Content exists with full_text but no summary in this language — reuse it
-          await supabase
-            .from("content")
-            .update({ analysis_language: analysisLanguage })
-            .eq("id", existingContent.id)
+          try {
+            await supabase
+              .from("content")
+              .update({ analysis_language: analysisLanguage })
+              .eq("id", existingContent.id)
+              .abortSignal(AbortSignal.timeout(5000))
+          } catch {
+            // Timeout on language update — continue anyway, processing will handle it
+          }
 
           setContentId(existingContent.id)
           onContentCreated?.(existingContent.id)
@@ -282,29 +301,8 @@ export function useChatSession({
           return
         }
 
-        // No existing content — fetch title with strict timeout so it can't block submission
-        let contentTitle: string | null = null
-        try {
-          const titleAbort = new AbortController()
-          const titleTimeout = setTimeout(() => titleAbort.abort(), 4000)
-          const titleResponse = await fetch("/api/fetch-title", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ url, type: urlMeta.type }),
-            signal: titleAbort.signal,
-          })
-          clearTimeout(titleTimeout)
-          if (titleResponse.ok) {
-            const titleData = await titleResponse.json()
-            contentTitle = titleData.title
-          }
-        } catch {
-          // Timeout or network error — use placeholder title, don't block submission
-        }
-
-        const title =
-          contentTitle ||
-          `Analyzing: ${url.substring(0, 50)}${url.length > 50 ? "..." : ""}`
+        // No existing content — use placeholder title (backend fetches real title during processing)
+        const title = `Analyzing: ${url.substring(0, 50)}${url.length > 50 ? "..." : ""}`
 
         const { data: newContent, error: insertError } = await supabase
           .from("content")
@@ -312,6 +310,7 @@ export function useChatSession({
             { url: normalizedUrlValue, type: urlMeta.type, user_id: userId, title, full_text: null, analysis_language: analysisLanguage },
           ])
           .select("id")
+          .abortSignal(AbortSignal.timeout(5000))
           .single()
 
         if (insertError || !newContent) {
