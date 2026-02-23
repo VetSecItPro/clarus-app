@@ -67,7 +67,9 @@ export function useStatusPolling({
 
       try {
         const langParam = analysisLanguage !== "en" ? `?language=${analysisLanguage}` : ""
-        const response = await fetch(`/api/content-status/${id}${langParam}`)
+        const response = await fetch(`/api/content-status/${id}${langParam}`, {
+          signal: AbortSignal.timeout(10_000),
+        })
         if (!response.ok) {
           if (response.status === 404) {
             const errorMsg = "Content not found. Please try again."
@@ -127,6 +129,7 @@ export function useStatusPolling({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content_id: contentId, force_regenerate: true, language: analysisLanguage }),
+        signal: AbortSignal.timeout(30_000),
       })
 
       startPolling(contentId)

@@ -73,9 +73,6 @@ export async function detectContentTone(
     .replace("{{CONTENT}}", wrapUserContent(sanitizedSample)) + INSTRUCTION_ANCHOR
 
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), 10000)
-
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -94,10 +91,8 @@ export async function detectContentTone(
         max_tokens: prompt.max_tokens,
         response_format: { type: "json_object" },
       }),
-      signal: controller.signal,
+      signal: AbortSignal.timeout(10_000),
     })
-
-    clearTimeout(timeoutId)
 
     if (!response.ok) {
       logger.warn(`API: [tone_detection] HTTP ${response.status}`)

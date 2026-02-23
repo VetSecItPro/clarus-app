@@ -41,8 +41,9 @@ export async function GET(request: NextRequest) {
       .eq("is_bookmarked", true),
   ])
 
-  const { tier, isAdmin } = tierData
-  const limits = getEffectiveLimits(tier, isAdmin)
+  const { tier } = tierData
+  // Always show real tier limits on dashboard (admin bypass is for enforcement only)
+  const limits = getEffectiveLimits(tier, false)
   const period = getCurrentPeriod()
 
   // Calculate reset date (first day of next month, UTC)

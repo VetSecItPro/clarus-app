@@ -218,19 +218,18 @@ export default function AddContentPage() {
       return
     }
 
-    // Trigger analysis
-    try {
-      await fetch("/api/process-content", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content_id: insertData.id }),
-      })
-    } catch {
-      // Non-fatal — content was created, analysis can be retried
-    }
-
+    // Navigate immediately — don't block on analysis API call
     setSuccess("Analysis started! Redirecting...")
-    setTimeout(() => router.push(`/item/${insertData.id}`), 1500)
+    setTimeout(() => router.push(`/item/${insertData.id}`), 1000)
+
+    // Trigger analysis (fire-and-forget — item page will poll for completion)
+    fetch("/api/process-content", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ content_id: insertData.id }),
+    }).catch(() => {
+      // Non-fatal — content was created, analysis can be retried from item page
+    })
   }
 
   return (

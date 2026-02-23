@@ -33,9 +33,6 @@ export async function scrapeArticle(url: string, apiKey: string, userId?: string
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), FIRECRAWL_TIMEOUT_MS)
-
       const response = await fetch(endpoint, {
         method: "POST",
         headers: {
@@ -48,10 +45,8 @@ export async function scrapeArticle(url: string, apiKey: string, userId?: string
             onlyMainContent: true,
           },
         }),
-        signal: controller.signal,
+        signal: AbortSignal.timeout(FIRECRAWL_TIMEOUT_MS),
       })
-
-      clearTimeout(timeoutId)
 
       if (response.ok) {
         const result = await response.json()
