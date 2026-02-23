@@ -197,6 +197,8 @@ const TYPE_INSTRUCTIONS: Record<string, string[]> = {
     "Flag claims where speakers contradict each other.",
     "IMPORTANT: Podcast transcription frequently misspells proper nouns (product names, people, companies, technical terms). Always cross-reference against the title, description, and web search results before assuming any proper noun is spelled correctly in the transcript.",
     "If the transcript uses a word that sounds like but differs from a term in the title, the TITLE is correct — use the title's spelling throughout your analysis.",
+    "CRITICAL: Podcasts typically contain sponsor reads and advertisements (often at the very beginning or during mid-roll breaks). These are NOT the editorial content. When writing your analysis: skip sponsor/ad segments entirely, do not include sponsor claims in the overview, do not fact-check ad copy in accuracy analysis, and do not reference sponsors in key takeaways. Focus exclusively on the hosts' and guests' substantive discussion.",
+    "To identify sponsor segments: look for discount codes, 'brought to you by', product pitches, calls-to-action for external products/services, or promotional language at the start of the transcript. The real editorial content typically begins after these segments.",
   ],
   article: [
     "Consider the publication source's credibility and potential editorial bias.",
