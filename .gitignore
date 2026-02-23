@@ -137,3 +137,8 @@ login-*.png
 oauth-*.png
 podcast-*.png
 .perf/
+.test-ship-state.json
+.test-ship-history.json
+.test-ship-quarantine.json
+.test-ship-baseline.json
+.test-ship-last-baseline.json

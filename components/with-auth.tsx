@@ -59,14 +59,20 @@ export default function withAuth<P extends object>(
     const publicAuthPaths = ["/login", "/signup", "/forgot-password", "/update-password"]
     const isPublicPath = publicAuthPaths.includes(pathname)
 
-    // Sync with cache on mount (for navigations after initial load)
-    // We intentionally only run on pathname change, not session change (would cause infinite loop)
+    // Sync module-level cache into local state on pathname change.
+    // This covers navigations that happen after the initial auth check has already
+    // completed (authInitialized === true). We read the module-level variables
+    // (cachedSession / cachedSubscriptionStatus) directly — they are NOT React
+    // state, so they are intentionally excluded from the dependency array.
+    // Adding `session` here would create an infinite loop: setSession → re-render
+    // → effect fires again → setSession → …
     useEffect(() => {
-      if (authInitialized && cachedSession !== session) {
+      if (authInitialized) {
         setSession(cachedSession)
         setSubscriptionStatus(cachedSubscriptionStatus)
       }
-      // eslint-disable-next-line react-hooks/exhaustive-deps
+      // cachedSession and cachedSubscriptionStatus are module-level variables,
+      // not React state/props, so the exhaustive-deps rule does not apply to them.
     }, [pathname])
 
     useEffect(() => {

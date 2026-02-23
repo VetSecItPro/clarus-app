@@ -75,7 +75,14 @@ export async function PATCH(request: NextRequest) {
     )
   }
 
-  const validation = await parseBody(updateSchema, request)
+  let rawBody: unknown
+  try {
+    rawBody = await request.json()
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 })
+  }
+
+  const validation = parseBody(updateSchema, rawBody)
   if (!validation.success) {
     return NextResponse.json({ error: validation.error }, { status: 400 })
   }
