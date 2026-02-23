@@ -17,10 +17,23 @@
 
 import { Polar } from "@polar-sh/sdk"
 
-/** Pre-configured Polar SDK client. Server-side only (uses secret access token). */
-export const polar = new Polar({
-  accessToken: process.env.POLAR_ACCESS_TOKEN!,
-})
+/**
+ * Lazy-initialized Polar SDK client. Server-side only (uses secret access token).
+ *
+ * Uses a getter so the SDK is only instantiated when actually accessed at runtime,
+ * not at module-load/build time. This prevents build failures in environments
+ * where POLAR_ACCESS_TOKEN is not configured (e.g. Vercel preview deployments).
+ */
+let _polar: Polar | null = null
+export function getPolar(): Polar {
+  if (!_polar) {
+    _polar = new Polar({
+      accessToken: process.env.POLAR_ACCESS_TOKEN ?? "",
+    })
+  }
+  return _polar
+}
+
 
 /**
  * Polar product IDs for each tier and billing interval.

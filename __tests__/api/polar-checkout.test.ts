@@ -13,11 +13,11 @@ vi.mock("@/lib/rate-limit", () => ({
 // Polar SDK + PRODUCTS constant
 const mockCheckoutsCreate = vi.fn()
 vi.mock("@/lib/polar", () => ({
-  polar: {
+  getPolar: () => ({
     checkouts: {
       create: (...args: unknown[]) => mockCheckoutsCreate(...args),
     },
-  },
+  }),
   // Simulate realistic product IDs — non-empty strings so productId resolves
   PRODUCTS: {
     starter_monthly: "prod_starter_monthly",
