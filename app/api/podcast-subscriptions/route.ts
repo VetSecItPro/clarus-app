@@ -38,27 +38,21 @@ export async function GET() {
     return AuthErrors.serverError()
   }
 
-  // PERF: Fetch latest episodes in a single query using the subscription IDs
+  // PERF: Use DISTINCT ON RPC for exact 1-row-per-subscription (replaces limit(n*2) + JS dedup)
   const subscriptionIds = (subscriptions ?? []).map((s) => s.id)
 
   let latestEpisodes: Record<string, { episode_title: string; episode_date: string | null }> = {}
   if (subscriptionIds.length > 0) {
-    const { data: episodes } = await supabase
-      .from("podcast_episodes")
-      .select("subscription_id, episode_title, episode_date")
-      .in("subscription_id", subscriptionIds)
-      .order("episode_date", { ascending: false })
-      // PERF: Limit to a reasonable number to prevent unbounded results
-      .limit(subscriptionIds.length * 2)
+    const { data: episodes } = await (supabase.rpc as CallableFunction)(
+      "get_latest_podcast_episodes",
+      { p_sub_ids: subscriptionIds }
+    )
 
     if (episodes) {
-      // Group by subscription_id, take first (latest) per subscription
-      for (const ep of episodes) {
-        if (!latestEpisodes[ep.subscription_id]) {
-          latestEpisodes[ep.subscription_id] = {
-            episode_title: ep.episode_title,
-            episode_date: ep.episode_date,
-          }
+      for (const ep of episodes as Array<{ subscription_id: string; episode_title: string; episode_date: string | null }>) {
+        latestEpisodes[ep.subscription_id] = {
+          episode_title: ep.episode_title,
+          episode_date: ep.episode_date,
         }
       }
     }

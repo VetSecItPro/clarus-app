@@ -20,33 +20,16 @@ export async function GET(request: Request) {
     const auth = await authenticateRequest()
     if (!auth.success) return auth.response
 
-    // Fetch tags only from user's own content (RLS enforces ownership)
-    const { data: contentData, error: contentError } = await auth.supabase
-      .from("content")
-      .select("tags")
-      .eq("user_id", auth.user.id)
-      .not("tags", "eq", "{}")
-      .limit(500)
+    // PERF: Use SQL aggregation RPC instead of fetching 500 rows and counting in JS
+    const { data: tags, error: tagError } = await (auth.supabase.rpc as CallableFunction)(
+      "get_user_tag_counts",
+      { p_user_id: auth.user.id, p_limit: 50 }
+    )
 
-    if (contentError) {
-      logger.error("Tags fetch error:", contentError)
+    if (tagError) {
+      logger.error("Tags fetch error:", tagError)
       return NextResponse.json({ success: false, error: "Failed to fetch tags. Please try again." }, { status: 500 })
     }
-
-    const tagCounts: Record<string, number> = {}
-    contentData?.forEach((item) => {
-      const tags = item.tags as string[] | null
-      if (tags && Array.isArray(tags)) {
-        tags.forEach((tag) => {
-          tagCounts[tag] = (tagCounts[tag] || 0) + 1
-        })
-      }
-    })
-
-    const tags = Object.entries(tagCounts)
-      .map(([tag, count]) => ({ tag, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 50) // Limit to top 50 tags
 
     return NextResponse.json(
       { success: true, tags },

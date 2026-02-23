@@ -14,8 +14,7 @@ import {
   MoreVertical,
   Chrome,
 } from "lucide-react"
-import SiteHeader from "@/components/site-header"
-import MobileBottomNav from "@/components/mobile-bottom-nav"
+import { PublicHeader } from "@/components/public-header"
 import { cn } from "@/lib/utils"
 
 // ---------------------------------------------------------------------------
@@ -264,7 +263,7 @@ export default function InstallPageClient() {
 
   return (
     <div className="min-h-screen bg-[#0a0e1a] flex flex-col">
-      <SiteHeader showNav={false} />
+      <PublicHeader />
 
       <main id="main-content" className="flex-1 max-w-4xl mx-auto w-full px-4 py-8 pb-28 sm:pb-8">
         {/* Hero */}
@@ -331,7 +330,6 @@ export default function InstallPageClient() {
         </div>
       </main>
 
-      <MobileBottomNav />
     </div>
   )
 }

@@ -32,12 +32,11 @@ function formatDuration(seconds: number): string {
   return `${minutes}m`
 }
 
+// PERF: Hoist formatter to module scope — avoids creating a new Intl.DateTimeFormat per list item
+const shortDateFormatter = new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric", year: "numeric" })
+
 function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString("en-US", {
-    month: "short",
-    day: "numeric",
-    year: "numeric",
-  })
+  return shortDateFormatter.format(new Date(dateStr))
 }
 
 export function EpisodeList({ subscriptionId }: EpisodeListProps) {

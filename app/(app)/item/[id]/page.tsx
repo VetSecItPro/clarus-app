@@ -29,6 +29,7 @@ import { LanguageSelector } from "@/components/ui/language-selector"
 // PERF: use shared SWR hook instead of independent Supabase query for tier data
 import { useUserTier } from "@/lib/hooks/use-user-tier"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
+import { useTags } from "@/lib/hooks/use-tags"
 import { type AnalysisMode } from "@/lib/analysis-modes"
 import { TagsManager } from "./tags-manager"
 import { SourceHistoryCard } from "./source-history-card"
@@ -158,7 +159,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     unreliable_count: number
   } | null>(null)
   const [tags, setTags] = useState<string[]>([])
-  const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
+  const { allTags } = useTags()
   const [newTagInput, setNewTagInput] = useState("")
   const [showTagInput, setShowTagInput] = useState(false)
   const [isAddingTag, setIsAddingTag] = useState(false)
@@ -388,7 +389,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     if (showLoadingState) setLoading(true)
 
     // PERF: FIX-219 — select explicit columns to avoid pulling in unexpected future columns
-    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language"
+    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language, fetch_failed, fetch_failure_reason"
     const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, topic_segments, processing_status, language"
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select(contentColumns).eq("id", contentId).single(),
@@ -422,7 +423,7 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
 
   const pollContentAndUpdate = useCallback(async (): Promise<boolean> => {
     // PERF: FIX-219 — select explicit columns for polling too
-    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language"
+    const contentColumns = "id, title, url, type, thumbnail_url, date_added, user_id, author, channel_id, description, duration, full_text, is_bookmarked, like_count, raw_youtube_metadata, transcript_languages, upload_date, view_count, tags, share_token, podcast_transcript_id, detected_tone, regeneration_count, analysis_language, fetch_failed, fetch_failure_reason"
     const summaryColumns = "id, content_id, user_id, model_name, created_at, updated_at, brief_overview, triage, truth_check, action_items, mid_length_summary, detailed_summary, topic_segments, processing_status, language"
     const [contentResult, summaryResult] = await Promise.all([
       supabase.from("content").select(contentColumns).eq("id", contentId).single(),
@@ -585,16 +586,6 @@ function ItemDetailPageContent({ contentId, session }: { contentId: string; sess
     }
   }, [item?.tags])
 
-  useEffect(() => {
-    const fetchAllTags = async () => {
-      try {
-        const response = await fetch("/api/tags")
-        const data = await response.json()
-        if (data.success) setAllTags(data.tags)
-      } catch {}
-    }
-    fetchAllTags()
-  }, [])
 
   // Fetch cross-references when truth_check is available
   const hasTruthCheck = Boolean(item?.summary?.truth_check)

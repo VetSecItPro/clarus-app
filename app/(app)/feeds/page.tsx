@@ -8,7 +8,6 @@ import { useConfirmDialog } from "@/components/ui/confirm-dialog"
 import Image from "next/image"
 import Link from "next/link"
 import { toast } from "sonner"
-import { motion, AnimatePresence } from "framer-motion"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
 import { TIER_LIMITS, TIER_FEATURES } from "@/lib/tier-limits"
 import { cn } from "@/lib/utils"
@@ -214,9 +213,8 @@ function FeedsPage({ session }: WithAuthInjectedProps) {
                 </span>
               )}
               {activeTab === tab.id && (
-                <motion.div
-                  layoutId="feeds-tab-indicator"
-                  className="absolute bottom-0 left-2 right-2 h-0.5 bg-brand rounded-full"
+                <div
+                  className="absolute bottom-0 left-2 right-2 h-0.5 bg-brand rounded-full transition-all duration-200"
                 />
               )}
             </button>
@@ -399,10 +397,8 @@ function LoadingSpinner() {
 
 function NoAccessState({ icon: Icon, title, description }: { icon: typeof Podcast; title: string; description: string }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="text-center py-16 px-4"
+    <div
+      className="text-center py-16 px-4 animate-in fade-in slide-in-from-bottom-4 duration-300"
     >
       <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
         <Icon className="w-8 h-8 text-white/50" />
@@ -415,16 +411,14 @@ function NoAccessState({ icon: Icon, title, description }: { icon: typeof Podcas
       >
         Upgrade to Starter
       </Link>
-    </motion.div>
+    </div>
   )
 }
 
 function EmptyState({ icon: Icon, title, description, children }: { icon: typeof Podcast; title: string; description: string; children: React.ReactNode }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="text-center py-16 px-4"
+    <div
+      className="text-center py-16 px-4 animate-in fade-in slide-in-from-bottom-4 duration-300"
     >
       <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center mx-auto mb-6">
         <Icon className="w-8 h-8 text-white/50" />
@@ -432,16 +426,14 @@ function EmptyState({ icon: Icon, title, description, children }: { icon: typeof
       <h2 className="text-lg font-semibold text-white mb-2">{title}</h2>
       <p className="text-white/50 text-sm max-w-md mx-auto mb-6">{description}</p>
       {children}
-    </motion.div>
+    </div>
   )
 }
 
 function SubscriptionList({ children }: { children: React.ReactNode }) {
   return (
     <div className="space-y-4">
-      <AnimatePresence initial={false}>
-        {children}
-      </AnimatePresence>
+      {children}
     </div>
   )
 }
@@ -474,15 +466,12 @@ function SubscriptionCard({
   const hasWarning = consecutiveFailures > 0
   const isCritical = consecutiveFailures >= 5
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -12 }}
-      transition={{ delay: index * 0.05 }}
+    <div
       className={cn(
-        "rounded-2xl bg-white/[0.03] border overflow-hidden",
+        "rounded-2xl bg-white/[0.03] border overflow-hidden animate-in fade-in slide-in-from-bottom-2 duration-300",
         isCritical ? "border-red-500/30" : hasWarning ? "border-amber-500/20" : "border-white/[0.06]"
       )}
+      style={{ animationDelay: `${index * 50}ms`, animationFillMode: "both" }}
     >
       <button
         onClick={onToggle}
@@ -565,20 +554,12 @@ function SubscriptionCard({
         </div>
       </button>
 
-      <AnimatePresence>
-        {isExpanded && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.2 }}
-            className="overflow-hidden border-t border-white/[0.06]"
-          >
-            <div className="p-4 pt-2">{children}</div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </motion.div>
+      {isExpanded && (
+        <div className="overflow-hidden border-t border-white/[0.06] animate-in fade-in slide-in-from-top-1 duration-200">
+          <div className="p-4 pt-2">{children}</div>
+        </div>
+      )}
+    </div>
   )
 }
 

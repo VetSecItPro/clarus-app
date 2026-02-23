@@ -5,7 +5,6 @@ import Image from "next/image"
 import dynamic from "next/dynamic"
 import { Eye, Sparkles, Shield, Lightbulb, Target, BookOpen, ChevronDown, FileText, Play, ArrowRight, LayoutList } from "lucide-react"
 import { useState } from "react"
-import { motion, AnimatePresence } from "framer-motion"
 import { SectionCard } from "@/components/ui/section-card"
 import { formatDuration, getDomainFromUrl } from "@/lib/utils"
 import type { TriageData, TruthCheckData, ActionItemsData, TopicSegmentData } from "@/types/database.types"
@@ -93,6 +92,7 @@ export function SharePageContent({ content, summary }: SharePageContentProps) {
               width={160}
               height={90}
               sizes="160px"
+              priority
               className="rounded-xl object-cover aspect-video hidden sm:block"
               onError={(e) => (e.currentTarget.style.display = "none")}
             />
@@ -192,25 +192,15 @@ export function SharePageContent({ content, summary }: SharePageContentProps) {
                     <BookOpen className="w-4 h-4" />
                     Detailed Analysis
                   </h3>
-                  <motion.div animate={{ rotate: isDetailedExpanded ? 180 : 0 }} transition={{ duration: 0.2 }}>
-                    <ChevronDown className="w-5 h-5 text-white/50" />
-                  </motion.div>
+                  <ChevronDown className={`w-5 h-5 text-white/50 transition-transform duration-200 ${isDetailedExpanded ? "rotate-180" : ""}`} />
                 </div>
-                <AnimatePresence>
-                  {isDetailedExpanded && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: "auto", opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      transition={{ duration: 0.3 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="px-4 sm:px-5 py-4 sm:py-5 border-t border-white/[0.06] prose prose-sm prose-invert max-w-none">
-                        <MarkdownRenderer>{summary.detailedSummary}</MarkdownRenderer>
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
+                {isDetailedExpanded && (
+                  <div className="overflow-hidden animate-in fade-in slide-in-from-top-2 duration-300">
+                    <div className="px-4 sm:px-5 py-4 sm:py-5 border-t border-white/[0.06] prose prose-sm prose-invert max-w-none">
+                      <MarkdownRenderer>{summary.detailedSummary}</MarkdownRenderer>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
           </div>

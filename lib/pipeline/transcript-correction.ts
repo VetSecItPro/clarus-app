@@ -88,6 +88,20 @@ export function correctTranscriptFromMetadata(
   const corrections: Array<{ from: string; to: string; count: number }> = []
   let corrected = transcript
 
+  // PERF: Function-local regex cache — avoids recompiling identical patterns within one invocation
+  const regexCache = new Map<string, RegExp>()
+  const getRegex = (pattern: string, flags: string): RegExp => {
+    const key = `${pattern}:${flags}`
+    let re = regexCache.get(key)
+    if (!re) {
+      re = new RegExp(pattern, flags)
+      regexCache.set(key, re)
+    } else {
+      re.lastIndex = 0 // Reset for reuse with global flag
+    }
+    return re
+  }
+
   // Extract meaningful tokens from the title
   const titleTokens = title
     .split(/[\s:|\-–—,.!?()[\]]+/)
@@ -113,13 +127,13 @@ export function correctTranscriptFromMetadata(
     const titleBigram = `${w1} ${w2}`
 
     // Skip if bigram already exists in transcript (case-insensitive)
-    if (new RegExp(escapeRegExpChars(titleBigram), "i").test(corrected)) continue
+    if (getRegex(escapeRegExpChars(titleBigram), "i").test(corrected)) continue
 
     // Pattern A: first word is wrong, second word is correct
     // Find "[WORD] w2" in transcript where WORD is close to w1
     const lenMin1 = Math.max(2, w1.length - 2)
     const lenMax1 = w1.length + 2
-    const pat1 = new RegExp(
+    const pat1 = getRegex(
       `\\b(\\w{${lenMin1},${lenMax1}})\\s+${escapeRegExpChars(w2)}\\b`,
       "gi"
     )
@@ -130,7 +144,7 @@ export function correctTranscriptFromMetadata(
         editDistance(candidate.toLowerCase(), w1.toLowerCase()) <= 2
       ) {
         const wrongPhrase = m[0]
-        const regex = new RegExp(escapeRegExpChars(wrongPhrase), "gi")
+        const regex = getRegex(escapeRegExpChars(wrongPhrase), "gi")
         const count = (corrected.match(regex) || []).length
         if (count > 0) {
           corrected = corrected.replace(regex, titleBigram)
@@ -141,12 +155,12 @@ export function correctTranscriptFromMetadata(
     }
 
     // Re-check — bigram may now exist after Pass A
-    if (new RegExp(escapeRegExpChars(titleBigram), "i").test(corrected)) continue
+    if (getRegex(escapeRegExpChars(titleBigram), "i").test(corrected)) continue
 
     // Pattern B: first word is correct, second word is wrong
     const lenMin2 = Math.max(2, w2.length - 2)
     const lenMax2 = w2.length + 2
-    const pat2 = new RegExp(
+    const pat2 = getRegex(
       `\\b${escapeRegExpChars(w1)}\\s+(\\w{${lenMin2},${lenMax2}})\\b`,
       "gi"
     )
@@ -157,10 +171,10 @@ export function correctTranscriptFromMetadata(
         editDistance(candidate.toLowerCase(), w2.toLowerCase()) <= 2
       ) {
         const wrongPhrase = m[0]
-        const regex = new RegExp(escapeRegExpChars(wrongPhrase), "gi")
-        const count = (corrected.match(regex) || []).length
+        const regex2 = getRegex(escapeRegExpChars(wrongPhrase), "gi")
+        const count = (corrected.match(regex2) || []).length
         if (count > 0) {
-          corrected = corrected.replace(regex, titleBigram)
+          corrected = corrected.replace(regex2, titleBigram)
           corrections.push({ from: wrongPhrase, to: titleBigram, count })
         }
         break
@@ -173,10 +187,10 @@ export function correctTranscriptFromMetadata(
   for (const word of allTokens) {
     if (word.length < 4 || word[0] !== word[0].toUpperCase()) continue
     // Skip if word already exists in transcript
-    if (new RegExp(`\\b${escapeRegExpChars(word)}\\b`, "i").test(corrected)) continue
+    if (getRegex(`\\b${escapeRegExpChars(word)}\\b`, "i").test(corrected)) continue
 
     // Scan for close matches
-    const singlePat = new RegExp(
+    const singlePat = getRegex(
       `\\b(\\w{${Math.max(3, word.length - 1)},${word.length + 1}})\\b`,
       "gi"
     )
@@ -191,7 +205,7 @@ export function correctTranscriptFromMetadata(
     // Replace only systematic errors (3+ occurrences)
     for (const [candidate, freq] of candidates) {
       if (freq >= 3) {
-        const regex = new RegExp(`\\b${escapeRegExpChars(candidate)}\\b`, "g")
+        const regex = getRegex(`\\b${escapeRegExpChars(candidate)}\\b`, "g")
         corrected = corrected.replace(regex, word)
         corrections.push({ from: candidate, to: word, count: freq })
       }

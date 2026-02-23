@@ -2,7 +2,7 @@
 
 import { supabase } from "@/lib/supabase"
 import withAuth, { type WithAuthInjectedProps } from "@/components/with-auth"
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { useSearchParams, useRouter } from "next/navigation"
 import { toast } from "sonner"
 import {
@@ -51,6 +51,7 @@ import { TIER_FEATURES } from "@/lib/tier-limits"
 import { useUserTier } from "@/lib/hooks/use-user-tier"
 import { useConfirmDialog } from "@/components/ui/confirm-dialog"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
+import { useTags } from "@/lib/hooks/use-tags"
 
 type HistoryItem = LibraryItem
 type LibraryPageProps = WithAuthInjectedProps
@@ -157,7 +158,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
   const [bookmarkOnly, setBookmarkOnly] = useState(
     () => searchParams.get("bookmarks") === "true"
   )
-  const [allTags, setAllTags] = useState<{ tag: string; count: number }[]>([])
+  const { allTags } = useTags()
   const [selectedTags, setSelectedTags] = useState<string[]>([])
   const [showTagDropdown, setShowTagDropdown] = useState(false)
   const [localItems, setLocalItems] = useState<HistoryItem[]>([])
@@ -218,27 +219,13 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     setLocalItems(swrItems)
   }, [swrItems])
 
-  // Filter by collection if one is selected, otherwise show all items
-  const items = selectedCollectionId
-    ? localItems.filter((item) => collectionContentIds.includes(item.id))
-    : localItems
-
-  // Fetch all tags
-  const fetchAllTags = useCallback(async () => {
-    try {
-      const response = await fetch("/api/tags")
-      const data = await response.json()
-      if (data.success) {
-        setAllTags(data.tags)
-      }
-    } catch (error) {
-      console.error("Error fetching tags:", error)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchAllTags()
-  }, [fetchAllTags])
+  // PERF: Memoize collection filter to avoid O(n*m) scan on every render
+  const items = useMemo(
+    () => selectedCollectionId
+      ? localItems.filter((item) => collectionContentIds.includes(item.id))
+      : localItems,
+    [localItems, selectedCollectionId, collectionContentIds]
+  )
 
   // Refresh on content changes
   useEffect(() => {
@@ -330,7 +317,8 @@ function LibraryPageContent({ session }: LibraryPageProps) {
     setSelectedTags((prev) => prev.filter((t) => t !== tag))
   }, [])
 
-  const groupedItems = groupByDate(items)
+  // PERF: Memoize expensive grouping — avoids re-running on every hover/animation
+  const groupedItems = useMemo(() => groupByDate(items), [items])
 
   const selectedCollection = selectedCollectionId
     ? collections.find((c) => c.id === selectedCollectionId) ?? null
@@ -694,7 +682,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
                           brief_overview={summary?.brief_overview}
                           triage={summary?.triage as TriageData | null | undefined}
                           processingStatus={summary?.processing_status ?? null}
-                          contentFailed={Boolean(item.full_text?.startsWith("PROCESSING_FAILED::"))}
+                          contentFailed={Boolean(item.fetch_failed)}
                           date_added={item.date_added || new Date().toISOString()}
                           is_bookmarked={item.is_bookmarked}
                           onClick={() => handleItemClick(item.id)}

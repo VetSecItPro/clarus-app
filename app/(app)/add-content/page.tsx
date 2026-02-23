@@ -269,7 +269,7 @@ export default function AddContentPage() {
               <div className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.04] border border-white/[0.06] animate-[fadeIn_0.2s_ease-out]">
                 {favicon && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img src={favicon} alt="" className="w-5 h-5 rounded" />
+                  <img src={favicon} alt="" width={20} height={20} className="w-5 h-5 rounded" />
                 )}
                 <div className="flex-1 min-w-0">
                   {isFetchingTitle ? (

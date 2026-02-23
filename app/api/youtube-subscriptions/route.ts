@@ -36,25 +36,21 @@ export async function GET() {
     return AuthErrors.serverError()
   }
 
-  // Fetch latest video per subscription in a single query
+  // PERF: Use DISTINCT ON RPC for exact 1-row-per-subscription (replaces limit(n*2) + JS dedup)
   const subscriptionIds = (subscriptions ?? []).map((s) => s.id)
 
   let latestVideos: Record<string, { video_title: string; published_date: string | null }> = {}
   if (subscriptionIds.length > 0) {
-    const { data: videos } = await supabase
-      .from("youtube_videos")
-      .select("subscription_id, video_title, published_date")
-      .in("subscription_id", subscriptionIds)
-      .order("published_date", { ascending: false, nullsFirst: false })
-      .limit(subscriptionIds.length * 2)
+    const { data: videos } = await (supabase.rpc as CallableFunction)(
+      "get_latest_youtube_videos",
+      { p_sub_ids: subscriptionIds }
+    )
 
     if (videos) {
-      for (const vid of videos) {
-        if (!latestVideos[vid.subscription_id]) {
-          latestVideos[vid.subscription_id] = {
-            video_title: vid.video_title,
-            published_date: vid.published_date,
-          }
+      for (const vid of videos as Array<{ subscription_id: string; video_title: string; video_date: string | null }>) {
+        latestVideos[vid.subscription_id] = {
+          video_title: vid.video_title,
+          published_date: vid.video_date,
         }
       }
     }
