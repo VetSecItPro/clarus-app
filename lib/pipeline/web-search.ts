@@ -144,9 +144,6 @@ export async function extractKeyTopics(text: string, maxTopics: number = 3): Pro
   const userContent = prompt.user_content_template.replace("{{CONTENT}}", wrapUserContent(sanitizedText)) + INSTRUCTION_ANCHOR
 
   try {
-    const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), EXTRACT_TOPICS_TIMEOUT_MS)
-
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -163,10 +160,8 @@ export async function extractKeyTopics(text: string, maxTopics: number = 3): Pro
         max_tokens: prompt.max_tokens,
         response_format: { type: "json_object" }
       }),
-      signal: controller.signal,
+      signal: AbortSignal.timeout(EXTRACT_TOPICS_TIMEOUT_MS),
     })
-
-    clearTimeout(timeoutId)
 
     if (!response.ok) {
       logger.warn("API: Topic extraction failed, skipping web search")
@@ -267,6 +262,7 @@ ${wrapUserContent(sanitizedText)}`
         max_tokens: 1024,
         response_format: { type: "json_object" },
       }),
+      signal: AbortSignal.timeout(15_000),
     })
 
     if (!response.ok) {
@@ -347,9 +343,6 @@ export async function searchTavily(query: string, tavilyCache: Map<string, WebSe
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     const timer = createTimer()
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), TAVILY_TIMEOUT_MS)
-
       const response = await fetch("https://api.tavily.com/search", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -361,10 +354,8 @@ export async function searchTavily(query: string, tavilyCache: Map<string, WebSe
           include_raw_content: false,
           max_results: 3,
         }),
-        signal: controller.signal,
+        signal: AbortSignal.timeout(TAVILY_TIMEOUT_MS),
       })
-
-      clearTimeout(timeoutId)
 
       if (!response.ok) {
         if (attempt < maxRetries && (response.status >= 500 || response.status === 429)) {

@@ -122,9 +122,6 @@ export async function getModelSummary(
 
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
-
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -134,10 +131,8 @@ export async function getModelSummary(
           "X-Title": "Clarus",
         },
         body: JSON.stringify(requestBody),
-        signal: controller.signal,
+        signal: AbortSignal.timeout(AI_CALL_TIMEOUT_MS),
       })
-
-      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorBody = await response.text()
@@ -265,9 +260,6 @@ export async function generateSectionWithAI(
   for (let attempt = 1; attempt <= maxRetries; attempt++) {
     const attemptTimer = createTimer()
     try {
-      const controller = new AbortController()
-      const timeoutId = setTimeout(() => controller.abort(), AI_CALL_TIMEOUT_MS)
-
       const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -277,10 +269,8 @@ export async function generateSectionWithAI(
           "X-Title": "Clarus",
         },
         body: JSON.stringify(requestBody),
-        signal: controller.signal,
+        signal: AbortSignal.timeout(AI_CALL_TIMEOUT_MS),
       })
-
-      clearTimeout(timeoutId)
 
       if (!response.ok) {
         const errorBody = await response.text()

@@ -265,6 +265,7 @@ export function useChatSession({
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ content_id: existingContent.id, language: analysisLanguage }),
+            signal: AbortSignal.timeout(30_000),
           }).then(async (res) => {
             if (res.status === 403) {
               const data = await res.json().catch(() => ({}))
@@ -275,26 +276,30 @@ export function useChatSession({
                 })
               }
             }
-          }).catch(console.error)
+          }).catch(() => { /* timeout or network error — polling will detect status */ })
 
           startPolling(existingContent.id)
           return
         }
 
-        // No existing content — fetch title and create new record
+        // No existing content — fetch title with strict timeout so it can't block submission
         let contentTitle: string | null = null
         try {
+          const titleAbort = new AbortController()
+          const titleTimeout = setTimeout(() => titleAbort.abort(), 4000)
           const titleResponse = await fetch("/api/fetch-title", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ url, type: urlMeta.type }),
+            signal: titleAbort.signal,
           })
+          clearTimeout(titleTimeout)
           if (titleResponse.ok) {
             const titleData = await titleResponse.json()
             contentTitle = titleData.title
           }
         } catch {
-          console.warn("Title fetch failed, using placeholder")
+          // Timeout or network error — use placeholder title, don't block submission
         }
 
         const title =
@@ -322,6 +327,7 @@ export function useChatSession({
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ content_id: newContent.id, language: analysisLanguage }),
+          signal: AbortSignal.timeout(30_000),
         }).then(async (res) => {
           if (res.status === 403) {
             const data = await res.json().catch(() => ({}))
@@ -332,7 +338,7 @@ export function useChatSession({
               })
             }
           }
-        }).catch(console.error)
+        }).catch(() => { /* timeout or network error — polling will detect status */ })
 
         startPolling(newContent.id)
       } catch {

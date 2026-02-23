@@ -63,13 +63,10 @@ export async function getYouTubeMetadata(url: string, apiKey: string, userId?: s
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 30000)
       const response = await fetch(endpoint, {
         headers: { "x-api-key": apiKey },
-        signal: controller.signal,
+        signal: AbortSignal.timeout(30_000),
       })
-      clearTimeout(timeout)
 
       if (response.ok) {
         const contentType = response.headers.get("content-type")
@@ -266,13 +263,10 @@ export async function getYouTubeTranscript(url: string, apiKey: string, userId?:
 
   for (let attempt = 1; attempt <= retries; attempt++) {
     try {
-      const controller = new AbortController()
-      const timeout = setTimeout(() => controller.abort(), 60000)
       const response = await fetch(endpoint, {
         headers: { "x-api-key": apiKey },
-        signal: controller.signal,
+        signal: AbortSignal.timeout(60_000),
       })
-      clearTimeout(timeout)
 
       if (response.ok) {
         const contentType = response.headers.get("content-type")
