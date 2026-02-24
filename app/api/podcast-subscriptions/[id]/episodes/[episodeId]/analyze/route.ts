@@ -15,6 +15,7 @@ import { getEffectiveLimits } from "@/lib/tier-limits"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 import { decryptFeedCredential } from "@/lib/feed-encryption"
+import { normalizeUrl } from "@/lib/utils"
 import { logger } from "@/lib/logger"
 
 /**
@@ -118,7 +119,7 @@ export async function POST(
     .from("content")
     .insert({
       user_id: user.id,
-      url: episode.episode_url,
+      url: normalizeUrl(episode.episode_url),
       title: episode.episode_title,
       type: "podcast",
       date_added: new Date().toISOString(),

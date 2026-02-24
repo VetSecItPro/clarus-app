@@ -7,13 +7,12 @@ import { supabase } from "@/lib/supabase"
 import type { TablesInsert, UserTier } from "@/types/database.types"
 import { TIER_LIMITS } from "@/lib/tier-limits"
 import { validateUrl } from "@/lib/validation"
-import { getYouTubeVideoId, isXUrl, isPodcastUrl, getDomainFromUrl } from "@/lib/utils"
+import { getYouTubeVideoId, isXUrl, isPodcastUrl, getDomainFromUrl, normalizeUrl } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 import {
   AlertTriangle,
-  CheckCircle,
   Loader2,
   Youtube,
   FileText,
@@ -64,9 +63,9 @@ export default function AddContentPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [urlError, setUrlError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
   const [libraryCount, setLibraryCount] = useState<number | null>(null)
   const [libraryLimit, setLibraryLimit] = useState<number | null>(null)
+  const [existingItemId, setExistingItemId] = useState<string | null>(null)
 
   // Check library size on mount
   useEffect(() => {
@@ -166,7 +165,7 @@ export default function AddContentPage() {
     e.preventDefault()
     setIsLoading(true)
     setError(null)
-    setSuccess(null)
+    setExistingItemId(null)
 
     const {
       data: { user },
@@ -196,11 +195,29 @@ export default function AddContentPage() {
       return
     }
 
+    const normalizedUrl = normalizeUrl(validation.sanitized)
+
+    // Check if user already has this URL
+    const { data: existing } = await supabase
+      .from("content")
+      .select("id, title")
+      .eq("user_id", user.id)
+      .eq("url", normalizedUrl)
+      .limit(1)
+      .maybeSingle()
+
+    if (existing) {
+      setError("You've already analyzed this URL. View your existing analysis or delete it first to re-analyze.")
+      setExistingItemId(existing.id)
+      setIsLoading(false)
+      return
+    }
+
     const type = detectedType || "article"
 
     const newContent: TablesInsert<"content"> = {
       title: title || url.trim(),
-      url: validation.sanitized,
+      url: normalizedUrl,
       type,
       full_text: fullText || null,
       user_id: user.id,
@@ -218,10 +235,6 @@ export default function AddContentPage() {
       return
     }
 
-    // Navigate immediately — don't block on analysis API call
-    setSuccess("Analysis started! Redirecting...")
-    setTimeout(() => router.push(`/item/${insertData.id}`), 1000)
-
     // Trigger analysis (fire-and-forget — item page will poll for completion)
     fetch("/api/process-content", {
       method: "POST",
@@ -230,6 +243,9 @@ export default function AddContentPage() {
     }).catch(() => {
       // Non-fatal — content was created, analysis can be retried from item page
     })
+
+    // Navigate immediately — don't block on analysis API call
+    router.push(`/item/${insertData.id}`)
   }
 
   return (
@@ -342,14 +358,19 @@ export default function AddContentPage() {
               <Alert variant="destructive">
                 <AlertTriangle className="h-4 w-4" />
                 <AlertTitle>Error</AlertTitle>
-                <AlertDescription>{error}</AlertDescription>
+                <AlertDescription>
+                  {error}
+                  {existingItemId && (
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/item/${existingItemId}`)}
+                      className="block mt-2 text-sm font-medium text-white/80 hover:text-white underline underline-offset-2 transition-colors"
+                    >
+                      View existing analysis &rarr;
+                    </button>
+                  )}
+                </AlertDescription>
               </Alert>
-            )}
-            {success && (
-              <div role="status" className="flex items-center gap-2 p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm">
-                <CheckCircle className="h-4 w-4 shrink-0" />
-                <span>{success}</span>
-              </div>
             )}
             <Button type="submit" disabled={isLoading || isAtLibraryLimit || !isValidUrl} className="w-full">
               {isLoading ? (

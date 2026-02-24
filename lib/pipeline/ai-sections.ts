@@ -426,8 +426,7 @@ export async function generateSectionWithAI(
 // ============================================
 
 export async function generateBriefOverview(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<string | null> {
-  const maxChars = (contentType === "podcast" || contentType === "youtube") ? 12000 : 8000
-  const result = await generateSectionWithAI(fullText.substring(0, maxChars), "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, undefined, metadataBlock, typeInstructions)
+  const result = await generateSectionWithAI(fullText, "brief_overview", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, undefined, metadataBlock, typeInstructions)
   if (result.error) {
     logger.error(`API: Brief overview generation failed: ${result.error}`)
     return null
@@ -436,7 +435,7 @@ export async function generateBriefOverview(fullText: string, contentType: strin
 }
 
 export async function generateTriage(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<TriageData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 10000), "triage", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
+  const result = await generateSectionWithAI(fullText, "triage", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     logger.error(`API: Triage generation failed: ${result.error}`)
     return null
@@ -447,12 +446,13 @@ export async function generateTriage(fullText: string, contentType: string, user
 export async function generateTruthCheck(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, webSearchContext?: WebSearchContext | null, preferencesBlock?: string | null, claimContext?: string | null, claimSearchCtx?: ClaimSearchContext | null, metadataBlock?: string | null, typeInstructions?: string | null, domainCredibility?: string | null): Promise<TruthCheckData | null> {
   const citationInstruction = `\n\nIMPORTANT: For each issue you identify, include a "sources" array with citation objects containing "url" and "title" for verification. Use URLs from the web verification context above when available. Format: "sources": [{"url": "https://...", "title": "Source Title"}]. If no source URL is available for an issue, omit the sources field for that issue.`
 
-  // Combine domain credibility warning + generic web context + targeted claim context, capped at 8K
+  // Combine domain credibility warning + generic web context + targeted claim context
+  // Cap at 16K to accommodate up to 12 claim search results for long content
   const rawCombinedContext = (domainCredibility ? domainCredibility + "\n\n" : "") + (webContext || "") + (claimContext || "")
-  const combinedContext = rawCombinedContext.length > 8000 ? rawCombinedContext.substring(0, 8000) : rawCombinedContext
+  const combinedContext = rawCombinedContext.length > 16000 ? rawCombinedContext.substring(0, 16000) : rawCombinedContext
   const enrichedWebContext = combinedContext ? combinedContext + citationInstruction : null
 
-  const result = await generateSectionWithAI(fullText.substring(0, 20000), "truth_check", contentType, 3, userId, contentId, enrichedWebContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
+  const result = await generateSectionWithAI(fullText, "truth_check", contentType, 3, userId, contentId, enrichedWebContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     logger.error(`API: Truth check generation failed: ${result.error}`)
     return null
@@ -574,7 +574,7 @@ export async function generateTruthCheck(fullText: string, contentType: string, 
 }
 
 export async function generateActionItems(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<ActionItemsData | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 15000), "action_items", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
+  const result = await generateSectionWithAI(fullText, "action_items", contentType, 3, userId, contentId, webContext, undefined, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     logger.error(`API: Action items generation failed: ${result.error}`)
     return null
@@ -587,7 +587,7 @@ export async function generateActionItems(fullText: string, contentType: string,
 }
 
 export async function generateDetailedSummary(fullText: string, contentType: string, userId?: string | null, contentId?: string | null, webContext?: string | null, toneDirective?: string | null, languageDirective?: string | null, preferencesBlock?: string | null, metadataBlock?: string | null, typeInstructions?: string | null): Promise<string | null> {
-  const result = await generateSectionWithAI(fullText.substring(0, 30000), "detailed_summary", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
+  const result = await generateSectionWithAI(fullText, "detailed_summary", contentType, 3, userId, contentId, webContext, toneDirective, languageDirective, preferencesBlock, metadataBlock, typeInstructions)
   if (result.error) {
     logger.error(`API: Detailed summary generation failed: ${result.error}`)
     return null
@@ -602,7 +602,7 @@ export async function generateAutoTags(
   contentId?: string | null,
 ): Promise<string[] | null> {
   const result = await generateSectionWithAI(
-    fullText.substring(0, 10000),
+    fullText,
     "auto_tags",
     contentType,
     2,
@@ -632,7 +632,7 @@ export async function generateTopicSegments(
   metadataBlock?: string | null,
 ): Promise<TopicSegmentData[] | null> {
   const result = await generateSectionWithAI(
-    fullText.substring(0, 30000),
+    fullText,
     "topic_segments",
     contentType,
     2,
@@ -667,5 +667,5 @@ export async function generateTopicSegments(
       typeof s.end_time === "string" &&
       typeof s.summary === "string"
     )
-    .slice(0, 12) // Cap at 12 segments
+    .slice(0, 15) // Cap at 15 segments (long podcasts 2hr+ may have 10-15 topics)
 }

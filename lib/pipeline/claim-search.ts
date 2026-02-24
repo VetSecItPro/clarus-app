@@ -65,11 +65,13 @@ function formatClaimContext(claims: VerifiableClaim[], searches: WebSearchResult
 export async function getClaimSearchContext(text: string, tavilyCache: Map<string, WebSearchResult>): Promise<ClaimSearchContext | null> {
   if (!tavilyApiKey || !openRouterApiKey) return null
 
-  // S1-05: Dynamic claim count based on content length
-  const maxClaims = text.length < 500 ? 0 :       // tweets: skip entirely
-                    text.length < 2000 ? 2 :       // short articles
-                    text.length < 8000 ? 3 :       // medium articles
-                    5                               // long content
+  // Dynamic claim count based on content length — more content = more claims to verify
+  const maxClaims = text.length < 500 ? 0 :        // tweets: skip entirely
+                    text.length < 2000 ? 2 :        // short articles
+                    text.length < 8000 ? 3 :        // medium articles
+                    text.length < 30000 ? 5 :       // standard content
+                    text.length < 80000 ? 8 :       // long articles / 1hr podcasts
+                    12                              // 2hr+ podcasts / 100-page PDFs
   if (maxClaims === 0) return null
 
   const claims = await extractVerifiableClaims(text, maxClaims)
