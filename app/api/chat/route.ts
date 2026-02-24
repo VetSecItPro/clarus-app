@@ -88,7 +88,7 @@ const LIMITS = {
   MAX_MESSAGES_PER_DAY: 500,          // Daily limit
   MAX_CONVERSATION_MESSAGES: 20,      // Max messages sent to API (keeps context smaller)
   MAX_MESSAGE_LENGTH: 2000,           // Max chars per user message
-  MAX_OUTPUT_TOKENS: 1024,            // Max tokens in response
+  MAX_OUTPUT_TOKENS: 4096,            // Max tokens in response (~3000 words)
   MAX_WEB_SEARCHES_PER_CONVERSATION: 3, // Limit expensive web searches
 }
 
@@ -391,13 +391,8 @@ export async function POST(req: NextRequest) {
     // Full text (transcript/article) - ONLY for first messages to save tokens
     // For follow-up questions, the summaries + conversation history provide enough context
     if (isFirstMessages && "full_text" in contentData && contentData.full_text) {
-      // Truncate very long content to avoid token limits
-      const maxFullTextChars = 50000 // ~12.5k tokens
-      const fullText = contentData.full_text.length > maxFullTextChars
-        ? contentData.full_text.slice(0, maxFullTextChars) + "\n\n[Content truncated for length...]"
-        : contentData.full_text
-      // Sanitize scraped content before injecting into system prompt
-      const sanitizedFullText = sanitizeForPrompt(fullText, { context: "chat-full-text" })
+      // Pass full content — Gemini 2.5 Flash handles 1M tokens; no need to truncate
+      const sanitizedFullText = sanitizeForPrompt(contentData.full_text, { context: "chat-full-text" })
       contextParts.push(`## Full Content`)
       contextParts.push(wrapUserContent(sanitizedFullText))
     } else if (!isFirstMessages) {

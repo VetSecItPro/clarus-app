@@ -211,8 +211,24 @@ export async function extractVerifiableClaims(text: string, maxClaims = 5): Prom
   // S1-04: Empty content guard — no point extracting claims from near-empty text
   if (!text || text.trim().length < 100) return []
 
-  // S1-06: Reduce input from 15K to 10K — claims appear in first half of content
-  const truncatedText = text.substring(0, 10000)
+  // Scale claim extraction window with content length — sample beginning, middle, and end
+  // Short content: 10K is enough. Long content (podcasts, PDFs): sample 30K across the full text.
+  const maxExtractChars = text.length < 30000 ? 10000 : 30000
+  let truncatedText: string
+  if (text.length <= maxExtractChars) {
+    truncatedText = text.substring(0, maxExtractChars)
+  } else {
+    // Sample beginning (40%), middle (30%), end (30%) for long content
+    const beginLen = Math.floor(maxExtractChars * 0.4)
+    const midLen = Math.floor(maxExtractChars * 0.3)
+    const endLen = maxExtractChars - beginLen - midLen
+    const midStart = Math.floor((text.length - midLen) / 2)
+    truncatedText = text.substring(0, beginLen)
+      + "\n\n[...middle of content...]\n\n"
+      + text.substring(midStart, midStart + midLen)
+      + "\n\n[...end of content...]\n\n"
+      + text.substring(text.length - endLen)
+  }
   const sanitizedText = sanitizeForPrompt(truncatedText, { context: "claim-extraction" })
 
   const systemPrompt = `You are a fact-checking assistant. Extract specific, verifiable factual claims from content that can be checked against current web sources. Focus on claims that may be time-sensitive or have changed recently.`
@@ -253,7 +269,7 @@ ${wrapUserContent(sanitizedText)}`
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
@@ -302,7 +318,7 @@ ${wrapUserContent(sanitizedText)}`
       operation: "claim_extraction",
       tokensInput: data.usage?.prompt_tokens || 0,
       tokensOutput: data.usage?.completion_tokens || 0,
-      modelName: "google/gemini-2.5-flash-lite",
+      modelName: "google/gemini-2.5-flash",
       responseTimeMs: timer.elapsed(),
       status: "success",
     })

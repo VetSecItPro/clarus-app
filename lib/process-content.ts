@@ -549,13 +549,14 @@ export async function processContent(options: ProcessContentOptions): Promise<Pr
   )
   const fullText = transcriptCorrection.text
 
-  // Pre-truncate text once — each section gets the right-sized slice without redundant allocations.
-  // Cascade from largest to smallest so smaller slices reuse the larger string's memory.
-  const text30K = fullText.substring(0, 30000)   // detailed_summary
-  const text20K = text30K.substring(0, 20000)     // truth_check
-  const text15K = text20K.substring(0, 15000)     // action_items, claim search
-  const text10K = text15K.substring(0, 10000)     // triage, auto_tags, web search
-  const text8K  = text10K.substring(0, 8000)      // brief_overview
+  // Pass full text to every section — Gemini 2.5 Flash handles 1M tokens.
+  // A 100-page PDF (~300K chars ≈ 75K tokens) uses <8% of capacity. No reason to truncate.
+  // Each ai-sections.ts function also receives the full text (truncation removed there too).
+  const text30K = fullText  // detailed_summary, topic_segments
+  const text20K = fullText  // truth_check
+  const text15K = fullText  // action_items, claim search
+  const text10K = fullText  // triage, auto_tags, web search
+  const text8K  = fullText  // brief_overview
 
   // Build rich metadata block for AI context — zero API calls, uses data already fetched
   // Append transcript correction notice for youtube/podcast (warns AI about STT errors)

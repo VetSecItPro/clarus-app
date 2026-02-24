@@ -245,7 +245,7 @@ async function translateViaAI(
   contentId: string,
 ): Promise<{ translated: Record<string, unknown>; model: string; tokensIn: number; tokensOut: number }> {
   const langConfig = getLanguageConfig(targetLang)
-  const models = ["google/gemini-2.5-flash-lite", "google/gemini-2.5-flash"]
+  const models = ["google/gemini-2.5-flash"]
 
   const sourceLangName = sourceLang === "en" ? "English" : getLanguageConfig(sourceLang).name
   const systemPrompt = `You are a professional translator. Translate the JSON values from ${sourceLangName} to ${langConfig.name} (${langConfig.nativeName}).
