@@ -624,7 +624,7 @@ function LibraryPageContent({ session }: LibraryPageProps) {
             {selectedCollection ? (
               <>
                 <div className="w-20 h-20 bg-white/[0.04] rounded-full flex items-center justify-center mx-auto mb-6">
-                  <FolderOpen className="w-10 h-10 text-white/30" />
+                  <FolderOpen className="w-10 h-10 text-white/50" />
                 </div>
                 <h3 className="text-white text-lg font-medium mb-2">
                   &ldquo;{selectedCollection.name}&rdquo; is empty

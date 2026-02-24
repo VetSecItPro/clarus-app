@@ -13,6 +13,7 @@ export function PublicHeader() {
                 alt="Clarus"
                 width={40}
                 height={40}
+                priority
                 className="w-10 h-10 transition-all duration-300 group-hover:scale-105"
               />
               <div className="absolute inset-0 bg-brand/20 rounded-full blur-xl opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -23,10 +24,10 @@ export function PublicHeader() {
           </Link>
 
           <div className="flex items-center gap-6">
-            <Link href="/articles" className="text-sm text-white/50 hover:text-white transition-colors">
+            <Link href="/articles" className="hidden sm:inline text-sm text-white/50 hover:text-white transition-colors">
               Articles
             </Link>
-            <Link href="/pricing" className="text-sm text-white/50 hover:text-white transition-colors">
+            <Link href="/pricing" className="hidden sm:inline text-sm text-white/50 hover:text-white transition-colors">
               Pricing
             </Link>
             <Link href="/login" className="px-5 py-2 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-brand/25 hover:shadow-lg hover:shadow-brand/40 hover:-translate-y-0.5">

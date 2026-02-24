@@ -71,21 +71,33 @@ Disallow: /
 # Default: allow public pages, block app routes
 User-agent: *
 Allow: /
+Allow: /about
 Allow: /pricing
 Allow: /privacy
 Allow: /terms
+Allow: /contact
+Allow: /features
+Allow: /articles
+Allow: /install
 Disallow: /api/
 Disallow: /login
 Disallow: /signup
 Disallow: /forgot-password
+Disallow: /update-password
 Disallow: /auth/
+Disallow: /home
 Disallow: /library
 Disallow: /item/
+Disallow: /add-content
+Disallow: /compare
 Disallow: /dashboard
 Disallow: /feeds
+Disallow: /account
 Disallow: /discover
 Disallow: /settings
 Disallow: /manage
 Disallow: /podcasts
+Disallow: /share/
+Disallow: /monitoring
 
 Sitemap: https://clarusapp.io/sitemap.xml

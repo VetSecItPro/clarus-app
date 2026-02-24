@@ -239,7 +239,7 @@ function PlanCard({
       {/* Link to comparison table */}
       <a
         href="#compare"
-        className="block mt-4 text-xs text-white/30 hover:text-white/50 transition-colors text-center"
+        className="block mt-4 text-xs text-white/50 hover:text-white/70 transition-colors text-center"
       >
         See full comparison &darr;
       </a>

@@ -290,7 +290,7 @@ export default function SignUpPage() {
             {/* Divider */}
             <div className="flex items-center gap-3 my-5">
               <div className="flex-1 h-px bg-white/10" />
-              <span className="text-xs text-white/30">or</span>
+              <span className="text-xs text-white/50">or</span>
               <div className="flex-1 h-px bg-white/10" />
             </div>
 
@@ -411,11 +411,11 @@ export default function SignUpPage() {
                 />
                 <label htmlFor="terms" className="text-xs text-white/50">
                   I agree to the{" "}
-                  <Link href="/terms" className="text-brand hover:underline">
+                  <Link href="/terms" className="text-brand underline underline-offset-2">
                     Terms of Service
                   </Link>{" "}
                   and{" "}
-                  <Link href="/privacy" className="text-brand hover:underline">
+                  <Link href="/privacy" className="text-brand underline underline-offset-2">
                     Privacy Policy
                   </Link>
                 </label>

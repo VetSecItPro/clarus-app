@@ -142,3 +142,9 @@ podcast-*.png
 .test-ship-quarantine.json
 .test-ship-baseline.json
 .test-ship-last-baseline.json
+
+# QA test reports
+.qatest-reports/
+
+# Supabase CLI temp files
+supabase/.temp/

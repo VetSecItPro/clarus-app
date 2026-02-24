@@ -113,7 +113,7 @@ export function EpisodeList({ subscriptionId }: EpisodeListProps) {
   if (episodes.length === 0) {
     return (
       <div className="flex flex-col items-center gap-2 py-6 text-center">
-        <Podcast className="w-6 h-6 text-white/30" />
+        <Podcast className="w-6 h-6 text-white/50" />
         <p className="text-white/50 text-sm">
           No episodes found yet. Episodes will appear after the next feed check.
         </p>

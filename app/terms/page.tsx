@@ -169,7 +169,7 @@ export default function TermsPage() {
               </ul>
               <p className="leading-relaxed mt-4">
                 Send DMCA notices to:{" "}
-                <a href="mailto:legal@clarusapp.io" className="text-brand hover:underline">
+                <a href="mailto:legal@clarusapp.io" className="text-brand underline underline-offset-2">
                   legal@clarusapp.io
                 </a>
               </p>
@@ -235,13 +235,13 @@ export default function TermsPage() {
                 </p>
                 <p className="text-white/70">
                   Email:{" "}
-                  <a href="mailto:legal@clarusapp.io" className="text-brand hover:underline">
+                  <a href="mailto:legal@clarusapp.io" className="text-brand underline underline-offset-2">
                     legal@clarusapp.io
                   </a>
                 </p>
                 <p className="text-white/70 mt-1">
                   General inquiries:{" "}
-                  <a href="mailto:support@clarusapp.io" className="text-brand hover:underline">
+                  <a href="mailto:support@clarusapp.io" className="text-brand underline underline-offset-2">
                     support@clarusapp.io
                   </a>
                 </p>
