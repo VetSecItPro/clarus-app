@@ -57,6 +57,18 @@ export async function POST(request: NextRequest) {
 
   const { content_id, section_type, is_helpful, claim_index, flag_reason } = parsed.data
 
+  // Verify user owns this content (prevents feedback on other users' content)
+  const { data: content, error: contentError } = await supabase
+    .from("content")
+    .select("id")
+    .eq("id", content_id)
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  if (contentError || !content) {
+    return NextResponse.json({ error: "Content not found" }, { status: 404 })
+  }
+
   // Upsert: unique on (content_id, user_id, section_type, claim_index)
   // claim_index defaults to -1 for section-level feedback (NULL doesn't work well with UNIQUE)
   const effectiveClaimIndex = claim_index ?? -1
@@ -100,6 +112,18 @@ export async function GET(request: NextRequest) {
   const idParsed = uuidSchema.safeParse(contentId)
   if (!idParsed.success) {
     return NextResponse.json({ error: "Invalid content_id format" }, { status: 400 })
+  }
+
+  // Verify user owns this content
+  const { data: contentCheck } = await supabase
+    .from("content")
+    .select("id")
+    .eq("id", idParsed.data)
+    .eq("user_id", user.id)
+    .maybeSingle()
+
+  if (!contentCheck) {
+    return NextResponse.json({ error: "Content not found" }, { status: 404 })
   }
 
   const { data, error } = await supabase

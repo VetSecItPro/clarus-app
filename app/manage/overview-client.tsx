@@ -343,7 +343,7 @@ export default function AdminOverview() {
               const tierItems = [
                 { label: "Free", count: tiers.free, color: "bg-white/40", pct: total > 0 ? ((tiers.free / total) * 100).toFixed(1) : "0" },
                 { label: "Starter", count: tiers.starter, color: "bg-brand", pct: total > 0 ? ((tiers.starter / total) * 100).toFixed(1) : "0" },
-                { label: "Pro", count: tiers.pro, color: "bg-purple-500", pct: total > 0 ? ((tiers.pro / total) * 100).toFixed(1) : "0" },
+                { label: "Pro", count: tiers.pro, color: "bg-purple-600", pct: total > 0 ? ((tiers.pro / total) * 100).toFixed(1) : "0" },
                 { label: "Day Pass", count: tiers.day_pass, color: "bg-amber-500", pct: total > 0 ? ((tiers.day_pass / total) * 100).toFixed(1) : "0" },
               ]
               return (

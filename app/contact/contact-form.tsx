@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { contactFormSchema } from "@/lib/schemas"
+import { contactFormSchema } from "@/lib/schemas/contact"
 import { Send, CheckCircle, AlertCircle, Loader2 } from "lucide-react"
 
 type FormState = "idle" | "submitting" | "success" | "error"

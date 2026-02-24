@@ -31,11 +31,36 @@ import { useUserTier } from "@/lib/hooks/use-user-tier"
 import { useActiveAnalysis } from "@/lib/contexts/active-analysis-context"
 import { useTags } from "@/lib/hooks/use-tags"
 import { type AnalysisMode } from "@/lib/analysis-modes"
-import { TagsManager } from "./tags-manager"
-import { SourceHistoryCard } from "./source-history-card"
 import { ContentInfoCard } from "./content-info-card"
-import { ItemAnalysis } from "./item-analysis"
-import { FullTextContent } from "./full-text-content"
+
+// PERF: Dynamic imports for below-fold / tab-conditional components to reduce initial bundle
+const ItemAnalysis = dynamic(() => import("./item-analysis").then(m => ({ default: m.ItemAnalysis })), {
+  ssr: false,
+  loading: () => (
+    <div className="space-y-4 animate-pulse">
+      {[...Array(3)].map((_, i) => (
+        <div key={i} className="p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+          <div className="h-4 bg-white/[0.08] rounded-lg w-1/3 mb-3" />
+          <div className="h-3 bg-white/[0.06] rounded-lg w-full mb-2" />
+          <div className="h-3 bg-white/[0.06] rounded-lg w-4/5" />
+        </div>
+      ))}
+    </div>
+  ),
+})
+const FullTextContent = dynamic(() => import("./full-text-content").then(m => ({ default: m.FullTextContent })), {
+  ssr: false,
+  loading: () => (
+    <div className="space-y-3 animate-pulse p-4 rounded-2xl bg-white/[0.02] border border-white/[0.06]">
+      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
+      <div className="h-4 bg-white/[0.08] rounded-lg w-11/12" />
+      <div className="h-4 bg-white/[0.08] rounded-lg w-full" />
+      <div className="h-4 bg-white/[0.08] rounded-lg w-4/5" />
+    </div>
+  ),
+})
+const TagsManager = dynamic(() => import("./tags-manager").then(m => ({ default: m.TagsManager })), { ssr: false })
+const SourceHistoryCard = dynamic(() => import("./source-history-card").then(m => ({ default: m.SourceHistoryCard })), { ssr: false })
 
 // PERF: Dynamic imports — reduce initial bundle by lazy-loading heavy/conditional components
 const InlineChat = dynamic(() => import("@/components/inline-chat").then(m => ({ default: m.InlineChat })), { ssr: false })
