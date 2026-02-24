@@ -80,7 +80,7 @@ export default function SiteHeader({ showNav = true, showSettings = true }: Site
             <div className="relative">
               <Image
                 src="/clarus-logo.webp"
-                alt="Clarus"
+                alt=""
                 width={40}
                 height={40}
                 sizes="40px"

@@ -84,7 +84,7 @@ export default function LoginPage() {
   // No loading spinner - render form immediately, redirect in background if logged in
 
   return (
-    <div className="min-h-screen bg-black flex">
+    <main id="main-content" className="min-h-screen bg-black flex">
       {/* Left side - Animated background (hidden on mobile) */}
       <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
         {/* Animated gradient orbs — CSS keyframes instead of framer-motion */}
@@ -105,7 +105,7 @@ export default function LoginPage() {
         <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-16 text-center animate-[fadeInUp_0.8s_ease-out]">
             <Link href="/" className="inline-block mb-10 hover:opacity-80 transition-opacity">
               <Image
-                src="/clarus-email-logo-transparent.png"
+                src="/clarus-email-logo-transparent-optimized.png"
                 alt="Clarus"
                 width={400}
                 height={130}
@@ -129,7 +129,7 @@ export default function LoginPage() {
           {/* Mobile logo */}
           <Link href="/" className="lg:hidden flex justify-center mb-8 hover:opacity-80 transition-opacity">
             <Image
-              src="/clarus-email-logo.png"
+              src="/clarus-email-logo-optimized.png"
               alt="Clarus"
               width={140}
               height={48}
@@ -294,6 +294,6 @@ export default function LoginPage() {
           to { opacity: 1; }
         }
       `}</style>
-    </div>
+    </main>
   )
 }

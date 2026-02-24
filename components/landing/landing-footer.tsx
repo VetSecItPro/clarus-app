@@ -12,7 +12,7 @@ export function LandingFooter() {
             <div className="flex items-center gap-2.5">
               <Image
                 src="/clarus-logo.webp"
-                alt="Clarus"
+                alt=""
                 width={32}
                 height={32}
                 sizes="32px"
@@ -28,7 +28,7 @@ export function LandingFooter() {
           </div>
 
           {/* Links — wrap on mobile */}
-          <div className="flex flex-wrap items-center justify-center sm:justify-end gap-x-5 gap-y-2 text-sm text-white/50">
+          <nav aria-label="Footer navigation" className="flex flex-wrap items-center justify-center sm:justify-end gap-x-5 gap-y-2 text-sm text-white/50">
             <Link href="/about" className="hover:text-white/70 transition-colors">
               About
             </Link>
@@ -50,7 +50,7 @@ export function LandingFooter() {
             <Link href="/privacy" className="hover:text-white/70 transition-colors">
               Privacy
             </Link>
-          </div>
+          </nav>
         </div>
 
       </div>

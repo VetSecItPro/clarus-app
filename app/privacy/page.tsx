@@ -39,6 +39,7 @@ export default function PrivacyPage() {
         </div>
 
         {/* Your Rights Summary Cards */}
+        <h2 className="sr-only">Your Privacy Rights</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-12">
           <div className="p-4 bg-white/[0.04] border border-white/[0.08] rounded-xl">
             <Eye className="w-5 h-5 text-brand mb-2" />
