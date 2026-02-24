@@ -68,8 +68,8 @@ const PLANS = [
     accent: {
       bg: "bg-purple-500/[0.06]",
       border: "border-purple-500/30",
-      badge: "bg-purple-500",
-      button: "bg-purple-500 hover:bg-purple-600 text-white shadow-lg shadow-purple-500/25 hover:shadow-purple-500/40",
+      badge: "bg-purple-600",
+      button: "bg-purple-600 hover:bg-purple-700 text-white shadow-lg shadow-purple-600/25 hover:shadow-purple-600/40",
     },
     features: [
       { text: "150 analyses per month (articles, YouTube, X)", included: true },

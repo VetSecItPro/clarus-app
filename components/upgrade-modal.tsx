@@ -36,7 +36,7 @@ const TIER_COLORS: Record<string, { bg: string; border: string; text: string; ac
     bg: "bg-purple-500/10",
     border: "border-purple-500/30",
     text: "text-purple-300",
-    accent: "bg-purple-500 hover:bg-purple-600",
+    accent: "bg-purple-600 hover:bg-purple-700",
   },
 }
 
