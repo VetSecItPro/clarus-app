@@ -227,10 +227,6 @@ function setSecurityHeaders(response: NextResponse) {
 
   response.headers.set("Content-Security-Policy", CSP_DIRECTIVES)
 
-  // Content Security Policy Report-Only (monitoring mode)
-  // Same policy as enforcing mode — enables browser-side violation reporting without blocking
-  response.headers.set("Content-Security-Policy-Report-Only", CSP_DIRECTIVES)
-
   // HSTS - enforce HTTPS (only in production)
   if (process.env.NODE_ENV === "production") {
     response.headers.set(

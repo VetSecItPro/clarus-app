@@ -33,7 +33,7 @@ export default function CookieConsent() {
           <Cookie className="w-4 h-4 text-white/50 flex-shrink-0" />
           <p className="text-white/60 text-xs flex-1">
             Essential cookies only.{" "}
-            <Link href="/privacy" className="text-brand hover:underline">
+            <Link href="/privacy" className="text-brand underline underline-offset-2">
               Privacy
             </Link>
           </p>

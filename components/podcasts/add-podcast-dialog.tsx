@@ -186,9 +186,9 @@ export function AddPodcastDialog({ currentCount, limit, onSubscribed, userTier =
                       value={authHeader}
                       onChange={(e) => setAuthHeader(e.target.value)}
                       disabled={isValidating}
-                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/30 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/30 disabled:opacity-50 transition-colors"
+                      className="w-full px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white text-sm placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/30 disabled:opacity-50 transition-colors"
                     />
-                    <p className="text-[11px] text-white/30 mt-1.5">
+                    <p className="text-[11px] text-white/50 mt-1.5">
                       Only needed for feeds behind HTTP auth. Patreon, Supercast, etc. work with just the URL. Stored encrypted.
                     </p>
                   </motion.div>

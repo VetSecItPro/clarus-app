@@ -219,7 +219,7 @@ export default function PrivacyPage() {
 
               <p className="leading-relaxed mt-4">
                 To exercise any of these rights, contact us at{" "}
-                <a href="mailto:privacy@clarusapp.io" className="text-brand hover:underline">
+                <a href="mailto:privacy@clarusapp.io" className="text-brand underline underline-offset-2">
                   privacy@clarusapp.io
                 </a>. We will respond to your request within 30 days.
               </p>
@@ -277,13 +277,13 @@ export default function PrivacyPage() {
                 </p>
                 <p className="text-white/70">
                   Privacy inquiries:{" "}
-                  <a href="mailto:privacy@clarusapp.io" className="text-brand hover:underline">
+                  <a href="mailto:privacy@clarusapp.io" className="text-brand underline underline-offset-2">
                     privacy@clarusapp.io
                   </a>
                 </p>
                 <p className="text-white/70 mt-1">
                   General support:{" "}
-                  <a href="mailto:support@clarusapp.io" className="text-brand hover:underline">
+                  <a href="mailto:support@clarusapp.io" className="text-brand underline underline-offset-2">
                     support@clarusapp.io
                   </a>
                 </p>
