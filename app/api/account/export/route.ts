@@ -44,7 +44,7 @@ export async function GET() {
     ] = await Promise.all([
       admin.from("users").select("*").eq("id", userId).single(),
       admin.from("content").select("id, url, type, title, author, description, date_added, tags, is_bookmarked, detected_tone, analysis_language, status").eq("user_id", userId),
-      admin.from("summaries").select("content_id, quick_assessment, detailed_analysis, key_claims, action_items, truth_check, triage, processing_status").eq("user_id", userId),
+      admin.from("summaries").select("content_id, brief_overview, detailed_summary, mid_length_summary, action_items, truth_check, triage, topic_segments, processing_status").eq("user_id", userId),
       admin.from("chat_threads").select("id, content_id, created_at").eq("user_id", userId),
       // Chat messages are linked via thread, not user_id directly
       admin.from("chat_threads").select("id").eq("user_id", userId).then(async (threads) => {
@@ -60,15 +60,15 @@ export async function GET() {
         return admin.from("collection_items").select("collection_id, content_id, added_at").in("collection_id", colIds)
       }),
       admin.from("content_ratings").select("content_id, signal_score, created_at").eq("user_id", userId),
-      admin.from("claims").select("content_id, claim_text, claim_index, flag_reason, created_at").eq("user_id", userId),
-      admin.from("section_feedback").select("content_id, section_key, is_positive, created_at").eq("user_id", userId),
-      admin.from("podcast_subscriptions").select("id, rss_url, title, created_at").eq("user_id", userId),
-      admin.from("youtube_subscriptions").select("id, channel_id, channel_title, created_at").eq("user_id", userId),
+      admin.from("claims").select("content_id, claim_text, normalized_text, status, severity, sources, created_at").eq("user_id", userId),
+      admin.from("section_feedback").select("content_id, section_type, is_helpful, claim_index, flag_reason, created_at").eq("user_id", userId),
+      admin.from("podcast_subscriptions").select("id, feed_url, podcast_name, podcast_image_url, is_active, created_at").eq("user_id", userId),
+      admin.from("youtube_subscriptions").select("id, channel_id, channel_name, channel_image_url, is_active, created_at").eq("user_id", userId),
       admin.from("usage_tracking").select("period, analyses_count, chat_messages_count, share_links_count, exports_count, bookmarks_count, podcast_analyses_count").eq("user_id", userId),
-      admin.from("api_usage").select("model, input_tokens, output_tokens, cost_usd, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(500),
+      admin.from("api_usage").select("api_name, operation, tokens_input, tokens_output, estimated_cost_usd, created_at").eq("user_id", userId).order("created_at", { ascending: false }).limit(500),
       admin.from("user_analysis_preferences").select("*").eq("user_id", userId).single(),
       // hidden_content not in generated types yet — cast to bypass
-      (admin.from as (t: string) => ReturnType<typeof admin.from>)("hidden_content").select("content_id, hidden_at").eq("user_id", userId),
+      (admin.from as (t: string) => ReturnType<typeof admin.from>)("hidden_content").select("content_id, created_at").eq("user_id", userId),
     ])
 
     // Strip sensitive internal fields from user data

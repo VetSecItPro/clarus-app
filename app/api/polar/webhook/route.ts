@@ -23,12 +23,12 @@ type AdminClient = ReturnType<typeof createSupabaseAdmin>
 async function getUserEmailAndName(supabaseAdmin: AdminClient, userId: string): Promise<{ email: string; name?: string } | null> {
   const { data, error } = await supabaseAdmin
     .from("users")
-    .select("email, display_name")
+    .select("email, name")
     .eq("id", userId)
     .single()
 
   if (error || !data?.email) return null
-  return { email: data.email, name: data.display_name }
+  return { email: data.email, name: data.name }
 }
 
 async function findUserByCustomerId(supabaseAdmin: AdminClient, customerId: string): Promise<string | undefined> {

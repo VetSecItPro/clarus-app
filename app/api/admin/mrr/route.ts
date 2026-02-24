@@ -67,13 +67,13 @@ export async function GET() {
         .select("id", { count: "exact", head: true })
         .eq("subscription_status", "canceled")
         .gte("subscription_ends_at", monthStart),
-      // New subscriptions this month (active with recent subscription_id)
+      // New subscriptions this month (active with subscription_ends_at in current period)
       supabaseAdmin
         .from("users")
         .select("id", { count: "exact", head: true })
         .in("subscription_status", ["active", "trialing"])
         .not("subscription_id", "is", null)
-        .gte("updated_at", monthStart),
+        .gte("subscription_ends_at", monthStart),
       // Day pass users (active in current month)
       supabaseAdmin
         .from("users")
