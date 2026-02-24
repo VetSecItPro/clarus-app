@@ -221,7 +221,7 @@ export default function SignUpPage() {
     <>
       {showSuccess && <SuccessOverlay onComplete={handleSuccessComplete} />}
 
-      <div className="min-h-screen bg-black flex">
+      <main id="main-content" className="min-h-screen bg-black flex">
         {/* Left side - Animated background (hidden on mobile) */}
         <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden">
           {/* Animated gradient orbs — CSS keyframes */}
@@ -242,11 +242,12 @@ export default function SignUpPage() {
           <div className="relative z-10 w-full h-full flex flex-col items-center justify-center px-16 text-center animate-[fadeInUp_0.8s_ease-out]">
               <Link href="/" className="inline-block mb-10 hover:opacity-80 transition-opacity">
                 <Image
-                  src="/clarus-email-logo-transparent.png"
+                  src="/clarus-email-logo-transparent-optimized.png"
                   alt="Clarus"
                   width={400}
                   height={130}
                   className="h-36 w-auto"
+                  priority
                 />
               </Link>
               <p className="text-4xl font-bold text-white mb-4">
@@ -265,11 +266,12 @@ export default function SignUpPage() {
             {/* Mobile logo */}
             <Link href="/" className="lg:hidden flex justify-center mb-8 hover:opacity-80 transition-opacity">
               <Image
-                src="/clarus-email-logo-transparent.png"
+                src="/clarus-email-logo-transparent-optimized.png"
                 alt="Clarus"
                 width={140}
                 height={48}
                 className="h-10 w-auto"
+                priority
               />
             </Link>
 
@@ -482,7 +484,7 @@ export default function SignUpPage() {
             to { opacity: 1; transform: scale(1); }
           }
         `}</style>
-      </div>
+      </main>
     </>
   )
 }

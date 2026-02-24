@@ -44,11 +44,12 @@ export default function ForgotPasswordPage() {
         {/* Logo */}
         <Link href="/" className="flex justify-center mb-8 hover:opacity-80 transition-opacity">
           <Image
-            src="/clarus-email-logo.png"
+            src="/clarus-email-logo-optimized.png"
             alt="Clarus"
             width={140}
             height={48}
             className="h-10 w-auto"
+            priority
           />
         </Link>
 

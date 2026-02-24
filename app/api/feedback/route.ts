@@ -10,6 +10,8 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/rate-limit"
+import { uuidSchema } from "@/lib/schemas"
 import { z } from "zod"
 import { logger } from "@/lib/logger"
 
@@ -24,6 +26,16 @@ const feedbackSchema = z.object({
 })
 
 export async function POST(request: NextRequest) {
+  // Rate limiting — 30 feedback submissions per minute per IP
+  const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0] || "unknown"
+  const rateLimit = await checkRateLimit(`feedback:${clientIp}`, 30, 60000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json(
+      { error: "Too many requests. Please try again later." },
+      { status: 429, headers: { "Retry-After": String(Math.ceil(rateLimit.resetIn / 1000)) } }
+    )
+  }
+
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user, supabase } = auth
@@ -84,10 +96,16 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "content_id is required" }, { status: 400 })
   }
 
+  // Validate content_id is a valid UUID before using in query
+  const idParsed = uuidSchema.safeParse(contentId)
+  if (!idParsed.success) {
+    return NextResponse.json({ error: "Invalid content_id format" }, { status: 400 })
+  }
+
   const { data, error } = await supabase
     .from("section_feedback")
     .select("id, section_type, is_helpful, claim_index, flag_reason, created_at")
-    .eq("content_id", contentId)
+    .eq("content_id", idParsed.data)
     .eq("user_id", user.id)
 
   if (error) {

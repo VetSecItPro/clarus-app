@@ -10,7 +10,7 @@ export function PublicHeader() {
             <div className="relative">
               <Image
                 src="/clarus-logo.webp"
-                alt="Clarus"
+                alt=""
                 width={40}
                 height={40}
                 priority
@@ -23,7 +23,7 @@ export function PublicHeader() {
             </span>
           </Link>
 
-          <div className="flex items-center gap-6">
+          <nav aria-label="Main navigation" className="flex items-center gap-6">
             <Link href="/articles" className="hidden sm:inline text-sm text-white/50 hover:text-white transition-colors">
               Articles
             </Link>
@@ -33,7 +33,7 @@ export function PublicHeader() {
             <Link href="/login" className="px-5 py-2 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-brand/25 hover:shadow-lg hover:shadow-brand/40 hover:-translate-y-0.5">
               Log In
             </Link>
-          </div>
+          </nav>
         </div>
       </div>
     </header>

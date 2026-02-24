@@ -23,7 +23,7 @@ export function LandingHeader() {
             <div className="relative">
               <Image
                 src="/clarus-logo.webp"
-                alt="Clarus"
+                alt=""
                 width={40}
                 height={40}
                 sizes="40px"
@@ -38,7 +38,7 @@ export function LandingHeader() {
           </Link>
 
           {/* Desktop nav */}
-          <div className="hidden sm:flex items-center gap-6">
+          <nav aria-label="Main navigation" className="hidden sm:flex items-center gap-6">
             <Link href="/articles" prefetch={true} className="text-sm text-white/50 hover:text-white transition-colors">
               Articles
             </Link>
@@ -51,7 +51,7 @@ export function LandingHeader() {
             <Link href="/signup" prefetch={true} className="px-5 py-2 bg-brand hover:bg-brand-hover text-white text-sm font-semibold rounded-full transition-all duration-200 shadow-md shadow-brand/25 hover:shadow-lg hover:shadow-brand/40 hover:-translate-y-0.5">
               Sign Up Free
             </Link>
-          </div>
+          </nav>
 
           {/* Mobile hamburger */}
           <button
@@ -75,7 +75,7 @@ export function LandingHeader() {
             transition={{ duration: 0.2, ease: "easeOut" }}
             className="sm:hidden overflow-hidden border-t border-white/[0.06] bg-black/95 backdrop-blur-2xl"
           >
-            <nav className="flex flex-col px-4 py-4 gap-1">
+            <nav aria-label="Mobile navigation" className="flex flex-col px-4 py-4 gap-1">
               <Link
                 href="/articles"
                 prefetch={true}

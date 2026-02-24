@@ -223,11 +223,11 @@ function PlanCard({
         {plan.features.map((feature) => (
           <li key={feature.text} className="flex items-start gap-2.5">
             {feature.included ? (
-              <Check className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
+              <Check aria-hidden="true" className={`w-4 h-4 mt-0.5 flex-shrink-0 ${
                 plan.color === "blue" ? "text-brand" : plan.color === "purple" ? "text-purple-400" : "text-emerald-400"
               }`} />
             ) : (
-              <X className="w-4 h-4 mt-0.5 flex-shrink-0 text-white/50" />
+              <X aria-hidden="true" className="w-4 h-4 mt-0.5 flex-shrink-0 text-white/50" />
             )}
             <span className={`text-sm ${feature.included ? "text-white/70" : "text-white/50"}`}>
               {feature.text}
@@ -496,13 +496,21 @@ export default function PricingPageClient() {
 function CellValue({ value, accent }: { value: string | boolean; accent?: "blue" | "purple" }) {
   if (value === true) {
     return (
-      <Check className={`w-4 h-4 mx-auto ${
-        accent === "blue" ? "text-brand" : accent === "purple" ? "text-purple-400" : "text-emerald-400"
-      }`} />
+      <>
+        <Check aria-hidden="true" className={`w-4 h-4 mx-auto ${
+          accent === "blue" ? "text-brand" : accent === "purple" ? "text-purple-400" : "text-emerald-400"
+        }`} />
+        <span className="sr-only">Included</span>
+      </>
     )
   }
   if (value === false) {
-    return <X className="w-4 h-4 mx-auto text-white/15" />
+    return (
+      <>
+        <X aria-hidden="true" className="w-4 h-4 mx-auto text-white/15" />
+        <span className="sr-only">Not included</span>
+      </>
+    )
   }
   return (
     <span className={`text-sm ${

@@ -79,6 +79,9 @@ docs/security/
 # Performance
 .perf-reports/
 .perf-audit.json
+# Database
+.db-reports/
+.db-audit.json
 # Launch readiness
 .launch-reports/
 # Generic skill output pattern

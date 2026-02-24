@@ -69,6 +69,7 @@ export default function AboutPage() {
               alt="Clarus"
               width={64}
               height={64}
+              priority
               sizes="64px"
               className="w-16 h-16"
             />
