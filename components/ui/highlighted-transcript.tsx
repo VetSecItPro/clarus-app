@@ -5,7 +5,17 @@ import { Clock, X, CheckCircle, XCircle, AlertCircle, HelpCircle, MessageCircle,
 import { motion, AnimatePresence } from "framer-motion"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip"
 import { useIsDesktop } from "@/lib/hooks/use-media-query"
-import type { ClaimHighlight } from "@/types/database.types"
+import type { ClaimHighlight, CitationSource } from "@/types/database.types"
+
+/** Normalize a claim source (string or object) to {url, title} */
+function normalizeSource(source: string | CitationSource): { url: string; title: string } {
+  if (typeof source === "string") {
+    let domain = source
+    try { domain = new URL(source).hostname.replace("www.", "") } catch { /* keep raw */ }
+    return { url: source.startsWith("http") ? source : `https://${source}`, title: domain }
+  }
+  return { url: source.url, title: source.title || source.url }
+}
 
 interface TranscriptBlock {
   startTimestamp: string
@@ -308,11 +318,14 @@ function DesktopHighlight({ segment, onClick }: { segment: TextSegment; onClick:
             <div className="pt-1 border-t border-white/10">
               <p className="text-white/50 text-[0.625rem] uppercase tracking-wider mb-1">Sources</p>
               <div className="flex flex-wrap gap-1">
-                {segment.claim.sources.slice(0, 2).map((source, i) => (
-                  <span key={i} className="text-[0.625rem] text-brand truncate max-w-[120px]">
-                    {source}
-                  </span>
-                ))}
+                {segment.claim.sources.slice(0, 2).map((source, i) => {
+                  const s = normalizeSource(source)
+                  return (
+                    <a key={i} href={s.url} target="_blank" rel="noopener noreferrer" className="text-[0.625rem] text-brand hover:underline truncate max-w-[120px]">
+                      {s.title}
+                    </a>
+                  )
+                })}
               </div>
             </div>
           )}
@@ -442,18 +455,21 @@ function ClaimDetailSheet({
               <div>
                 <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Sources</p>
                 <div className="space-y-2">
-                  {claim.sources.map((source, i) => (
-                    <a
-                      key={i}
-                      href={source.startsWith("http") ? source : `https://${source}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                    >
-                      <ExternalLink className="w-3.5 h-3.5 text-brand" />
-                      <span className="text-sm text-brand truncate">{source}</span>
-                    </a>
-                  ))}
+                  {claim.sources.map((source, i) => {
+                    const s = normalizeSource(source)
+                    return (
+                      <a
+                        key={i}
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                      >
+                        <ExternalLink className="w-3.5 h-3.5 text-brand" />
+                        <span className="text-sm text-brand truncate">{s.title}</span>
+                      </a>
+                    )
+                  })}
                 </div>
               </div>
             )}
@@ -555,18 +571,21 @@ function ClaimDetailModal({
               <div>
                 <p className="text-xs text-white/50 uppercase tracking-wider mb-2">Sources</p>
                 <div className="space-y-2">
-                  {claim.sources.map((source, i) => (
-                    <a
-                      key={i}
-                      href={source.startsWith("http") ? source : `https://${source}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
-                    >
-                      <ExternalLink className="w-3 h-3 text-brand" />
-                      <span className="text-xs text-brand truncate">{source}</span>
-                    </a>
-                  ))}
+                  {claim.sources.map((source, i) => {
+                    const s = normalizeSource(source)
+                    return (
+                      <a
+                        key={i}
+                        href={s.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-2 p-2 rounded-lg bg-white/5 hover:bg-white/10 transition-colors"
+                      >
+                        <ExternalLink className="w-3 h-3 text-brand" />
+                        <span className="text-xs text-brand truncate">{s.title}</span>
+                      </a>
+                    )
+                  })}
                 </div>
               </div>
             )}

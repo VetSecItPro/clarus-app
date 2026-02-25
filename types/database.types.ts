@@ -34,7 +34,7 @@ export interface ClaimHighlight {
   exact_text: string // Exact phrase from content for text matching
   status: "verified" | "false" | "disputed" | "unverified" | "opinion"
   explanation: string // Brief explanation of the assessment
-  sources?: string[] // URLs supporting the assessment
+  sources?: (string | CitationSource)[] // URLs or {url, title} objects supporting the assessment
   timestamp?: string // e.g., "2:34" for YouTube videos
   severity?: "low" | "medium" | "high"
 }
