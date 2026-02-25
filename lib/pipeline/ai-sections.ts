@@ -537,13 +537,40 @@ export async function generateTruthCheck(fullText: string, contentType: string, 
       }
     }
 
-    // Then collect from per-issue sources (for backward compat and completeness)
+    // Collect from per-issue sources (for backward compat and completeness)
     for (const issue of truthCheck.issues) {
       if (issue.sources) {
         for (const src of issue.sources) {
           if (src.url && !refSeen.has(src.url)) {
             refSeen.add(src.url)
-            // Only include if from Tavily results (anti-hallucination)
+            if (availableUrlSet.has(src.url)) {
+              references.push({ url: src.url, title: src.title })
+            }
+          }
+        }
+      }
+    }
+
+    // Collect from per-claim sources (AI returns these as raw URL strings or objects)
+    if (truthCheck.claims) {
+      for (const claim of truthCheck.claims) {
+        if (!claim.sources || !Array.isArray(claim.sources)) continue
+        // Normalize raw strings to {url, title} objects
+        const rawSources = claim.sources as unknown[]
+        const normalized: Array<{ url: string; title: string }> = []
+        for (const s of rawSources) {
+          if (typeof s === "string" && s.startsWith("http")) {
+            const title = availableUrlMap.get(s) || (() => { try { return new URL(s).hostname } catch { return s } })()
+            normalized.push({ url: s, title })
+          } else if (typeof s === "object" && s !== null && typeof (s as Record<string, unknown>).url === "string") {
+            const obj = s as Record<string, unknown>
+            normalized.push({ url: obj.url as string, title: (obj.title as string) || availableUrlMap.get(obj.url as string) || (obj.url as string) })
+          }
+        }
+        claim.sources = normalized as unknown as string[]
+        for (const src of normalized) {
+          if (src.url && !refSeen.has(src.url)) {
+            refSeen.add(src.url)
             if (availableUrlSet.has(src.url)) {
               references.push({ url: src.url, title: src.title })
             }
