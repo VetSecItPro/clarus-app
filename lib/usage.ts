@@ -52,11 +52,15 @@ export async function getUserTier(
   supabase: SupabaseClient<Database>,
   userId: string
 ): Promise<UserTier> {
-  const { data } = await supabase
+  const { data, error } = await supabase
     .from("users")
     .select("tier, day_pass_expires_at")
     .eq("id", userId)
     .single()
+
+  if (error) {
+    console.error("[usage] getUserTier DB query failed for user", userId, "— falling back to free:", error.message)
+  }
 
   return normalizeTier(data?.tier, data?.day_pass_expires_at)
 }
@@ -346,6 +350,47 @@ export async function enforceUsageLimit(
  * @param field - The usage counter field
  * @returns `{ allowed: true, tier, newCount, limit }` or `{ allowed: false, tier, limit }`
  */
+/**
+ * Atomically checks whether a user is under their library (content) item limit.
+ *
+ * Calls the `check_library_limit` Postgres RPC, which acquires a per-user
+ * advisory transaction lock before counting rows. Concurrent requests for the
+ * same user are serialized at the database level, eliminating the TOCTOU race
+ * where two simultaneous requests both read N-1 items and both proceed to insert.
+ *
+ * Admin users bypass the limit entirely (returns true immediately).
+ *
+ * @param supabase  - An authenticated Supabase client (service role or session)
+ * @param userId    - The user whose library is being checked
+ * @param maxItems  - The tier limit passed from the calling route
+ * @returns `true` if the user is under the limit and may proceed, `false` if at/over limit
+ */
+export async function checkLibraryLimitAtomic(
+  supabase: SupabaseClient<Database>,
+  userId: string,
+  maxItems: number
+): Promise<boolean> {
+  // Admin bypass: unlimited library
+  if (await isUserAdmin(supabase, userId)) return true
+
+  const { data, error } = await (supabase as unknown as {
+    rpc: (fn: string, params: Record<string, unknown>) =>
+      PromiseLike<{ data: boolean | null; error: { message: string } | null }>
+  }).rpc("check_library_limit", { p_user_id: userId, p_max_items: maxItems })
+
+  if (error) {
+    // RPC unavailable — fall back to a plain count (non-atomic but functional)
+    logger.warn("[usage] check_library_limit RPC unavailable, falling back to count:", error.message)
+    const { count } = await supabase
+      .from("content")
+      .select("id", { count: "exact", head: true })
+      .eq("user_id", userId)
+    return (count ?? 0) < maxItems
+  }
+
+  return data === true
+}
+
 export async function enforceAndIncrementUsage(
   supabase: SupabaseClient<Database>,
   userId: string,
@@ -355,8 +400,11 @@ export async function enforceAndIncrementUsage(
   | { allowed: false; tier: UserTier; limit: number }
 > {
   // Admin bypass: admin users have no usage limits (still increment for tracking)
-  const adminUser = await isUserAdmin(supabase, userId)
-  const tier = await getUserTier(supabase, userId)
+  // SEC-BIZ-003: Parallelize admin and tier lookups to avoid sequential DB calls
+  const [adminUser, tier] = await Promise.all([
+    isUserAdmin(supabase, userId),
+    getUserTier(supabase, userId),
+  ])
   const limit = adminUser ? Number.MAX_SAFE_INTEGER : getLimitForField(tier, field)
   const period = getCurrentPeriod()
 

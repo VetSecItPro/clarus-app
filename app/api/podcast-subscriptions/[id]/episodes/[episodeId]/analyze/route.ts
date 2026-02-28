@@ -10,7 +10,7 @@
 import { NextResponse, type NextRequest } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
 import { validateUUID } from "@/lib/validation"
-import { checkUsageLimit, getUserTierAndAdmin } from "@/lib/usage"
+import { checkUsageLimit, getUserTierAndAdmin, checkLibraryLimitAtomic } from "@/lib/usage"
 import { getEffectiveLimits } from "@/lib/tier-limits"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { processContent, ProcessContentError } from "@/lib/process-content"
@@ -88,7 +88,10 @@ export async function POST(
     )
   }
 
-  // Pre-flight usage check (read-only — processContent handles atomic enforcement + increment)
+  // Pre-flight usage check — read-only snapshot to avoid wasting transcription/AI
+  // compute when the user is already over quota. There is an intentional TOCTOU window
+  // between this check and the actual increment, but it is harmless: processContent()
+  // calls enforceAndIncrementUsage() atomically, which is the real enforcement guard.
   const gate = await checkUsageLimit(supabase, user.id, "podcast_analyses_count")
   if (!gate.allowed) {
     return NextResponse.json(
@@ -99,15 +102,12 @@ export async function POST(
     )
   }
 
-  // Enforce library items limit before creating content
+  // Enforce library items limit atomically (prevents concurrent-request bypass)
   const { tier, isAdmin } = await getUserTierAndAdmin(supabase, user.id)
   const libraryLimit = getEffectiveLimits(tier, isAdmin).library
-  const { count: libraryCount } = await supabase
-    .from("content")
-    .select("id", { count: "exact", head: true })
-    .eq("user_id", user.id)
 
-  if ((libraryCount ?? 0) >= libraryLimit) {
+  const underLimit = await checkLibraryLimitAtomic(supabase, user.id, libraryLimit)
+  if (!underLimit) {
     return NextResponse.json(
       { error: `Library limit reached (${libraryLimit} items on ${tier} tier). Upgrade for more.` },
       { status: 403 }
