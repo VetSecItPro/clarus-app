@@ -71,6 +71,10 @@ export async function GET(request: NextRequest) {
         logger.warn("Full-text search function not available, using fallback ILIKE search")
         return fallbackSearch(auth.supabase, userId, query, contentType || null, limit, offset, bookmarkOnly, parsedTags)
       }
+      // Malformed search query (e.g. invalid tsquery syntax from special characters)
+      if (error.code === "22023" || error.message.includes("syntax error in tsquery") || error.message.includes("websearch_to_tsquery")) {
+        return AuthErrors.badRequest("Invalid search query syntax")
+      }
       throw error
     }
 
@@ -233,6 +237,10 @@ export async function POST(request: NextRequest) {
           .limit(limit)
 
         return NextResponse.json({ success: true, suggestions: fallbackData || [], fallback: true })
+      }
+      // Malformed search query (e.g. invalid tsquery syntax from special characters)
+      if (error.code === "22023" || error.message.includes("syntax error in tsquery") || error.message.includes("websearch_to_tsquery")) {
+        return AuthErrors.badRequest("Invalid search query syntax")
       }
       throw error
     }
