@@ -11,12 +11,19 @@
 
 import { NextResponse } from "next/server"
 import { authenticateRequest, getAdminClient } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { logger } from "@/lib/logger"
 
 export async function GET() {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user } = auth
+
+  // Strict rate limit: 5 requests per hour per user (exports are expensive full-table scans)
+  const rateLimit = await checkRateLimit(`account:export:${user.id}`, 5, 3_600_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
+  }
 
   // Use admin client to bypass RLS for full data export
   const admin = getAdminClient()

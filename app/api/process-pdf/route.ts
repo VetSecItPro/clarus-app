@@ -3,7 +3,7 @@ import type { Database } from "@/types/database.types"
 import { type NextRequest, NextResponse } from "next/server"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { authenticateRequest } from "@/lib/auth"
-import { getUserTierAndAdmin } from "@/lib/usage"
+import { checkUsageLimit, getUserTierAndAdmin, checkLibraryLimitAtomic } from "@/lib/usage"
 import { getEffectiveLimits } from "@/lib/tier-limits"
 import { processContent, ProcessContentError } from "@/lib/process-content"
 import type { AnalysisLanguage } from "@/lib/languages"
@@ -130,16 +130,26 @@ export async function POST(req: NextRequest) {
   const userId = auth.user.id
 
   try {
-    // Enforce library size limit (admin users bypass all limits)
+    // Pre-flight quota check — avoids wasting OCR/file-processing compute when the
+    // user is already over limit. This is intentionally a read-only snapshot check;
+    // processContent() re-enforces the limit atomically (enforceAndIncrementUsage),
+    // so the TOCTOU window here is harmless — the atomic guard is the real enforcement.
+    const gate = await checkUsageLimit(auth.supabase, userId, "analyses_count")
+    if (!gate.allowed) {
+      return NextResponse.json(
+        {
+          error: `You've used ${gate.currentCount}/${gate.limit} analyses this month on the ${gate.tier} tier. Upgrade to analyze more content.`,
+        },
+        { status: 403 }
+      )
+    }
+
+    // Enforce library size limit atomically (prevents concurrent-request bypass)
     const { tier, isAdmin } = await getUserTierAndAdmin(auth.supabase, userId)
     const libraryLimit = getEffectiveLimits(tier, isAdmin).library
 
-    const { count: libraryCount } = await auth.supabase
-      .from("content")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", userId)
-
-    if ((libraryCount ?? 0) >= libraryLimit) {
+    const underLimit = await checkLibraryLimitAtomic(auth.supabase, userId, libraryLimit)
+    if (!underLimit) {
       return NextResponse.json(
         { error: `Library limit reached (${libraryLimit} items on ${tier} tier). Upgrade for more storage.` },
         { status: 403 }

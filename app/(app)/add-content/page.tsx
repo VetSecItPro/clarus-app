@@ -176,16 +176,18 @@ export default function AddContentPage() {
       return
     }
 
-    // Re-check library limit
-    const { count: currentCount } = await supabase
-      .from("content")
-      .select("id", { count: "exact", head: true })
-      .eq("user_id", user.id)
+    // Re-check library limit atomically via RPC (prevents concurrent-request bypass)
+    if (libraryLimit !== null) {
+      const { data: underLimit } = await (supabase as unknown as {
+        rpc: (fn: string, params: Record<string, unknown>) =>
+          PromiseLike<{ data: boolean | null; error: unknown }>
+      }).rpc("check_library_limit", { p_user_id: user.id, p_max_items: libraryLimit })
 
-    if (libraryLimit !== null && (currentCount ?? 0) >= libraryLimit) {
-      setError(`Library limit reached (${libraryLimit} items). Upgrade your plan for more storage.`)
-      setIsLoading(false)
-      return
+      if (underLimit === false) {
+        setError(`Library limit reached (${libraryLimit} items). Upgrade your plan for more storage.`)
+        setIsLoading(false)
+        return
+      }
     }
 
     const validation = validateUrl(url.trim())

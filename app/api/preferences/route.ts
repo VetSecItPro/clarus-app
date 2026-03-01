@@ -10,6 +10,7 @@
 
 import { NextResponse } from "next/server"
 import { authenticateRequest } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { getUserTier } from "@/lib/usage"
 import { TIER_FEATURES } from "@/lib/tier-limits"
 import { updatePreferencesSchema } from "@/lib/schemas"
@@ -26,6 +27,12 @@ export async function GET() {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user, supabase } = auth
+
+  // Moderate rate limit: 30 requests per minute per user
+  const rateLimit = await checkRateLimit(`preferences:get:${user.id}`, 30, 60_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
+  }
 
   const { data, error } = await supabase
     .from("user_analysis_preferences")
@@ -48,6 +55,12 @@ export async function PUT(request: Request) {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user, supabase } = auth
+
+  // Moderate rate limit: 30 requests per minute per user
+  const putRateLimit = await checkRateLimit(`preferences:put:${user.id}`, 30, 60_000)
+  if (!putRateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
+  }
 
   // Tier gate: Starter+ only
   const tier = await getUserTier(supabase, user.id)

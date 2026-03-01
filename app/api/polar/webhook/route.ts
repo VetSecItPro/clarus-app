@@ -9,6 +9,19 @@ import {
 } from "@/lib/email"
 import { logger } from "@/lib/logger"
 
+// SEC-INTEG-001: In-memory idempotency guard to prevent duplicate event processing
+// within the same serverless instance lifetime. Not persistent across cold starts,
+// but prevents duplicate processing from rapid Polar retries.
+const processedEventIds = new Set<string>()
+const EVENT_TTL_MS = 5 * 60 * 1000 // 5 minutes
+function markEventProcessed(eventId: string): boolean {
+  if (processedEventIds.has(eventId)) return false
+  processedEventIds.add(eventId)
+  // Auto-evict after TTL to prevent unbounded memory growth
+  setTimeout(() => processedEventIds.delete(eventId), EVENT_TTL_MS)
+  return true
+}
+
 // FIX-020: Create Supabase admin client inside handler to avoid stale module-level connections
 function createSupabaseAdmin() {
   return createClient(
@@ -111,6 +124,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
     throw err
+  }
+
+  // SEC-INTEG-001: Idempotency check — skip duplicate events within same instance lifetime
+  const eventId = (event as { id?: string }).id
+  if (eventId && !markEventProcessed(eventId)) {
+    logger.warn(`[Polar Webhook] Duplicate event ignored: ${eventId}`)
+    return NextResponse.json({ received: true })
   }
 
   // FIX-020: Create Supabase admin client inside handler (not module-level) to avoid stale connections
@@ -256,25 +276,33 @@ export async function POST(request: Request) {
         }
 
         if (userId) {
+          const periodEnd = subscription.currentPeriodEnd
+            ? new Date(subscription.currentPeriodEnd).toISOString()
+            : new Date().toISOString()
           await updateUserSubscription(supabaseAdmin, userId, {
             subscription_status: "canceled",
             tier: "free",
-            subscription_ends_at: new Date().toISOString(),
+            subscription_ends_at: periodEnd,
           })
 
-          const user = await getUserEmailAndName(supabaseAdmin, userId)
-          if (user) {
-            const tier = resolveTier(subscription.metadata, subscription.productId)
-            const endDate = subscription.currentPeriodEnd
-              ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
-              : "today"
-            await sendSubscriptionCancelledEmail(
-              user.email,
-              user.name,
-              tierDisplayName(tier),
-              endDate,
-              "https://clarusapp.io/pricing"
-            )
+          // SEC-INTEG-002: Wrap email in try/catch so email failure does not block the tier update
+          try {
+            const user = await getUserEmailAndName(supabaseAdmin, userId)
+            if (user) {
+              const tier = resolveTier(subscription.metadata, subscription.productId)
+              const endDate = subscription.currentPeriodEnd
+                ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+                : "today"
+              await sendSubscriptionCancelledEmail(
+                user.email,
+                user.name,
+                tierDisplayName(tier),
+                endDate,
+                "https://clarusapp.io/pricing"
+              )
+            }
+          } catch (emailErr) {
+            logger.error("[Polar Webhook] Failed to send cancellation email (non-fatal):", emailErr)
           }
         }
         break

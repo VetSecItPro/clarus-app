@@ -4,6 +4,9 @@ on:
   pull_request:
     branches: [main]
 
+permissions:
+  contents: read
+
 concurrency:
   group: ci-${{ github.head_ref || github.ref_name }}
   cancel-in-progress: true
@@ -62,7 +65,6 @@ jobs:
 
       - name: Dependency audit
         run: pnpm audit --audit-level=high
-        continue-on-error: true
 
       - name: Secret pattern scan
         run: |
@@ -83,7 +85,6 @@ jobs:
           config: >-
             p/owasp-top-ten
             p/nextjs
-        continue-on-error: true
 
   # ─── Build (gates e2e, lighthouse, bundle-size) ───
   build:
@@ -141,7 +142,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Download build artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: nextjs-build
           path: .next
@@ -182,7 +183,7 @@ jobs:
       - run: pnpm install --frozen-lockfile
 
       - name: Download build artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: nextjs-build
           path: .next
@@ -202,7 +203,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Download build artifact
-        uses: actions/download-artifact@v7
+        uses: actions/download-artifact@v4
         with:
           name: nextjs-build
           path: .next

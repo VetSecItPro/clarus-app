@@ -4,6 +4,7 @@ import { getAdminClient } from "@/lib/auth"
 import { sendWeeklyDigestEmail } from "@/lib/email"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { parseAiResponseOrThrow } from "@/lib/ai-response-parser"
+import { sanitizeForPrompt } from "@/lib/prompt-sanitizer"
 import type { TriageData, TruthCheckData, WeeklyInsights, Json } from "@/types/database.types"
 import { logger } from "@/lib/logger"
 
@@ -262,9 +263,10 @@ async function generateWeeklyInsights(
 
       return {
         id: c.id,
-        title: c.title || "Untitled",
+        // SEC-LLM-002: Sanitize user-sourced title and tags before injection into prompt
+        title: sanitizeForPrompt(c.title || "Untitled", { context: "weekly-digest-title" }),
         type: c.type || "article",
-        tags: c.tags || [],
+        tags: (c.tags || []).map(t => sanitizeForPrompt(t, { context: "weekly-digest-tag" })),
         quality_score: triage?.quality_score ?? null,
         content_category: triage?.content_category ?? null,
         target_audience: triage?.target_audience ?? [],
@@ -281,9 +283,10 @@ async function generateWeeklyInsights(
     const claimSummaries = claims.slice(0, 50).map(cl => {
       const matchingContent = contentById.get(cl.content_id)
       return {
-        claim: cl.claim_text,
+        // SEC-LLM-002: Sanitize user-sourced claim text and source title before injection into prompt
+        claim: sanitizeForPrompt(cl.claim_text, { context: "weekly-digest-claim" }),
         status: cl.status,
-        source_title: matchingContent?.title || "Unknown",
+        source_title: sanitizeForPrompt(matchingContent?.title || "Unknown", { context: "weekly-digest-source" }),
         content_id: cl.content_id,
       }
     })
@@ -293,7 +296,7 @@ async function generateWeeklyInsights(
     const totalWordCount = articleCount * 1500 // Average article length estimate
     const totalDurationSeconds = content.reduce((sum, c) => sum + (c.duration ?? 0), 0)
 
-    const systemPrompt = `You are an analytics assistant for Clarus, an AI-powered content analysis tool. Generate personalized weekly insights based on a user's content analysis activity. Be concise and insightful. Respond ONLY with valid JSON matching the exact schema provided.`
+    const systemPrompt = `You are an analytics assistant for Clarus, an AI-powered content analysis tool. Generate personalized weekly insights based on a user's content analysis activity. Be concise and insightful. Respond ONLY with valid JSON matching the exact schema provided. If content involves CSAM, terrorism instructions, or weapons manufacturing details, respond with CONTENT_REFUSED and a brief reason.`
 
     const userPrompt = `Analyze this user's weekly content analysis activity and generate personalized insights.
 

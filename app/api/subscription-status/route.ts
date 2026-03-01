@@ -13,11 +13,18 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { authenticateRequest, AuthErrors } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/rate-limit"
 
 export async function GET(request: NextRequest) {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user, supabase } = auth
+
+  // Moderate rate limit: 30 requests per minute per user
+  const rateLimit = await checkRateLimit(`subscription-status:${user.id}`, 30, 60_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
+  }
 
   const searchParams = request.nextUrl.searchParams
   const type = searchParams.get("type")

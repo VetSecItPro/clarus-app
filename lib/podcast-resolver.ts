@@ -14,6 +14,7 @@
  */
 
 import { fetchAndParseFeed } from "./rss-parser"
+import { validateUrl } from "./validation"
 
 export interface PodcastFeedInfo {
   feedUrl: string
@@ -139,11 +140,17 @@ async function resolveApplePodcasts(url: URL): Promise<PodcastFeedInfo> {
       throw new Error("Apple Podcasts listing doesn't include an RSS feed URL")
     }
 
+    // SECURITY: Validate the iTunes-provided feedUrl against SSRF before fetching (SEC-TAINT-001)
+    const feedUrlValidation = validateUrl(result.feedUrl)
+    if (!feedUrlValidation.isValid || !feedUrlValidation.sanitized) {
+      throw new Error("Podcast feed URL is not allowed")
+    }
+
     // Validate the feed is actually fetchable
-    const feedData = await fetchAndParseFeed(result.feedUrl)
+    const feedData = await fetchAndParseFeed(feedUrlValidation.sanitized)
 
     return {
-      feedUrl: result.feedUrl,
+      feedUrl: feedUrlValidation.sanitized,
       podcastName: feedData.feed.title || result.collectionName || "Unknown Podcast",
       podcastImageUrl: feedData.feed.imageUrl || result.artworkUrl600 || result.artworkUrl100 || null,
     }
@@ -226,11 +233,16 @@ async function resolveFromWebsite(websiteUrl: string): Promise<PodcastFeedInfo> 
     }
 
     // Try each discovered feed until one works
+    // SECURITY: Validate each HTML-discovered URL against SSRF before fetching (SEC-TAINT-001)
     for (const feedUrl of discoveredFeeds) {
+      const feedUrlValidation = validateUrl(feedUrl)
+      if (!feedUrlValidation.isValid || !feedUrlValidation.sanitized) {
+        continue // Skip URLs that fail SSRF validation
+      }
       try {
-        const feedData = await fetchAndParseFeed(feedUrl)
+        const feedData = await fetchAndParseFeed(feedUrlValidation.sanitized)
         return {
-          feedUrl,
+          feedUrl: feedUrlValidation.sanitized,
           podcastName: feedData.feed.title || "Unknown Podcast",
           podcastImageUrl: feedData.feed.imageUrl,
         }
