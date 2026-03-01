@@ -149,5 +149,8 @@ podcast-*.png
 # QA test reports
 .qatest-reports/
 
+# Red team reports
+.redteam-reports/
+
 # Supabase CLI temp files
 supabase/.temp/
