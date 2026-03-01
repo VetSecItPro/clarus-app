@@ -52,7 +52,7 @@ export async function POST(request: Request) {
     const feedInfo = await resolvePodcastFeed(parsed.data.url)
     return NextResponse.json(feedInfo)
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Failed to resolve podcast feed"
-    return NextResponse.json({ error: message }, { status: 422 })
+    console.error("[resolve-podcast-feed] Failed to resolve podcast feed:", err)
+    return NextResponse.json({ error: "Failed to resolve podcast feed" }, { status: 422 })
   }
 }

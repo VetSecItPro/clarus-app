@@ -36,7 +36,7 @@ function isPublicRoute(pathname: string): boolean {
 const isDev = process.env.NODE_ENV === "development"
 const CSP_DIRECTIVES = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""} https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com https://va.vercel-scripts.com`,
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : " 'strict-dynamic'"} https://cdn.jsdelivr.net https://www.youtube.com https://s.ytimg.com https://va.vercel-scripts.com`,
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: blob: https: http:",

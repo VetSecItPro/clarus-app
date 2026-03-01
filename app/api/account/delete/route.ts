@@ -11,12 +11,19 @@
 
 import { NextResponse } from "next/server"
 import { authenticateRequest, getAdminClient } from "@/lib/auth"
+import { checkRateLimit } from "@/lib/rate-limit"
 import { logger } from "@/lib/logger"
 
 export async function DELETE(request: Request) {
   const auth = await authenticateRequest()
   if (!auth.success) return auth.response
   const { user } = auth
+
+  // Very strict rate limit: 3 requests per hour per user (account deletion is irreversible)
+  const rateLimit = await checkRateLimit(`account:delete:${user.id}`, 3, 3_600_000)
+  if (!rateLimit.allowed) {
+    return NextResponse.json({ error: "Too many requests. Please try again later." }, { status: 429 })
+  }
 
   // Require explicit confirmation in request body
   let body: { confirm?: string }
@@ -81,6 +88,8 @@ export async function DELETE(request: Request) {
     // 5. Delete user-owned records from tables with user_id
     await Promise.all([
       admin.from("chat_threads").delete().eq("user_id", userId),
+      // content_votes not in generated types yet — cast to bypass
+      (admin.from as (t: string) => ReturnType<typeof admin.from>)("content_votes").delete().eq("user_id", userId),
       admin.from("content").delete().eq("user_id", userId),
       admin.from("collections").delete().eq("user_id", userId),
       // hidden_content not in generated types yet — cast to bypass

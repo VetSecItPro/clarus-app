@@ -16,6 +16,7 @@ import { authenticateRequest, getAdminClient } from "@/lib/auth"
 import { checkRateLimit } from "@/lib/rate-limit"
 import { TIER_FEATURES, normalizeTier } from "@/lib/tier-limits"
 import { parseAiResponseOrThrow } from "@/lib/ai-response-parser"
+import { sanitizeForPrompt, wrapUserContent } from "@/lib/prompt-sanitizer"
 import { logApiUsage, createTimer } from "@/lib/api-usage"
 import { compareContentSchema, parseBody } from "@/lib/schemas"
 import type { UserTier } from "@/types/database.types"
@@ -185,26 +186,35 @@ export async function POST(request: NextRequest) {
     const sourceSections = contentItems.map((item, i) => {
       const truthCheck = item.summary?.truth_check
       const triage = item.summary?.triage
-      const truthCheckStr = truthCheck ? JSON.stringify(truthCheck) : "Not available"
-      const triageStr = triage ? JSON.stringify(triage) : "Not available"
+      const truthCheckStr = truthCheck
+        ? sanitizeForPrompt(JSON.stringify(truthCheck), { context: "compare-truth-check" })
+        : "Not available"
+      const triageStr = triage
+        ? sanitizeForPrompt(JSON.stringify(triage), { context: "compare-triage" })
+        : "Not available"
+      const title = sanitizeForPrompt(item.title ?? "Untitled", { context: "compare-title" })
+      const overview = sanitizeForPrompt(
+        item.summary?.brief_overview ?? "Not available",
+        { context: "compare-overview" }
+      )
 
-      return `
-### Source ${i + 1}: "${item.title ?? "Untitled"}"
+      return wrapUserContent(`
+### Source ${i + 1}: "${title}"
 - URL: ${item.url}
 - Type: ${item.type ?? "unknown"}
 
 **Brief Overview:**
-${item.summary?.brief_overview ?? "Not available"}
+${overview}
 
 **Truth Check Analysis:**
 ${truthCheckStr}
 
 **Quality Triage:**
 ${triageStr}
-`
+`)
     }).join("\n---\n")
 
-    const systemPrompt = `You are an expert comparative analyst. Your job is to compare multiple content sources and provide a structured, objective comparison. Focus on factual differences, areas of agreement, unique contributions from each source, and an overall reliability assessment.
+    const systemPrompt = `You are an expert comparative analyst. Your job is to compare multiple content sources and provide a structured, objective comparison. Focus on factual differences, areas of agreement, unique contributions from each source, and an overall reliability assessment. If content involves CSAM, terrorism instructions, or weapons manufacturing details, respond with CONTENT_REFUSED and a brief reason.
 
 You MUST respond with valid JSON matching this exact structure:
 {

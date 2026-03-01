@@ -13,6 +13,8 @@
  * @see {@link app/api/crons/check-podcast-feeds/route.ts} for episode polling
  */
 
+import { validateUrl } from "./validation"
+
 /** Error thrown when a feed returns 401/403, indicating authentication is required. */
 export class FeedAuthError extends Error {
   readonly statusCode: number
@@ -325,6 +327,8 @@ export async function fetchAndParseFeed(feedUrl: string, options?: FetchFeedOpti
   const controller = new AbortController()
   const timeoutId = setTimeout(() => controller.abort(), 15000) // 15 second timeout
 
+  const MAX_REDIRECTS = 5
+
   try {
     const headers: Record<string, string> = {
       "User-Agent": "Clarus/1.0 (Podcast Feed Reader)",
@@ -335,10 +339,36 @@ export async function fetchAndParseFeed(feedUrl: string, options?: FetchFeedOpti
       headers["Authorization"] = options.authHeader
     }
 
-    const response = await fetch(feedUrl, {
-      signal: controller.signal,
-      headers,
-    })
+    // SECURITY: Follow redirects manually so each hop is re-validated against SSRF.
+    let targetUrl = feedUrl
+    let redirectCount = 0
+    let response: Response
+
+    while (true) {
+      response = await fetch(targetUrl, {
+        signal: controller.signal,
+        headers,
+        redirect: "manual",
+      })
+
+      if (response.status >= 300 && response.status < 400) {
+        const location = response.headers.get("location")
+        if (!location || redirectCount >= MAX_REDIRECTS) {
+          throw new Error("Too many redirects or missing Location header")
+        }
+        // Resolve relative redirects against the current URL
+        const resolved = new URL(location, targetUrl).href
+        // Re-validate each redirect hop against SSRF protection
+        const redirectValidation = validateUrl(resolved)
+        if (!redirectValidation.isValid || !redirectValidation.sanitized) {
+          throw new Error("Redirect destination blocked by SSRF protection")
+        }
+        targetUrl = redirectValidation.sanitized
+        redirectCount++
+        continue
+      }
+      break
+    }
 
     if (response.status === 401 || response.status === 403) {
       throw new FeedAuthError(response.status, feedUrl)
