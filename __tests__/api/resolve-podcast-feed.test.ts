@@ -196,7 +196,7 @@ describe("POST /api/resolve-podcast-feed", () => {
     const body = await response.json()
 
     expect(response.status).toBe(422)
-    expect(body.error).toMatch(/no rss feed found/i)
+    expect(body.error).toMatch(/failed to resolve podcast feed/i)
   })
 
   it("returns 422 with generic message for non-Error rejections", async () => {

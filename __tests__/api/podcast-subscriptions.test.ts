@@ -10,8 +10,9 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 let mockAuthSuccess = true
 const mockUser = { id: "user-abc-123", email: "test@clarusapp.io" }
 
-// Supabase instance shared via auth mock — tests replace .from per test
+// Supabase instance shared via auth mock — tests replace .from/.rpc per test
 let mockSupabaseFrom: ReturnType<typeof vi.fn>
+const mockSupabaseRpc = vi.fn()
 
 vi.mock("@/lib/auth", async (importOriginal) => {
   // Re-export the REAL AuthErrors so routes get valid NextResponse objects.
@@ -32,6 +33,7 @@ vi.mock("@/lib/auth", async (importOriginal) => {
         user: mockUser,
         supabase: {
           from: (...args: unknown[]) => mockSupabaseFrom(...args),
+          rpc: (...args: unknown[]) => mockSupabaseRpc(...args),
         },
       }
     }),
@@ -51,9 +53,11 @@ vi.mock("@/lib/rate-limit", () => ({
 // ---------------------------------------------------------------------------
 const mockCheckUsageLimit = vi.fn()
 const mockGetUserTierAndAdmin = vi.fn()
+const mockCheckLibraryLimitAtomic = vi.fn()
 vi.mock("@/lib/usage", () => ({
   checkUsageLimit: (...args: unknown[]) => mockCheckUsageLimit(...args),
   getUserTierAndAdmin: (...args: unknown[]) => mockGetUserTierAndAdmin(...args),
+  checkLibraryLimitAtomic: (...args: unknown[]) => mockCheckLibraryLimitAtomic(...args),
 }))
 
 // ---------------------------------------------------------------------------
@@ -256,6 +260,8 @@ describe("GET /api/podcast-subscriptions", () => {
     mockCheckRateLimit.mockResolvedValue({ allowed: true, resetIn: 0 })
     // parseQuery not called by list route
     mockParseQuery.mockReturnValue({ success: true, data: { limit: 50, offset: 0 } })
+    // rpc("get_latest_podcast_episodes") returns empty array by default
+    mockSupabaseRpc.mockResolvedValue({ data: [], error: null })
   })
 
   it("returns 401 when unauthenticated", async () => {
@@ -292,18 +298,22 @@ describe("GET /api/podcast-subscriptions", () => {
       },
     ]
 
-    const mockEpisodes = [
-      {
-        subscription_id: VALID_UUID,
-        episode_title: "Episode 1",
-        episode_date: "2026-01-15T00:00:00Z",
-      },
-    ]
-
+    // Route fetches subscriptions via .from(), then latest episodes via .rpc()
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "podcast_subscriptions") return makeChain(dbOk(mockSubs))
-      if (table === "podcast_episodes") return makeChain(dbOk(mockEpisodes))
       return makeChain(dbOk([]))
+    })
+
+    // rpc("get_latest_podcast_episodes") returns one row per subscription
+    mockSupabaseRpc.mockResolvedValue({
+      data: [
+        {
+          subscription_id: VALID_UUID,
+          episode_title: "Episode 1",
+          episode_date: "2026-01-15T00:00:00Z",
+        },
+      ],
+      error: null,
     })
 
     const response = await listSubscriptions()
@@ -337,9 +347,9 @@ describe("GET /api/podcast-subscriptions", () => {
       },
     ]
 
+    // Route fetches subscriptions via .from(), then latest episodes via .rpc() (default: empty)
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "podcast_subscriptions") return makeChain(dbOk(mockSubs))
-      if (table === "podcast_episodes") return makeChain(dbOk([]))
       return makeChain(dbOk([]))
     })
 
@@ -876,6 +886,7 @@ describe("POST /api/podcast-subscriptions/[id]/episodes/[episodeId]/analyze", ()
     })
     mockGetUserTierAndAdmin.mockResolvedValue({ tier: "starter", isAdmin: false })
     mockGetEffectiveLimits.mockReturnValue({ library: 500 })
+    mockCheckLibraryLimitAtomic.mockResolvedValue(true)
     mockProcessContent.mockResolvedValue({ success: true })
     mockDecryptFeedCredential.mockReturnValue("Bearer token-123")
   })
@@ -910,22 +921,21 @@ describe("POST /api/podcast-subscriptions/[id]/episodes/[episodeId]/analyze", ()
    *
    * The route does:
    *   1. Promise.all([subscriptions.single(), episodes.single()])
-   *   2. getUserTierAndAdmin (already mocked via mockGetUserTierAndAdmin)
-   *   3. content.select(count)
-   *   4. content.insert().select().single()
-   *   5. podcast_episodes.update().eq()
+   *   2. checkUsageLimit (already mocked via mockCheckUsageLimit)
+   *   3. getUserTierAndAdmin (already mocked via mockGetUserTierAndAdmin)
+   *   4. checkLibraryLimitAtomic (already mocked via mockCheckLibraryLimitAtomic)
+   *   5. content.insert().select().single()
+   *   6. podcast_episodes.update().eq()
    */
   function wireSuccessfulAnalyzeMock(overrides: {
     contentId?: string
     episodeContentId?: null | string
     subscriptionEncryptedHeader?: string | null
-    libraryCount?: number
   } = {}) {
     const {
       contentId = VALID_UUID_2,
       episodeContentId = null,
       subscriptionEncryptedHeader = null,
-      libraryCount = 5,
     } = overrides
 
     const subscription = {
@@ -951,7 +961,7 @@ describe("POST /api/podcast-subscriptions/[id]/episodes/[episodeId]/analyze", ()
 
       if (table === "podcast_subscriptions") {
         if (callNum === 1) return makeChain(dbOk(subscription))
-        // 2nd call: update episode.content_id (returns nothing needed)
+        // Subsequent calls (e.g. rollback delete) return nothing needed
         return makeChain(dbOk(null))
       }
 
@@ -962,11 +972,7 @@ describe("POST /api/podcast-subscriptions/[id]/episodes/[episodeId]/analyze", ()
       }
 
       if (table === "content") {
-        if (callNum === 1) {
-          // Library count check: select("id", { count, head })
-          return makeChain({ data: null, error: null, count: libraryCount })
-        }
-        // Insert new content entry
+        // Insert new content entry (library limit is checked via checkLibraryLimitAtomic, not a DB count)
         return makeChain(dbOk(newContent))
       }
 
@@ -1132,6 +1138,8 @@ describe("POST /api/podcast-subscriptions/[id]/episodes/[episodeId]/analyze", ()
 
   it("returns 403 when library limit is reached", async () => {
     mockGetEffectiveLimits.mockReturnValue({ library: 25 })
+    // Simulate checkLibraryLimitAtomic returning false (at/over limit)
+    mockCheckLibraryLimitAtomic.mockResolvedValue(false)
 
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "podcast_subscriptions") {
@@ -1149,10 +1157,6 @@ describe("POST /api/podcast-subscriptions/[id]/episodes/[episodeId]/analyze", ()
           content_id: null,
           subscription_id: VALID_UUID,
         }))
-      }
-      if (table === "content") {
-        // Library at full capacity
-        return makeChain({ data: null, error: null, count: 25 })
       }
       return makeChain(dbOk(null))
     })

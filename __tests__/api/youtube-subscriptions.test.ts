@@ -12,6 +12,7 @@ const mockUser = { id: "user-abc-123", email: "test@clarusapp.io" }
 
 // Supabase instance shared via auth mock — tests replace .from per test
 let mockSupabaseFrom: ReturnType<typeof vi.fn>
+let mockSupabaseRpc: ReturnType<typeof vi.fn>
 
 vi.mock("@/lib/auth", async (importOriginal) => {
   // Re-export the REAL AuthErrors so routes get valid NextResponse objects.
@@ -31,6 +32,7 @@ vi.mock("@/lib/auth", async (importOriginal) => {
         user: mockUser,
         supabase: {
           from: (...args: unknown[]) => mockSupabaseFrom(...args),
+          rpc: (...args: unknown[]) => mockSupabaseRpc(...args),
         },
       }
     }),
@@ -50,9 +52,11 @@ vi.mock("@/lib/rate-limit", () => ({
 // ---------------------------------------------------------------------------
 const mockCheckUsageLimit = vi.fn()
 const mockGetUserTierAndAdmin = vi.fn()
+const mockCheckLibraryLimitAtomic = vi.fn()
 vi.mock("@/lib/usage", () => ({
   checkUsageLimit: (...args: unknown[]) => mockCheckUsageLimit(...args),
   getUserTierAndAdmin: (...args: unknown[]) => mockGetUserTierAndAdmin(...args),
+  checkLibraryLimitAtomic: (...args: unknown[]) => mockCheckLibraryLimitAtomic(...args),
 }))
 
 // ---------------------------------------------------------------------------
@@ -230,6 +234,7 @@ describe("GET /api/youtube-subscriptions", () => {
     vi.clearAllMocks()
     mockAuthSuccess = true
     mockSupabaseFrom = vi.fn()
+    mockSupabaseRpc = vi.fn().mockResolvedValue({ data: [], error: null })
     mockCheckRateLimit.mockResolvedValue({ allowed: true, resetIn: 0 })
   })
 
@@ -266,19 +271,16 @@ describe("GET /api/youtube-subscriptions", () => {
       },
     ]
 
-    const mockVideos = [
+    const mockRpcVideos = [
       {
         subscription_id: VALID_UUID,
         video_title: "Test Video 1",
-        published_date: "2026-01-15T00:00:00Z",
+        video_date: "2026-01-15T00:00:00Z",
       },
     ]
 
-    mockSupabaseFrom.mockImplementation((table: string) => {
-      if (table === "youtube_subscriptions") return makeChain(dbOk(mockSubs))
-      if (table === "youtube_videos") return makeChain(dbOk(mockVideos))
-      return makeChain(dbOk([]))
-    })
+    mockSupabaseFrom.mockImplementation(() => makeChain(dbOk(mockSubs)))
+    mockSupabaseRpc.mockResolvedValue({ data: mockRpcVideos, error: null })
 
     const response = await listSubscriptions()
     const body = await response.json()
@@ -307,11 +309,8 @@ describe("GET /api/youtube-subscriptions", () => {
       },
     ]
 
-    mockSupabaseFrom.mockImplementation((table: string) => {
-      if (table === "youtube_subscriptions") return makeChain(dbOk(mockSubs))
-      if (table === "youtube_videos") return makeChain(dbOk([]))
-      return makeChain(dbOk([]))
-    })
+    mockSupabaseFrom.mockImplementation(() => makeChain(dbOk(mockSubs)))
+    // rpc default already returns { data: [], error: null }
 
     const response = await listSubscriptions()
     const body = await response.json()
@@ -344,16 +343,13 @@ describe("GET /api/youtube-subscriptions", () => {
     ]
 
     // Two videos for same subscription — first one (by published_date desc) should be picked
-    const mockVideos = [
-      { subscription_id: VALID_UUID, video_title: "Newest Video", published_date: "2026-02-01T00:00:00Z" },
-      { subscription_id: VALID_UUID, video_title: "Older Video", published_date: "2026-01-01T00:00:00Z" },
+    // The RPC uses DISTINCT ON and returns one row per subscription (the latest)
+    const mockRpcVideos = [
+      { subscription_id: VALID_UUID, video_title: "Newest Video", video_date: "2026-02-01T00:00:00Z" },
     ]
 
-    mockSupabaseFrom.mockImplementation((table: string) => {
-      if (table === "youtube_subscriptions") return makeChain(dbOk(mockSubs))
-      if (table === "youtube_videos") return makeChain(dbOk(mockVideos))
-      return makeChain(dbOk([]))
-    })
+    mockSupabaseFrom.mockImplementation(() => makeChain(dbOk(mockSubs)))
+    mockSupabaseRpc.mockResolvedValue({ data: mockRpcVideos, error: null })
 
     const response = await listSubscriptions()
     const body = await response.json()
@@ -893,6 +889,7 @@ describe("POST /api/youtube-subscriptions/[id]/videos/[videoId]/analyze", () => 
     })
     mockGetUserTierAndAdmin.mockResolvedValue({ tier: "starter", isAdmin: false })
     mockGetEffectiveLimits.mockReturnValue({ library: 500 })
+    mockCheckLibraryLimitAtomic.mockResolvedValue(true)
     mockProcessContent.mockResolvedValue({ success: true })
   })
 
@@ -931,12 +928,10 @@ describe("POST /api/youtube-subscriptions/[id]/videos/[videoId]/analyze", () => 
   function wireSuccessfulAnalyzeMock(overrides: {
     contentId?: string
     videoContentId?: null | string
-    libraryCount?: number
   } = {}) {
     const {
       contentId = VALID_UUID_2,
       videoContentId = null,
-      libraryCount = 5,
     } = overrides
 
     const subscription = {
@@ -970,11 +965,7 @@ describe("POST /api/youtube-subscriptions/[id]/videos/[videoId]/analyze", () => 
       }
 
       if (table === "content") {
-        if (callNum === 1) {
-          // Library count check
-          return makeChain({ data: null, error: null, count: libraryCount })
-        }
-        // Insert new content entry
+        // Insert new content entry (library count check is handled by checkLibraryLimitAtomic mock)
         return makeChain(dbOk(newContent))
       }
 
@@ -1167,6 +1158,7 @@ describe("POST /api/youtube-subscriptions/[id]/videos/[videoId]/analyze", () => 
 
   it("returns 403 when library limit is reached", async () => {
     mockGetEffectiveLimits.mockReturnValue({ library: 25 })
+    mockCheckLibraryLimitAtomic.mockResolvedValue(false)
 
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
@@ -1183,10 +1175,6 @@ describe("POST /api/youtube-subscriptions/[id]/videos/[videoId]/analyze", () => 
           content_id: null,
           subscription_id: VALID_UUID,
         }))
-      }
-      if (table === "content") {
-        // Library at full capacity
-        return makeChain({ data: null, error: null, count: 25 })
       }
       return makeChain(dbOk(null))
     })
@@ -1226,6 +1214,7 @@ describe("POST /api/youtube-subscriptions/[id]/videos/[videoId]/analyze", () => 
   })
 
   it("returns 500 when content insert fails", async () => {
+    // checkLibraryLimitAtomic is already mocked to return true in beforeEach
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
         return makeChain(dbOk({ id: VALID_UUID, user_id: mockUser.id }))
@@ -1240,38 +1229,7 @@ describe("POST /api/youtube-subscriptions/[id]/videos/[videoId]/analyze", () => 
         }))
       }
       if (table === "content") {
-        const tableCalls: Record<string, number> = {}
-        tableCalls["content"] = (tableCalls["content"] ?? 0) + 1
-        if (tableCalls["content"] === 1) {
-          // Library count check passes
-          return makeChain({ data: null, error: null, count: 5 })
-        }
-        // Insert fails
-        return makeChain(dbErr("DB insert error"))
-      }
-      return makeChain(dbOk(null))
-    })
-
-    // Wire specifically: first content call is count, second is insert failure
-    const contentCallTracker = { count: 0 }
-    mockSupabaseFrom.mockImplementation((table: string) => {
-      if (table === "youtube_subscriptions") {
-        return makeChain(dbOk({ id: VALID_UUID, user_id: mockUser.id }))
-      }
-      if (table === "youtube_videos") {
-        return makeChain(dbOk({
-          id: VALID_UUID_2,
-          video_title: "Test Video",
-          video_url: "https://www.youtube.com/watch?v=test",
-          content_id: null,
-          subscription_id: VALID_UUID,
-        }))
-      }
-      if (table === "content") {
-        contentCallTracker.count++
-        if (contentCallTracker.count === 1) {
-          return makeChain({ data: null, error: null, count: 5 })
-        }
+        // Insert fails (library count check is handled by checkLibraryLimitAtomic mock)
         return makeChain(dbErr("DB insert error"))
       }
       return makeChain(dbOk(null))

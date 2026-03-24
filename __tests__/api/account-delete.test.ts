@@ -4,6 +4,17 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 // Module mocks
 // =============================================================================
 
+// Rate limiting — allow all by default
+const mockCheckRateLimit = vi.fn()
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
+}))
+
+// Logger — silence noise
+vi.mock("@/lib/logger", () => ({
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
+}))
+
 const mockUser = { id: "user-123", email: "test@test.com" }
 let mockAuthSuccess = true
 
@@ -87,6 +98,7 @@ describe("DELETE /api/account/delete", () => {
     deleteOps.length = 0
     selectOps.length = 0
     mockAuthSuccess = true
+    mockCheckRateLimit.mockResolvedValue({ allowed: true, resetIn: 0 })
   })
 
   // ---------------------------------------------------------------------------

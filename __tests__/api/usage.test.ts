@@ -4,6 +4,12 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 // Module mocks — declared before imports
 // =============================================================================
 
+// Rate limiting — allow all by default
+const mockCheckRateLimit = vi.fn()
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: (...args: unknown[]) => mockCheckRateLimit(...args),
+}))
+
 // Auth — controllable per test
 let mockAuthSuccess = true
 const mockUser = { id: "user-usage-123", email: "usage@clarusapp.io" }
@@ -57,6 +63,16 @@ vi.mock("@/lib/logger", () => ({
 import { GET } from "@/app/api/usage/route"
 
 // =============================================================================
+// Request helper
+// =============================================================================
+
+function createRequest(headers: Record<string, string> = {}) {
+  return new Request("http://localhost:3000/api/usage", {
+    headers: { "x-forwarded-for": "127.0.0.1", ...headers },
+  })
+}
+
+// =============================================================================
 // Default mock helpers
 // =============================================================================
 
@@ -82,6 +98,7 @@ describe("GET /api/usage", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAuthSuccess = true
+    mockCheckRateLimit.mockResolvedValue({ allowed: true, resetIn: 0 })
 
     mockGetUserTierAndAdmin.mockResolvedValue({ tier: "free", isAdmin: false })
     mockGetUsageCounts.mockResolvedValue({
@@ -109,7 +126,7 @@ describe("GET /api/usage", () => {
   it("returns 401 when user is not authenticated", async () => {
     mockAuthSuccess = false
 
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     expect(response.status).toBe(401)
@@ -121,7 +138,7 @@ describe("GET /api/usage", () => {
   // -------------------------------------------------------------------------
 
   it("returns 200 with correct response shape", async () => {
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     expect(response.status).toBe(200)
@@ -134,28 +151,28 @@ describe("GET /api/usage", () => {
   it("returns correct tier from getUserTierAndAdmin", async () => {
     mockGetUserTierAndAdmin.mockResolvedValue({ tier: "pro", isAdmin: false })
 
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     expect(body.tier).toBe("pro")
   })
 
   it("returns period in YYYY-MM format", async () => {
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     expect(body.period).toMatch(/^\d{4}-\d{2}$/)
   })
 
   it("returns resetDate as a valid ISO timestamp", async () => {
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     expect(new Date(body.resetDate).toISOString()).toBe(body.resetDate)
   })
 
   it("usage object contains all expected counters", async () => {
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     const { usage } = body
@@ -169,7 +186,7 @@ describe("GET /api/usage", () => {
   })
 
   it("usage counters have `used` and `limit` fields", async () => {
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     const { analyses } = body.usage
@@ -187,7 +204,7 @@ describe("GET /api/usage", () => {
       podcast_analyses_count: 1,
     })
 
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     expect(body.usage.analyses.used).toBe(3)
@@ -198,7 +215,7 @@ describe("GET /api/usage", () => {
   it("applies free tier limits correctly", async () => {
     mockGetUserTierAndAdmin.mockResolvedValue({ tier: "free", isAdmin: false })
 
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     // Free tier: 5 analyses, 50 monthly chat messages
@@ -209,7 +226,7 @@ describe("GET /api/usage", () => {
   it("applies pro tier limits correctly", async () => {
     mockGetUserTierAndAdmin.mockResolvedValue({ tier: "pro", isAdmin: false })
 
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     // Pro tier: 150 analyses, 1000 monthly chat messages
@@ -217,23 +234,24 @@ describe("GET /api/usage", () => {
     expect(body.usage.chatMessages.limit).toBe(1000)
   })
 
-  it("admin users get MAX_SAFE_INTEGER limits", async () => {
+  it("admin users see real tier limits on dashboard (admin bypass is for enforcement only)", async () => {
     mockGetUserTierAndAdmin.mockResolvedValue({ tier: "free", isAdmin: true })
 
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
-    expect(body.usage.analyses.limit).toBe(Number.MAX_SAFE_INTEGER)
+    // Dashboard always shows real tier limits, not admin overrides
+    expect(body.usage.analyses.limit).toBe(5)
   })
 
   it("sets Cache-Control: private header", async () => {
-    const response = await GET()
+    const response = await GET(createRequest())
 
     expect(response.headers.get("Cache-Control")).toMatch(/private/)
   })
 
   it("resetDate is the first day of next month in UTC", async () => {
-    const response = await GET()
+    const response = await GET(createRequest())
     const body = await response.json()
 
     const resetDate = new Date(body.resetDate)

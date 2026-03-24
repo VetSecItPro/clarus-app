@@ -16,11 +16,6 @@ const mockUpsertChain = {
   single: vi.fn(),
 }
 
-const mockSelectChain = {
-  select: vi.fn().mockReturnThis(),
-  eq: vi.fn().mockReturnThis(),
-}
-
 const mockFrom = vi.fn()
 const mockUserSupabase = {
   from: (...args: unknown[]) => mockFrom(...args),
@@ -40,6 +35,11 @@ vi.mock("@/lib/auth", async () => {
     }),
   }
 })
+
+// Rate limit — always allow in tests to prevent in-memory counter bleed
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn(async () => ({ allowed: true, remaining: 99, resetIn: 0 })),
+}))
 
 // logger — silence noise
 vi.mock("@/lib/logger", () => ({
@@ -96,17 +96,42 @@ function createGetRequest(contentId?: string) {
 // Tests: POST /api/feedback
 // =============================================================================
 
+// Chainable mock for the content ownership check: .select().eq().eq().maybeSingle()
+const mockContentOwnershipChain = {
+  select: vi.fn().mockReturnThis(),
+  eq: vi.fn().mockReturnThis(),
+  maybeSingle: vi.fn(),
+}
+
+// Factory that returns the correct chain based on table name
+function makeMockFromImpl() {
+  return (table: string) => {
+    if (table === "content") {
+      return mockContentOwnershipChain
+    }
+    // section_feedback — upsert chain
+    return {
+      upsert: vi.fn().mockReturnValue(mockUpsertChain),
+      select: vi.fn().mockReturnThis(),
+    }
+  }
+}
+
 describe("POST /api/feedback", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAuthSuccess = true
 
+    // Default: content ownership check succeeds (content found)
+    mockContentOwnershipChain.select.mockReturnThis()
+    mockContentOwnershipChain.eq.mockReturnThis()
+    mockContentOwnershipChain.maybeSingle.mockResolvedValue({ data: { id: VALID_UUID }, error: null })
+
     // Default: upsert succeeds
     mockUpsertChain.single.mockResolvedValue({ data: MOCK_FEEDBACK_RECORD, error: null })
-    mockFrom.mockReturnValue({
-      upsert: vi.fn().mockReturnValue(mockUpsertChain),
-      select: vi.fn().mockReturnThis(),
-    })
+
+    // Dispatch by table name so the content check works across all tests (including loops)
+    mockFrom.mockImplementation(makeMockFromImpl())
   })
 
   // ---------------------------------------------------------------------------
@@ -288,34 +313,48 @@ describe("POST /api/feedback", () => {
 // Tests: GET /api/feedback
 // =============================================================================
 
+// Default feedback records returned by GET
+const DEFAULT_GET_FEEDBACK = [
+  {
+    id: "fb-001",
+    section_type: "triage",
+    is_helpful: true,
+    claim_index: null,
+    flag_reason: null,
+    created_at: new Date().toISOString(),
+  },
+]
+
+// Build a GET mockFrom that dispatches by table name
+function makeGetMockFromImpl(feedbackData: unknown[] | null = DEFAULT_GET_FEEDBACK, feedbackError: unknown = null) {
+  return (table: string) => {
+    if (table === "content") {
+      // Ownership check: .select().eq().eq().maybeSingle()
+      return {
+        select: vi.fn().mockReturnThis(),
+        eq: vi.fn().mockReturnThis(),
+        maybeSingle: vi.fn().mockResolvedValue({ data: { id: VALID_UUID }, error: null }),
+      }
+    }
+    // section_feedback query: .select().eq().eq() — awaited directly
+    const feedbackChain: Record<string, unknown> = {
+      select: vi.fn().mockReturnThis(),
+      eq: vi.fn().mockReturnThis(),
+    }
+    // Make the chain thenable so the final await resolves
+    feedbackChain.then = (resolve: (v: unknown) => unknown, reject: (e: unknown) => unknown) =>
+      Promise.resolve({ data: feedbackData, error: feedbackError }).then(resolve, reject)
+    return feedbackChain
+  }
+}
+
 describe("GET /api/feedback", () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockAuthSuccess = true
 
-    // Default: query returns feedback records
-    const resolvedChain = {
-      ...mockSelectChain,
-      eq: vi.fn().mockReturnThis(),
-    }
-    // Final eq returns the data
-    resolvedChain.eq.mockImplementationOnce(vi.fn().mockReturnThis()).mockImplementationOnce(
-      vi.fn().mockResolvedValue({
-        data: [
-          {
-            id: "fb-001",
-            section_type: "triage",
-            is_helpful: true,
-            claim_index: null,
-            flag_reason: null,
-            created_at: new Date().toISOString(),
-          },
-        ],
-        error: null,
-      })
-    )
-
-    mockFrom.mockReturnValue(resolvedChain)
+    // Default: content ownership succeeds, query returns feedback records
+    mockFrom.mockImplementation(makeGetMockFromImpl())
   })
 
   // ---------------------------------------------------------------------------
@@ -351,19 +390,8 @@ describe("GET /api/feedback", () => {
   // ---------------------------------------------------------------------------
 
   it("returns 500 when database query fails", async () => {
-    const errorChain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-    }
-    // Both eq calls return same chain, but the last one resolves with error
-    const eqMock = vi.fn()
-    eqMock.mockReturnValueOnce(errorChain).mockResolvedValueOnce({
-      data: null,
-      error: { message: "Query failed" },
-    })
-    errorChain.eq = eqMock
-
-    mockFrom.mockReturnValue(errorChain)
+    // Content ownership check succeeds, but the feedback query itself fails
+    mockFrom.mockImplementation(makeGetMockFromImpl(null, { message: "Query failed" }))
 
     const req = createGetRequest(VALID_UUID)
     const response = await GET(req)
@@ -389,14 +417,7 @@ describe("GET /api/feedback", () => {
       },
     ]
 
-    // Override with working sequential eq chain
-    const chain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn()
-        .mockReturnValueOnce({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ data: feedbackItems, error: null }) })
-        .mockResolvedValue({ data: feedbackItems, error: null }),
-    }
-    mockFrom.mockReturnValue(chain)
+    mockFrom.mockImplementation(makeGetMockFromImpl(feedbackItems))
 
     const req = createGetRequest(VALID_UUID)
     const response = await GET(req)
@@ -407,13 +428,7 @@ describe("GET /api/feedback", () => {
   })
 
   it("returns 200 with empty feedback array when none exist", async () => {
-    const emptyChain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn()
-        .mockReturnValueOnce({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ data: null, error: null }) })
-        .mockResolvedValue({ data: null, error: null }),
-    }
-    mockFrom.mockReturnValue(emptyChain)
+    mockFrom.mockImplementation(makeGetMockFromImpl(null))
 
     const req = createGetRequest(VALID_UUID)
     const response = await GET(req)
@@ -424,13 +439,7 @@ describe("GET /api/feedback", () => {
   })
 
   it("sets Cache-Control header on success", async () => {
-    const chain = {
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn()
-        .mockReturnValueOnce({ select: vi.fn().mockReturnThis(), eq: vi.fn().mockResolvedValue({ data: [], error: null }) })
-        .mockResolvedValue({ data: [], error: null }),
-    }
-    mockFrom.mockReturnValue(chain)
+    mockFrom.mockImplementation(makeGetMockFromImpl([]))
 
     const req = createGetRequest(VALID_UUID)
     const response = await GET(req)
