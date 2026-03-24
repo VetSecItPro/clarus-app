@@ -33,10 +33,14 @@ vi.mock("@/lib/auth", () => ({
   }),
 }))
 
-// getUserTierAndAdmin
+// getUserTierAndAdmin / checkUsageLimit / checkLibraryLimitAtomic
 const mockGetUserTierAndAdmin = vi.fn()
+const mockCheckUsageLimit = vi.fn()
+const mockCheckLibraryLimitAtomic = vi.fn()
 vi.mock("@/lib/usage", () => ({
   getUserTierAndAdmin: (...args: unknown[]) => mockGetUserTierAndAdmin(...args),
+  checkUsageLimit: (...args: unknown[]) => mockCheckUsageLimit(...args),
+  checkLibraryLimitAtomic: (...args: unknown[]) => mockCheckLibraryLimitAtomic(...args),
 }))
 
 // getEffectiveLimits — use real implementation
@@ -147,10 +151,12 @@ describe("POST /api/process-pdf", () => {
 
     mockCheckRateLimit.mockResolvedValue({ allowed: true, resetIn: 0 })
     mockGetUserTierAndAdmin.mockResolvedValue({ tier: "pro", isAdmin: false })
+    mockCheckUsageLimit.mockResolvedValue({ allowed: true, currentCount: 0, limit: 150, tier: "pro" })
+    mockCheckLibraryLimitAtomic.mockResolvedValue(true)
     mockProcessContent.mockResolvedValue({ success: true })
     mockDestroy.mockResolvedValue(undefined)
 
-    // Library count is well under the pro limit (5000)
+    // Auth supabase — not used directly by route (usage checks are mocked above)
     mockAuthSupabaseFrom.mockReturnValue(buildCountChain(5))
 
     // pdf-parse returns enough text by default (> 100 chars minimum)
@@ -201,9 +207,9 @@ describe("POST /api/process-pdf", () => {
   // -------------------------------------------------------------------------
 
   it("returns 403 when user has reached their library limit", async () => {
-    // Pro tier library limit is 5000; count equals limit
+    // Simulate checkLibraryLimitAtomic returning false (at/over limit)
     mockGetUserTierAndAdmin.mockResolvedValue({ tier: "pro", isAdmin: false })
-    mockAuthSupabaseFrom.mockReturnValue(buildCountChain(5000))
+    mockCheckLibraryLimitAtomic.mockResolvedValue(false)
 
     const req = createFormDataRequest(makePdfBuffer(), "test.pdf", "application/pdf")
     const response = await POST(req)

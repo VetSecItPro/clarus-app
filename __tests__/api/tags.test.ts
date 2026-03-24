@@ -14,9 +14,9 @@ vi.mock("@/lib/rate-limit", () => ({
 let mockAuthSuccess = true
 const mockUser = { id: "user-tags-123", email: "tags@clarusapp.io" }
 
-// Mutable supabase state
-let mockTagsData: { tags: string[] | null }[] | null = null
-let mockTagsError: { message: string } | null = null
+// Mutable supabase state — now returns RPC-style data: { tag: string; count: number }[]
+let mockRpcData: { tag: string; count: number }[] | null = null
+let mockRpcError: { message: string } | null = null
 
 vi.mock("@/lib/auth", () => ({
   authenticateRequest: vi.fn(async () => {
@@ -31,16 +31,9 @@ vi.mock("@/lib/auth", () => ({
       success: true,
       user: mockUser,
       supabase: {
-        from: (_table: string) => ({
-          select: (_fields: string) => ({
-            eq: (_field: string, _value: unknown) => ({
-              not: (_col: string, _op: string, _val: unknown) => ({
-                limit: (_n: number) =>
-                  Promise.resolve({ data: mockTagsData, error: mockTagsError }),
-              }),
-            }),
-          }),
-        }),
+        rpc: vi.fn().mockImplementation(() =>
+          Promise.resolve({ data: mockRpcData, error: mockRpcError })
+        ),
       },
     }
   }),
@@ -82,12 +75,13 @@ describe("GET /api/tags", () => {
     vi.clearAllMocks()
     mockAuthSuccess = true
     mockCheckRateLimit.mockResolvedValue({ allowed: true, resetIn: 0 })
-    mockTagsData = [
-      { tags: ["tech", "ai", "news"] },
-      { tags: ["tech", "science"] },
-      { tags: ["ai"] },
+    mockRpcData = [
+      { tag: "tech", count: 2 },
+      { tag: "ai", count: 2 },
+      { tag: "news", count: 1 },
+      { tag: "science", count: 1 },
     ]
-    mockTagsError = null
+    mockRpcError = null
   })
 
   // ---------------------------------------------------------------------------
@@ -145,17 +139,9 @@ describe("GET /api/tags", () => {
   })
 
   it("returns tags sorted by count descending", async () => {
-    mockTagsData = [
-      { tags: ["popular", "popular", "popular"] },
-      { tags: ["popular", "rare"] },
-    ]
-    // popular appears once per item but multiple items; rare appears once
-    // Actually tags are unique strings per item — let's use distinct arrays
-    mockTagsData = [
-      { tags: ["popular"] },
-      { tags: ["popular"] },
-      { tags: ["popular"] },
-      { tags: ["rare"] },
+    mockRpcData = [
+      { tag: "popular", count: 3 },
+      { tag: "rare", count: 1 },
     ]
 
     const response = await GET(createRequest())
@@ -169,7 +155,7 @@ describe("GET /api/tags", () => {
   })
 
   it("returns 200 with empty tags array when user has no tagged content", async () => {
-    mockTagsData = []
+    mockRpcData = []
 
     const response = await GET(createRequest())
     const body = await response.json()
@@ -180,7 +166,7 @@ describe("GET /api/tags", () => {
   })
 
   it("returns 200 with empty tags array when content has null tags", async () => {
-    mockTagsData = [{ tags: null }, { tags: null }]
+    mockRpcData = []
 
     const response = await GET(createRequest())
     const body = await response.json()
@@ -189,19 +175,19 @@ describe("GET /api/tags", () => {
     expect(body.tags).toEqual([])
   })
 
-  it("returns 200 with empty tags array when DB returns null data", async () => {
-    mockTagsData = null
+  it("returns 200 with null tags when DB returns null data", async () => {
+    mockRpcData = null
 
     const response = await GET(createRequest())
     const body = await response.json()
 
     expect(response.status).toBe(200)
-    expect(body.tags).toEqual([])
+    expect(body.tags).toBeNull()
   })
 
   it("limits results to top 50 tags", async () => {
-    // Create 60 unique tags each in one item
-    mockTagsData = Array.from({ length: 60 }, (_, i) => ({ tags: [`tag-${i}`] }))
+    // RPC is called with p_limit: 50, so it returns at most 50
+    mockRpcData = Array.from({ length: 50 }, (_, i) => ({ tag: `tag-${i}`, count: 60 - i }))
 
     const response = await GET(createRequest())
     const body = await response.json()
@@ -222,8 +208,8 @@ describe("GET /api/tags", () => {
   // ---------------------------------------------------------------------------
 
   it("returns 500 when database query fails", async () => {
-    mockTagsError = { message: "connection refused" }
-    mockTagsData = null
+    mockRpcError = { message: "connection refused" }
+    mockRpcData = null
 
     const response = await GET(createRequest())
     const body = await response.json()
@@ -237,11 +223,10 @@ describe("GET /api/tags", () => {
   // Edge cases
   // ---------------------------------------------------------------------------
 
-  it("deduplicates and aggregates the same tag appearing in multiple items", async () => {
-    mockTagsData = [
-      { tags: ["shared-tag"] },
-      { tags: ["shared-tag"] },
-      { tags: ["shared-tag", "unique-tag"] },
+  it("returns pre-aggregated tag counts from RPC", async () => {
+    mockRpcData = [
+      { tag: "shared-tag", count: 3 },
+      { tag: "unique-tag", count: 1 },
     ]
 
     const response = await GET(createRequest())
@@ -254,11 +239,9 @@ describe("GET /api/tags", () => {
     expect(uniqueTag.count).toBe(1)
   })
 
-  it("ignores items with empty arrays and only counts non-empty tag arrays", async () => {
-    mockTagsData = [
-      { tags: [] },
-      { tags: ["real-tag"] },
-      { tags: [] },
+  it("returns only tags with non-zero counts from RPC", async () => {
+    mockRpcData = [
+      { tag: "real-tag", count: 1 },
     ]
 
     const response = await GET(createRequest())

@@ -22,6 +22,11 @@ vi.mock("@/lib/auth", () => ({
   getAdminClient: vi.fn(() => mockAdminClient),
 }))
 
+// Rate limit — always allow in tests to prevent in-memory counter bleed
+vi.mock("@/lib/rate-limit", () => ({
+  checkRateLimit: vi.fn(async () => ({ allowed: true, remaining: 99, resetIn: 0 })),
+}))
+
 // logger — silence noise
 vi.mock("@/lib/logger", () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },

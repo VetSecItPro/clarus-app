@@ -448,6 +448,8 @@ describe("GET /api/content/[id]/cross-references", () => {
     const fakeClaims = [{ id: "claim-1", claim_text: "The earth is flat" }]
     const fakeSimilar = [
       {
+        source_claim_index: 0,
+        source_claim_text: "The earth is flat",
         content_id: "other-content-uuid",
         content_title: "Conspiracy Theories",
         claim_text: "Earth is flat",
@@ -797,21 +799,13 @@ describe("PATCH /api/content/[id]/tags", () => {
       select: () => updateChain,
       single: () => Promise.resolve({ data: { id: VALID_UUID, tags: ["news", "tech", "science"] }, error: null }),
     }
-    // Tags PATCH also calls .from("content").select("tags").eq().not().limit()
-    const allContentChain = {
-      select: () => allContentChain,
-      eq: () => allContentChain,
-      not: () => allContentChain,
-      limit: () => Promise.resolve({ data: [{ tags: ["news", "tech"] }], error: null }),
-    }
     mockSupabase = {
       from: (table: string) => {
-        if (table === "content") return {
-          ...allContentChain,
-          update: () => updateChain,
-        }
+        if (table === "content") return { update: () => updateChain }
         return buildChainableMock()
       },
+      // Route uses rpc("count_unique_user_tags") to check tag limit
+      rpc: vi.fn().mockResolvedValue({ data: 2, error: null }),
     } as unknown as ReturnType<typeof makeSupabase>
 
     const { authenticateRequest } = await import("@/lib/auth")
@@ -879,15 +873,10 @@ describe("PATCH /api/content/[id]/tags", () => {
     const { getEffectiveLimits } = await import("@/lib/tier-limits")
     vi.mocked(getEffectiveLimits).mockReturnValueOnce({ tags: 2 } as ReturnType<typeof getEffectiveLimits>)
 
-    // All content query returns enough tags to exceed limit
-    const allContentChain = {
-      select: () => allContentChain,
-      eq: () => allContentChain,
-      not: () => allContentChain,
-      limit: () => Promise.resolve({ data: [{ tags: ["news", "tech"] }], error: null }),
-    }
     mockSupabase = {
-      from: () => allContentChain,
+      from: () => buildChainableMock(),
+      // Route uses rpc("count_unique_user_tags") — return 3, which exceeds the limit of 2
+      rpc: vi.fn().mockResolvedValue({ data: 3, error: null }),
     } as unknown as ReturnType<typeof makeSupabase>
 
     const { authenticateRequest } = await import("@/lib/auth")

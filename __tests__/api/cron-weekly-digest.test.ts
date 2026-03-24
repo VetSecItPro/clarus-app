@@ -126,21 +126,27 @@ function buildDefaultSupabaseMock({
       }
     }
     if (table === "content") {
+      // Route chain: .select().in().gte().order().limit() — terminal is .limit()
       return {
         select: vi.fn().mockReturnThis(),
         in: vi.fn().mockReturnThis(),
         gte: vi.fn().mockReturnThis(),
-        order: vi.fn().mockResolvedValue({ data: content, error: null }),
+        order: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue({ data: content, error: null }),
       }
     }
     if (table === "summaries") {
+      // Route chain: .select().in().eq().eq().gte().limit() — terminal is .limit()
       return {
         select: vi.fn().mockReturnThis(),
+        in: vi.fn().mockReturnThis(),
         eq: vi.fn().mockReturnThis(),
-        gte: vi.fn().mockResolvedValue({ data: summaries, error: null }),
+        gte: vi.fn().mockReturnThis(),
+        limit: vi.fn().mockResolvedValue({ data: summaries, error: null }),
       }
     }
     if (table === "claims") {
+      // Route chain: .select().in().gte().limit() — terminal is .limit()
       return {
         select: vi.fn().mockReturnThis(),
         in: vi.fn().mockReturnThis(),
@@ -283,10 +289,10 @@ describe("GET /api/crons/weekly-digest", () => {
         }
       }
       if (table === "content") {
-        return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [], error: null }) }
+        return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
       }
       if (table === "summaries") {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), gte: vi.fn().mockResolvedValue({ data: [], error: null }) }
+        return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
       }
       if (table === "claims") {
         return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
@@ -319,10 +325,10 @@ describe("GET /api/crons/weekly-digest", () => {
         }
       }
       if (table === "content") {
-        return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), order: vi.fn().mockResolvedValue({ data: [], error: null }) }
+        return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), order: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
       }
       if (table === "summaries") {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), gte: vi.fn().mockResolvedValue({ data: [], error: null }) }
+        return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
       }
       if (table === "claims") {
         return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
@@ -359,11 +365,12 @@ describe("GET /api/crons/weekly-digest", () => {
           select: vi.fn().mockReturnThis(),
           in: vi.fn().mockReturnThis(),
           gte: vi.fn().mockReturnThis(),
-          order: vi.fn().mockResolvedValue({ data: [], error: null }), // no content
+          order: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue({ data: [], error: null }), // no content
         }
       }
       if (table === "summaries") {
-        return { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), gte: vi.fn().mockResolvedValue({ data: [], error: null }) }
+        return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
       }
       if (table === "claims") {
         return { select: vi.fn().mockReturnThis(), in: vi.fn().mockReturnThis(), gte: vi.fn().mockReturnThis(), limit: vi.fn().mockResolvedValue({ data: [], error: null }) }
@@ -611,14 +618,17 @@ describe("GET /api/crons/weekly-digest", () => {
           select: vi.fn().mockReturnThis(),
           in: vi.fn().mockReturnThis(),
           gte: vi.fn().mockReturnThis(),
-          order: vi.fn().mockResolvedValue({ data: content, error: null }),
+          order: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue({ data: content, error: null }),
         }
       }
       if (table === "summaries") {
         return {
           select: vi.fn().mockReturnThis(),
+          in: vi.fn().mockReturnThis(),
           eq: vi.fn().mockReturnThis(),
-          gte: vi.fn().mockResolvedValue({ data: summaries, error: null }),
+          gte: vi.fn().mockReturnThis(),
+          limit: vi.fn().mockResolvedValue({ data: summaries, error: null }),
         }
       }
       if (table === "claims") {

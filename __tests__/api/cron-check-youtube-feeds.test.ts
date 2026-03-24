@@ -6,8 +6,10 @@ import { describe, it, expect, vi, beforeEach } from "vitest"
 
 // Supabase admin client
 const mockSupabaseFrom = vi.fn()
+const mockSupabaseRpc = vi.fn()
 const mockSupabaseClient = {
   from: (...args: unknown[]) => mockSupabaseFrom(...args),
+  rpc: (...args: unknown[]) => mockSupabaseRpc(...args),
 }
 vi.mock("@/lib/auth", () => ({
   getAdminClient: vi.fn(() => mockSupabaseClient),
@@ -86,6 +88,9 @@ describe("GET /api/crons/check-youtube-feeds", () => {
       const match = url.match(/[?&]v=([^&]+)/)
       return match ? match[1] : null
     })
+
+    // Default: RPC returns empty subscriptions list
+    mockSupabaseRpc.mockResolvedValue({ data: [], error: null })
   })
 
   // ---------------------------------------------------------------------------
@@ -131,11 +136,7 @@ describe("GET /api/crons/check-youtube-feeds", () => {
   // ---------------------------------------------------------------------------
 
   it("returns 500 when fetching YouTube subscriptions fails", async () => {
-    mockSupabaseFrom.mockReturnValue({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue({ data: null, error: { message: "DB error" } }),
-    })
+    mockSupabaseRpc.mockResolvedValue({ data: null, error: { message: "DB error" } })
 
     const response = await GET(createAuthedRequest())
     const body = await response.json()
@@ -149,11 +150,7 @@ describe("GET /api/crons/check-youtube-feeds", () => {
   // ---------------------------------------------------------------------------
 
   it("returns 200 with zeros when there are no active subscriptions", async () => {
-    mockSupabaseFrom.mockReturnValue({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-    })
+    mockSupabaseRpc.mockResolvedValue({ data: [], error: null })
 
     const response = await GET(createAuthedRequest())
     const body = await response.json()
@@ -166,25 +163,8 @@ describe("GET /api/crons/check-youtube-feeds", () => {
   })
 
   it("returns 200 with zeros when subscriptions exist but none are due for checking", async () => {
-    const recentlyChecked = new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString()
-    const subscriptions = [
-      {
-        id: "yt-sub-1",
-        user_id: "user-1",
-        feed_url: "https://www.youtube.com/feeds/videos.xml?channel_id=UC123",
-        channel_name: "Tech Channel",
-        last_checked_at: recentlyChecked,
-        check_frequency_hours: 24,
-        last_video_date: null,
-        consecutive_failures: 0,
-      },
-    ]
-
-    mockSupabaseFrom.mockReturnValue({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue({ data: subscriptions, error: null }),
-    })
+    // RPC filters due subscriptions in SQL — return empty to simulate none due
+    mockSupabaseRpc.mockResolvedValue({ data: [], error: null })
 
     const response = await GET(createAuthedRequest())
     const body = await response.json()
@@ -216,12 +196,10 @@ describe("GET /api/crons/check-youtube-feeds", () => {
 
     const updateChain = { eq: vi.fn().mockResolvedValue({ error: null }) }
 
+    mockSupabaseRpc.mockResolvedValue({ data: subscriptions, error: null })
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
         return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue({ data: subscriptions, error: null }),
           update: vi.fn().mockReturnValue(updateChain),
         }
       }
@@ -276,12 +254,10 @@ describe("GET /api/crons/check-youtube-feeds", () => {
     const updateChain = { eq: vi.fn().mockResolvedValue({ error: null }) }
     const inChain = { error: null }
 
+    mockSupabaseRpc.mockResolvedValue({ data: subscriptions, error: null })
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
         return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue({ data: subscriptions, error: null }),
           update: vi.fn().mockReturnValue(updateChain),
         }
       }
@@ -352,12 +328,10 @@ describe("GET /api/crons/check-youtube-feeds", () => {
 
     const updateChain = { eq: vi.fn().mockResolvedValue({ error: null }) }
 
+    mockSupabaseRpc.mockResolvedValue({ data: subscriptions, error: null })
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
         return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue({ data: subscriptions, error: null }),
           update: vi.fn().mockReturnValue(updateChain),
         }
       }
@@ -419,12 +393,10 @@ describe("GET /api/crons/check-youtube-feeds", () => {
 
     const updateFn = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) })
 
+    mockSupabaseRpc.mockResolvedValue({ data: subscriptions, error: null })
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
         return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue({ data: subscriptions, error: null }),
           update: updateFn,
         }
       }
@@ -461,12 +433,10 @@ describe("GET /api/crons/check-youtube-feeds", () => {
 
     const updateFn = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) })
 
+    mockSupabaseRpc.mockResolvedValue({ data: subscriptions, error: null })
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
         return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue({ data: subscriptions, error: null }),
           update: updateFn,
         }
       }
@@ -502,12 +472,10 @@ describe("GET /api/crons/check-youtube-feeds", () => {
       },
     ]
 
+    mockSupabaseRpc.mockResolvedValue({ data: subscriptions, error: null })
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
         return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue({ data: subscriptions, error: null }),
           update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
         }
       }
@@ -564,12 +532,10 @@ describe("GET /api/crons/check-youtube-feeds", () => {
       { id: "vid-id-1", video_title: "New Video", published_date: new Date().toISOString() },
     ]
 
+    mockSupabaseRpc.mockResolvedValue({ data: subscriptions, error: null })
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
         return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue({ data: subscriptions, error: null }),
           update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
         }
       }
@@ -619,11 +585,7 @@ describe("GET /api/crons/check-youtube-feeds", () => {
   // ---------------------------------------------------------------------------
 
   it("returns the correct response shape on success", async () => {
-    mockSupabaseFrom.mockReturnValue({
-      select: vi.fn().mockReturnThis(),
-      eq: vi.fn().mockReturnThis(),
-      limit: vi.fn().mockResolvedValue({ data: [], error: null }),
-    })
+    mockSupabaseRpc.mockResolvedValue({ data: [], error: null })
 
     const response = await GET(createAuthedRequest())
     const body = await response.json()
@@ -657,12 +619,10 @@ describe("GET /api/crons/check-youtube-feeds", () => {
 
     const updateFn = vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) })
 
+    mockSupabaseRpc.mockResolvedValue({ data: subscriptions, error: null })
     mockSupabaseFrom.mockImplementation((table: string) => {
       if (table === "youtube_subscriptions") {
         return {
-          select: vi.fn().mockReturnThis(),
-          eq: vi.fn().mockReturnThis(),
-          limit: vi.fn().mockResolvedValue({ data: subscriptions, error: null }),
           update: updateFn,
         }
       }

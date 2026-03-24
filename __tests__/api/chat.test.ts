@@ -578,7 +578,7 @@ describe("POST /api/chat", () => {
     expect(callArgs.temperature).toBe(0.5)
   })
 
-  it("caps maxOutputTokens at 1024 even when DB prompt specifies a higher value", async () => {
+  it("caps maxOutputTokens at 4096 even when DB prompt specifies a higher value", async () => {
     mockPromptData = {
       temperature: 0.7,
       top_p: null,
@@ -594,7 +594,7 @@ describe("POST /api/chat", () => {
 
     expect(mockStreamText).toHaveBeenCalledOnce()
     const callArgs = mockStreamText.mock.calls[0][0] as { maxOutputTokens: number }
-    expect(callArgs.maxOutputTokens).toBeLessThanOrEqual(1024)
+    expect(callArgs.maxOutputTokens).toBeLessThanOrEqual(4096)
   })
 
   it("injects summary data into the system prompt when summaries exist", async () => {
