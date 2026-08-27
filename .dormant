@@ -1,0 +1,16 @@
+DORMANT - operator directive 2026-08-27.
+
+This repository is not under active development. Do not spend effort on baseline work,
+dependency sweeps, CI hardening or audits here unless it is explicitly revived.
+
+The SessionStart baseline check reads this file and stays quiet in repos that carry it.
+Delete this file to bring the repo back under the normal baseline.
+
+Standing findings, recorded 2026-08-27 so they are not rediscovered as new, and NOT acted on:
+  - HIGHEST-SEVERITY DORMANT FINDING. package.json declares "next": "15.5.14" EXACTLY,
+    but the unbounded override next:>=15.5.15 resolves the lockfile to next@16.2.4.
+    The app is running a major it never declared, and 16.2.4 sits INSIDE the advisory
+    range >=16.0.0 <16.2.11 - so a Next 15 security patch silently moved it onto a
+    vulnerable Next 16. Also vite >=7.3.2 locked at 8.0.10, same shape.
+  - 12 pins, all 12 unbounded. No Renovate or Dependabot.
+  - Dormancy makes this NOT URGENT. It does not make it fixed. Fix before any redeploy.
