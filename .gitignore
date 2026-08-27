@@ -154,3 +154,6 @@ podcast-*.png
 
 # Supabase CLI temp files
 supabase/.temp/
+
+# Local Claude Code settings; settings.local.json can carry credentials
+.claude/
